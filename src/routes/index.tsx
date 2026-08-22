@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
+import { MARKETING_URL } from "@/lib/config";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -42,10 +43,10 @@ function LandingPage() {
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-card">
         <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-6">
-          <div className="flex items-center gap-2">
+          <a href={MARKETING_URL} className="flex items-center gap-2">
             <Boxes className="h-5 w-5 text-primary" />
             <span className="text-sm font-semibold tracking-tight">FlySales</span>
-          </div>
+          </a>
           {hydrated && signedIn ? (
             <Button asChild size="sm">
               <Link to="/dashboard">Open portal</Link>

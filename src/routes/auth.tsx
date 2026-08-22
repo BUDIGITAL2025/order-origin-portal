@@ -1,7 +1,7 @@
-import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { Boxes } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
+import { APP_BASE_URL, MARKETING_URL } from "@/lib/config";
 import { loginSchema, signupSchema } from "@/lib/schemas";
 import { completeSignup, getMyContext } from "@/lib/profiles.functions";
 
@@ -42,6 +43,9 @@ function AuthPage() {
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
 
+  const [showReset, setShowReset] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
+
   const [signup, setSignup] = useState({
     email: "",
     password: "",
@@ -63,6 +67,15 @@ function AuthPage() {
       await navigate({ to: "/dashboard" });
     }
   };
+
+  // Landing here with a live session (e.g. after clicking the email
+  // confirmation link) routes straight into the portal.
+  useEffect(() => {
+    void supabase.auth.getSession().then(({ data }) => {
+      if (data.session) void routeAfterSignIn();
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,6 +102,29 @@ function AuthPage() {
     }
   };
 
+  const handleReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const parsed = loginSchema.shape.email.safeParse(resetEmail);
+    if (!parsed.success) {
+      toast.error("Enter a valid email address");
+      return;
+    }
+    setBusy(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(parsed.data, {
+        redirectTo: `${APP_BASE_URL}/reset-password`,
+      });
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      toast.success("Password reset email sent — check your inbox.");
+      setShowReset(false);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     const parsed = signupSchema.safeParse(signup);
@@ -101,6 +137,7 @@ function AuthPage() {
       const { data, error } = await supabase.auth.signUp({
         email: parsed.data.email,
         password: parsed.data.password,
+        options: { emailRedirectTo: `${APP_BASE_URL}/auth` },
       });
       if (error) {
         toast.error(error.message);
@@ -136,10 +173,10 @@ function AuthPage() {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4 py-10">
-      <Link to="/" className="mb-6 flex items-center gap-2">
+      <a href={MARKETING_URL} className="mb-6 flex items-center gap-2">
         <Boxes className="h-5 w-5 text-primary" />
         <span className="text-sm font-semibold tracking-tight">FlySales</span>
-      </Link>
+      </a>
 
       <Card className="w-full max-w-md">
         <Tabs defaultValue="login">
@@ -151,37 +188,82 @@ function AuthPage() {
           </CardHeader>
 
           <TabsContent value="login">
-            <form onSubmit={handleLogin}>
-              <CardContent className="space-y-4">
-                <CardTitle className="text-lg">Welcome back</CardTitle>
-                <CardDescription>Sign in with your client account.</CardDescription>
-                <div className="space-y-1.5">
-                  <Label htmlFor="login-email">Email</Label>
-                  <Input
-                    id="login-email"
-                    type="email"
-                    autoComplete="email"
-                    required
-                    value={loginEmail}
-                    onChange={(e) => setLoginEmail(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="login-password">Password</Label>
-                  <Input
-                    id="login-password"
-                    type="password"
-                    autoComplete="current-password"
-                    required
-                    value={loginPassword}
-                    onChange={(e) => setLoginPassword(e.target.value)}
-                  />
-                </div>
-                <Button type="submit" className="w-full" disabled={busy}>
-                  {busy ? "Signing in…" : "Sign in"}
-                </Button>
-              </CardContent>
-            </form>
+            {showReset ? (
+              <form onSubmit={handleReset}>
+                <CardContent className="space-y-4">
+                  <CardTitle className="text-lg">Reset your password</CardTitle>
+                  <CardDescription>
+                    We'll email you a link to choose a new password.
+                  </CardDescription>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="reset-email">Email</Label>
+                    <Input
+                      id="reset-email"
+                      type="email"
+                      autoComplete="email"
+                      required
+                      value={resetEmail}
+                      onChange={(e) => setResetEmail(e.target.value)}
+                    />
+                  </div>
+                  <Button type="submit" className="w-full" disabled={busy}>
+                    {busy ? "Sending…" : "Send reset link"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="w-full"
+                    onClick={() => setShowReset(false)}
+                  >
+                    Back to sign in
+                  </Button>
+                </CardContent>
+              </form>
+            ) : (
+              <form onSubmit={handleLogin}>
+                <CardContent className="space-y-4">
+                  <CardTitle className="text-lg">Welcome back</CardTitle>
+                  <CardDescription>Sign in with your client account.</CardDescription>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="login-email">Email</Label>
+                    <Input
+                      id="login-email"
+                      type="email"
+                      autoComplete="email"
+                      required
+                      value={loginEmail}
+                      onChange={(e) => setLoginEmail(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="login-password">Password</Label>
+                      <button
+                        type="button"
+                        className="text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground"
+                        onClick={() => {
+                          setResetEmail(loginEmail);
+                          setShowReset(true);
+                        }}
+                      >
+                        Forgot password?
+                      </button>
+                    </div>
+                    <Input
+                      id="login-password"
+                      type="password"
+                      autoComplete="current-password"
+                      required
+                      value={loginPassword}
+                      onChange={(e) => setLoginPassword(e.target.value)}
+                    />
+                  </div>
+                  <Button type="submit" className="w-full" disabled={busy}>
+                    {busy ? "Signing in…" : "Sign in"}
+                  </Button>
+                </CardContent>
+              </form>
+            )}
           </TabsContent>
 
           <TabsContent value="signup">
