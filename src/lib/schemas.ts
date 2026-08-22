@@ -1,24 +1,40 @@
 import { z } from "zod";
 
-export const shopifyDomainSchema = z
-  .string()
-  .trim()
-  .toLowerCase()
-  .regex(/^[a-z0-9][a-z0-9-]*\.myshopify\.com$/, "Must be a valid *.myshopify.com domain (e.g. your-store.myshopify.com)");
+export const storePlatformSchema = z.enum(["shopify", "woocommerce", "other"]);
 
-export const companyDetailsSchema = z.object({
+const SHOPIFY_DOMAIN_RE = /^[a-z0-9][a-z0-9-]*\.myshopify\.com$/;
+
+const companyDetailsBase = z.object({
   company_name: z.string().trim().min(2, "Company name is required").max(120),
   contact_name: z.string().trim().min(2, "Contact name is required").max(120),
   phone: z.string().trim().min(5, "Phone is required").max(40),
   country: z.string().trim().min(2, "Country is required").max(80),
   vat_number: z.string().trim().min(4, "VAT number is required").max(40),
-  shopify_domain: shopifyDomainSchema,
+  platform: storePlatformSchema,
+  store_url: z.string().trim().min(3, "Store URL is required").max(500),
 });
 
-export const signupSchema = companyDetailsSchema.extend({
-  email: z.string().trim().email("Invalid email address").max(255),
-  password: z.string().min(8, "Password must be at least 8 characters").max(128),
-});
+const storeUrlMatchesPlatform = (
+  val: { platform: "shopify" | "woocommerce" | "other"; store_url: string },
+  ctx: z.RefinementCtx,
+) => {
+  if (val.platform === "shopify" && !SHOPIFY_DOMAIN_RE.test(val.store_url.toLowerCase())) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["store_url"],
+      message: "Must be a valid *.myshopify.com domain (e.g. your-store.myshopify.com)",
+    });
+  }
+};
+
+export const companyDetailsSchema = companyDetailsBase.superRefine(storeUrlMatchesPlatform);
+
+export const signupSchema = companyDetailsBase
+  .extend({
+    email: z.string().trim().email("Invalid email address").max(255),
+    password: z.string().min(8, "Password must be at least 8 characters").max(128),
+  })
+  .superRefine(storeUrlMatchesPlatform);
 
 export const loginSchema = z.object({
   email: z.string().trim().email("Invalid email address").max(255),
@@ -86,6 +102,11 @@ export const subscriptionPlanSchema = z.object({
 export const feeWaivedSchema = z.object({
   client_id: z.string().uuid(),
   fee_waived: z.boolean(),
+});
+
+export const integrationModeSchema = z.object({
+  client_id: z.string().uuid(),
+  integration_mode: z.enum(["automatic", "manual"]),
 });
 
 export const tierOverrideSchema = z.object({

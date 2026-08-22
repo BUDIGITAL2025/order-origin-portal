@@ -28,6 +28,7 @@ import {
   adminListClients,
   adminSetClientStatus,
   adminSetFeeWaived,
+  adminSetIntegrationMode,
   adminSetPlan,
   adminSetTierOverride,
   provisionClient,
@@ -50,6 +51,7 @@ function AdminClientsPage() {
   const callSetPlan = useServerFn(adminSetPlan);
   const callSetFeeWaived = useServerFn(adminSetFeeWaived);
   const callSetOverride = useServerFn(adminSetTierOverride);
+  const callSetIntegrationMode = useServerFn(adminSetIntegrationMode);
   const callProvision = useServerFn(provisionClient);
 
   const { data, isPending } = useQuery({ queryKey: ["admin-clients"], queryFn: fetchClients });
@@ -108,6 +110,16 @@ function AdminClientsPage() {
     onError: (err) => toast.error(err.message),
   });
 
+  const setIntegrationMode = useMutation({
+    mutationFn: (input: { client_id: string; integration_mode: "automatic" | "manual" }) =>
+      callSetIntegrationMode({ data: input }),
+    onSuccess: () => {
+      toast.success("Integration mode updated");
+      void invalidate();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
   const clients = data?.clients ?? [];
 
   return (
@@ -124,6 +136,8 @@ function AdminClientsPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Company</TableHead>
+                <TableHead>Platform</TableHead>
+                <TableHead>Integration</TableHead>
                 <TableHead>Plan</TableHead>
                 <TableHead>Fee waived</TableHead>
                 <TableHead>Effective tier</TableHead>
@@ -142,8 +156,36 @@ function AdminClientsPage() {
                     <TableCell>
                       <div className="text-sm font-medium">{c.company_name}</div>
                       <div className="text-xs text-muted-foreground">
-                        {c.contact_name} · {c.country} · {c.shopify_domain}
+                        {c.contact_name} · {c.country} · {c.store_url}
                       </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="capitalize">
+                        {c.platform}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {c.platform === "shopify" ? (
+                        <Select
+                          value={c.integration_mode}
+                          onValueChange={(v) =>
+                            setIntegrationMode.mutate({
+                              client_id: c.id,
+                              integration_mode: v as "automatic" | "manual",
+                            })
+                          }
+                        >
+                          <SelectTrigger className="h-8 w-32 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="manual">Manual</SelectItem>
+                            <SelectItem value="automatic">Automatic</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">Manual</span>
+                      )}
                     </TableCell>
                     <TableCell>
                       <Select

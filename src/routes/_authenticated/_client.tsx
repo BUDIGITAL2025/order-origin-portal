@@ -14,6 +14,13 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { completeSignup, getMyContext } from "@/lib/profiles.functions";
 import { companyDetailsSchema } from "@/lib/schemas";
 
@@ -62,13 +69,22 @@ function CompleteProfile() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<{
+    company_name: string;
+    contact_name: string;
+    phone: string;
+    country: string;
+    vat_number: string;
+    platform: "shopify" | "woocommerce" | "other";
+    store_url: string;
+  }>({
     company_name: "",
     contact_name: "",
     phone: "",
     country: "",
     vat_number: "",
-    shopify_domain: "",
+    platform: "shopify",
+    store_url: "",
   });
 
   const setField = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
@@ -127,16 +143,51 @@ function CompleteProfile() {
                 <Input id="cp-vat" required value={form.vat_number} onChange={setField("vat_number")} />
               </div>
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="cp-shopify">Shopify domain</Label>
-              <Input
-                id="cp-shopify"
-                required
-                placeholder="your-store.myshopify.com"
-                value={form.shopify_domain}
-                onChange={setField("shopify_domain")}
-              />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="cp-platform">Platform</Label>
+                <Select
+                  value={form.platform}
+                  onValueChange={(v) =>
+                    setForm((s) => ({
+                      ...s,
+                      platform: v as "shopify" | "woocommerce" | "other",
+                    }))
+                  }
+                >
+                  <SelectTrigger id="cp-platform">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="shopify">Shopify</SelectItem>
+                    <SelectItem value="woocommerce">WooCommerce</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="cp-store-url">
+                  {form.platform === "shopify" ? "Shopify domain" : "Store URL"}
+                </Label>
+                <Input
+                  id="cp-store-url"
+                  required
+                  placeholder={
+                    form.platform === "shopify"
+                      ? "your-store.myshopify.com"
+                      : "https://your-store.com"
+                  }
+                  value={form.store_url}
+                  onChange={setField("store_url")}
+                />
+              </div>
             </div>
+            {form.platform !== "shopify" && (
+              <p className="text-xs text-muted-foreground">
+                Non-Shopify stores operate in manual mode for now — orders are synced by our
+                team instead of automatically.
+              </p>
+            )}
             <Button type="submit" className="w-full" disabled={busy}>
               {busy ? "Saving…" : "Submit for review"}
             </Button>

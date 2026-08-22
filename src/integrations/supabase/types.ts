@@ -24,16 +24,18 @@ export type Database = {
           created_at: string
           fee_waived: boolean
           id: string
+          integration_mode: Database["public"]["Enums"]["integration_mode"]
           middleware_tenant_id: string | null
           phone: string
+          platform: Database["public"]["Enums"]["store_platform"]
           pricing_tier: Database["public"]["Enums"]["pricing_tier"]
           provisioning_error: string | null
           provisioning_status: Database["public"]["Enums"]["provisioning_status"]
           provisioning_step: string | null
           quotes_period_start: string
           quotes_used_this_month: number
-          shopify_domain: string
           status: Database["public"]["Enums"]["profile_status"]
+          store_url: string
           subscription_plan: Database["public"]["Enums"]["subscription_plan"]
           tier_override: Database["public"]["Enums"]["pricing_tier"] | null
           vat_number: string
@@ -47,16 +49,18 @@ export type Database = {
           created_at?: string
           fee_waived?: boolean
           id: string
+          integration_mode?: Database["public"]["Enums"]["integration_mode"]
           middleware_tenant_id?: string | null
           phone: string
+          platform?: Database["public"]["Enums"]["store_platform"]
           pricing_tier?: Database["public"]["Enums"]["pricing_tier"]
           provisioning_error?: string | null
           provisioning_status?: Database["public"]["Enums"]["provisioning_status"]
           provisioning_step?: string | null
           quotes_period_start?: string
           quotes_used_this_month?: number
-          shopify_domain: string
           status?: Database["public"]["Enums"]["profile_status"]
+          store_url: string
           subscription_plan?: Database["public"]["Enums"]["subscription_plan"]
           tier_override?: Database["public"]["Enums"]["pricing_tier"] | null
           vat_number: string
@@ -70,16 +74,18 @@ export type Database = {
           created_at?: string
           fee_waived?: boolean
           id?: string
+          integration_mode?: Database["public"]["Enums"]["integration_mode"]
           middleware_tenant_id?: string | null
           phone?: string
+          platform?: Database["public"]["Enums"]["store_platform"]
           pricing_tier?: Database["public"]["Enums"]["pricing_tier"]
           provisioning_error?: string | null
           provisioning_status?: Database["public"]["Enums"]["provisioning_status"]
           provisioning_step?: string | null
           quotes_period_start?: string
           quotes_used_this_month?: number
-          shopify_domain?: string
           status?: Database["public"]["Enums"]["profile_status"]
+          store_url?: string
           subscription_plan?: Database["public"]["Enums"]["subscription_plan"]
           tier_override?: Database["public"]["Enums"]["pricing_tier"] | null
           vat_number?: string
@@ -420,6 +426,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "client"
+      integration_mode: "automatic" | "manual"
       pricing_tier: "starter" | "growth" | "scale"
       profile_status: "pending" | "active" | "suspended"
       provisioning_status: "not_started" | "in_progress" | "complete" | "failed"
@@ -430,6 +437,7 @@ export type Database = {
         | "accepted"
         | "rejected"
         | "expired"
+      store_platform: "shopify" | "woocommerce" | "other"
       subscription_plan: "basic" | "unlimited"
       wallet_txn_type: "credit" | "debit" | "adjustment"
     }
@@ -560,6 +568,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "client"],
+      integration_mode: ["automatic", "manual"],
       pricing_tier: ["starter", "growth", "scale"],
       profile_status: ["pending", "active", "suspended"],
       provisioning_status: ["not_started", "in_progress", "complete", "failed"],
@@ -571,6 +580,7 @@ export const Constants = {
         "rejected",
         "expired",
       ],
+      store_platform: ["shopify", "woocommerce", "other"],
       subscription_plan: ["basic", "unlimited"],
       wallet_txn_type: ["credit", "debit", "adjustment"],
     },
