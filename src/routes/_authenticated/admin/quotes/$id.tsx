@@ -1,21 +1,33 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Copy } from "lucide-react";
+import { ArrowLeft, Copy, RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/app-shell";
 import { QuoteStatusBadge, TierBadge } from "@/components/status-badges";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { MARKUP_BY_TIER, formatDate, formatEUR } from "@/lib/format";
+import { formatDate, formatUSD } from "@/lib/format";
+import { effectiveTier, TIER_LABELS } from "@/lib/plans";
 import {
   adminGetQuote,
   adminGetQuoteImageUrls,
+  adminRequote,
   adminSaveQuote,
   adminSetQuoteStatus,
 } from "@/lib/quotes.functions";
@@ -34,6 +46,10 @@ function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
+function num(value: string): number {
+  return value === "" ? 0 : Number(value);
+}
+
 function AdminQuoteDetailPage() {
   const { id } = Route.useParams();
   const queryClient = useQueryClient();
@@ -41,6 +57,7 @@ function AdminQuoteDetailPage() {
   const fetchImages = useServerFn(adminGetQuoteImageUrls);
   const callSave = useServerFn(adminSaveQuote);
   const callSetStatus = useServerFn(adminSetQuoteStatus);
+  const callRequote = useServerFn(adminRequote);
 
   const { data, isPending } = useQuery({
     queryKey: ["admin-quote", id],
@@ -50,10 +67,15 @@ function AdminQuoteDetailPage() {
   const client = (quote?.profiles ?? null) as {
     company_name?: string;
     contact_name?: string;
-    markup_tier?: string;
     shopify_domain?: string;
     country?: string;
+    pricing_tier?: string;
+    tier_override?: string | null;
+    avg_daily_units_30d?: number;
+    subscription_plan?: string;
   } | null;
+
+  const clientTier = effectiveTier(client?.pricing_tier, client?.tier_override);
 
   const imagePaths = (quote?.image_urls ?? []).filter(Boolean) as string[];
   const { data: images } = useQuery({
@@ -62,11 +84,11 @@ function AdminQuoteDetailPage() {
     enabled: imagePaths.length > 0,
   });
 
-  const [cost, setCost] = useState("");
+  const [cogs, setCogs] = useState("");
   const [shipping, setShipping] = useState("");
-  const [markup, setMarkup] = useState("");
-  const [override, setOverride] = useState(false);
-  const [manualPrice, setManualPrice] = useState("");
+  const [tax, setTax] = useState("");
+  const [markupProduct, setMarkupProduct] = useState("");
+  const [markupShipping, setMarkupShipping] = useState("");
   const [moq, setMoq] = useState("");
   const [leadTime, setLeadTime] = useState("");
   const [validUntil, setValidUntil] = useState("");
@@ -75,37 +97,35 @@ function AdminQuoteDetailPage() {
 
   useEffect(() => {
     if (!quote || hydrated) return;
-    setCost(quote.cost_price != null ? String(quote.cost_price) : "");
-    setShipping(quote.shipping_cost != null ? String(quote.shipping_cost) : "");
-    setMarkup(
-      quote.markup_percent != null
-        ? String(quote.markup_percent)
-        : String(MARKUP_BY_TIER[client?.markup_tier ?? "standard"] ?? 35),
-    );
-    setManualPrice(quote.quoted_price != null ? String(quote.quoted_price) : "");
+    setCogs(quote.supplier_cogs != null ? String(quote.supplier_cogs) : "");
+    setShipping(quote.supplier_shipping != null ? String(quote.supplier_shipping) : "");
+    setTax(quote.supplier_tax != null ? String(quote.supplier_tax) : "");
+    setMarkupProduct(quote.markup_product != null ? String(quote.markup_product) : "");
+    setMarkupShipping(quote.markup_shipping != null ? String(quote.markup_shipping) : "");
     setMoq(quote.moq != null ? String(quote.moq) : "");
     setLeadTime(quote.lead_time_days != null ? String(quote.lead_time_days) : "");
     setValidUntil(quote.quote_valid_until ?? "");
     setAdminNotes(quote.admin_notes ?? "");
     setHydrated(true);
-  }, [quote, hydrated, client?.markup_tier]);
+  }, [quote, hydrated]);
 
-  const computed =
-    cost !== "" && shipping !== "" && markup !== ""
-      ? round2((Number(cost) + Number(shipping)) * (1 + Number(markup) / 100))
-      : null;
+  const totalCost = round2(num(cogs) + num(shipping) + num(tax));
+  const totalMarkup = round2(num(markupProduct) + num(markupShipping));
+  // supplier_tax is a pass-through at exact cost — never marked up.
+  const finalPrice = round2(totalCost + totalMarkup);
+  const effectiveMargin = totalCost > 0 ? round2((totalMarkup / totalCost) * 100) : 0;
 
   const save = useMutation({
     mutationFn: () => {
-      if (computed == null && !override) throw new Error("Enter cost, shipping and markup first");
+      if (cogs === "") throw new Error("Enter the supplier COGS first");
       return callSave({
         data: {
           quote_id: id,
-          cost_price: Number(cost || 0),
-          shipping_cost: Number(shipping || 0),
-          markup_percent: Number(markup || 0),
-          quoted_price: override ? Number(manualPrice) : (computed ?? 0),
-          price_overridden: override,
+          supplier_cogs: num(cogs),
+          supplier_shipping: num(shipping),
+          supplier_tax: num(tax),
+          markup_product: num(markupProduct),
+          markup_shipping: num(markupShipping),
           moq: moq ? Number(moq) : null,
           lead_time_days: leadTime ? Number(leadTime) : null,
           quote_valid_until: validUntil || null,
@@ -114,7 +134,7 @@ function AdminQuoteDetailPage() {
       });
     },
     onSuccess: (r) => {
-      toast.success(`Quote saved — client sees ${formatEUR(r.quoted_price)}`);
+      toast.success(`Quote saved — client sees ${formatUSD(r.quoted_price_total)}`);
       void queryClient.invalidateQueries({ queryKey: ["admin-quote", id] });
       void queryClient.invalidateQueries({ queryKey: ["admin-quotes"] });
     },
@@ -128,6 +148,18 @@ function AdminQuoteDetailPage() {
       toast.success("Status updated");
       void queryClient.invalidateQueries({ queryKey: ["admin-quote", id] });
       void queryClient.invalidateQueries({ queryKey: ["admin-quotes"] });
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const requote = useMutation({
+    mutationFn: () => callRequote({ data: { quote_id: id } }),
+    onSuccess: (r) => {
+      toast.success("Requote created in the queue (status: sourcing)");
+      void queryClient.invalidateQueries({ queryKey: ["admin-quotes"] });
+      if (r.quote_id) {
+        void queryClient.invalidateQueries({ queryKey: ["admin-quote", r.quote_id] });
+      }
     },
     onError: (err) => toast.error(err.message),
   });
@@ -148,11 +180,13 @@ function AdminQuoteDetailPage() {
   if (isPending) return <p className="text-sm text-muted-foreground">Loading…</p>;
   if (!quote) return <p className="text-sm text-muted-foreground">Quote request not found.</p>;
 
+  const requotable = quote.status === "accepted" || quote.status === "expired";
+
   return (
     <div>
       <PageHeader
         title={quote.product_name || "Quote request"}
-        description={`Submitted ${formatDate(quote.created_at)}`}
+        description={`Submitted ${formatDate(quote.created_at)}${quote.supersedes_quote_id ? " · requote of an earlier request" : ""}`}
         actions={
           <>
             <Button asChild variant="ghost" size="sm" className="gap-1">
@@ -160,6 +194,34 @@ function AdminQuoteDetailPage() {
                 <ArrowLeft className="h-3.5 w-3.5" /> Queue
               </Link>
             </Button>
+            {requotable && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-1.5">
+                    <RefreshCw className="h-3.5 w-3.5" /> Requote
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Requote this request?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Creates a new quote request (status: sourcing) with the same product, URL and
+                      notes. The original is never edited and the client's monthly quota is not
+                      affected.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      disabled={requote.isPending}
+                      onClick={() => requote.mutate()}
+                    >
+                      Create requote
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
             <Button variant="outline" size="sm" className="gap-1.5" onClick={() => void copyBrief()}>
               <Copy className="h-3.5 w-3.5" /> Copy sourcing brief
             </Button>
@@ -200,11 +262,24 @@ function AdminQuoteDetailPage() {
                 <div>
                   <div className="text-xs uppercase tracking-wide text-muted-foreground">Client</div>
                   <div>
-                    {client?.company_name ?? "—"} <TierBadge tier={client?.markup_tier ?? null} />
+                    {client?.company_name ?? "—"} <TierBadge tier={clientTier} />
                   </div>
-                  <div className="text-xs text-muted-foreground">{client?.shopify_domain ?? ""}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {client?.shopify_domain ?? ""}
+                    {client?.tier_override
+                      ? ` · override (auto: ${TIER_LABELS[client?.pricing_tier ?? "starter"] ?? client?.pricing_tier})`
+                      : ` · auto · ${Number(client?.avg_daily_units_30d ?? 0).toFixed(1)} units/day`}
+                  </div>
                 </div>
               </div>
+              {quote.tier_at_quote && (
+                <div>
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Tier frozen at quote
+                  </div>
+                  <div className="font-mono text-sm">{quote.tier_at_quote}</div>
+                </div>
+              )}
               {images && images.urls.length > 0 && (
                 <div>
                   <div className="mb-1.5 text-xs uppercase tracking-wide text-muted-foreground">Images</div>
@@ -251,9 +326,16 @@ function AdminQuoteDetailPage() {
 
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Pricing</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base">Pricing</CardTitle>
+              <span className="text-xs text-muted-foreground">
+                Client tier: <TierBadge tier={clientTier} />
+              </span>
+            </div>
             <CardDescription>
-              Cost and margin are never visible to the client. Saving moves the request to "quoted".
+              All amounts in USD. Supplier tax (IOSS / duties) passes through at exact cost — it is
+              never marked up. Cost and margin are never visible to the client. Saving moves the
+              request to "quoted" and freezes the client's current tier.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -264,47 +346,51 @@ function AdminQuoteDetailPage() {
               }}
               className="space-y-4"
             >
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 <div className="space-y-1.5">
-                  <Label htmlFor="aq-cost">Cost price (EUR)</Label>
-                  <Input id="aq-cost" type="number" step="0.01" min="0" required value={cost} onChange={(e) => setCost(e.target.value)} />
+                  <Label htmlFor="aq-cogs">Supplier COGS ($)</Label>
+                  <Input id="aq-cogs" type="number" step="0.01" min="0" required value={cogs} onChange={(e) => setCogs(e.target.value)} />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="aq-ship">Shipping cost (EUR)</Label>
+                  <Label htmlFor="aq-ship">Supplier shipping ($)</Label>
                   <Input id="aq-ship" type="number" step="0.01" min="0" required value={shipping} onChange={(e) => setShipping(e.target.value)} />
                 </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="aq-tax">Supplier tax ($)</Label>
+                  <Input id="aq-tax" type="number" step="0.01" min="0" required value={tax} onChange={(e) => setTax(e.target.value)} />
+                  <p className="text-xs text-muted-foreground">Pass-through, no markup</p>
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label htmlFor="aq-markup">Markup %</Label>
-                  <Input id="aq-markup" type="number" step="0.1" min="0" required value={markup} onChange={(e) => setMarkup(e.target.value)} />
-                  <p className="text-xs text-muted-foreground">
-                    Tier default: {MARKUP_BY_TIER[client?.markup_tier ?? "standard"] ?? 35}%
-                  </p>
+                  <Label htmlFor="aq-mkprod">Markup — product ($)</Label>
+                  <Input id="aq-mkprod" type="number" step="0.01" min="0" required value={markupProduct} onChange={(e) => setMarkupProduct(e.target.value)} />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Quoted price (EUR)</Label>
-                  <div className="flex h-9 items-center rounded-md border border-border bg-muted/40 px-3 font-mono text-sm">
-                    {override ? "manual" : computed != null ? formatEUR(computed) : "—"}
-                  </div>
+                  <Label htmlFor="aq-mkship">Markup — shipping ($)</Label>
+                  <Input id="aq-mkship" type="number" step="0.01" min="0" required value={markupShipping} onChange={(e) => setMarkupShipping(e.target.value)} />
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="aq-override"
-                  checked={override}
-                  onCheckedChange={(v) => setOverride(v === true)}
-                />
-                <Label htmlFor="aq-override" className="text-sm font-normal">
-                  Override final price manually
-                </Label>
-              </div>
-              {override && (
-                <div className="space-y-1.5">
-                  <Label htmlFor="aq-manual">Manual quoted price (EUR)</Label>
-                  <Input id="aq-manual" type="number" step="0.01" min="0.01" required value={manualPrice} onChange={(e) => setManualPrice(e.target.value)} />
+
+              <div className="grid grid-cols-2 gap-px overflow-hidden rounded-md border border-border bg-border text-sm sm:grid-cols-4">
+                <div className="bg-muted/40 p-3">
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">Supplier cost</div>
+                  <div className="font-mono font-medium">{formatUSD(totalCost)}</div>
                 </div>
-              )}
+                <div className="bg-muted/40 p-3">
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">Total markup</div>
+                  <div className="font-mono font-medium">{formatUSD(totalMarkup)}</div>
+                </div>
+                <div className="bg-muted/40 p-3">
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">Client price</div>
+                  <div className="font-mono font-semibold">{formatUSD(finalPrice)}</div>
+                </div>
+                <div className="bg-muted/40 p-3">
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">Margin (ref)</div>
+                  <div className="font-mono font-medium">{effectiveMargin.toFixed(1)}%</div>
+                </div>
+              </div>
+
               <div className="grid grid-cols-3 gap-3">
                 <div className="space-y-1.5">
                   <Label htmlFor="aq-moq">MOQ</Label>
