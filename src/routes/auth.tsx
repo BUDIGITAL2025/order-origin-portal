@@ -13,6 +13,13 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { APP_BASE_URL, MARKETING_URL } from "@/lib/config";
@@ -46,7 +53,17 @@ function AuthPage() {
   const [showReset, setShowReset] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
 
-  const [signup, setSignup] = useState({
+  const [signup, setSignup] = useState<{
+    email: string;
+    password: string;
+    company_name: string;
+    contact_name: string;
+    phone: string;
+    country: string;
+    vat_number: string;
+    platform: "shopify" | "woocommerce" | "other";
+    store_url: string;
+  }>({
     email: "",
     password: "",
     company_name: "",
@@ -54,7 +71,8 @@ function AuthPage() {
     phone: "",
     country: "",
     vat_number: "",
-    shopify_domain: "",
+    platform: "shopify",
+    store_url: "",
   });
 
   const routeAfterSignIn = async () => {
@@ -156,7 +174,8 @@ function AuthPage() {
           phone: parsed.data.phone,
           country: parsed.data.country,
           vat_number: parsed.data.vat_number,
-          shopify_domain: parsed.data.shopify_domain,
+          platform: parsed.data.platform,
+          store_url: parsed.data.store_url,
         },
       });
       toast.success("Account created — your application is pending review.");
@@ -317,16 +336,49 @@ function AuthPage() {
                     <Label htmlFor="su-vat">VAT number</Label>
                     <Input id="su-vat" required value={signup.vat_number} onChange={setField("vat_number")} />
                   </div>
-                  <div className="col-span-2 space-y-1.5">
-                    <Label htmlFor="su-shopify">Shopify domain</Label>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="su-platform">Platform</Label>
+                    <Select
+                      value={signup.platform}
+                      onValueChange={(v) =>
+                        setSignup((s) => ({
+                          ...s,
+                          platform: v as "shopify" | "woocommerce" | "other",
+                        }))
+                      }
+                    >
+                      <SelectTrigger id="su-platform">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="shopify">Shopify</SelectItem>
+                        <SelectItem value="woocommerce">WooCommerce</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="su-store-url">
+                      {signup.platform === "shopify" ? "Shopify domain" : "Store URL"}
+                    </Label>
                     <Input
-                      id="su-shopify"
+                      id="su-store-url"
                       required
-                      placeholder="your-store.myshopify.com"
-                      value={signup.shopify_domain}
-                      onChange={setField("shopify_domain")}
+                      placeholder={
+                        signup.platform === "shopify"
+                          ? "your-store.myshopify.com"
+                          : "https://your-store.com"
+                      }
+                      value={signup.store_url}
+                      onChange={setField("store_url")}
                     />
                   </div>
+                  {signup.platform !== "shopify" && (
+                    <p className="col-span-2 text-xs text-muted-foreground">
+                      Non-Shopify stores operate in manual mode for now — orders are synced by
+                      our team instead of automatically.
+                    </p>
+                  )}
                 </div>
                 <Button type="submit" className="w-full" disabled={busy}>
                   {busy ? "Creating account…" : "Create account"}
