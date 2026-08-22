@@ -128,6 +128,24 @@ function AdminWalletPage() {
                   <span className="font-mono font-medium">{formatUSD(walletData.balance)}</span>
                 </div>
               )}
+              {clientId && walletData && walletData.balance > 0 && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    // Manual balance refund: prefill a debit for the full
+                    // balance with a clear description; the admin confirms
+                    // with "Apply adjustment" below. Never automatic.
+                    setType("debit");
+                    setAmount(String(walletData.balance));
+                    setDescription("Wallet balance refund to client");
+                    setReference(`refund-${Date.now()}`);
+                  }}
+                >
+                  Refund full balance
+                </Button>
+              )}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label>Type</Label>

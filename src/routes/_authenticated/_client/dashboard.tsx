@@ -1,7 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, ClipboardList, CreditCard, Wallet } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ArrowRight, ClipboardList, CreditCard, RefreshCcw, Wallet } from "lucide-react";
 import { EmptyState, PageHeader } from "@/components/app-shell";
 import { QuoteStatusBadge, TxnTypeBadge } from "@/components/status-badges";
 import { Button } from "@/components/ui/button";
@@ -58,6 +59,17 @@ function DashboardPage() {
     return acc;
   }, {});
   const transactions = walletData?.transactions ?? [];
+
+  // One-time auto top-up prompt: shown after the client's first credit while
+  // auto top-up is off. Dismissal is remembered — it never enables itself.
+  const AUTOTOPUP_PROMPT_KEY = "flysales_autotopup_prompt_dismissed";
+  const [promptDismissed, setPromptDismissed] = useState(true);
+  useEffect(() => {
+    setPromptDismissed(localStorage.getItem(AUTOTOPUP_PROMPT_KEY) === "1");
+  }, []);
+  const hasCredit = transactions.some((t) => t.type === "credit");
+  const showAutoTopupPrompt =
+    !promptDismissed && hasCredit && profile != null && !profile.auto_topup_enabled;
 
   const plan = profile?.subscription_plan ?? "basic";
   const quota = planQuota(plan); // null = unlimited
@@ -164,6 +176,38 @@ function DashboardPage() {
           </div>
         </CardContent>
       </Card>
+
+      {showAutoTopupPrompt && (
+        <Card className="mt-4 border-primary/40 bg-primary/5">
+          <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
+            <div className="flex items-start gap-2.5">
+              <RefreshCcw className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+              <div>
+                <p className="text-sm font-medium">Never run out of funds</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Your wallet was credited. Auto top-up charges your saved card once
+                  your balance drops below a threshold you choose.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button asChild size="sm">
+                <Link to="/billing">Set up auto top-up</Link>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  localStorage.setItem(AUTOTOPUP_PROMPT_KEY, "1");
+                  setPromptDismissed(true);
+                }}
+              >
+                Not now
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
         <Card>

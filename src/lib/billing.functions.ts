@@ -464,13 +464,17 @@ export const cancelPendingPlanChange = createServerFn({ method: "POST" })
       }
       if (!profile.stripe_subscription_id) throw new Error("No subscription found");
 
-      const schedules = await stripe.subscriptionSchedules.list({
-        subscription: profile.stripe_subscription_id,
-        limit: 1,
-      });
-      const schedule = schedules.data[0];
-      if (schedule && schedule.status !== "released" && schedule.status !== "canceled") {
-        await stripe.subscriptionSchedules.release(schedule.id);
+      const sub = await stripe.subscriptions.retrieve(
+        profile.stripe_subscription_id,
+        { expand: ["schedule"] },
+      );
+      const scheduleRef = (
+        sub as unknown as { schedule?: string | { id: string } | null }
+      ).schedule;
+      const scheduleId =
+        typeof scheduleRef === "string" ? scheduleRef : scheduleRef?.id;
+      if (scheduleId) {
+        await stripe.subscriptionSchedules.release(scheduleId);
       }
 
       const admin = await getAdminClient();
