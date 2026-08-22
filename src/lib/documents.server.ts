@@ -273,36 +273,33 @@ interface ClientBlock {
   vat: string;
 }
 
-async function getClientBlock(admin: Admin, clientId: string): Promise<ClientBlock> {
+/** "Bill to" block now reads the entity's legal identity, with the account's contact name. */
+async function getEntityBlock(admin: Admin, entityId: string): Promise<ClientBlock> {
   const { data, error } = await admin
-    .from("profiles")
-    .select("company_name, contact_name, country, vat_number")
-    .eq("id", clientId)
+    .from("entities")
+    .select("legal_name, country, vat_number, account_id, profiles(contact_name)")
+    .eq("id", entityId)
     .single();
-  if (error || !data) throw new Error(error?.message ?? "Client profile not found");
+  if (error || !data) throw new Error(error?.message ?? "Entity not found");
   return {
-    company: data.company_name,
-    contact: data.contact_name,
-    country: data.country,
-    vat: data.vat_number,
+    company: data.legal_name,
+    contact: data.profiles?.contact_name ?? "",
+    country: data.country ?? "",
+    vat: data.vat_number ?? "",
   };
 }
 
-/**
- * In the Account → Entity → Store model a receipt belongs to a store. Order
- * receipts carry the order's store; wallet/subscription receipts fall back to
- * the client's (currently single) store.
- */
-async function resolveStoreId(admin: Admin, clientId: string): Promise<string> {
+/** Pick a store under the entity to attach the document to (documents.store_id is required). */
+async function resolveStoreIdForEntity(admin: Admin, entityId: string): Promise<string> {
   const { data, error } = await admin
     .from("stores")
-    .select("id, entities!inner(account_id)")
-    .eq("entities.account_id", clientId)
+    .select("id")
+    .eq("entity_id", entityId)
     .order("created_at", { ascending: true })
     .limit(1)
     .maybeSingle();
   if (error) throw new Error(error.message);
-  if (!data) throw new Error("No store found for client");
+  if (!data) throw new Error("No store found for entity");
   return data.id;
 }
 
@@ -313,7 +310,7 @@ async function resolveStoreId(admin: Admin, clientId: string): Promise<string> {
 async function storeReceipt(
   admin: Admin,
   args: {
-    clientId: string;
+    entityId: string;
     storeId?: string | null;
     documentType: DocumentType;
     orderId?: string | null;
@@ -325,15 +322,15 @@ async function storeReceipt(
 ): Promise<"issued" | "exists"> {
   const number = args.receipt.documentNumber;
   const pdf = await renderReceiptPdf(args.receipt);
-  const path = `${args.clientId}/${number}.pdf`;
+  const path = `${args.entityId}/${number}.pdf`;
   const { error: uploadError } = await admin.storage
     .from(DOCUMENTS_BUCKET)
     .upload(path, pdf, { contentType: "application/pdf" });
   if (uploadError) throw new Error(uploadError.message);
 
-  const storeId = args.storeId ?? (await resolveStoreId(admin, args.clientId));
+  const storeId = args.storeId ?? (await resolveStoreIdForEntity(admin, args.entityId));
   const { error: insertError } = await admin.from("documents").insert({
-    client_id: args.clientId,
+    entity_id: args.entityId,
     store_id: storeId,
     document_type: args.documentType,
     document_number: number,
@@ -358,12 +355,14 @@ export async function issueOrderReceipt(
   const { data: order, error } = await admin
     .from("orders")
     .select(
-      "id, client_id, store_id, external_order_number, payment_method, total_amount, destination_country, paid_at",
+      "id, store_id, external_order_number, payment_method, total_amount, destination_country, paid_at, stores(entity_id)",
     )
     .eq("id", orderId)
     .maybeSingle();
   if (error) throw new Error(error.message);
   if (!order || !order.paid_at) return "skipped";
+  const entityId = order.stores?.entity_id;
+  if (!entityId) return "skipped";
 
   const { data: existing } = await admin
     .from("documents")
@@ -379,7 +378,7 @@ export async function issueOrderReceipt(
     .order("created_at", { ascending: true });
   if (itemsError) throw new Error(itemsError.message);
 
-  const client = await getClientBlock(admin, order.client_id);
+  const client = await getEntityBlock(admin, entityId);
   const lines: ReceiptLine[] = (items ?? []).map((item) => {
     const qty = Math.max(1, Number(item.quantity ?? 1));
     const unit = item.unit_price != null ? Number(item.unit_price) : null;
@@ -399,7 +398,7 @@ export async function issueOrderReceipt(
   const number = await nextDocumentNumber(admin);
 
   return storeReceipt(admin, {
-    clientId: order.client_id,
+    entityId,
     storeId: order.store_id,
     documentType: "order_receipt",
     orderId: order.id,
@@ -428,7 +427,7 @@ export async function issueWalletTopupReceipt(
 ): Promise<"issued" | "exists" | "skipped"> {
   const { data: txn, error } = await admin
     .from("wallet_transactions")
-    .select("id, client_id, type, amount, description, created_at")
+    .select("id, entity_id, type, amount, description, created_at")
     .eq("id", walletTransactionId)
     .maybeSingle();
   if (error) throw new Error(error.message);
@@ -441,12 +440,12 @@ export async function issueWalletTopupReceipt(
     .maybeSingle();
   if (existing) return "exists";
 
-  const client = await getClientBlock(admin, txn.client_id);
+  const client = await getEntityBlock(admin, txn.entity_id);
   const amount = Number(txn.amount);
   const number = await nextDocumentNumber(admin);
 
   return storeReceipt(admin, {
-    clientId: txn.client_id,
+    entityId: txn.entity_id,
     documentType: "wallet_topup",
     walletTransactionId: txn.id,
     amount,
@@ -476,6 +475,10 @@ export async function issueWalletTopupReceipt(
  * Subscription payment succeeded (invoice.payment_succeeded) → subscription
  * receipt for the billed period. Keyed on the Stripe invoice id, which is
  * unique per period — a replayed event hits the unique index and stops.
+ *
+ * Subscriptions live on the store, but Stripe billing (customer id) is on
+ * the entity — the receipt is issued to the entity that owns the matching
+ * Stripe customer, using that store's plan for the line item.
  */
 export async function issueSubscriptionReceipt(
   admin: Admin,
@@ -499,15 +502,23 @@ export async function issueSubscriptionReceipt(
     .maybeSingle();
   if (existing) return "exists";
 
-  const { data: profile } = await admin
-    .from("profiles")
-    .select("id, company_name, contact_name, country, vat_number, subscription_plan")
+  const { data: entity } = await admin
+    .from("entities")
+    .select("id, legal_name, country, vat_number, profiles(contact_name)")
     .eq("stripe_customer_id", customerId)
     .maybeSingle();
-  if (!profile) {
+  if (!entity) {
     console.error("subscription receipt: unknown Stripe customer", customerId);
     return "skipped";
   }
+
+  const { data: store } = await admin
+    .from("stores")
+    .select("id, subscription_plan")
+    .eq("entity_id", entity.id)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
 
   const amountPaid = Number(invoice["amount_paid"] ?? 0) / 100;
   if (!(amountPaid > 0)) return "skipped";
@@ -520,7 +531,7 @@ export async function issueSubscriptionReceipt(
     (invoice["status_transitions"] as { paid_at?: number } | undefined)?.paid_at ??
     (typeof invoice["created"] === "number" ? invoice["created"] : Date.now() / 1000);
 
-  const plan = profile.subscription_plan === "unlimited" ? "unlimited" : "basic";
+  const plan = store?.subscription_plan === "unlimited" ? "unlimited" : "basic";
   const referenceLines: Array<[string, string]> = [["Stripe reference", invoiceId]];
   if (period?.start && period?.end) {
     referenceLines.unshift([
@@ -531,7 +542,8 @@ export async function issueSubscriptionReceipt(
   const number = await nextDocumentNumber(admin);
 
   return storeReceipt(admin, {
-    clientId: profile.id,
+    entityId: entity.id,
+    storeId: store?.id ?? null,
     documentType: "subscription",
     paymentReference: invoiceId,
     amount: amountPaid,
@@ -543,10 +555,10 @@ export async function issueSubscriptionReceipt(
       paymentMethod: "Card (Stripe)",
       referenceLines,
       client: {
-        company: profile.company_name,
-        contact: profile.contact_name,
-        country: profile.country,
-        vat: profile.vat_number,
+        company: entity.legal_name,
+        contact: entity.profiles?.contact_name ?? "",
+        country: entity.country ?? "",
+        vat: entity.vat_number ?? "",
       },
       lines: [
         {
