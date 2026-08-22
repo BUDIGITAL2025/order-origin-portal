@@ -23,7 +23,7 @@ export function QuoteStatusBadge({
   status,
   validUntil,
 }: {
-  status: string;
+  status: string | null;
   validUntil?: string | null;
 }) {
   const effective: QuoteStatus = isQuoteExpired(status, validUntil)
@@ -42,7 +42,7 @@ const PROFILE_STYLES: Record<string, string> = {
   suspended: "bg-destructive/10 text-destructive border-destructive/25",
 };
 
-export function ProfileStatusBadge({ status }: { status: string }) {
+export function ProfileStatusBadge({ status }: { status: string | null }) {
   return (
     <Badge variant="outline" className={cn("font-medium capitalize", PROFILE_STYLES[status] ?? "")}>
       {status}
@@ -57,7 +57,7 @@ const PROVISIONING_STYLES: Record<string, string> = {
   failed: "bg-destructive/10 text-destructive border-destructive/25",
 };
 
-export function ProvisioningBadge({ status }: { status: string }) {
+export function ProvisioningBadge({ status }: { status: string | null }) {
   return (
     <Badge
       variant="outline"
@@ -74,7 +74,7 @@ const TXN_STYLES: Record<string, string> = {
   adjustment: "bg-info/10 text-info border-info/25",
 };
 
-export function TxnTypeBadge({ type }: { type: string }) {
+export function TxnTypeBadge({ type }: { type: string | null }) {
   return (
     <Badge variant="outline" className={cn("font-medium capitalize", TXN_STYLES[type] ?? "")}>
       {type}
@@ -88,7 +88,7 @@ const TIER_STYLES: Record<string, string> = {
   partner: "bg-success/10 text-success border-success/25",
 };
 
-export function TierBadge({ tier }: { tier: string }) {
+export function TierBadge({ tier }: { tier: string | null }) {
   return (
     <Badge variant="outline" className={cn("font-medium capitalize", TIER_STYLES[tier] ?? "")}>
       {tier}

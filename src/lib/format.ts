@@ -33,7 +33,7 @@ export function formatDateTime(value: string | null | undefined): string {
 }
 
 /** True when a quoted quote's validity date has passed. */
-export function isQuoteExpired(status: string, validUntil: string | null | undefined): boolean {
+export function isQuoteExpired(status: string | null, validUntil: string | null | undefined): boolean {
   if (status !== "quoted" || !validUntil) return false;
   const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(validUntil);
   if (!dateOnly) return false;
