@@ -6,9 +6,11 @@ import {
   ClipboardList,
   CreditCard,
   FilePlus2,
+  FileText,
   LayoutDashboard,
   LogOut,
   Package,
+  ShoppingCart,
   Users,
   Wallet,
 } from "lucide-react";
@@ -29,8 +31,10 @@ const CLIENT_NAV: NavItem[] = [
   { to: "/quotes/new", label: "Request a quote", icon: FilePlus2 },
   { to: "/quotes", label: "My quotes", icon: ClipboardList },
   { to: "/products", label: "My products", icon: Package },
+  { to: "/orders", label: "Orders", icon: ShoppingCart },
   { to: "/wallet", label: "Wallet", icon: Wallet },
   { to: "/billing", label: "Billing", icon: CreditCard },
+  { to: "/documents", label: "Receipts", icon: FileText },
 ];
 
 /**
@@ -72,6 +76,7 @@ const ADMIN_NAV: NavItem[] = [
   { to: "/admin/products", label: "Products", icon: Package },
   { to: "/admin/clients", label: "Clients", icon: Users },
   { to: "/admin/wallet", label: "Wallet adjustments", icon: Wallet },
+  { to: "/admin/documents", label: "Receipts", icon: FileText },
 ];
 
 export function AppShell({

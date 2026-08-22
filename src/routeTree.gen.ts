@@ -18,9 +18,12 @@ import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedPendingRouteImport } from './routes/_authenticated/pending'
 import { Route as AuthenticatedClientBillingRouteImport } from './routes/_authenticated/_client/billing'
 import { Route as AuthenticatedClientDashboardRouteImport } from './routes/_authenticated/_client/dashboard'
+import { Route as AuthenticatedClientDocumentsRouteImport } from './routes/_authenticated/_client/documents'
+import { Route as AuthenticatedClientOrdersRouteImport } from './routes/_authenticated/_client/orders'
 import { Route as AuthenticatedClientProductsRouteImport } from './routes/_authenticated/_client/products'
 import { Route as AuthenticatedClientWalletRouteImport } from './routes/_authenticated/_client/wallet'
 import { Route as AuthenticatedAdminClientsRouteImport } from './routes/_authenticated/admin/clients'
+import { Route as AuthenticatedAdminDocumentsRouteImport } from './routes/_authenticated/admin/documents'
 import { Route as AuthenticatedAdminProductsRouteImport } from './routes/_authenticated/admin/products'
 import { Route as AuthenticatedAdminWalletRouteImport } from './routes/_authenticated/admin/wallet'
 import { Route as AuthenticatedClientQuotesIndexRouteImport } from './routes/_authenticated/_client/quotes/index'
@@ -29,6 +32,7 @@ import { Route as AuthenticatedClientQuotesNewRouteImport } from './routes/_auth
 import { Route as AuthenticatedAdminQuotesIndexRouteImport } from './routes/_authenticated/admin/quotes/index'
 import { Route as AuthenticatedAdminQuotesIdRouteImport } from './routes/_authenticated/admin/quotes/$id'
 import { Route as ApiPublicCronAutoTopupRouteImport } from './routes/api/public/cron/auto-topup'
+import { Route as ApiPublicCronDocumentsSweepRouteImport } from './routes/api/public/cron/documents-sweep'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
 
 const IndexRoute = IndexRouteImport.update({
@@ -76,6 +80,18 @@ const AuthenticatedClientDashboardRoute =
     path: '/dashboard',
     getParentRoute: () => AuthenticatedClientRoute,
   } as any)
+const AuthenticatedClientDocumentsRoute =
+  AuthenticatedClientDocumentsRouteImport.update({
+    id: '/documents',
+    path: '/documents',
+    getParentRoute: () => AuthenticatedClientRoute,
+  } as any)
+const AuthenticatedClientOrdersRoute =
+  AuthenticatedClientOrdersRouteImport.update({
+    id: '/orders',
+    path: '/orders',
+    getParentRoute: () => AuthenticatedClientRoute,
+  } as any)
 const AuthenticatedClientProductsRoute =
   AuthenticatedClientProductsRouteImport.update({
     id: '/products',
@@ -92,6 +108,12 @@ const AuthenticatedAdminClientsRoute =
   AuthenticatedAdminClientsRouteImport.update({
     id: '/clients',
     path: '/clients',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminDocumentsRoute =
+  AuthenticatedAdminDocumentsRouteImport.update({
+    id: '/documents',
+    path: '/documents',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 const AuthenticatedAdminProductsRoute =
@@ -141,6 +163,12 @@ const ApiPublicCronAutoTopupRoute = ApiPublicCronAutoTopupRouteImport.update({
   path: '/api/public/cron/auto-topup',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicCronDocumentsSweepRoute =
+  ApiPublicCronDocumentsSweepRouteImport.update({
+    id: '/api/public/cron/documents-sweep',
+    path: '/api/public/cron/documents-sweep',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicPaymentsWebhookRoute =
   ApiPublicPaymentsWebhookRouteImport.update({
     id: '/api/public/payments/webhook',
@@ -156,15 +184,19 @@ export interface FileRoutesByFullPath {
   '/pending': typeof AuthenticatedPendingRoute
   '/billing': typeof AuthenticatedClientBillingRoute
   '/dashboard': typeof AuthenticatedClientDashboardRoute
+  '/documents': typeof AuthenticatedClientDocumentsRoute
+  '/orders': typeof AuthenticatedClientOrdersRoute
   '/products': typeof AuthenticatedClientProductsRoute
   '/wallet': typeof AuthenticatedClientWalletRoute
   '/admin/clients': typeof AuthenticatedAdminClientsRoute
+  '/admin/documents': typeof AuthenticatedAdminDocumentsRoute
   '/admin/products': typeof AuthenticatedAdminProductsRoute
   '/admin/wallet': typeof AuthenticatedAdminWalletRoute
   '/quotes/$id': typeof AuthenticatedClientQuotesIdRoute
   '/quotes/new': typeof AuthenticatedClientQuotesNewRoute
   '/admin/quotes/$id': typeof AuthenticatedAdminQuotesIdRoute
   '/api/public/cron/auto-topup': typeof ApiPublicCronAutoTopupRoute
+  '/api/public/cron/documents-sweep': typeof ApiPublicCronDocumentsSweepRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/quotes/': typeof AuthenticatedClientQuotesIndexRoute
   '/admin/quotes/': typeof AuthenticatedAdminQuotesIndexRoute
@@ -177,15 +209,19 @@ export interface FileRoutesByTo {
   '/pending': typeof AuthenticatedPendingRoute
   '/billing': typeof AuthenticatedClientBillingRoute
   '/dashboard': typeof AuthenticatedClientDashboardRoute
+  '/documents': typeof AuthenticatedClientDocumentsRoute
+  '/orders': typeof AuthenticatedClientOrdersRoute
   '/products': typeof AuthenticatedClientProductsRoute
   '/wallet': typeof AuthenticatedClientWalletRoute
   '/admin/clients': typeof AuthenticatedAdminClientsRoute
+  '/admin/documents': typeof AuthenticatedAdminDocumentsRoute
   '/admin/products': typeof AuthenticatedAdminProductsRoute
   '/admin/wallet': typeof AuthenticatedAdminWalletRoute
   '/quotes/$id': typeof AuthenticatedClientQuotesIdRoute
   '/quotes/new': typeof AuthenticatedClientQuotesNewRoute
   '/admin/quotes/$id': typeof AuthenticatedAdminQuotesIdRoute
   '/api/public/cron/auto-topup': typeof ApiPublicCronAutoTopupRoute
+  '/api/public/cron/documents-sweep': typeof ApiPublicCronDocumentsSweepRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/quotes': typeof AuthenticatedClientQuotesIndexRoute
   '/admin/quotes': typeof AuthenticatedAdminQuotesIndexRoute
@@ -201,15 +237,19 @@ export interface FileRoutesById {
   '/_authenticated/pending': typeof AuthenticatedPendingRoute
   '/_authenticated/_client/billing': typeof AuthenticatedClientBillingRoute
   '/_authenticated/_client/dashboard': typeof AuthenticatedClientDashboardRoute
+  '/_authenticated/_client/documents': typeof AuthenticatedClientDocumentsRoute
+  '/_authenticated/_client/orders': typeof AuthenticatedClientOrdersRoute
   '/_authenticated/_client/products': typeof AuthenticatedClientProductsRoute
   '/_authenticated/_client/wallet': typeof AuthenticatedClientWalletRoute
   '/_authenticated/admin/clients': typeof AuthenticatedAdminClientsRoute
+  '/_authenticated/admin/documents': typeof AuthenticatedAdminDocumentsRoute
   '/_authenticated/admin/products': typeof AuthenticatedAdminProductsRoute
   '/_authenticated/admin/wallet': typeof AuthenticatedAdminWalletRoute
   '/_authenticated/_client/quotes/$id': typeof AuthenticatedClientQuotesIdRoute
   '/_authenticated/_client/quotes/new': typeof AuthenticatedClientQuotesNewRoute
   '/_authenticated/admin/quotes/$id': typeof AuthenticatedAdminQuotesIdRoute
   '/api/public/cron/auto-topup': typeof ApiPublicCronAutoTopupRoute
+  '/api/public/cron/documents-sweep': typeof ApiPublicCronDocumentsSweepRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/_authenticated/_client/quotes/': typeof AuthenticatedClientQuotesIndexRoute
   '/_authenticated/admin/quotes/': typeof AuthenticatedAdminQuotesIndexRoute
@@ -224,15 +264,19 @@ export interface FileRouteTypes {
     | '/pending'
     | '/billing'
     | '/dashboard'
+    | '/documents'
+    | '/orders'
     | '/products'
     | '/wallet'
     | '/admin/clients'
+    | '/admin/documents'
     | '/admin/products'
     | '/admin/wallet'
     | '/quotes/$id'
     | '/quotes/new'
     | '/admin/quotes/$id'
     | '/api/public/cron/auto-topup'
+    | '/api/public/cron/documents-sweep'
     | '/api/public/payments/webhook'
     | '/quotes/'
     | '/admin/quotes/'
@@ -245,15 +289,19 @@ export interface FileRouteTypes {
     | '/pending'
     | '/billing'
     | '/dashboard'
+    | '/documents'
+    | '/orders'
     | '/products'
     | '/wallet'
     | '/admin/clients'
+    | '/admin/documents'
     | '/admin/products'
     | '/admin/wallet'
     | '/quotes/$id'
     | '/quotes/new'
     | '/admin/quotes/$id'
     | '/api/public/cron/auto-topup'
+    | '/api/public/cron/documents-sweep'
     | '/api/public/payments/webhook'
     | '/quotes'
     | '/admin/quotes'
@@ -268,15 +316,19 @@ export interface FileRouteTypes {
     | '/_authenticated/pending'
     | '/_authenticated/_client/billing'
     | '/_authenticated/_client/dashboard'
+    | '/_authenticated/_client/documents'
+    | '/_authenticated/_client/orders'
     | '/_authenticated/_client/products'
     | '/_authenticated/_client/wallet'
     | '/_authenticated/admin/clients'
+    | '/_authenticated/admin/documents'
     | '/_authenticated/admin/products'
     | '/_authenticated/admin/wallet'
     | '/_authenticated/_client/quotes/$id'
     | '/_authenticated/_client/quotes/new'
     | '/_authenticated/admin/quotes/$id'
     | '/api/public/cron/auto-topup'
+    | '/api/public/cron/documents-sweep'
     | '/api/public/payments/webhook'
     | '/_authenticated/_client/quotes/'
     | '/_authenticated/admin/quotes/'
@@ -288,6 +340,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   ApiPublicCronAutoTopupRoute: typeof ApiPublicCronAutoTopupRoute
+  ApiPublicCronDocumentsSweepRoute: typeof ApiPublicCronDocumentsSweepRoute
   ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
 }
 
@@ -356,6 +409,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedClientDashboardRouteImport
       parentRoute: typeof AuthenticatedClientRoute
     }
+    '/_authenticated/_client/documents': {
+      id: '/_authenticated/_client/documents'
+      path: '/documents'
+      fullPath: '/documents'
+      preLoaderRoute: typeof AuthenticatedClientDocumentsRouteImport
+      parentRoute: typeof AuthenticatedClientRoute
+    }
+    '/_authenticated/_client/orders': {
+      id: '/_authenticated/_client/orders'
+      path: '/orders'
+      fullPath: '/orders'
+      preLoaderRoute: typeof AuthenticatedClientOrdersRouteImport
+      parentRoute: typeof AuthenticatedClientRoute
+    }
     '/_authenticated/_client/products': {
       id: '/_authenticated/_client/products'
       path: '/products'
@@ -375,6 +442,13 @@ declare module '@tanstack/react-router' {
       path: '/clients'
       fullPath: '/admin/clients'
       preLoaderRoute: typeof AuthenticatedAdminClientsRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/documents': {
+      id: '/_authenticated/admin/documents'
+      path: '/documents'
+      fullPath: '/admin/documents'
+      preLoaderRoute: typeof AuthenticatedAdminDocumentsRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/admin/products': {
@@ -433,6 +507,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCronAutoTopupRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/cron/documents-sweep': {
+      id: '/api/public/cron/documents-sweep'
+      path: '/api/public/cron/documents-sweep'
+      fullPath: '/api/public/cron/documents-sweep'
+      preLoaderRoute: typeof ApiPublicCronDocumentsSweepRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/payments/webhook': {
       id: '/api/public/payments/webhook'
       path: '/api/public/payments/webhook'
@@ -446,6 +527,8 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedClientRouteChildren {
   AuthenticatedClientBillingRoute: typeof AuthenticatedClientBillingRoute
   AuthenticatedClientDashboardRoute: typeof AuthenticatedClientDashboardRoute
+  AuthenticatedClientDocumentsRoute: typeof AuthenticatedClientDocumentsRoute
+  AuthenticatedClientOrdersRoute: typeof AuthenticatedClientOrdersRoute
   AuthenticatedClientProductsRoute: typeof AuthenticatedClientProductsRoute
   AuthenticatedClientWalletRoute: typeof AuthenticatedClientWalletRoute
   AuthenticatedClientQuotesIdRoute: typeof AuthenticatedClientQuotesIdRoute
@@ -456,6 +539,8 @@ interface AuthenticatedClientRouteChildren {
 const AuthenticatedClientRouteChildren: AuthenticatedClientRouteChildren = {
   AuthenticatedClientBillingRoute: AuthenticatedClientBillingRoute,
   AuthenticatedClientDashboardRoute: AuthenticatedClientDashboardRoute,
+  AuthenticatedClientDocumentsRoute: AuthenticatedClientDocumentsRoute,
+  AuthenticatedClientOrdersRoute: AuthenticatedClientOrdersRoute,
   AuthenticatedClientProductsRoute: AuthenticatedClientProductsRoute,
   AuthenticatedClientWalletRoute: AuthenticatedClientWalletRoute,
   AuthenticatedClientQuotesIdRoute: AuthenticatedClientQuotesIdRoute,
@@ -468,6 +553,7 @@ const AuthenticatedClientRouteWithChildren =
 
 interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminClientsRoute: typeof AuthenticatedAdminClientsRoute
+  AuthenticatedAdminDocumentsRoute: typeof AuthenticatedAdminDocumentsRoute
   AuthenticatedAdminProductsRoute: typeof AuthenticatedAdminProductsRoute
   AuthenticatedAdminWalletRoute: typeof AuthenticatedAdminWalletRoute
   AuthenticatedAdminQuotesIdRoute: typeof AuthenticatedAdminQuotesIdRoute
@@ -476,6 +562,7 @@ interface AuthenticatedAdminRouteChildren {
 
 const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminClientsRoute: AuthenticatedAdminClientsRoute,
+  AuthenticatedAdminDocumentsRoute: AuthenticatedAdminDocumentsRoute,
   AuthenticatedAdminProductsRoute: AuthenticatedAdminProductsRoute,
   AuthenticatedAdminWalletRoute: AuthenticatedAdminWalletRoute,
   AuthenticatedAdminQuotesIdRoute: AuthenticatedAdminQuotesIdRoute,
@@ -506,6 +593,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   ApiPublicCronAutoTopupRoute: ApiPublicCronAutoTopupRoute,
+  ApiPublicCronDocumentsSweepRoute: ApiPublicCronDocumentsSweepRoute,
   ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
 }
 export const routeTree = rootRouteImport

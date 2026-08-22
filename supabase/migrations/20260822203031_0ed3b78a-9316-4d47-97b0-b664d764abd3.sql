@@ -1,0 +1,1 @@
+revoke execute on function public.generate_document_number() from anon, authenticated;

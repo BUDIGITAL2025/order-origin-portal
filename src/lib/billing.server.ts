@@ -96,8 +96,8 @@ function isDuplicateReference(message: string): boolean {
 export async function creditWalletOnce(
   admin: Admin,
   args: { clientId: string; amountUsd: number; reference: string; description: string },
-): Promise<boolean> {
-  const { error } = await admin.rpc("apply_wallet_transaction", {
+): Promise<Database["public"]["Tables"]["wallet_transactions"]["Row"] | null> {
+  const { data, error } = await admin.rpc("apply_wallet_transaction", {
     p_client_id: args.clientId,
     p_type: "credit",
     p_amount: round2(args.amountUsd),
@@ -105,10 +105,10 @@ export async function creditWalletOnce(
     p_reference: args.reference,
   });
   if (error) {
-    if (isDuplicateReference(error.message)) return false;
+    if (isDuplicateReference(error.message)) return null;
     throw new Error(error.message);
   }
-  return true;
+  return data;
 }
 
 /** Debit the wallet exactly once per Stripe reference (refunds). */
@@ -317,7 +317,7 @@ export async function handleWalletTopup(
     throw new Error(`payment intent ${paymentIntentId} missing flysales_user_id`);
   }
   const kind = pi.metadata?.["kind"];
-  const credited = await creditWalletOnce(admin, {
+  const creditTxn = await creditWalletOnce(admin, {
     clientId,
     amountUsd: pi.amount_received / 100,
     reference: pi.id,
@@ -334,11 +334,19 @@ export async function handleWalletTopup(
       .eq("id", clientId);
   }
 
-  if (!credited) return; // replay of an already-processed payment
+  if (!creditTxn) return; // replay of an already-processed payment
+
+  // Payment Receipt for the top-up. Best-effort: the credit is the source of
+  // truth and must never be blocked by document generation.
+  try {
+    const { issueWalletTopupReceipt } = await import("./documents.server");
+    await issueWalletTopupReceipt(admin, creditTxn.id);
+  } catch (e) {
+    console.error("wallet top-up receipt failed:", creditTxn.id, e);
+  }
 
   // Settle orders waiting on funds, oldest first, debiting through
-  // apply_wallet_transaction with the order id as the reference. Until the
-  // orders table exists this is a safe no-op (see the function's TODO).
+  // apply_wallet_transaction with the order id as the reference.
   const { data: releasedRows, error: releaseError } = await admin.rpc(
     "release_awaiting_payment_orders",
     { p_client_id: clientId },
@@ -347,6 +355,16 @@ export async function handleWalletTopup(
     console.error("release_awaiting_payment_orders failed:", releaseError.message);
   }
   const released = (releasedRows ?? []) as Array<{ order_id: string; amount: number }>;
+
+  // Payment Receipt for each order this top-up just paid (wallet debit).
+  const { issueOrderReceipt } = await import("./documents.server");
+  for (const o of released) {
+    try {
+      await issueOrderReceipt(admin, o.order_id);
+    } catch (e) {
+      console.error("order receipt failed:", o.order_id, e);
+    }
+  }
 
   const balance = await getWalletBalance(admin, clientId);
   const lines = [
@@ -508,6 +526,21 @@ export async function processStripeEvent(
           subject: "We could not charge your card",
           text: "Your last FlySales subscription payment failed. Stripe will retry automatically over the next few days — please update your payment method from the Billing page to keep your plan.",
         });
+      }
+      return;
+    }
+
+    case "invoice.payment_succeeded": {
+      const invoice = event.data.object;
+      // Only subscription invoices produce a Payment Receipt — one-off
+      // invoices (none today) are ignored. Keyed on the invoice id, unique
+      // per billing period, so a replayed event issues nothing twice.
+      if (!idOf(invoice["subscription"])) return;
+      try {
+        const { issueSubscriptionReceipt } = await import("./documents.server");
+        await issueSubscriptionReceipt(admin, invoice);
+      } catch (e) {
+        console.error("subscription receipt failed:", e);
       }
       return;
     }
