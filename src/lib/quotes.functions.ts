@@ -181,13 +181,16 @@ export const adminSaveQuoteLines = createServerFn({ method: "POST" })
     const { requireAdmin } = await import("./admin.server");
     await requireAdmin(context.supabase, context.userId);
 
-    const { data: lines, error } = await context.supabase.rpc("admin_save_quote_lines", {
+    // Nullable params let the admin clear a previously set value; the generated
+    // types mark defaulted args as optional, so cast the explicit nulls.
+    const args = {
       p_quote_id: data.quote_id,
       p_lines: data.lines,
       p_internal_reference: data.internal_reference || null,
       p_quote_valid_until: data.quote_valid_until ?? null,
       p_admin_notes: data.admin_notes || null,
-    });
+    } as unknown as Parameters<typeof context.supabase.rpc>[1];
+    const { data: lines, error } = await context.supabase.rpc("admin_save_quote_lines", args);
     if (error) throw new Error(error.message);
     return { ok: true, lines: lines ?? [] };
   });
