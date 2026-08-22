@@ -36,7 +36,7 @@ import {
 export const Route = createFileRoute("/_authenticated/admin/clients")({
   head: () => ({
     meta: [
-      { title: "Clients — Relay Sourcing Admin" },
+      { title: "Clients — FlySales Admin" },
       { name: "robots", content: "noindex" },
     ],
   }),

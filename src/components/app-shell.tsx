@@ -64,7 +64,7 @@ export function AppShell({
       <aside className="flex w-60 shrink-0 flex-col border-r border-sidebar-border bg-sidebar">
         <div className="flex h-14 items-center gap-2 border-b border-sidebar-border px-5">
           <Boxes className="h-5 w-5 text-primary" />
-          <span className="text-sm font-semibold tracking-tight">Relay Sourcing</span>
+          <span className="text-sm font-semibold tracking-tight">FlySales</span>
           <span className="ml-auto rounded border border-border px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
             {role === "admin" ? "Admin" : "Client"}
           </span>

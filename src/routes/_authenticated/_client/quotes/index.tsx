@@ -30,7 +30,7 @@ import { listMyQuotes, respondToQuote } from "@/lib/quotes.functions";
 export const Route = createFileRoute("/_authenticated/_client/quotes/")({
   head: () => ({
     meta: [
-      { title: "My quotes — Relay Sourcing" },
+      { title: "My quotes — FlySales" },
       { name: "description", content: "Your quote requests and their status." },
       { name: "robots", content: "noindex" },
     ],

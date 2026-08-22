@@ -9,17 +9,17 @@ import { supabase } from "@/integrations/supabase/client";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Relay Sourcing — B2B Dropshipping Supplier Portal" },
+      { title: "FlySales — B2B Dropshipping Supplier Portal" },
       {
         name: "description",
         content:
-          "Source products through Relay Sourcing: request quotes with transparent pricing, MOQ and lead times, and manage your prepaid wallet — built for professional dropshippers.",
+          "Source products through FlySales: request quotes with transparent pricing, MOQ and lead times, and manage your prepaid wallet — built for professional dropshippers.",
       },
-      { property: "og:title", content: "Relay Sourcing — B2B Dropshipping Supplier Portal" },
+      { property: "og:title", content: "FlySales — B2B Dropshipping Supplier Portal" },
       {
         property: "og:description",
         content:
-          "Source products through Relay Sourcing: request quotes with transparent pricing, MOQ and lead times, and manage your prepaid wallet.",
+          "Source products through FlySales: request quotes with transparent pricing, MOQ and lead times, and manage your prepaid wallet.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -44,7 +44,7 @@ function LandingPage() {
         <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-6">
           <div className="flex items-center gap-2">
             <Boxes className="h-5 w-5 text-primary" />
-            <span className="text-sm font-semibold tracking-tight">Relay Sourcing</span>
+            <span className="text-sm font-semibold tracking-tight">FlySales</span>
           </div>
           {hydrated && signedIn ? (
             <Button asChild size="sm">
@@ -116,7 +116,7 @@ function LandingPage() {
 
       <footer className="border-t border-border py-6">
         <div className="mx-auto max-w-5xl px-6 text-xs text-muted-foreground">
-          © {new Date().getFullYear()} Relay Sourcing. Prices in USD, quotes in writing.
+          © {new Date().getFullYear()} FlySales. Prices in USD, quotes in writing.
         </div>
       </footer>
     </div>

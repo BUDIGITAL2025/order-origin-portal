@@ -32,7 +32,7 @@ import { adminAdjustWallet, adminGetWallet } from "@/lib/wallet.functions";
 export const Route = createFileRoute("/_authenticated/admin/wallet")({
   head: () => ({
     meta: [
-      { title: "Wallet adjustments — Relay Sourcing Admin" },
+      { title: "Wallet adjustments — FlySales Admin" },
       { name: "robots", content: "noindex" },
     ],
   }),

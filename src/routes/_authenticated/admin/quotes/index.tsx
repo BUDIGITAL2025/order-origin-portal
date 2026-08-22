@@ -27,7 +27,7 @@ export const Route = createFileRoute("/_authenticated/admin/quotes/")({
   validateSearch: (search) => searchSchema.parse(search),
   head: () => ({
     meta: [
-      { title: "Quote queue — Relay Sourcing Admin" },
+      { title: "Quote queue — FlySales Admin" },
       { name: "description", content: "All client quote requests, oldest first." },
       { name: "robots", content: "noindex" },
     ],

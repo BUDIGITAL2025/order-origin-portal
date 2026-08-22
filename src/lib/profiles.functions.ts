@@ -260,9 +260,9 @@ export const provisionClient = createServerFn({ method: "POST" })
     const MIDDLEWARE_URL = process.env["MIDDLEWARE_URL"];
     const MIDDLEWARE_SERVICE_USER = process.env["MIDDLEWARE_SERVICE_USER"];
     const MIDDLEWARE_SERVICE_PASSWORD = process.env["MIDDLEWARE_SERVICE_PASSWORD"];
-    const SERVICE_USER_ID = process.env["SERVICE_USER_ID"];
+    const MIDDLEWARE_SERVICE_USER_ID = process.env["MIDDLEWARE_SERVICE_USER_ID"];
     const middlewareConfigured = Boolean(
-      MIDDLEWARE_URL && MIDDLEWARE_SERVICE_USER && MIDDLEWARE_SERVICE_PASSWORD && SERVICE_USER_ID,
+      MIDDLEWARE_URL && MIDDLEWARE_SERVICE_USER && MIDDLEWARE_SERVICE_PASSWORD && MIDDLEWARE_SERVICE_USER_ID,
     );
 
     const setStep = async (step: string) => {
@@ -339,7 +339,7 @@ export const provisionClient = createServerFn({ method: "POST" })
     try {
       if (middlewareConfigured) {
         // TODO: grant the service account a membership on the tenant:
-        //   PUT {MIDDLEWARE_URL}/api/admin/auth/users/{SERVICE_USER_ID}/memberships/{tenantId}
+        //   PUT {MIDDLEWARE_URL}/api/admin/auth/users/{MIDDLEWARE_SERVICE_USER_ID}/memberships/{tenantId}
         //   body: { role: "operator" }
         //   Idempotency: a repeated grant for the same membership is a no-op.
         void MIDDLEWARE_SERVICE_USER;
@@ -377,7 +377,7 @@ export const provisionClient = createServerFn({ method: "POST" })
         //   headers: { Authorization: `Bearer ${tenantScopedJwt}` }
         //   Any non-2xx means the tenant is not reachable externally.
         void tenantScopedJwt;
-        void SERVICE_USER_ID;
+        void MIDDLEWARE_SERVICE_USER_ID;
       }
     } catch (e) {
       await fail("health_check", e instanceof Error ? e.message : String(e));

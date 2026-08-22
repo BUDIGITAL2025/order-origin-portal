@@ -20,7 +20,7 @@ import { useMyContext } from "../../_client";
 export const Route = createFileRoute("/_authenticated/_client/quotes/new")({
   head: () => ({
     meta: [
-      { title: "Request a quote — Relay Sourcing" },
+      { title: "Request a quote — FlySales" },
       { name: "description", content: "Submit a product for sourcing and pricing." },
       { name: "robots", content: "noindex" },
     ],

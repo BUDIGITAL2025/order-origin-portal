@@ -21,12 +21,12 @@ import { completeSignup, getMyContext } from "@/lib/profiles.functions";
 export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
-      { title: "Sign in — Relay Sourcing" },
+      { title: "Sign in — FlySales" },
       {
         name: "description",
-        content: "Sign in or request access to the Relay Sourcing supplier portal.",
+        content: "Sign in or request access to the FlySales supplier portal.",
       },
-      { property: "og:title", content: "Sign in — Relay Sourcing" },
+      { property: "og:title", content: "Sign in — FlySales" },
       { property: "og:type", content: "website" },
     ],
   }),
@@ -138,7 +138,7 @@ function AuthPage() {
     <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4 py-10">
       <Link to="/" className="mb-6 flex items-center gap-2">
         <Boxes className="h-5 w-5 text-primary" />
-        <span className="text-sm font-semibold tracking-tight">Relay Sourcing</span>
+        <span className="text-sm font-semibold tracking-tight">FlySales</span>
       </Link>
 
       <Card className="w-full max-w-md">
