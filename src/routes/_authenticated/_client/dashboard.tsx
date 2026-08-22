@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { ArrowRight, ClipboardList, CreditCard, RefreshCcw, Wallet } from "lucide-react";
+import { ArrowRight, Check, ClipboardList, CreditCard, RefreshCcw, Store, Wallet } from "lucide-react";
 import { EmptyState, PageHeader } from "@/components/app-shell";
 import { getCurrentStoreId } from "@/components/store-switcher";
 import { QuoteStatusBadge, TxnTypeBadge } from "@/components/status-badges";
@@ -86,6 +86,11 @@ function DashboardPage() {
   const quotesUsed = store?.quotes_used_this_month ?? 0;
   const usagePercent =
     quota == null ? 0 : Math.min(100, Math.round((quotesUsed / quota) * 100));
+
+  // Storeless accounts get the onboarding checklist instead of store metrics.
+  if (context && allStores.length === 0) {
+    return <OnboardingCard entity={entities[0] ?? null} hasQuote={quotes.length > 0} />;
+  }
 
   return (
     <div>
@@ -319,6 +324,84 @@ function DashboardPage() {
             )}
           </CardContent>
         </Card>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Onboarding checklist for storeless accounts: complete company details,
+ * add a first store, then request a quote. Quotes stay gated behind a store.
+ */
+function OnboardingCard({
+  entity,
+  hasQuote,
+}: {
+  entity: { id: string; legal_name: string; vat_number: string | null } | null;
+  hasQuote: boolean;
+}) {
+  const steps = [
+    {
+      title: "Add company details",
+      description: "Legal name, country and VAT — they appear on your payment receipts.",
+      done: Boolean(entity?.vat_number),
+      to: "/billing",
+      cta: "Complete details",
+    },
+    {
+      title: "Add your first store",
+      description: "Connect a Shopify store or add any store URL — each store gets its own catalogue and quotes.",
+      done: false,
+      to: "/stores/new",
+      cta: "Add store",
+    },
+    {
+      title: "Request your first quote",
+      description: hasQuote
+        ? "Quote requested — our sourcing team is on it."
+        : "Paste a product URL and we source it for you. Needs a store first.",
+      done: hasQuote,
+      to: "/quotes/new",
+      cta: "Request a quote",
+    },
+  ] as const;
+
+  return (
+    <div>
+      <PageHeader
+        title="Welcome to FlySales"
+        description="Three quick steps to start sourcing."
+      />
+      <div className="grid gap-4 md:grid-cols-3">
+        {steps.map((step, i) => (
+          <Card key={step.title} className={step.done ? "opacity-70" : undefined}>
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-sm font-medium">
+                {step.done ? (
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-success/15 text-success">
+                    <Check className="h-3 w-3" />
+                  </span>
+                ) : (
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-muted font-mono text-xs text-muted-foreground">
+                    {i + 1}
+                  </span>
+                )}
+                {step.title}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-xs text-muted-foreground">{step.description}</p>
+              {!step.done && (
+                <Button asChild size="sm" variant={i === 1 ? "default" : "outline"}>
+                  <Link to={step.to}>
+                    {i === 1 && <Store className="mr-1.5 h-3.5 w-3.5" />}
+                    {step.cta}
+                  </Link>
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        ))}
       </div>
     </div>
   );

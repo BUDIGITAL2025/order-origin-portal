@@ -1,8 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
+  addStoreSchema,
   clientStatusSchema,
-  companyDetailsSchema,
+  completeSignupSchema,
+  entityDetailsSchema,
   feeWaivedSchema,
   integrationModeSchema,
   subscriptionPlanSchema,
@@ -59,7 +61,7 @@ export interface MyContext {
 const PROFILE_SELECT = "id, contact_name, phone, status, created_at";
 const STORE_SELECT =
   "id, entity_id, store_name, store_url, platform, integration_mode, subscription_plan, subscription_status, quotes_used_this_month, quotes_period_start, fee_waived, pricing_tier, status, created_at";
-const ENTITY_SELECT = `id, legal_name, country, vat_number, status, auto_topup_enabled, created_at, stores(${STORE_SELECT})`;
+const ENTITY_SELECT = `id, legal_name, country, vat_number, address, status, auto_topup_enabled, created_at, stores(${STORE_SELECT})`;
 
 /** Session + profile + role + entity/store hierarchy for the signed-in user. */
 export const getMyContext = createServerFn({ method: "GET" })
@@ -87,13 +89,15 @@ export const getMyContext = createServerFn({ method: "GET" })
   });
 
 /**
- * First-login onboarding: create the caller's account profile (status
- * 'pending'), their first legal entity and their first store, plus the
- * client role. Only the caller's own id is ever written.
+ * Signup completion: create the caller's account profile (active
+ * immediately) and their first legal entity — NO store. Stores are added
+ * later via addMyStore. The entity's legal name defaults to the contact
+ * name; fiscal fields stay empty until the client completes them.
+ * Idempotent across retries after a partial earlier attempt.
  */
 export const completeSignup = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => companyDetailsSchema.parse(input))
+  .inputValidator((input) => completeSignupSchema.parse(input))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
 
@@ -108,33 +112,21 @@ export const completeSignup = createServerFn({ method: "POST" })
         id: userId,
         contact_name: data.contact_name,
         phone: data.phone,
+        status: "active",
       });
       if (profileError) throw new Error(profileError.message);
     }
 
-    // Ensure the entity + first store exist (covers retries after a partial
-    // earlier attempt where the profile row was written but the rest failed).
+    // Ensure the entity exists (covers retries after a partial attempt where
+    // the profile row was written but the entity failed).
     const { data: entityRows } = await supabase.from("entities").select("id").limit(1);
     if (!entityRows || entityRows.length === 0) {
-      const { data: entity, error: entityError } = await supabase
-        .from("entities")
-        .insert({
-          account_id: userId,
-          legal_name: data.company_name,
-          vat_number: data.vat_number,
-          country: data.country,
-        })
-        .select("id")
-        .single();
-      if (entityError || !entity) throw new Error(entityError?.message ?? "Could not create entity");
-
-      const { error: storeError } = await supabase.from("stores").insert({
-        entity_id: entity.id,
-        platform: data.platform,
-        store_url: data.store_url,
-        store_name: data.company_name,
+      const { error: entityError } = await supabase.from("entities").insert({
+        account_id: userId,
+        legal_name: data.contact_name,
+        country: data.country,
       });
-      if (storeError) throw new Error(storeError.message);
+      if (entityError) throw new Error(entityError.message);
     }
 
     const { error: roleError } = await supabase
@@ -143,6 +135,70 @@ export const completeSignup = createServerFn({ method: "POST" })
     if (roleError && roleError.code !== "23505") throw new Error(roleError.message);
 
     return { ok: true, already: Boolean(existing) };
+  });
+
+/**
+ * Add a store to the caller's entity. Store URL is required here (not at
+ * signup); the *.myshopify.com rule is enforced by addStoreSchema. New
+ * stores start pending — an admin approves and provisions them.
+ */
+export const addMyStore = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => addStoreSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    void userId;
+
+    // RLS scopes this to the caller's own entities; take the first.
+    const { data: entity, error: entityError } = await supabase
+      .from("entities")
+      .select("id")
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    if (entityError) throw new Error(entityError.message);
+    if (!entity) throw new Error("Complete your account profile first");
+
+    const { data: store, error: storeError } = await supabase
+      .from("stores")
+      .insert({
+        entity_id: entity.id,
+        platform: data.platform,
+        store_url: data.store_url,
+        store_name: data.store_name || null,
+        integration_mode: "manual",
+      })
+      .select("id, status")
+      .single();
+    if (storeError) {
+      // enforce_entity_max_stores trigger raises when the entity is full.
+      if (storeError.message.includes("max_stores") || storeError.code === "P0001") {
+        throw new Error("This entity has reached its store limit — contact support to raise it.");
+      }
+      if (storeError.code === "23505") {
+        throw new Error("A store with this URL already exists.");
+      }
+      throw new Error(storeError.message);
+    }
+    return { ok: true, store_id: store.id, status: store.status };
+  });
+
+/** Client completes their entity's fiscal details (legal name, VAT, address). */
+export const updateMyEntity = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => entityDetailsSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase
+      .from("entities")
+      .update({
+        legal_name: data.legal_name,
+        country: data.country,
+        vat_number: data.vat_number || null,
+        address: data.address || null,
+      })
+      .eq("id", data.entity_id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
   });
 
 /** Client edits their own account details. Protected columns are DB-enforced. */

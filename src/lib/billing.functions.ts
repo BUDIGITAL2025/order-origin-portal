@@ -33,7 +33,16 @@ const storeSubscriptionCheckoutSchema = subscriptionCheckoutSchema.extend({
 });
 const storeChangePlanSchema = changePlanSchema.extend({ storeId: z.string().uuid() });
 const storeStripeEnvSchema = z.object({ storeId: z.string().uuid(), environment: stripeEnvSchema });
-const entityTopUpCheckoutSchema = topUpCheckoutSchema.extend({ storeId: z.string().uuid() });
+// Top-ups credit the entity wallet. Storeless accounts pass entityId
+// directly; with a store, storeId resolves the owning entity.
+const entityTopUpCheckoutSchema = topUpCheckoutSchema
+  .extend({
+    storeId: z.string().uuid().optional(),
+    entityId: z.string().uuid().optional(),
+  })
+  .refine((v) => v.storeId != null || v.entityId != null, {
+    message: "storeId or entityId is required",
+  });
 const entityAutoTopupSettingsSchema = autoTopupSettingsSchema.extend({
   storeId: z.string().uuid(),
 });
@@ -253,7 +262,20 @@ export const createWalletTopupCheckout = createServerFn({ method: "POST" })
       const stripe = createStripeClient(data.environment);
       const admin = await getAdminClient();
 
-      const { entity } = await resolveStoreAndEntity(admin, data.storeId, context.userId);
+      let entity;
+      if (data.storeId) {
+        ({ entity } = await resolveStoreAndEntity(admin, data.storeId, context.userId));
+      } else {
+        const { data: row, error } = await admin
+          .from("entities")
+          .select("*")
+          .eq("id", data.entityId!)
+          .eq("account_id", context.userId)
+          .maybeSingle();
+        if (error) throw new Error(error.message);
+        if (!row) throw new Error("Entity not found for this account");
+        entity = row;
+      }
 
       const email = (context.claims?.email as string | undefined) ?? undefined;
       const customerId = await billing.resolveOrCreateCustomer(stripe, {
