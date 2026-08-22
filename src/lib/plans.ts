@@ -1,7 +1,7 @@
 /** Subscription plans and monthly quote quotas (mirrors the DB enforcement). */
 export const PLANS = {
-  basic_49: { label: "Basic", priceUsd: 49, quoteQuota: 15 },
-  pro_99: { label: "Pro", priceUsd: 99, quoteQuota: 60 },
+  basic: { label: "Basic", priceUsd: 49, quoteQuota: 5 },
+  unlimited: { label: "Unlimited", priceUsd: 99, quoteQuota: null },
 } as const;
 
 export type SubscriptionPlan = keyof typeof PLANS;
@@ -14,11 +14,12 @@ export const TIER_LABELS: Record<string, string> = {
 };
 
 export function planLabel(plan: string | null | undefined): string {
-  return PLANS[(plan as SubscriptionPlan) ?? "basic_49"]?.label ?? plan ?? "—";
+  return PLANS[(plan as SubscriptionPlan) ?? "basic"]?.label ?? plan ?? "—";
 }
 
-export function planQuota(plan: string | null | undefined): number {
-  return PLANS[(plan as SubscriptionPlan) ?? "basic_49"]?.quoteQuota ?? 15;
+/** Monthly quote allowance; null means unlimited. */
+export function planQuota(plan: string | null | undefined): number | null {
+  return PLANS[(plan as SubscriptionPlan) ?? "basic"]?.quoteQuota ?? 5;
 }
 
 /** Effective tier = manual override wins over the auto-calculated value. */

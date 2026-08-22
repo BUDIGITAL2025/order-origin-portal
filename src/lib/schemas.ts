@@ -80,7 +80,12 @@ export const clientIdSchema = z.object({
 
 export const subscriptionPlanSchema = z.object({
   client_id: z.string().uuid(),
-  subscription_plan: z.enum(["basic_49", "pro_99"]),
+  subscription_plan: z.enum(["basic", "unlimited"]),
+});
+
+export const feeWaivedSchema = z.object({
+  client_id: z.string().uuid(),
+  fee_waived: z.boolean(),
 });
 
 export const tierOverrideSchema = z.object({

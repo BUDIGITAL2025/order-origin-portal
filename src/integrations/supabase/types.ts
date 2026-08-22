@@ -22,6 +22,7 @@ export type Database = {
           contact_name: string
           country: string
           created_at: string
+          fee_waived: boolean
           id: string
           middleware_tenant_id: string | null
           phone: string
@@ -44,6 +45,7 @@ export type Database = {
           contact_name: string
           country: string
           created_at?: string
+          fee_waived?: boolean
           id: string
           middleware_tenant_id?: string | null
           phone: string
@@ -66,6 +68,7 @@ export type Database = {
           contact_name?: string
           country?: string
           created_at?: string
+          fee_waived?: boolean
           id?: string
           middleware_tenant_id?: string | null
           phone?: string
@@ -427,7 +430,7 @@ export type Database = {
         | "accepted"
         | "rejected"
         | "expired"
-      subscription_plan: "basic_49" | "pro_99"
+      subscription_plan: "basic" | "unlimited"
       wallet_txn_type: "credit" | "debit" | "adjustment"
     }
     CompositeTypes: {
@@ -568,7 +571,7 @@ export const Constants = {
         "rejected",
         "expired",
       ],
-      subscription_plan: ["basic_49", "pro_99"],
+      subscription_plan: ["basic", "unlimited"],
       wallet_txn_type: ["credit", "debit", "adjustment"],
     },
   },

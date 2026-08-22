@@ -4,6 +4,7 @@ import {
   clientIdSchema,
   clientStatusSchema,
   companyDetailsSchema,
+  feeWaivedSchema,
   subscriptionPlanSchema,
   profileUpdateSchema,
   tierOverrideSchema,
@@ -25,9 +26,10 @@ export interface MyContext {
     pricing_tier: "starter" | "growth" | "scale";
     tier_override: "starter" | "growth" | "scale" | null;
     avg_daily_units_30d: number;
-    subscription_plan: "basic_49" | "pro_99";
+    subscription_plan: "basic" | "unlimited";
     quotes_used_this_month: number;
     quotes_period_start: string;
+    fee_waived: boolean;
     status: "pending" | "active" | "suspended";
     middleware_tenant_id: string | null;
     provisioning_status: "not_started" | "in_progress" | "complete" | "failed";
@@ -155,6 +157,53 @@ export const adminSetPlan = createServerFn({ method: "POST" })
       .from("profiles")
       .update({ subscription_plan: data.subscription_plan })
       .eq("id", data.client_id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+/** Admin: toggle the monthly-fee waiver on a client (manual commercial gesture). */
+export const adminSetFeeWaived = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => feeWaivedSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const { requireAdmin } = await import("./admin.server");
+    await requireAdmin(context.supabase, context.userId);
+    const { error } = await context.supabase
+      .from("profiles")
+      .update({ fee_waived: data.fee_waived })
+      .eq("id", data.client_id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+/**
+ * Client: explicit self-upgrade from Basic to Unlimited.
+ * Never called automatically — only from the upgrade panel button.
+ * TODO(payments): collect payment via Stripe before flipping the plan;
+ * the call is stubbed and the plan is switched immediately for now.
+ */
+export const upgradeToUnlimited = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("subscription_plan, status")
+      .eq("id", userId)
+      .maybeSingle();
+    if (!profile) throw new Error("Complete your company profile first");
+    if (profile.status !== "active") throw new Error("Your account is not active yet");
+    if (profile.subscription_plan !== "basic") {
+      throw new Error("Your plan is already Unlimited");
+    }
+
+    // TODO(payments): create a Stripe Checkout session / subscription here and
+    // only switch the plan after the payment confirms (webhook). Stubbed for now.
+    const { error } = await supabase
+      .from("profiles")
+      .update({ subscription_plan: "unlimited" })
+      .eq("id", userId);
     if (error) throw new Error(error.message);
     return { ok: true };
   });

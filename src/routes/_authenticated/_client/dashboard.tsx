@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/table";
 import { formatDateTime, formatUSD } from "@/lib/format";
 import { PLANS, planLabel, planQuota, quotaResetDate } from "@/lib/plans";
+import { Badge } from "@/components/ui/badge";
 import { getMyContext } from "@/lib/profiles.functions";
 import { listMyQuotes } from "@/lib/quotes.functions";
 import { getMyWallet } from "@/lib/wallet.functions";
@@ -58,10 +59,11 @@ function DashboardPage() {
   }, {});
   const transactions = walletData?.transactions ?? [];
 
-  const plan = profile?.subscription_plan ?? "basic_49";
-  const quota = planQuota(plan);
+  const plan = profile?.subscription_plan ?? "basic";
+  const quota = planQuota(plan); // null = unlimited
   const quotesUsed = profile?.quotes_used_this_month ?? 0;
-  const usagePercent = Math.min(100, Math.round((quotesUsed / quota) * 100));
+  const usagePercent =
+    quota == null ? 0 : Math.min(100, Math.round((quotesUsed / quota) * 100));
 
   return (
     <div>
@@ -107,16 +109,23 @@ function DashboardPage() {
           <CardTitle className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
             <CreditCard className="h-3.5 w-3.5" /> Subscription
           </CardTitle>
-          <span className="text-xs font-medium text-muted-foreground">
-            {planLabel(plan)} plan — {formatUSD(plan === "pro_99" ? 99 : 49)}/month
-          </span>
+          <div className="flex items-center gap-2">
+            {profile?.fee_waived && <Badge variant="secondary">Fee waived</Badge>}
+            <span className="text-xs font-medium text-muted-foreground">
+              {planLabel(plan)} plan — {formatUSD(PLANS[plan].priceUsd)}/month
+              {profile?.fee_waived ? " · not billed" : ""}
+            </span>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap items-center gap-x-8 gap-y-2">
             <div>
               <div className="font-mono text-xl font-semibold">
                 {quotesUsed}
-                <span className="text-sm font-normal text-muted-foreground"> / {quota} quotes</span>
+                <span className="text-sm font-normal text-muted-foreground">
+                  {" "}
+                  / {quota == null ? "unlimited" : `${quota} quotes`}
+                </span>
               </div>
               <div className="text-xs text-muted-foreground">
                 used this month
@@ -125,25 +134,31 @@ function DashboardPage() {
                   : ""}
               </div>
             </div>
-            <div className="min-w-40 flex-1">
-              <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-                <div
-                  className={
-                    "h-full rounded-full transition-all " +
-                    (usagePercent >= 100
-                      ? "bg-destructive"
-                      : usagePercent >= 80
-                        ? "bg-warning"
-                        : "bg-success")
-                  }
-                  style={{ width: `${usagePercent}%` }}
-                />
+            {quota != null && (
+              <div className="min-w-40 flex-1">
+                <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                  <div
+                    className={
+                      "h-full rounded-full transition-all " +
+                      (usagePercent >= 100
+                        ? "bg-destructive"
+                        : usagePercent >= 80
+                          ? "bg-warning"
+                          : "bg-success")
+                    }
+                    style={{ width: `${usagePercent}%` }}
+                  />
+                </div>
               </div>
-            </div>
-            {quotesUsed >= quota && (
+            )}
+            {quota != null && quotesUsed >= quota && (
               <p className="text-xs font-medium text-warning-foreground">
-                Monthly allowance reached — contact us to upgrade to Pro ({PLANS.pro_99.quoteQuota}{" "}
-                quotes/month).
+                Monthly allowance reached — upgrade to Unlimited ($
+                {PLANS.unlimited.priceUsd}/month) for uncapped quote requests from the{" "}
+                <Link to="/quotes/new" className="underline">
+                  quote form
+                </Link>
+                .
               </p>
             )}
           </div>

@@ -4,7 +4,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { EmptyState, PageHeader } from "@/components/app-shell";
 import { ProfileStatusBadge, ProvisioningBadge, TierBadge } from "@/components/status-badges";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -25,6 +27,7 @@ import { PLANS, TIER_LABELS, effectiveTier, planQuota } from "@/lib/plans";
 import {
   adminListClients,
   adminSetClientStatus,
+  adminSetFeeWaived,
   adminSetPlan,
   adminSetTierOverride,
   provisionClient,
@@ -45,6 +48,7 @@ function AdminClientsPage() {
   const fetchClients = useServerFn(adminListClients);
   const callSetStatus = useServerFn(adminSetClientStatus);
   const callSetPlan = useServerFn(adminSetPlan);
+  const callSetFeeWaived = useServerFn(adminSetFeeWaived);
   const callSetOverride = useServerFn(adminSetTierOverride);
   const callProvision = useServerFn(provisionClient);
 
@@ -75,10 +79,20 @@ function AdminClientsPage() {
   });
 
   const setPlan = useMutation({
-    mutationFn: (input: { client_id: string; subscription_plan: "basic_49" | "pro_99" }) =>
+    mutationFn: (input: { client_id: string; subscription_plan: "basic" | "unlimited" }) =>
       callSetPlan({ data: input }),
     onSuccess: () => {
       toast.success("Subscription plan updated");
+      void invalidate();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const setFeeWaived = useMutation({
+    mutationFn: (input: { client_id: string; fee_waived: boolean }) =>
+      callSetFeeWaived({ data: input }),
+    onSuccess: (_r, vars) => {
+      toast.success(vars.fee_waived ? "Monthly fee waived" : "Fee waiver removed");
       void invalidate();
     },
     onError: (err) => toast.error(err.message),
@@ -111,6 +125,7 @@ function AdminClientsPage() {
               <TableRow>
                 <TableHead>Company</TableHead>
                 <TableHead>Plan</TableHead>
+                <TableHead>Fee waived</TableHead>
                 <TableHead>Effective tier</TableHead>
                 <TableHead className="text-right">Units/day (30d)</TableHead>
                 <TableHead className="text-right">Quotes used</TableHead>
@@ -136,7 +151,7 @@ function AdminClientsPage() {
                         onValueChange={(v) =>
                           setPlan.mutate({
                             client_id: c.id,
-                            subscription_plan: v as "basic_49" | "pro_99",
+                            subscription_plan: v as "basic" | "unlimited",
                           })
                         }
                       >
@@ -144,14 +159,27 @@ function AdminClientsPage() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="basic_49">
-                            {PLANS.basic_49.label} ${PLANS.basic_49.priceUsd}/mo
+                          <SelectItem value="basic">
+                            {PLANS.basic.label} ${PLANS.basic.priceUsd}/mo
                           </SelectItem>
-                          <SelectItem value="pro_99">
-                            {PLANS.pro_99.label} ${PLANS.pro_99.priceUsd}/mo
+                          <SelectItem value="unlimited">
+                            {PLANS.unlimited.label} ${PLANS.unlimited.priceUsd}/mo
                           </SelectItem>
                         </SelectContent>
                       </Select>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          checked={c.fee_waived}
+                          disabled={setFeeWaived.isPending}
+                          onCheckedChange={(checked) =>
+                            setFeeWaived.mutate({ client_id: c.id, fee_waived: checked })
+                          }
+                          aria-label={`Toggle fee waiver for ${c.company_name}`}
+                        />
+                        {c.fee_waived && <Badge variant="secondary">Fee waived</Badge>}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1.5">
@@ -187,7 +215,7 @@ function AdminClientsPage() {
                       {Number(c.avg_daily_units_30d ?? 0).toFixed(1)}
                     </TableCell>
                     <TableCell className="text-right font-mono text-sm">
-                      {c.quotes_used_this_month} / {planQuota(c.subscription_plan)}
+                      {c.quotes_used_this_month} / {planQuota(c.subscription_plan) ?? "∞"}
                     </TableCell>
                     <TableCell>
                       <ProfileStatusBadge status={c.status} />
