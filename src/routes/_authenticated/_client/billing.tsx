@@ -648,3 +648,89 @@ function BillingPage() {
     </div>
   );
 }
+
+/**
+ * Entity fiscal details (legal name, VAT, address) — shown on payment
+ * receipts. Editable by the account owner; lives at entity level.
+ */
+function EntityDetailsCard({
+  entity,
+}: {
+  entity: {
+    id: string;
+    legal_name: string;
+    vat_number: string | null;
+    country: string | null;
+    address?: string | null;
+  };
+}) {
+  const callUpdate = useServerFn(updateMyEntity);
+  const queryClient = useQueryClient();
+  const [busy, setBusy] = useState(false);
+  const [form, setForm] = useState({
+    legal_name: entity.legal_name ?? "",
+    country: entity.country ?? "",
+    vat_number: entity.vat_number ?? "",
+    address: entity.address ?? "",
+  });
+  const setField =
+    (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
+      setForm((s) => ({ ...s, [key]: e.target.value }));
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const parsed = entityDetailsSchema.safeParse({ entity_id: entity.id, ...form });
+    if (!parsed.success) {
+      toast.error(parsed.error.issues[0]?.message ?? "Check your input");
+      return;
+    }
+    setBusy(true);
+    try {
+      await callUpdate({ data: parsed.data });
+      await queryClient.invalidateQueries({ queryKey: ["my-context"] });
+      toast.success("Company details saved.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not save company details");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Building2 className="h-4 w-4" /> Company details
+        </CardTitle>
+        <CardDescription>
+          Legal name, VAT and address appear on your payment receipts.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit} className="grid gap-3 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label htmlFor="ed-legal-name">Legal name</Label>
+            <Input id="ed-legal-name" required value={form.legal_name} onChange={setField("legal_name")} />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="ed-country">Country</Label>
+            <Input id="ed-country" required value={form.country} onChange={setField("country")} />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="ed-vat">VAT number</Label>
+            <Input id="ed-vat" value={form.vat_number} onChange={setField("vat_number")} />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="ed-address">Address</Label>
+            <Input id="ed-address" value={form.address} onChange={setField("address")} />
+          </div>
+          <div className="sm:col-span-2">
+            <Button type="submit" variant="secondary" disabled={busy}>
+              {busy ? "Saving…" : "Save company details"}
+            </Button>
+          </div>
+        </form>
+      </CardContent>
+    </Card>
+  );
+}

@@ -25,9 +25,9 @@ export function TopUpCheckoutDialog({
 }: {
   amountUsd: number;
   /** Current store — the top-up credits the entity that owns it. */
-  storeId?: string;
+  storeId?: string | undefined;
   /** Storeless accounts pass the entity directly. */
-  entityId?: string;
+  entityId?: string | undefined;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
