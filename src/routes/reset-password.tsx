@@ -10,7 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { MARKETING_URL } from "@/lib/config";
@@ -93,9 +93,8 @@ function ResetPasswordPage() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-1.5">
                 <Label htmlFor="rp-password">New password (min. 8 characters)</Label>
-                <Input
+                <PasswordInput
                   id="rp-password"
-                  type="password"
                   autoComplete="new-password"
                   required
                   minLength={8}
@@ -105,9 +104,8 @@ function ResetPasswordPage() {
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="rp-confirm">Confirm new password</Label>
-                <Input
+                <PasswordInput
                   id="rp-confirm"
-                  type="password"
                   autoComplete="new-password"
                   required
                   minLength={8}

@@ -87,6 +87,11 @@ function DashboardPage() {
   const usagePercent =
     quota == null ? 0 : Math.min(100, Math.round((quotesUsed / quota) * 100));
 
+  // Storeless accounts get the onboarding checklist instead of store metrics.
+  if (context && allStores.length === 0) {
+    return <OnboardingCard entity={entities[0] ?? null} hasQuote={quotes.length > 0} />;
+  }
+
   return (
     <div>
       <PageHeader
