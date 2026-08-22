@@ -681,6 +681,17 @@ function AdminQuoteDetailPage() {
                                     {formatUSD(cellPrice(cell))}
                                   </span>
                                 </div>
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                                    Margin
+                                  </span>
+                                  <span className="font-mono text-xs text-muted-foreground">
+                                    {(() => {
+                                      const m = cellMarginPct(cell);
+                                      return m == null ? "—" : `${m.toFixed(1)}%`;
+                                    })()}
+                                  </span>
+                                </div>
                                 {locked && (
                                   <LineStatusBadge status={cell.status as "accepted" | "rejected"} />
                                 )}
