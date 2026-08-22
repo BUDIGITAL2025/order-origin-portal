@@ -54,10 +54,8 @@ type Product = {
   product_name: string;
   variant_label: string | null;
   product_type: "simple" | "bundle";
-  unit_price: number | null;
   price_override: number | null;
   moq: number | null;
-  lead_time_days: number | null;
   status: "active" | "discontinued" | "needs_review";
   push_status: "pending" | "pushed" | "failed";
   push_error: string | null;
@@ -68,10 +66,18 @@ type Product = {
 
 type BundlePrice = {
   bundle_product_id: string | null;
+  country_code: string | null;
   calculated_price: number | null;
   component_count: number | null;
   effective_price: number | null;
   max_lead_time_days: number | null;
+};
+
+type CountryPrice = {
+  product_id: string | null;
+  country_code: string | null;
+  unit_price: number | null;
+  lead_time_days: number | null;
 };
 
 const STATUS_FILTERS = ["active", "needs_review", "discontinued"] as const;
