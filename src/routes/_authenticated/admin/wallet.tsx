@@ -24,7 +24,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatDateTime, formatEUR } from "@/lib/format";
+import { formatDateTime, formatUSD } from "@/lib/format";
 import { adminListClients } from "@/lib/profiles.functions";
 import { walletAdjustmentSchema } from "@/lib/schemas";
 import { adminAdjustWallet, adminGetWallet } from "@/lib/wallet.functions";
@@ -71,7 +71,7 @@ function AdminWalletPage() {
       return callAdjust({ data: parsed.data });
     },
     onSuccess: (r) => {
-      toast.success(`Adjustment applied — new balance ${formatEUR(r.entry.balance_after)}`);
+      toast.success(`Adjustment applied — new balance ${formatUSD(r.entry.balance_after)}`);
       setAmount("");
       setDescription("");
       setReference("");
@@ -125,7 +125,7 @@ function AdminWalletPage() {
               {clientId && walletData && (
                 <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm">
                   Current balance:{" "}
-                  <span className="font-mono font-medium">{formatEUR(walletData.balance)}</span>
+                  <span className="font-mono font-medium">{formatUSD(walletData.balance)}</span>
                 </div>
               )}
               <div className="grid grid-cols-2 gap-3">
@@ -142,7 +142,7 @@ function AdminWalletPage() {
                   </Select>
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="aw-amount">Amount (EUR)</Label>
+                  <Label htmlFor="aw-amount">Amount (USD)</Label>
                   <Input
                     id="aw-amount"
                     type="number"
@@ -221,10 +221,10 @@ function AdminWalletPage() {
                           }
                         >
                           {t.type === "debit" ? "−" : "+"}
-                          {formatEUR(t.amount)}
+                          {formatUSD(t.amount)}
                         </TableCell>
                         <TableCell className="text-right font-mono text-sm">
-                          {formatEUR(t.balance_after)}
+                          {formatUSD(t.balance_after)}
                         </TableCell>
                       </TableRow>
                     ))}

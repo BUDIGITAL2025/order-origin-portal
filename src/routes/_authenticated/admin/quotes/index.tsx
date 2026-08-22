@@ -14,7 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatDate, formatEUR } from "@/lib/format";
+import { formatDate, formatUSD } from "@/lib/format";
 import { adminListQuotes } from "@/lib/quotes.functions";
 
 const STATUSES = ["submitted", "sourcing", "quoted", "accepted", "rejected", "expired"] as const;
@@ -112,7 +112,7 @@ function AdminQuotesPage() {
                       <QuoteStatusBadge status={q.status} validUntil={q.quote_valid_until} />
                     </TableCell>
                     <TableCell className="text-right font-mono text-sm">
-                      {q.quoted_price != null ? formatEUR(q.quoted_price) : "—"}
+                      {q.quoted_price_total != null ? formatUSD(q.quoted_price_total) : "—"}
                     </TableCell>
                     <TableCell className="text-right">
                       <Button asChild size="sm" variant="outline">
