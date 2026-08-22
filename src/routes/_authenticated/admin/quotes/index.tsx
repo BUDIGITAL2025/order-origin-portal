@@ -14,10 +14,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatDate, formatUSD } from "@/lib/format";
+import { formatDate } from "@/lib/format";
+import { effectiveTier } from "@/lib/plans";
 import { adminListQuotes } from "@/lib/quotes.functions";
 
-const STATUSES = ["submitted", "sourcing", "quoted", "accepted", "rejected", "expired"] as const;
+const STATUSES = ["submitted", "sourcing", "quoted", "closed", "expired"] as const;
 
 const searchSchema = z.object({
   status: z.enum(STATUSES).optional(),
@@ -86,7 +87,7 @@ function AdminQuotesPage() {
                 <TableHead>Product</TableHead>
                 <TableHead className="text-right">Vol./mo</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="text-right">Quoted</TableHead>
+                <TableHead>Ref</TableHead>
                 <TableHead />
               </TableRow>
             </TableHeader>
@@ -104,7 +105,7 @@ function AdminQuotesPage() {
                     </TableCell>
                     <TableCell>
                       <div className="text-sm font-medium">{client?.company_name ?? "—"}</div>
-                      <TierBadge tier={client?.tier_override ?? client?.pricing_tier ?? null} />
+                      <TierBadge tier={effectiveTier(client?.pricing_tier, client?.tier_override)} />
                     </TableCell>
                     <TableCell className="max-w-56">
                       <div className="truncate text-sm">{q.product_name || q.product_url}</div>
@@ -115,8 +116,8 @@ function AdminQuotesPage() {
                     <TableCell>
                       <QuoteStatusBadge status={q.status} validUntil={q.quote_valid_until} />
                     </TableCell>
-                    <TableCell className="text-right font-mono text-sm">
-                      {q.quoted_price_total != null ? formatUSD(q.quoted_price_total) : "—"}
+                    <TableCell className="max-w-32 truncate font-mono text-xs text-muted-foreground">
+                      {q.internal_reference ?? "—"}
                     </TableCell>
                     <TableCell className="text-right">
                       <Button asChild size="sm" variant="outline">
