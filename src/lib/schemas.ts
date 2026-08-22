@@ -1,0 +1,89 @@
+import { z } from "zod";
+
+export const shopifyDomainSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .regex(/^[a-z0-9][a-z0-9-]*\.myshopify\.com$/, "Must be a valid *.myshopify.com domain (e.g. your-store.myshopify.com)");
+
+export const companyDetailsSchema = z.object({
+  company_name: z.string().trim().min(2, "Company name is required").max(120),
+  contact_name: z.string().trim().min(2, "Contact name is required").max(120),
+  phone: z.string().trim().min(5, "Phone is required").max(40),
+  country: z.string().trim().min(2, "Country is required").max(80),
+  vat_number: z.string().trim().min(4, "VAT number is required").max(40),
+  shopify_domain: shopifyDomainSchema,
+});
+
+export const signupSchema = companyDetailsSchema.extend({
+  email: z.string().trim().email("Invalid email address").max(255),
+  password: z.string().min(8, "Password must be at least 8 characters").max(128),
+});
+
+export const loginSchema = z.object({
+  email: z.string().trim().email("Invalid email address").max(255),
+  password: z.string().min(1, "Password is required").max(128),
+});
+
+export const profileUpdateSchema = companyDetailsSchema;
+
+export const quoteRequestSchema = z.object({
+  product_url: z.string().trim().url("Must be a valid URL").max(2000),
+  product_name: z.string().trim().max(200).optional().or(z.literal("")),
+  notes: z.string().trim().max(2000).optional().or(z.literal("")),
+  target_monthly_volume: z.number().int().min(1).max(1_000_000).nullable().optional(),
+  image_urls: z.array(z.string().max(500)).max(10).optional(),
+});
+
+export const quoteResponseSchema = z.object({
+  quote_id: z.string().uuid(),
+  accept: z.boolean(),
+});
+
+export const adminQuoteSchema = z.object({
+  quote_id: z.string().uuid(),
+  cost_price: z.number().min(0).max(1_000_000),
+  shipping_cost: z.number().min(0).max(1_000_000),
+  markup_percent: z.number().min(0).max(500),
+  quoted_price: z.number().min(0.01).max(10_000_000),
+  price_overridden: z.boolean(),
+  moq: z.number().int().min(1).max(1_000_000).nullable().optional(),
+  lead_time_days: z.number().int().min(0).max(365).nullable().optional(),
+  quote_valid_until: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD")
+    .nullable()
+    .optional(),
+  admin_notes: z.string().trim().max(2000).optional().or(z.literal("")),
+});
+
+export const adminQuoteStatusSchema = z.object({
+  quote_id: z.string().uuid(),
+  status: z.enum(["submitted", "sourcing", "expired"]),
+});
+
+export const walletAdjustmentSchema = z.object({
+  client_id: z.string().uuid(),
+  type: z.enum(["credit", "debit"]),
+  amount: z.number().positive("Amount must be greater than zero").max(1_000_000),
+  description: z.string().trim().min(2, "Description is required").max(500),
+  reference: z.string().trim().max(120).optional().or(z.literal("")),
+});
+
+export const clientIdSchema = z.object({
+  client_id: z.string().uuid(),
+});
+
+export const markupTierSchema = z.object({
+  client_id: z.string().uuid(),
+  markup_tier: z.enum(["standard", "volume", "partner"]),
+});
+
+export const clientStatusSchema = z.object({
+  client_id: z.string().uuid(),
+  status: z.enum(["active", "suspended"]),
+});
+
+export const signedUrlsSchema = z.object({
+  paths: z.array(z.string().min(1).max(500)).max(20),
+});

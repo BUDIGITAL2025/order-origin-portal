@@ -1,0 +1,240 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { toast } from "sonner";
+import { EmptyState, PageHeader } from "@/components/app-shell";
+import { TxnTypeBadge } from "@/components/status-badges";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { formatDateTime, formatEUR } from "@/lib/format";
+import { adminListClients } from "@/lib/profiles.functions";
+import { walletAdjustmentSchema } from "@/lib/schemas";
+import { adminAdjustWallet, adminGetWallet } from "@/lib/wallet.functions";
+
+export const Route = createFileRoute("/_authenticated/admin/wallet")({
+  head: () => ({
+    meta: [
+      { title: "Wallet adjustments — Relay Sourcing Admin" },
+      { name: "robots", content: "noindex" },
+    ],
+  }),
+  component: AdminWalletPage,
+});
+
+function AdminWalletPage() {
+  const queryClient = useQueryClient();
+  const fetchClients = useServerFn(adminListClients);
+  const fetchWallet = useServerFn(adminGetWallet);
+  const callAdjust = useServerFn(adminAdjustWallet);
+
+  const [clientId, setClientId] = useState<string>("");
+  const [type, setType] = useState<"credit" | "debit">("credit");
+  const [amount, setAmount] = useState("");
+  const [description, setDescription] = useState("");
+  const [reference, setReference] = useState("");
+
+  const { data: clientsData } = useQuery({ queryKey: ["admin-clients"], queryFn: fetchClients });
+  const { data: walletData } = useQuery({
+    queryKey: ["admin-wallet", clientId],
+    queryFn: () => fetchWallet({ data: { client_id: clientId } }),
+    enabled: Boolean(clientId),
+  });
+
+  const adjust = useMutation({
+    mutationFn: () => {
+      const parsed = walletAdjustmentSchema.safeParse({
+        client_id: clientId,
+        type,
+        amount: Number(amount),
+        description,
+        reference,
+      });
+      if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? "Check your input");
+      return callAdjust({ data: parsed.data });
+    },
+    onSuccess: (r) => {
+      toast.success(`Adjustment applied — new balance ${formatEUR(r.entry.balance_after)}`);
+      setAmount("");
+      setDescription("");
+      setReference("");
+      void queryClient.invalidateQueries({ queryKey: ["admin-wallet", clientId] });
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const clients = clientsData?.clients ?? [];
+  const transactions = walletData?.transactions ?? [];
+
+  return (
+    <div>
+      <PageHeader
+        title="Wallet adjustments"
+        description="Manual credits and debits. Every entry is written to the append-only ledger."
+      />
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">New adjustment</CardTitle>
+            <CardDescription>
+              Debits are rejected if they would take the balance below zero. A duplicate
+              reference is ignored (idempotent).
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                adjust.mutate();
+              }}
+              className="space-y-4"
+            >
+              <div className="space-y-1.5">
+                <Label>Client</Label>
+                <Select value={clientId} onValueChange={setClientId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a client" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {clients.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.company_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {clientId && walletData && (
+                <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm">
+                  Current balance:{" "}
+                  <span className="font-mono font-medium">{formatEUR(walletData.balance)}</span>
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Type</Label>
+                  <Select value={type} onValueChange={(v) => setType(v as "credit" | "debit")}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="credit">Credit (add)</SelectItem>
+                      <SelectItem value="debit">Debit (subtract)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="aw-amount">Amount (EUR)</Label>
+                  <Input
+                    id="aw-amount"
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    required
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="aw-desc">Description</Label>
+                <Input
+                  id="aw-desc"
+                  required
+                  placeholder="e.g. Bank transfer received"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="aw-ref">Reference (optional, unique)</Label>
+                <Input
+                  id="aw-ref"
+                  placeholder="e.g. INV-2026-0042"
+                  value={reference}
+                  onChange={(e) => setReference(e.target.value)}
+                />
+              </div>
+              <Button type="submit" disabled={adjust.isPending || !clientId}>
+                {adjust.isPending ? "Applying…" : "Apply adjustment"}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Ledger</CardTitle>
+            <CardDescription>
+              {clientId ? "Recent entries for the selected client." : "Select a client to view their ledger."}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-0">
+            {clientId && transactions.length === 0 ? (
+              <div className="p-6">
+                <EmptyState title="No entries yet" />
+              </div>
+            ) : (
+              clientId && (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead className="text-right">Amount</TableHead>
+                      <TableHead className="text-right">Balance</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {transactions.map((t) => (
+                      <TableRow key={t.id}>
+                        <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
+                          {formatDateTime(t.created_at)}
+                        </TableCell>
+                        <TableCell>
+                          <TxnTypeBadge type={t.type} />
+                        </TableCell>
+                        <TableCell className="max-w-40 truncate text-sm">{t.description}</TableCell>
+                        <TableCell
+                          className={
+                            "text-right font-mono text-sm " +
+                            (t.type === "debit" ? "text-destructive" : "text-success")
+                          }
+                        >
+                          {t.type === "debit" ? "−" : "+"}
+                          {formatEUR(t.amount)}
+                        </TableCell>
+                        <TableCell className="text-right font-mono text-sm">
+                          {formatEUR(t.balance_after)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
