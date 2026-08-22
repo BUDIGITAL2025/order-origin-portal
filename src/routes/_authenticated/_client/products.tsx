@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronDown, ChevronRight, Pencil, Plus, X } from "lucide-react";
+import { Check, ChevronDown, ChevronRight, Copy, Pencil, Plus, X } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { EmptyState, PageHeader } from "@/components/app-shell";
@@ -60,11 +60,16 @@ type Product = {
   product_name: string;
   variant_label: string | null;
   product_type: "simple" | "bundle";
-  unit_price: number | null;
   moq: number | null;
-  lead_time_days: number | null;
   status: "active" | "discontinued" | "needs_review";
   created_at: string;
+};
+
+type CountryPrice = {
+  product_id: string | null;
+  country_code: string | null;
+  unit_price: number | null;
+  lead_time_days: number | null;
 };
 
 type Component = {
@@ -72,27 +77,72 @@ type Component = {
   bundle_product_id: string | null;
   component_product_id: string | null;
   quantity: number;
-  component: { sku: string; product_name: string; variant_label: string | null; unit_price: number | null } | null;
+  component: { sku: string; product_name: string; variant_label: string | null } | null;
 };
 
 type BundlePrice = {
   bundle_product_id: string | null;
+  country_code: string | null;
   calculated_price: number | null;
   component_count: number | null;
   effective_price: number | null;
   max_lead_time_days: number | null;
 };
 
+function CopySku({ sku }: { sku: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <span className="font-mono text-xs text-muted-foreground">{sku}</span>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-6 w-6"
+        title="Copy SKU — your store must use this exact SKU for order matching"
+        onClick={async () => {
+          await navigator.clipboard.writeText(sku);
+          setCopied(true);
+          setTimeout(() => setCopied(false), 1500);
+        }}
+      >
+        {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+      </Button>
+    </span>
+  );
+}
+
+function PriceBadges({ entries }: { entries: { country: string; price: number; lead?: number | null }[] }) {
+  if (entries.length === 0) {
+    return <span className="text-sm text-muted-foreground">—</span>;
+  }
+  return (
+    <div className="flex flex-wrap justify-end gap-1">
+      {entries.map((e) => (
+        <span
+          key={e.country}
+          className="inline-flex items-center gap-1 rounded-md bg-muted/60 px-1.5 py-0.5 font-mono text-xs"
+        >
+          <span className="font-semibold">{e.country}</span>
+          {formatUSD(e.price)}
+          {e.lead != null && <span className="text-muted-foreground">· {e.lead}d</span>}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 function BundleDialog({
   mode,
   bundle,
   simpleProducts,
+  priceByProduct,
   existing,
   onClose,
 }: {
   mode: "create" | "edit";
   bundle?: Product | undefined;
   simpleProducts: Product[];
+  priceByProduct: Map<string, CountryPrice[]>;
   existing?: Component[] | undefined;
   onClose: () => void;
 }) {
@@ -110,10 +160,23 @@ function BundleDialog({
   });
 
   const selected = simpleProducts.filter((p) => (quantities[p.id] ?? 0) > 0);
-  const calculatedTotal = selected.reduce(
-    (acc, p) => acc + (p.unit_price ?? 0) * (quantities[p.id] ?? 0),
-    0,
-  );
+  // Calculated bundle price per country: only countries priced on EVERY selected component.
+  const totalsByCountry = new Map<string, number>();
+  for (const p of selected) {
+    for (const cp of priceByProduct.get(p.id) ?? []) {
+      if (!cp.country_code || cp.unit_price == null) continue;
+      totalsByCountry.set(
+        cp.country_code,
+        (totalsByCountry.get(cp.country_code) ?? 0) + cp.unit_price * (quantities[p.id] ?? 0),
+      );
+    }
+  }
+  for (const [country] of totalsByCountry) {
+    const covered = selected.every((p) =>
+      (priceByProduct.get(p.id) ?? []).some((cp) => cp.country_code === country),
+    );
+    if (!covered) totalsByCountry.delete(country);
+  }
 
   const save = useMutation({
     mutationFn: () => {
@@ -141,8 +204,8 @@ function BundleDialog({
       <DialogHeader>
         <DialogTitle>{mode === "create" ? "Create bundle" : `Edit ${bundle?.product_name}`}</DialogTitle>
         <DialogDescription>
-          A bundle is one sellable SKU that explodes into simple SKUs at fulfilment. Pick
-          components from your active simple products and set a quantity for each.
+          A bundle is one sellable SKU that explodes into simple SKUs at fulfilment. It is sellable
+          in a country only when every component has a price there.
         </DialogDescription>
       </DialogHeader>
       <div className="space-y-1.5">
@@ -170,9 +233,7 @@ function BundleDialog({
                     {p.product_name}
                     {p.variant_label ? ` — ${p.variant_label}` : ""}
                   </div>
-                  <div className="font-mono text-xs text-muted-foreground">
-                    {p.sku} · {p.unit_price != null ? formatUSD(p.unit_price) : "—"}
-                  </div>
+                  <div className="font-mono text-xs text-muted-foreground">{p.sku}</div>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <Label htmlFor={`qty-${p.id}`} className="text-xs text-muted-foreground">
@@ -199,9 +260,12 @@ function BundleDialog({
         <span className="text-muted-foreground">
           {selected.length} component{selected.length === 1 ? "" : "s"}
         </span>
-        <span className="font-mono font-semibold">
-          Calculated price: {formatUSD(Math.round(calculatedTotal * 100) / 100)}
-        </span>
+        <PriceBadges
+          entries={[...totalsByCountry.entries()].map(([country, price]) => ({
+            country,
+            price: Math.round(price * 100) / 100,
+          }))}
+        />
       </div>
       <DialogFooter>
         <Button variant="outline" onClick={onClose}>
@@ -229,9 +293,24 @@ function MyProductsPage() {
   });
 
   const products = (data?.products ?? []) as Product[];
+  const countryPrices = (data?.countryPrices ?? []) as CountryPrice[];
   const components = (data?.components ?? []) as Component[];
   const prices = (data?.prices ?? []) as BundlePrice[];
-  const priceByBundle = new Map(prices.map((p) => [p.bundle_product_id, p]));
+
+  const priceByProduct = new Map<string, CountryPrice[]>();
+  for (const cp of countryPrices) {
+    if (!cp.product_id) continue;
+    const list = priceByProduct.get(cp.product_id) ?? [];
+    list.push(cp);
+    priceByProduct.set(cp.product_id, list);
+  }
+  const bundlePriceRows = new Map<string, BundlePrice[]>();
+  for (const p of prices) {
+    if (!p.bundle_product_id) continue;
+    const list = bundlePriceRows.get(p.bundle_product_id) ?? [];
+    list.push(p);
+    bundlePriceRows.set(p.bundle_product_id, list);
+  }
   const componentsByBundle = new Map<string, Component[]>();
   for (const c of components) {
     if (!c.bundle_product_id) continue;
@@ -268,7 +347,7 @@ function MyProductsPage() {
     <div>
       <PageHeader
         title="My products"
-        description="Your sellable catalogue. Accepted quote variants and bundles live here."
+        description="Your sellable catalogue, priced per country. Orders match on the FlySales SKU — use these exact SKUs in your store."
         actions={
           <Dialog open={dialog != null} onOpenChange={(open) => !open && setDialog(null)}>
             <Button
@@ -284,6 +363,7 @@ function MyProductsPage() {
                 mode={dialog.mode}
                 bundle={dialog.mode === "edit" ? dialog.bundle : undefined}
                 simpleProducts={simpleActive}
+                priceByProduct={priceByProduct}
                 existing={
                   dialog.mode === "edit" ? componentsByBundle.get(dialog.bundle.id) : undefined
                 }
@@ -310,9 +390,8 @@ function MyProductsPage() {
                 <TableHead>Product</TableHead>
                 <TableHead>SKU</TableHead>
                 <TableHead>Type</TableHead>
-                <TableHead className="text-right">Unit price</TableHead>
+                <TableHead className="text-right">Pricing by country</TableHead>
                 <TableHead className="text-right">MOQ</TableHead>
-                <TableHead className="text-right">Lead time</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead />
               </TableRow>
@@ -320,12 +399,23 @@ function MyProductsPage() {
             <TableBody>
               {products.map((p) => {
                 const isBundle = p.product_type === "bundle";
-                const bundlePrice = isBundle ? priceByBundle.get(p.id) : undefined;
-                const effectivePrice = isBundle
-                  ? (bundlePrice?.effective_price ?? null)
-                  : p.unit_price;
                 const bundleComponents = componentsByBundle.get(p.id) ?? [];
                 const isExpanded = expanded.has(p.id);
+                const priceEntries = isBundle
+                  ? (bundlePriceRows.get(p.id) ?? [])
+                      .filter((r) => r.country_code && r.effective_price != null)
+                      .map((r) => ({
+                        country: r.country_code!,
+                        price: r.effective_price!,
+                        lead: r.max_lead_time_days,
+                      }))
+                  : (priceByProduct.get(p.id) ?? [])
+                      .filter((r) => r.country_code && r.unit_price != null)
+                      .map((r) => ({
+                        country: r.country_code!,
+                        price: r.unit_price!,
+                        lead: r.lead_time_days,
+                      }));
                 return (
                   <>
                     <TableRow key={p.id}>
@@ -352,24 +442,20 @@ function MyProductsPage() {
                         )}
                         {isBundle && (
                           <div className="text-xs text-muted-foreground">
-                            {bundlePrice?.component_count ?? bundleComponents.length} component
-                            {(bundlePrice?.component_count ?? bundleComponents.length) === 1 ? "" : "s"}
+                            {bundleComponents.length} component{bundleComponents.length === 1 ? "" : "s"}
                           </div>
                         )}
                       </TableCell>
-                      <TableCell className="font-mono text-xs text-muted-foreground">
-                        {p.sku}
+                      <TableCell>
+                        <CopySku sku={p.sku} />
                       </TableCell>
                       <TableCell>
                         <ProductTypeBadge type={p.product_type} />
                       </TableCell>
-                      <TableCell className="text-right font-mono text-sm">
-                        {effectivePrice != null ? formatUSD(effectivePrice) : "—"}
+                      <TableCell className="text-right">
+                        <PriceBadges entries={priceEntries} />
                       </TableCell>
                       <TableCell className="text-right font-mono text-sm">{p.moq ?? "—"}</TableCell>
-                      <TableCell className="text-right font-mono text-sm">
-                        {p.lead_time_days != null ? `${p.lead_time_days}d` : "—"}
-                      </TableCell>
                       <TableCell>
                         <ProductStatusBadge status={p.status} />
                       </TableCell>
@@ -417,7 +503,7 @@ function MyProductsPage() {
                     {isBundle && isExpanded && (
                       <TableRow key={`${p.id}-components`}>
                         <TableCell />
-                        <TableCell colSpan={8} className="bg-muted/20 p-0">
+                        <TableCell colSpan={7} className="bg-muted/20 p-0">
                           <div className="space-y-1 px-4 py-3">
                             {bundleComponents.map((c) => (
                               <div key={c.id} className="flex items-center justify-between text-sm">
@@ -429,10 +515,7 @@ function MyProductsPage() {
                                   {c.component?.variant_label ? ` — ${c.component.variant_label}` : ""}
                                 </span>
                                 <span className="font-mono text-xs text-muted-foreground">
-                                  ×{c.quantity} ·{" "}
-                                  {c.component?.unit_price != null
-                                    ? formatUSD(c.component.unit_price * c.quantity)
-                                    : "—"}
+                                  ×{c.quantity}
                                 </span>
                               </div>
                             ))}
