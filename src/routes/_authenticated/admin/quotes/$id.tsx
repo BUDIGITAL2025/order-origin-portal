@@ -20,7 +20,7 @@ import {
   adminSetQuoteStatus,
 } from "@/lib/quotes.functions";
 
-export const Route = createFileRoute("/_authenticated/admin-tmp-mid/quotes/$id")({
+export const Route = createFileRoute("/_authenticated/admin/quotes/$id")({
   head: () => ({
     meta: [
       { title: "Quote request — Relay Sourcing Admin" },

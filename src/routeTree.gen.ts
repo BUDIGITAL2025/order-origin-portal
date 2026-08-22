@@ -10,33 +10,193 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AuthenticatedClientRouteImport } from './routes/_authenticated/_client'
+import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
+import { Route as AuthenticatedPendingRouteImport } from './routes/_authenticated/pending'
+import { Route as AuthenticatedClientDashboardRouteImport } from './routes/_authenticated/_client/dashboard'
+import { Route as AuthenticatedClientWalletRouteImport } from './routes/_authenticated/_client/wallet'
+import { Route as AuthenticatedAdminClientsRouteImport } from './routes/_authenticated/admin/clients'
+import { Route as AuthenticatedAdminWalletRouteImport } from './routes/_authenticated/admin/wallet'
+import { Route as AuthenticatedClientQuotesIndexRouteImport } from './routes/_authenticated/_client/quotes/index'
+import { Route as AuthenticatedClientQuotesNewRouteImport } from './routes/_authenticated/_client/quotes/new'
+import { Route as AuthenticatedAdminQuotesIndexRouteImport } from './routes/_authenticated/admin/quotes/index'
+import { Route as AuthenticatedAdminQuotesIdRouteImport } from './routes/_authenticated/admin/quotes/$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedClientRoute = AuthenticatedClientRouteImport.update({
+  id: '/_client',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedPendingRoute = AuthenticatedPendingRouteImport.update({
+  id: '/pending',
+  path: '/pending',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedClientDashboardRoute =
+  AuthenticatedClientDashboardRouteImport.update({
+    id: '/dashboard',
+    path: '/dashboard',
+    getParentRoute: () => AuthenticatedClientRoute,
+  } as any)
+const AuthenticatedClientWalletRoute =
+  AuthenticatedClientWalletRouteImport.update({
+    id: '/wallet',
+    path: '/wallet',
+    getParentRoute: () => AuthenticatedClientRoute,
+  } as any)
+const AuthenticatedAdminClientsRoute =
+  AuthenticatedAdminClientsRouteImport.update({
+    id: '/clients',
+    path: '/clients',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminWalletRoute =
+  AuthenticatedAdminWalletRouteImport.update({
+    id: '/wallet',
+    path: '/wallet',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedClientQuotesIndexRoute =
+  AuthenticatedClientQuotesIndexRouteImport.update({
+    id: '/quotes/',
+    path: '/quotes/',
+    getParentRoute: () => AuthenticatedClientRoute,
+  } as any)
+const AuthenticatedClientQuotesNewRoute =
+  AuthenticatedClientQuotesNewRouteImport.update({
+    id: '/quotes/new',
+    path: '/quotes/new',
+    getParentRoute: () => AuthenticatedClientRoute,
+  } as any)
+const AuthenticatedAdminQuotesIndexRoute =
+  AuthenticatedAdminQuotesIndexRouteImport.update({
+    id: '/quotes/',
+    path: '/quotes/',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminQuotesIdRoute =
+  AuthenticatedAdminQuotesIdRouteImport.update({
+    id: '/quotes/$id',
+    path: '/quotes/$id',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/admin': typeof AuthenticatedAdminRouteWithChildren
+  '/pending': typeof AuthenticatedPendingRoute
+  '/dashboard': typeof AuthenticatedClientDashboardRoute
+  '/wallet': typeof AuthenticatedClientWalletRoute
+  '/admin/clients': typeof AuthenticatedAdminClientsRoute
+  '/admin/wallet': typeof AuthenticatedAdminWalletRoute
+  '/quotes/new': typeof AuthenticatedClientQuotesNewRoute
+  '/admin/quotes/$id': typeof AuthenticatedAdminQuotesIdRoute
+  '/quotes/': typeof AuthenticatedClientQuotesIndexRoute
+  '/admin/quotes/': typeof AuthenticatedAdminQuotesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/admin': typeof AuthenticatedAdminRouteWithChildren
+  '/pending': typeof AuthenticatedPendingRoute
+  '/dashboard': typeof AuthenticatedClientDashboardRoute
+  '/wallet': typeof AuthenticatedClientWalletRoute
+  '/admin/clients': typeof AuthenticatedAdminClientsRoute
+  '/admin/wallet': typeof AuthenticatedAdminWalletRoute
+  '/quotes/new': typeof AuthenticatedClientQuotesNewRoute
+  '/admin/quotes/$id': typeof AuthenticatedAdminQuotesIdRoute
+  '/quotes': typeof AuthenticatedClientQuotesIndexRoute
+  '/admin/quotes': typeof AuthenticatedAdminQuotesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/auth': typeof AuthRoute
+  '/_authenticated/_client': typeof AuthenticatedClientRouteWithChildren
+  '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
+  '/_authenticated/pending': typeof AuthenticatedPendingRoute
+  '/_authenticated/_client/dashboard': typeof AuthenticatedClientDashboardRoute
+  '/_authenticated/_client/wallet': typeof AuthenticatedClientWalletRoute
+  '/_authenticated/admin/clients': typeof AuthenticatedAdminClientsRoute
+  '/_authenticated/admin/wallet': typeof AuthenticatedAdminWalletRoute
+  '/_authenticated/_client/quotes/new': typeof AuthenticatedClientQuotesNewRoute
+  '/_authenticated/admin/quotes/$id': typeof AuthenticatedAdminQuotesIdRoute
+  '/_authenticated/_client/quotes/': typeof AuthenticatedClientQuotesIndexRoute
+  '/_authenticated/admin/quotes/': typeof AuthenticatedAdminQuotesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/admin'
+    | '/pending'
+    | '/dashboard'
+    | '/wallet'
+    | '/admin/clients'
+    | '/admin/wallet'
+    | '/quotes/new'
+    | '/admin/quotes/$id'
+    | '/quotes/'
+    | '/admin/quotes/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/auth'
+    | '/admin'
+    | '/pending'
+    | '/dashboard'
+    | '/wallet'
+    | '/admin/clients'
+    | '/admin/wallet'
+    | '/quotes/new'
+    | '/admin/quotes/$id'
+    | '/quotes'
+    | '/admin/quotes'
+  id:
+    | '__root__'
+    | '/'
+    | '/_authenticated'
+    | '/auth'
+    | '/_authenticated/_client'
+    | '/_authenticated/admin'
+    | '/_authenticated/pending'
+    | '/_authenticated/_client/dashboard'
+    | '/_authenticated/_client/wallet'
+    | '/_authenticated/admin/clients'
+    | '/_authenticated/admin/wallet'
+    | '/_authenticated/_client/quotes/new'
+    | '/_authenticated/admin/quotes/$id'
+    | '/_authenticated/_client/quotes/'
+    | '/_authenticated/admin/quotes/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  AuthRoute: typeof AuthRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +208,153 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/_client': {
+      id: '/_authenticated/_client'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedClientRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin': {
+      id: '/_authenticated/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AuthenticatedAdminRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/pending': {
+      id: '/_authenticated/pending'
+      path: '/pending'
+      fullPath: '/pending'
+      preLoaderRoute: typeof AuthenticatedPendingRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/_client/dashboard': {
+      id: '/_authenticated/_client/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof AuthenticatedClientDashboardRouteImport
+      parentRoute: typeof AuthenticatedClientRoute
+    }
+    '/_authenticated/_client/wallet': {
+      id: '/_authenticated/_client/wallet'
+      path: '/wallet'
+      fullPath: '/wallet'
+      preLoaderRoute: typeof AuthenticatedClientWalletRouteImport
+      parentRoute: typeof AuthenticatedClientRoute
+    }
+    '/_authenticated/admin/clients': {
+      id: '/_authenticated/admin/clients'
+      path: '/clients'
+      fullPath: '/admin/clients'
+      preLoaderRoute: typeof AuthenticatedAdminClientsRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/wallet': {
+      id: '/_authenticated/admin/wallet'
+      path: '/wallet'
+      fullPath: '/admin/wallet'
+      preLoaderRoute: typeof AuthenticatedAdminWalletRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/_client/quotes/': {
+      id: '/_authenticated/_client/quotes/'
+      path: '/quotes'
+      fullPath: '/quotes/'
+      preLoaderRoute: typeof AuthenticatedClientQuotesIndexRouteImport
+      parentRoute: typeof AuthenticatedClientRoute
+    }
+    '/_authenticated/_client/quotes/new': {
+      id: '/_authenticated/_client/quotes/new'
+      path: '/quotes/new'
+      fullPath: '/quotes/new'
+      preLoaderRoute: typeof AuthenticatedClientQuotesNewRouteImport
+      parentRoute: typeof AuthenticatedClientRoute
+    }
+    '/_authenticated/admin/quotes/': {
+      id: '/_authenticated/admin/quotes/'
+      path: '/quotes'
+      fullPath: '/admin/quotes/'
+      preLoaderRoute: typeof AuthenticatedAdminQuotesIndexRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/quotes/$id': {
+      id: '/_authenticated/admin/quotes/$id'
+      path: '/quotes/$id'
+      fullPath: '/admin/quotes/$id'
+      preLoaderRoute: typeof AuthenticatedAdminQuotesIdRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
   }
 }
 
+interface AuthenticatedClientRouteChildren {
+  AuthenticatedClientDashboardRoute: typeof AuthenticatedClientDashboardRoute
+  AuthenticatedClientWalletRoute: typeof AuthenticatedClientWalletRoute
+  AuthenticatedClientQuotesNewRoute: typeof AuthenticatedClientQuotesNewRoute
+  AuthenticatedClientQuotesIndexRoute: typeof AuthenticatedClientQuotesIndexRoute
+}
+
+const AuthenticatedClientRouteChildren: AuthenticatedClientRouteChildren = {
+  AuthenticatedClientDashboardRoute: AuthenticatedClientDashboardRoute,
+  AuthenticatedClientWalletRoute: AuthenticatedClientWalletRoute,
+  AuthenticatedClientQuotesNewRoute: AuthenticatedClientQuotesNewRoute,
+  AuthenticatedClientQuotesIndexRoute: AuthenticatedClientQuotesIndexRoute,
+}
+
+const AuthenticatedClientRouteWithChildren =
+  AuthenticatedClientRoute._addFileChildren(AuthenticatedClientRouteChildren)
+
+interface AuthenticatedAdminRouteChildren {
+  AuthenticatedAdminClientsRoute: typeof AuthenticatedAdminClientsRoute
+  AuthenticatedAdminWalletRoute: typeof AuthenticatedAdminWalletRoute
+  AuthenticatedAdminQuotesIdRoute: typeof AuthenticatedAdminQuotesIdRoute
+  AuthenticatedAdminQuotesIndexRoute: typeof AuthenticatedAdminQuotesIndexRoute
+}
+
+const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
+  AuthenticatedAdminClientsRoute: AuthenticatedAdminClientsRoute,
+  AuthenticatedAdminWalletRoute: AuthenticatedAdminWalletRoute,
+  AuthenticatedAdminQuotesIdRoute: AuthenticatedAdminQuotesIdRoute,
+  AuthenticatedAdminQuotesIndexRoute: AuthenticatedAdminQuotesIndexRoute,
+}
+
+const AuthenticatedAdminRouteWithChildren =
+  AuthenticatedAdminRoute._addFileChildren(AuthenticatedAdminRouteChildren)
+
+interface AuthenticatedRouteRouteChildren {
+  AuthenticatedClientRoute: typeof AuthenticatedClientRouteWithChildren
+  AuthenticatedAdminRoute: typeof AuthenticatedAdminRouteWithChildren
+  AuthenticatedPendingRoute: typeof AuthenticatedPendingRoute
+}
+
+const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedClientRoute: AuthenticatedClientRouteWithChildren,
+  AuthenticatedAdminRoute: AuthenticatedAdminRouteWithChildren,
+  AuthenticatedPendingRoute: AuthenticatedPendingRoute,
+}
+
+const AuthenticatedRouteRouteWithChildren =
+  AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  AuthRoute: AuthRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
