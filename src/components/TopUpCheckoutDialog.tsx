@@ -18,10 +18,13 @@ import { createWalletTopupCheckout } from "@/lib/billing.functions";
  */
 export function TopUpCheckoutDialog({
   amountUsd,
+  storeId,
   open,
   onOpenChange,
 }: {
   amountUsd: number;
+  /** Current store — the top-up credits the entity that owns it. */
+  storeId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
@@ -30,6 +33,7 @@ export function TopUpCheckoutDialog({
       const result = await createWalletTopupCheckout({
         data: {
           amountUsd,
+          storeId,
           returnUrl: `${window.location.origin}/billing?topup=done&session_id={CHECKOUT_SESSION_ID}`,
           environment: getStripeEnvironment(),
         },
