@@ -1,22 +1,28 @@
 import * as React from "react";
 import { Link, useNavigate, useRouter } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Boxes,
   ClipboardList,
   CreditCard,
+  Download,
+  ExternalLink,
   FilePlus2,
   FileText,
   LayoutDashboard,
   LogOut,
   Package,
   ShoppingCart,
+  Store,
   Users,
   Wallet,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { MARKETING_URL } from "@/lib/config";
+import { getOnboardingLinks } from "@/lib/onboarding.functions";
 import { PaymentTestModeBanner } from "@/components/PaymentTestModeBanner";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 

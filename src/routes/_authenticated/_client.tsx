@@ -58,6 +58,7 @@ function ClientLayout() {
       role="client"
       email={ctx?.email ?? null}
       companyName={ctx?.profile?.company_name ?? null}
+      onboardingProfile={ctx?.profile ?? null}
     >
       <Outlet />
     </AppShell>
