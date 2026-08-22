@@ -14,6 +14,8 @@ import {
 } from "@/components/ui/table";
 import { formatDateTime, formatUSD } from "@/lib/format";
 import { getMyWallet } from "@/lib/wallet.functions";
+import { listMyDocuments } from "@/lib/documents.functions";
+import { DocumentDownloadButton } from "@/components/documents-ui";
 
 export const Route = createFileRoute("/_authenticated/_client/wallet")({
   head: () => ({
@@ -28,9 +30,17 @@ export const Route = createFileRoute("/_authenticated/_client/wallet")({
 
 function WalletPage() {
   const fetchWallet = useServerFn(getMyWallet);
+  const fetchDocuments = useServerFn(listMyDocuments);
   const { data, isPending } = useQuery({ queryKey: ["my-wallet"], queryFn: fetchWallet });
+  const { data: documents } = useQuery({ queryKey: ["my-documents"], queryFn: fetchDocuments });
 
   const transactions = data?.transactions ?? [];
+  // wallet_transaction_id → receipt document, for the per-row download link.
+  const receiptByTxn = new Map(
+    (documents ?? [])
+      .filter((d) => d.wallet_transaction_id)
+      .map((d) => [d.wallet_transaction_id as string, d.id] as const),
+  );
 
   return (
     <div>
@@ -67,6 +77,7 @@ function WalletPage() {
                 <TableHead>Reference</TableHead>
                 <TableHead className="text-right">Amount</TableHead>
                 <TableHead className="text-right">Balance after</TableHead>
+                <TableHead className="text-right">Receipt</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -93,6 +104,13 @@ function WalletPage() {
                   </TableCell>
                   <TableCell className="text-right font-mono text-sm">
                     {formatUSD(t.balance_after)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {receiptByTxn.get(t.id) ? (
+                      <DocumentDownloadButton id={receiptByTxn.get(t.id)!} />
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
