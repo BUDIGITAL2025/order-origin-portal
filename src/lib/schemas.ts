@@ -41,7 +41,12 @@ export const loginSchema = z.object({
   password: z.string().min(1, "Password is required").max(128),
 });
 
-export const profileUpdateSchema = companyDetailsSchema;
+// Account-level profile edits only — company/store details live on
+// entities/stores and are managed by the admin team.
+export const profileUpdateSchema = z.object({
+  contact_name: z.string().trim().min(2, "Contact name is required").max(120),
+  phone: z.string().trim().min(5, "Phone is required").max(40),
+});
 
 const countryCodeSchema = z
   .string()
@@ -149,23 +154,27 @@ export const clientIdSchema = z.object({
   client_id: z.string().uuid(),
 });
 
+export const storeIdSchema = z.object({
+  store_id: z.string().uuid(),
+});
+
 export const subscriptionPlanSchema = z.object({
-  client_id: z.string().uuid(),
+  store_id: z.string().uuid(),
   subscription_plan: z.enum(["basic", "unlimited"]),
 });
 
 export const feeWaivedSchema = z.object({
-  client_id: z.string().uuid(),
+  store_id: z.string().uuid(),
   fee_waived: z.boolean(),
 });
 
 export const integrationModeSchema = z.object({
-  client_id: z.string().uuid(),
+  store_id: z.string().uuid(),
   integration_mode: z.enum(["automatic", "manual"]),
 });
 
 export const tierOverrideSchema = z.object({
-  client_id: z.string().uuid(),
+  store_id: z.string().uuid(),
   tier_override: z.enum(["starter", "growth", "scale"]).nullable(),
 });
 
