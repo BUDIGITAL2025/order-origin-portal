@@ -85,15 +85,100 @@ const ADMIN_NAV: NavItem[] = [
   { to: "/admin/documents", label: "Receipts", icon: FileText },
 ];
 
+interface OnboardingProfile {
+  platform: string;
+  store_url: string;
+  integration_mode: string;
+}
+
+/**
+ * Sidebar onboarding nudges — deliberately styled apart from the main nav.
+ * Shown only while the client still has a setup step left:
+ *  - "Create a Shopify store" while they have no Shopify store URL on file.
+ *  - "Install our Shopify app" to Shopify clients not yet on automatic mode.
+ * Hidden entirely once platform is Shopify with a store and automatic sync.
+ */
+function GetStartedSection({ profile }: { profile: OnboardingProfile }) {
+  const fetchLinks = useServerFn(getOnboardingLinks);
+  const { data: links } = useQuery({
+    queryKey: ["onboarding-links"],
+    staleTime: 300_000,
+    queryFn: fetchLinks,
+  });
+
+  const isShopify = profile.platform === "shopify";
+  const hasStore = profile.store_url.trim().length > 0;
+  const isAutomatic = profile.integration_mode === "automatic";
+
+  const showCreateStore = !isShopify || !hasStore;
+  const showInstallApp = isShopify && !isAutomatic;
+
+  // Fully set up — no onboarding left to nudge.
+  if (!showCreateStore && !showInstallApp) return null;
+
+  const appUrl = links?.shopifyAppUrl ?? null;
+  const affiliateUrl = links?.shopifyAffiliateUrl ?? null;
+
+  return (
+    <div className="mx-3 mb-2 rounded-lg border border-dashed border-primary/40 bg-primary/5 p-3">
+      <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-primary">
+        Get started
+      </p>
+      <div className="space-y-1">
+        {showInstallApp &&
+          (appUrl ? (
+            <a
+              href={appUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 rounded-md px-2 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            >
+              <Download className="h-3.5 w-3.5 shrink-0" />
+              <span className="flex-1">Install our Shopify app</span>
+              <ExternalLink className="h-3 w-3 shrink-0 opacity-60" />
+            </a>
+          ) : (
+            <div className="flex cursor-not-allowed items-center gap-2 rounded-md px-2 py-1.5 text-xs text-muted-foreground/60">
+              <Download className="h-3.5 w-3.5 shrink-0" />
+              <span className="flex-1">Install our Shopify app</span>
+              <Badge variant="outline" className="px-1.5 py-0 text-[9px] font-normal">
+                Coming soon
+              </Badge>
+            </div>
+          ))}
+        {showCreateStore && affiliateUrl && (
+          <div>
+            <a
+              href={affiliateUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 rounded-md px-2 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            >
+              <Store className="h-3.5 w-3.5 shrink-0" />
+              <span className="flex-1">Create a Shopify store</span>
+              <ExternalLink className="h-3 w-3 shrink-0 opacity-60" />
+            </a>
+            <p className="px-2 pb-1 text-[10px] leading-snug text-muted-foreground/70">
+              FlySales may earn a commission from this link.
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function AppShell({
   role,
   email,
   companyName,
+  onboardingProfile,
   children,
 }: {
   role: "client" | "admin";
   email: string | null;
   companyName: string | null;
+  onboardingProfile?: OnboardingProfile | null;
   children: React.ReactNode;
 }) {
   const navigate = useNavigate();
