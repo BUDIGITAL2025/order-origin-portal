@@ -67,7 +67,7 @@ function PendingPage() {
           {ctx?.profile && (
             <div className="rounded-md border border-border bg-muted/40 px-4 py-3 text-left text-sm">
               <div className="font-medium">{ctx.profile.company_name}</div>
-              <div className="text-muted-foreground">{ctx.profile.shopify_domain}</div>
+              <div className="text-muted-foreground">{ctx.profile.store_url}</div>
             </div>
           )}
           <Button variant="outline" className="w-full" onClick={() => void handleSignOut()}>
