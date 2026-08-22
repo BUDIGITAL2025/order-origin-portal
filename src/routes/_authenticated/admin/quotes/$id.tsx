@@ -35,7 +35,7 @@ import {
 export const Route = createFileRoute("/_authenticated/admin/quotes/$id")({
   head: () => ({
     meta: [
-      { title: "Quote request — Relay Sourcing Admin" },
+      { title: "Quote request — FlySales Admin" },
       { name: "robots", content: "noindex" },
     ],
   }),

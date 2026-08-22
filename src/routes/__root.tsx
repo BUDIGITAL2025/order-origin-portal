@@ -79,13 +79,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Relay Sourcing — B2B Dropshipping Supplier Portal" },
+      { title: "FlySales — B2B Dropshipping Supplier Portal" },
       {
         name: "description",
         content:
-          "Relay Sourcing is the supplier portal for dropshippers: request product quotes, track pricing and lead times, and manage your wallet — all in one place.",
+          "FlySales is the supplier portal for dropshippers: request product quotes, track pricing and lead times, and manage your wallet — all in one place.",
       },
-      { property: "og:title", content: "Relay Sourcing — B2B Dropshipping Supplier Portal" },
+      { property: "og:title", content: "FlySales — B2B Dropshipping Supplier Portal" },
       {
         property: "og:description",
         content:

@@ -24,8 +24,8 @@ import { getMyWallet } from "@/lib/wallet.functions";
 export const Route = createFileRoute("/_authenticated/_client/dashboard")({
   head: () => ({
     meta: [
-      { title: "Dashboard — Relay Sourcing" },
-      { name: "description", content: "Your Relay Sourcing client dashboard." },
+      { title: "Dashboard — FlySales" },
+      { name: "description", content: "Your FlySales client dashboard." },
       { name: "robots", content: "noindex" },
     ],
   }),

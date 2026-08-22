@@ -18,7 +18,7 @@ import { getMyWallet } from "@/lib/wallet.functions";
 export const Route = createFileRoute("/_authenticated/_client/wallet")({
   head: () => ({
     meta: [
-      { title: "Wallet — Relay Sourcing" },
+      { title: "Wallet — FlySales" },
       { name: "description", content: "Your prepaid balance and transaction history." },
       { name: "robots", content: "noindex" },
     ],

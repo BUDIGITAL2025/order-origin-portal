@@ -4,13 +4,14 @@ import { Boxes, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
+import { MARKETING_URL } from "@/lib/config";
 import { useMyContext } from "./_client";
 
 export const Route = createFileRoute("/_authenticated/pending")({
   head: () => ({
     meta: [
-      { title: "Account pending — Relay Sourcing" },
-      { name: "description", content: "Your Relay Sourcing account is awaiting approval." },
+      { title: "Account pending — FlySales" },
+      { name: "description", content: "Your FlySales account is awaiting approval." },
       { name: "robots", content: "noindex" },
     ],
   }),
@@ -44,10 +45,10 @@ function PendingPage() {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4">
-      <div className="mb-6 flex items-center gap-2">
+      <a href={MARKETING_URL} className="mb-6 flex items-center gap-2">
         <Boxes className="h-5 w-5 text-primary" />
-        <span className="text-sm font-semibold tracking-tight">Relay Sourcing</span>
-      </div>
+        <span className="text-sm font-semibold tracking-tight">FlySales</span>
+      </a>
       <Card className="w-full max-w-md text-center">
         <CardHeader>
           <div className="mx-auto mb-2 flex h-11 w-11 items-center justify-center rounded-full bg-warning/10">
