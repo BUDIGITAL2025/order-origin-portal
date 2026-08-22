@@ -150,7 +150,7 @@ export const createSubscriptionCheckout = createServerFn({ method: "POST" })
 
       const email = (context.claims?.email as string | undefined) ?? undefined;
       const customerId = await billing.resolveOrCreateCustomer(stripe, {
-        email,
+        ...(email ? { email } : {}),
         userId: context.userId,
         existingCustomerId: profile.stripe_customer_id,
       });
@@ -223,7 +223,7 @@ export const createWalletTopupCheckout = createServerFn({ method: "POST" })
 
       const email = (context.claims?.email as string | undefined) ?? undefined;
       const customerId = await billing.resolveOrCreateCustomer(stripe, {
-        email,
+        ...(email ? { email } : {}),
         userId: context.userId,
         existingCustomerId: profile.stripe_customer_id,
       });

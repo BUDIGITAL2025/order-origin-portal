@@ -1,7 +1,8 @@
 import type Stripe from "stripe";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
-import { round2 } from "./admin.server";
+import { getAdminClient, round2 } from "./admin.server";
+import { createStripeClient, type StripeEnv } from "./stripe.server";
 
 type Admin = SupabaseClient<Database>;
 
@@ -205,4 +206,197 @@ export async function syncSubscriptionFromStripe(
 
   const { error } = await admin.from("profiles").update(patch).eq("id", profile.id);
   if (error) throw new Error(error.message);
+}
+
+// ============= Webhook event processing =============
+
+type StripeEvent = {
+  id: string;
+  type: string;
+  data: { object: Record<string, unknown> };
+};
+
+function meta(obj: Record<string, unknown>): Record<string, string> {
+  const m = obj["metadata"];
+  return (m ?? {}) as Record<string, string>;
+}
+
+function idOf(ref: unknown): string | null {
+  if (typeof ref === "string") return ref;
+  if (ref && typeof ref === "object" && "id" in ref) {
+    return String((ref as { id: unknown }).id);
+  }
+  return null;
+}
+
+/**
+ * Credit a wallet top-up exactly once per PaymentIntent. Called from BOTH
+ * checkout.session.completed (payment mode) and payment_intent.succeeded —
+ * the reference uniqueness rule makes the second call a no-op. Also stores
+ * the saved card (setup_future_usage) for auto top-up.
+ */
+export async function handleWalletTopup(
+  stripe: Stripe,
+  admin: Admin,
+  paymentIntentId: string,
+): Promise<void> {
+  const pi = await stripe.paymentIntents.retrieve(paymentIntentId);
+  if (pi.status !== "succeeded") return;
+  const clientId = pi.metadata?.["flysales_user_id"];
+  if (!clientId) {
+    throw new Error(`payment intent ${paymentIntentId} missing flysales_user_id`);
+  }
+  const kind = pi.metadata?.["kind"];
+  await creditWalletOnce(admin, {
+    clientId,
+    amountUsd: pi.amount_received / 100,
+    reference: pi.id,
+    description:
+      kind === "wallet_auto_topup"
+        ? "Wallet auto top-up (saved card)"
+        : "Wallet top-up via card",
+  });
+  const pm = idOf(pi.payment_method);
+  if (pm) {
+    await admin
+      .from("profiles")
+      .update({ default_payment_method_id: pm })
+      .eq("id", clientId);
+  }
+}
+
+/** The single entry point called by the webhook route after idempotency. */
+export async function processStripeEvent(
+  event: StripeEvent,
+  env: StripeEnv,
+): Promise<void> {
+  const stripe = createStripeClient(env);
+  const admin = await getAdminClient();
+
+  switch (event.type) {
+    case "checkout.session.completed": {
+      const session = event.data.object;
+      // Delayed-notification payment methods (SEPA, Bacs, …) fire this when the
+      // payment is submitted, not settled — the async events handle those.
+      if (session["payment_status"] === "unpaid") return;
+
+      const kind = meta(session)["kind"];
+      if (kind === "flysales_subscription") {
+        const clientId = meta(session)["flysales_user_id"];
+        if (!clientId) throw new Error("subscription session missing flysales_user_id");
+        const plan = meta(session)["plan"] === "unlimited" ? "unlimited" : "basic";
+        const customerId = idOf(session["customer"]);
+        const subscriptionId = idOf(session["subscription"]);
+        const patch: Database["public"]["Tables"]["profiles"]["Update"] = {
+          subscription_status: "active",
+          subscription_plan: plan,
+        };
+        if (customerId) patch.stripe_customer_id = customerId;
+        if (subscriptionId) patch.stripe_subscription_id = subscriptionId;
+        const { error } = await admin.from("profiles").update(patch).eq("id", clientId);
+        if (error) throw new Error(error.message);
+        // Backfill userId on the Customer so search-based reads resolve.
+        if (customerId) {
+          try {
+            await stripe.customers.update(customerId, {
+              metadata: { userId: clientId, flysales_user_id: clientId },
+            });
+          } catch (e) {
+            console.error("customer metadata backfill failed", e);
+          }
+        }
+      } else if (kind === "wallet_topup") {
+        const piId = idOf(session["payment_intent"]);
+        if (piId) await handleWalletTopup(stripe, admin, piId);
+      }
+      return;
+    }
+
+    case "customer.subscription.created":
+    case "customer.subscription.updated": {
+      await syncSubscriptionFromStripe(admin, event.data.object);
+      return;
+    }
+
+    case "customer.subscription.deleted": {
+      const sub = event.data.object;
+      const customerId = idOf(sub["customer"]);
+      const profile = customerId
+        ? await findProfileByStripeCustomer(admin, customerId)
+        : null;
+      if (!profile) {
+        console.error("subscription.deleted for unknown customer", customerId);
+        return;
+      }
+      // Access ends with the subscription — fall back to the Basic tier.
+      const { error } = await admin
+        .from("profiles")
+        .update({ subscription_status: "canceled", subscription_plan: "basic" })
+        .eq("id", profile.id);
+      if (error) throw new Error(error.message);
+      return;
+    }
+
+    case "invoice.payment_failed": {
+      const invoice = event.data.object;
+      const customerId = idOf(invoice["customer"]);
+      const profile = customerId
+        ? await findProfileByStripeCustomer(admin, customerId)
+        : null;
+      if (!profile) {
+        console.error("invoice.payment_failed for unknown customer", customerId);
+        return;
+      }
+      const { error } = await admin
+        .from("profiles")
+        .update({ subscription_status: "past_due" })
+        .eq("id", profile.id);
+      if (error) throw new Error(error.message);
+      await notifyClient(admin, {
+        clientId: profile.id,
+        kind: "subscription_payment_failed",
+        title: "Subscription payment failed",
+        body: "We could not charge your card for your FlySales subscription. Stripe will retry automatically — update your payment method from the Billing page to keep your plan.",
+      });
+      return;
+    }
+
+    case "payment_intent.succeeded": {
+      const kind = meta(event.data.object)["kind"];
+      if (kind === "wallet_topup" || kind === "wallet_auto_topup") {
+        const piId = String(event.data.object["id"] ?? "");
+        if (piId) await handleWalletTopup(stripe, admin, piId);
+      }
+      return;
+    }
+
+    case "charge.refunded": {
+      const charge = event.data.object;
+      const piId = idOf(charge["payment_intent"]);
+      const refundedUsd = (Number(charge["amount_refunded"]) || 0) / 100;
+      if (!piId || refundedUsd <= 0) return;
+      // The original credit's reference is the payment intent id — it tells
+      // us which client this refund debits.
+      const { data: original } = await admin
+        .from("wallet_transactions")
+        .select("client_id, amount")
+        .eq("reference", piId)
+        .maybeSingle();
+      if (!original) {
+        console.error("refund for unknown payment intent", piId);
+        return;
+      }
+      await debitWalletOnce(admin, {
+        clientId: original.client_id,
+        amountUsd: Math.min(refundedUsd, Number(original.amount)),
+        reference: `refund:${String(charge["id"])}`,
+        description: "Card payment refunded",
+      });
+      return;
+    }
+
+    default:
+      // Unhandled types: acknowledged (200) so Stripe stops retrying.
+      console.log("Unhandled Stripe event:", event.type);
+  }
 }

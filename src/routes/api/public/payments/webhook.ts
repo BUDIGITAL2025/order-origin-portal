@@ -46,7 +46,10 @@ export const Route = createFileRoute("/api/public/payments/webhook")({
               stripe_event_id: event.id,
               event_type: event.type,
               environment: env,
-              payload: event.data.object as unknown as Database["public"]["Tables"]["stripe_events"]["Insert"]["payload"],
+              payload: (event.data.object ?? null) as unknown as Exclude<
+                Database["public"]["Tables"]["stripe_events"]["Insert"]["payload"],
+                undefined
+              >,
             });
           if (insertError) {
             if (insertError.code === "23505") {
