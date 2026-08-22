@@ -4,7 +4,7 @@ import {
   clientIdSchema,
   clientStatusSchema,
   companyDetailsSchema,
-  planSchema,
+  subscriptionPlanSchema,
   profileUpdateSchema,
   tierOverrideSchema,
 } from "./schemas";
@@ -147,7 +147,7 @@ export const adminSetClientStatus = createServerFn({ method: "POST" })
 /** Admin: change a client's subscription plan. */
 export const adminSetPlan = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => planSchema.parse(input))
+  .inputValidator((input) => subscriptionPlanSchema.parse(input))
   .handler(async ({ data, context }) => {
     const { requireAdmin } = await import("./admin.server");
     await requireAdmin(context.supabase, context.userId);
