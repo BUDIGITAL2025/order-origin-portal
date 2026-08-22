@@ -9,23 +9,29 @@ Step 1 is enabling Lovable Cloud (auth, database, storage). One migration create
 ### Schema
 
 - **user_roles** — `user_id` + `role` enum (`admin`, `client`). Roles live here, not on `profiles` (storing a role on the profile row enables privilege-escalation attacks). A `has_role(user_id, role)` security-definer function backs all admin policies.
-- **profiles** — `id` (FK auth.users), `company_name`, `contact_name`, `phone`, `country`, `vat_number`, `shopify_domain`, `markup_tier` enum (`standard`|`volume`|`partner`, default `standard`), `status` enum (`pending`|`active`|`suspended`, default `pending`), `created_at`. A signup trigger auto-creates the profile + `client` role row.
+- **profiles** — `id` (FK auth.users), `company_name`, `contact_name`, `phone`, `country`, `vat_number`, `shopify_domain`, `markup_tier` enum (`standard`|`volume`|`partner`, default `standard`), `status` enum (`pending`|`active`|`suspended`, default `pending`), plus approval/provisioning columns: `middleware_tenant_id` (text, unique, nullable — set only on approval, never at signup), `provisioning_status` enum (`not_started`|`in_progress`|`complete`|`failed`, default `not_started`), `provisioning_error` (text, nullable), `approved_at` (timestamp, nullable), `created_at`. A signup trigger auto-creates the profile + `client` role row. (The spec's `role` column on profiles is deliberately replaced by `user_roles` above — same behavior, no privilege-escalation vector.)
 - **quote_requests** — client-visible columns only: `id`, `client_id`, `product_url`, `product_name`, `notes`, `target_monthly_volume`, `image_urls` (text[]), `status` enum (`submitted`|`sourcing`|`quoted`|`accepted`|`rejected`|`expired`), `quoted_price`, `moq`, `lead_time_days`, `quote_valid_until`, `quoted_at`, `responded_at`, `created_at`.
 - **quote_admin_details** — 1:1 with quote_requests holding `cost_price`, `shipping_cost`, `markup_percent`, `admin_notes`.
-- **wallet_transactions** — `id`, `client_id`, `type` enum (`credit`|`debit`|`adjustment`), `amount`, `balance_after`, `description`, `reference`, `created_by`, `created_at`.
+- **wallet_transactions** — append-only ledger: `id`, `client_id`, `type` enum (`credit`|`debit`|`adjustment`), `amount` (always positive; type sets direction), `balance_after`, `description`, `reference`, `created_by`, `created_at`. Balance is always derived from the latest row's `balance_after` — never stored on profiles.
 
 ### Why a separate table for cost/markup (important)
 
-Postgres RLS is **row-level only** — it cannot hide individual columns, and both roles connect as the same `authenticated` role, so column grants can't split them either. The only way to guarantee `cost_price`, `shipping_cost`, `markup_percent`, and `admin_notes` can never reach a client (even via a hand-crafted API call) is to keep them in `quote_admin_details` with an **admin-only RLS policy**. `quote_requests` simply never contains those columns, so any client-side leak is impossible by construction. This is stricter than the literal schema and fulfills the "NEVER visible to clients" requirement at the database level.
+The spec asks for a security-definer view or column-level policy so cost data can't reach clients. Postgres RLS is **row-level only** — it cannot hide columns — and because clients and admins both connect as the same `authenticated` role, a security-definer view would also force every admin read through the service-role key. The stronger, simpler form of the same guarantee: keep `cost_price`, `shipping_cost`, `markup_percent`, and `admin_notes` in `quote_admin_details` with an **admin-only RLS policy**, so `quote_requests` never contains those columns at all. A client cannot read them even with a hand-crafted API call — DB-level enforcement, not UI hiding.
 
 ### RLS + enforcement triggers (all tables RLS-enabled, with GRANTs)
 
-- profiles: client selects/updates **own** row; a trigger blocks non-admins from changing `status` or `markup_tier`. Admin: full access via `has_role`.
-- quote_requests: client inserts/selects own rows; a trigger restricts client updates to **only** `quoted → accepted|rejected` (sets `responded_at`) — every other field is frozen for clients. Admin: full access.
+- profiles: client selects/updates **own** row; a BEFORE UPDATE trigger blocks non-admins from writing `status`, `markup_tier`, `middleware_tenant_id`, `provisioning_status`, `provisioning_error`, or `approved_at`. Admin: full access via `has_role`.
+- **middleware_tenant_id immutability trigger** (exactly per spec): BEFORE UPDATE raises an exception when `OLD.middleware_tenant_id IS NOT NULL AND NEW.middleware_tenant_id IS DISTINCT FROM OLD.middleware_tenant_id` — applies to everyone, including admins.
+- quote_requests: client inserts/selects own rows; a trigger restricts client updates to **only** `quoted → accepted|rejected`, and only while `quote_valid_until` has not passed (sets `responded_at`) — every other field is frozen for clients. Admin: full access.
 - quote_admin_details: admin-only select/insert/update. No client policy at all.
-- wallet_transactions: client selects own rows only (no insert/update/delete). Admin: full access.
-- **adjust_wallet** security-definer SQL function: verifies caller is admin, computes `balance_after` from the latest balance inside one transaction (atomic, no race), inserts the row.
-- **handle_new_user** trigger on signup: creates profile + client role, status `pending`.
+- wallet_transactions: client selects own rows only. A trigger blocks UPDATE and DELETE for **all** roles (append-only). `authenticated` gets **no INSERT grant** — every write goes through the function below.
+- **apply_wallet_transaction(client_id, type, amount, description, reference)** — security-definer Postgres function, the single write path for the ledger: verifies the caller is an admin, locks the client's latest ledger row with `SELECT ... FOR UPDATE`, computes the new balance, rejects any debit that would go below zero, inserts the row. The app never computes balances or inserts directly, so concurrent writes can't corrupt the ledger.
+- **handle_new_user** trigger on signup: creates profile + client role, status `pending`, provisioning `not_started`.
+
+### Approval & provisioning flow
+
+- **provisionClient** — implemented as a TanStack server function (this stack runs server logic on its own runtime, so no Supabase edge function is created; the behavior is identical). Invoked when an admin approves a pending client, and by the retry button.
+- Flow: verify caller is admin → if `middleware_tenant_id` is already set, keep it (idempotent — never regenerate); otherwise generate `'rs_' + uuid` → write tenant id, `status='active'`, `approved_at=now()`, `provisioning_status='in_progress'` → TODO stubs for the three external-middleware steps (create tenant, grant service-account membership, impersonation health check) as clearly marked comments wrapped in working error handling → on success `provisioning_status='complete'`, on any failure `'failed'` with `provisioning_error`.
 
 ### Storage
 
@@ -65,8 +71,8 @@ _authenticated/        Integration-managed gate (redirects to /auth)
 - **Quote queue**: all requests, oldest first, status filter tabs + counts, client company column.
 - **Quote detail**: full request info, image previews (signed URLs), and **Copy sourcing brief** — copies product URL, client name, and notes as plain text.
 - **Quote form**: cost price + shipping cost inputs; markup % select pre-filled from the client's tier (standard 35 / volume 25 / partner 18, editable); live auto-calc `quoted_price = (cost + shipping) × (1 + markup/100)` with a manual-override toggle; MOQ, lead time, validity date, admin notes. Save writes both tables and moves status to `quoted`.
-- **Clients**: table with company, contact, country, VAT, tier editor, and approve / suspend / reactivate actions.
-- **Wallet adjustment**: pick client, credit/debit, amount, description, optional reference → calls `adjust_wallet`, shows resulting balance.
+- **Clients**: table with company, contact, country, VAT, tier editor, approve / suspend / reactivate actions, plus read-only `provisioning_status` and `middleware_tenant_id` columns and a **Retry** button when provisioning is `failed`. Approve and retry both call provisionClient.
+- **Wallet adjustment**: pick client, credit/debit, amount, description, optional reference → calls `apply_wallet_transaction` (never a direct insert), shows the resulting balance or the insufficient-funds error.
 
 ## Design
 
@@ -78,6 +84,6 @@ Neutral B2B: warm-gray surfaces, dark slate primary, restrained status colors (a
 2. Design tokens, fonts, app shell, auth pages, role routing, pending gate.
 3. Client features (dashboard, quote form, quotes list, wallet).
 4. Admin features (queue, detail + quoting, clients, wallet adjustment).
-5. Verify end-to-end in the preview (signup → approve → quote → accept → wallet), plus per-route head metadata.
+5. Verify end-to-end in the preview (signup → approve + provisioning → quote → accept → wallet adjustment), plus per-route head metadata.
 
 Note: the admin account itself is bootstrapped by inserting an `admin` row into `user_roles` for your user after you sign up — I'll do that once, after the first account exists.
