@@ -105,12 +105,214 @@ export type Database = {
           },
         ]
       }
+      order_fulfillment_items: {
+        Row: {
+          created_at: string
+          id: string
+          order_id: string
+          quantity: number
+          sku: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          order_id: string
+          quantity: number
+          sku: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          order_id?: string
+          quantity?: number
+          sku?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_fulfillment_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      order_items: {
+        Row: {
+          created_at: string
+          id: string
+          line_total: number | null
+          order_id: string
+          product_id: string | null
+          quantity: number | null
+          sku: string | null
+          unit_price: number | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          line_total?: number | null
+          order_id: string
+          product_id?: string | null
+          quantity?: number | null
+          sku?: string | null
+          unit_price?: number | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          line_total?: number | null
+          order_id?: string
+          product_id?: string | null
+          quantity?: number | null
+          sku?: string | null
+          unit_price?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "bundle_prices"
+            referencedColumns: ["bundle_product_id"]
+          },
+          {
+            foreignKeyName: "order_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orders: {
+        Row: {
+          cancelled_at: string | null
+          client_id: string
+          created_at: string
+          destination_country: string | null
+          external_order_id: string | null
+          external_order_number: string | null
+          id: string
+          middleware_order_id: string | null
+          needs_review_reason: string | null
+          paid_at: string | null
+          payment_method:
+            | Database["public"]["Enums"]["order_payment_method"]
+            | null
+          reminder_24_sent_at: string | null
+          reminder_48_sent_at: string | null
+          reminder_72_sent_at: string | null
+          shipping_address: Json | null
+          status: Database["public"]["Enums"]["order_status"]
+          total_amount: number | null
+        }
+        Insert: {
+          cancelled_at?: string | null
+          client_id: string
+          created_at?: string
+          destination_country?: string | null
+          external_order_id?: string | null
+          external_order_number?: string | null
+          id?: string
+          middleware_order_id?: string | null
+          needs_review_reason?: string | null
+          paid_at?: string | null
+          payment_method?:
+            | Database["public"]["Enums"]["order_payment_method"]
+            | null
+          reminder_24_sent_at?: string | null
+          reminder_48_sent_at?: string | null
+          reminder_72_sent_at?: string | null
+          shipping_address?: Json | null
+          status?: Database["public"]["Enums"]["order_status"]
+          total_amount?: number | null
+        }
+        Update: {
+          cancelled_at?: string | null
+          client_id?: string
+          created_at?: string
+          destination_country?: string | null
+          external_order_id?: string | null
+          external_order_number?: string | null
+          id?: string
+          middleware_order_id?: string | null
+          needs_review_reason?: string | null
+          paid_at?: string | null
+          payment_method?:
+            | Database["public"]["Enums"]["order_payment_method"]
+            | null
+          reminder_24_sent_at?: string | null
+          reminder_48_sent_at?: string | null
+          reminder_72_sent_at?: string | null
+          shipping_address?: Json | null
+          status?: Database["public"]["Enums"]["order_status"]
+          total_amount?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_country_prices: {
+        Row: {
+          country_code: string
+          created_at: string
+          id: string
+          lead_time_days: number | null
+          product_id: string
+          unit_price: number
+        }
+        Insert: {
+          country_code: string
+          created_at?: string
+          id?: string
+          lead_time_days?: number | null
+          product_id: string
+          unit_price: number
+        }
+        Update: {
+          country_code?: string
+          created_at?: string
+          id?: string
+          lead_time_days?: number | null
+          product_id?: string
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_country_prices_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "bundle_prices"
+            referencedColumns: ["bundle_product_id"]
+          },
+          {
+            foreignKeyName: "product_country_prices_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
           client_id: string
           created_at: string
           id: string
-          lead_time_days: number | null
           middleware_product_id: string | null
           moq: number | null
           price_override: number | null
@@ -121,14 +323,12 @@ export type Database = {
           quote_line_id: string | null
           sku: string
           status: Database["public"]["Enums"]["product_status"]
-          unit_price: number | null
           variant_label: string | null
         }
         Insert: {
           client_id: string
           created_at?: string
           id?: string
-          lead_time_days?: number | null
           middleware_product_id?: string | null
           moq?: number | null
           price_override?: number | null
@@ -139,14 +339,12 @@ export type Database = {
           quote_line_id?: string | null
           sku: string
           status?: Database["public"]["Enums"]["product_status"]
-          unit_price?: number | null
           variant_label?: string | null
         }
         Update: {
           client_id?: string
           created_at?: string
           id?: string
-          lead_time_days?: number | null
           middleware_product_id?: string | null
           moq?: number | null
           price_override?: number | null
@@ -157,7 +355,6 @@ export type Database = {
           quote_line_id?: string | null
           sku?: string
           status?: Database["public"]["Enums"]["product_status"]
-          unit_price?: number | null
           variant_label?: string | null
         }
         Relationships: [
@@ -300,6 +497,7 @@ export type Database = {
       }
       quote_lines: {
         Row: {
+          country_code: string
           created_at: string
           id: string
           lead_time_days: number | null
@@ -317,6 +515,7 @@ export type Database = {
           variant_label: string
         }
         Insert: {
+          country_code: string
           created_at?: string
           id?: string
           lead_time_days?: number | null
@@ -334,6 +533,7 @@ export type Database = {
           variant_label: string
         }
         Update: {
+          country_code?: string
           created_at?: string
           id?: string
           lead_time_days?: number | null
@@ -377,6 +577,7 @@ export type Database = {
           responded_at: string | null
           status: Database["public"]["Enums"]["quote_status"]
           supersedes_quote_id: string | null
+          target_countries: string[]
           target_monthly_volume: number | null
         }
         Insert: {
@@ -395,6 +596,7 @@ export type Database = {
           responded_at?: string | null
           status?: Database["public"]["Enums"]["quote_status"]
           supersedes_quote_id?: string | null
+          target_countries: string[]
           target_monthly_volume?: number | null
         }
         Update: {
@@ -413,6 +615,7 @@ export type Database = {
           responded_at?: string | null
           status?: Database["public"]["Enums"]["quote_status"]
           supersedes_quote_id?: string | null
+          target_countries?: string[]
           target_monthly_volume?: number | null
         }
         Relationships: [
@@ -548,6 +751,7 @@ export type Database = {
           bundle_product_id: string | null
           calculated_price: number | null
           component_count: number | null
+          country_code: string | null
           effective_price: number | null
           max_lead_time_days: number | null
         }
@@ -555,6 +759,7 @@ export type Database = {
       }
       quote_lines_client: {
         Row: {
+          country_code: string | null
           created_at: string | null
           id: string | null
           lead_time_days: number | null
@@ -578,6 +783,36 @@ export type Database = {
       }
     }
     Functions: {
+      admin_resolve_order_item: {
+        Args: { p_item_id: string; p_product_id: string }
+        Returns: {
+          cancelled_at: string | null
+          client_id: string
+          created_at: string
+          destination_country: string | null
+          external_order_id: string | null
+          external_order_number: string | null
+          id: string
+          middleware_order_id: string | null
+          needs_review_reason: string | null
+          paid_at: string | null
+          payment_method:
+            | Database["public"]["Enums"]["order_payment_method"]
+            | null
+          reminder_24_sent_at: string | null
+          reminder_48_sent_at: string | null
+          reminder_72_sent_at: string | null
+          shipping_address: Json | null
+          status: Database["public"]["Enums"]["order_status"]
+          total_amount: number | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "orders"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       admin_save_quote_lines: {
         Args: {
           p_admin_notes?: string
@@ -587,6 +822,7 @@ export type Database = {
           p_quote_valid_until?: string
         }
         Returns: {
+          country_code: string
           created_at: string
           id: string
           lead_time_days: number | null
@@ -642,7 +878,6 @@ export type Database = {
           client_id: string
           created_at: string
           id: string
-          lead_time_days: number | null
           middleware_product_id: string | null
           moq: number | null
           price_override: number | null
@@ -653,7 +888,6 @@ export type Database = {
           quote_line_id: string | null
           sku: string
           status: Database["public"]["Enums"]["product_status"]
-          unit_price: number | null
           variant_label: string | null
         }
         SetofOptions: {
@@ -678,12 +912,53 @@ export type Database = {
         }
         Returns: boolean
       }
+      ingest_order: {
+        Args: {
+          p_client_id: string
+          p_destination_country: string
+          p_external_order_id: string
+          p_external_order_number: string
+          p_line_items: Json
+          p_shipping_address: Json
+        }
+        Returns: {
+          cancelled_at: string | null
+          client_id: string
+          created_at: string
+          destination_country: string | null
+          external_order_id: string | null
+          external_order_number: string | null
+          id: string
+          middleware_order_id: string | null
+          needs_review_reason: string | null
+          paid_at: string | null
+          payment_method:
+            | Database["public"]["Enums"]["order_payment_method"]
+            | null
+          reminder_24_sent_at: string | null
+          reminder_48_sent_at: string | null
+          reminder_72_sent_at: string | null
+          shipping_address: Json | null
+          status: Database["public"]["Enums"]["order_status"]
+          total_amount: number | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "orders"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       release_awaiting_payment_orders: {
         Args: { p_client_id: string }
         Returns: {
           amount: number
           order_id: string
         }[]
+      }
+      release_order_to_fulfilment: {
+        Args: { p_order_id: string }
+        Returns: undefined
       }
       respond_to_quote_lines: {
         Args: { p_decisions: Json; p_product_name: string; p_quote_id: string }
@@ -697,6 +972,7 @@ export type Database = {
           p_product_name?: string
           p_product_url?: string
           p_supersedes_quote_id?: string
+          p_target_countries?: string[]
           p_target_monthly_volume?: number
         }
         Returns: {
@@ -715,6 +991,7 @@ export type Database = {
           responded_at: string | null
           status: Database["public"]["Enums"]["quote_status"]
           supersedes_quote_id: string | null
+          target_countries: string[]
           target_monthly_volume: number | null
         }
         SetofOptions: {
@@ -730,7 +1007,6 @@ export type Database = {
           client_id: string
           created_at: string
           id: string
-          lead_time_days: number | null
           middleware_product_id: string | null
           moq: number | null
           price_override: number | null
@@ -741,7 +1017,6 @@ export type Database = {
           quote_line_id: string | null
           sku: string
           status: Database["public"]["Enums"]["product_status"]
-          unit_price: number | null
           variant_label: string | null
         }
         SetofOptions: {
@@ -755,6 +1030,15 @@ export type Database = {
     Enums: {
       app_role: "admin" | "client"
       integration_mode: "automatic" | "manual"
+      order_payment_method: "wallet" | "direct"
+      order_status:
+        | "awaiting_payment"
+        | "paid"
+        | "processing"
+        | "shipped"
+        | "delivered"
+        | "cancelled"
+        | "needs_review"
       pricing_tier: "starter" | "growth" | "scale"
       product_status: "active" | "discontinued" | "needs_review"
       product_type: "simple" | "bundle"
@@ -896,6 +1180,16 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "client"],
       integration_mode: ["automatic", "manual"],
+      order_payment_method: ["wallet", "direct"],
+      order_status: [
+        "awaiting_payment",
+        "paid",
+        "processing",
+        "shipped",
+        "delivered",
+        "cancelled",
+        "needs_review",
+      ],
       pricing_tier: ["starter", "growth", "scale"],
       product_status: ["active", "discontinued", "needs_review"],
       product_type: ["simple", "bundle"],
