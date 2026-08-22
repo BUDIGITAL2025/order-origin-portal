@@ -20,7 +20,7 @@ export class QuotaExceededError extends Error {
 function toSubmitError(message: string): Error {
   if (message.includes("QUOTE_LIMIT_REACHED")) {
     return new QuotaExceededError(
-      "You've used all quote requests in your current plan this month. Upgrade to Pro for a higher allowance.",
+      "You've used all 5 quote requests in your Basic plan this month. Upgrade to Unlimited for uncapped requests.",
     );
   }
   return new Error(message);
