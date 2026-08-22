@@ -5,6 +5,7 @@ import {
   clientStatusSchema,
   companyDetailsSchema,
   feeWaivedSchema,
+  integrationModeSchema,
   subscriptionPlanSchema,
   profileUpdateSchema,
   tierOverrideSchema,
@@ -22,7 +23,9 @@ export interface MyContext {
     phone: string;
     country: string;
     vat_number: string;
-    shopify_domain: string;
+    platform: "shopify" | "woocommerce" | "other";
+    store_url: string;
+    integration_mode: "automatic" | "manual";
     pricing_tier: "starter" | "growth" | "scale";
     tier_override: "starter" | "growth" | "scale" | null;
     avg_daily_units_30d: number;
@@ -84,7 +87,8 @@ export const completeSignup = createServerFn({ method: "POST" })
       phone: data.phone,
       country: data.country,
       vat_number: data.vat_number,
-      shopify_domain: data.shopify_domain,
+      platform: data.platform,
+      store_url: data.store_url,
     });
     if (profileError) throw new Error(profileError.message);
 
@@ -109,7 +113,8 @@ export const updateMyProfile = createServerFn({ method: "POST" })
         phone: data.phone,
         country: data.country,
         vat_number: data.vat_number,
-        shopify_domain: data.shopify_domain,
+        platform: data.platform,
+        store_url: data.store_url,
       })
       .eq("id", context.userId);
     if (error) throw new Error(error.message);
