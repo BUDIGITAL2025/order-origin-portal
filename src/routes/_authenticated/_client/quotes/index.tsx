@@ -104,7 +104,7 @@ function MyQuotesPage() {
                         {q.product_name || "Untitled product"}
                       </div>
                       <a
-                        href={q.product_url}
+                        href={q.product_url ?? "#"}
                         target="_blank"
                         rel="noreferrer"
                         className="block max-w-56 truncate text-xs text-muted-foreground underline-offset-2 hover:underline"

@@ -44,7 +44,8 @@ function DashboardPage() {
 
   const quotes = quotesData?.quotes ?? [];
   const counts = quotes.reduce<Record<string, number>>((acc, q) => {
-    acc[q.status] = (acc[q.status] ?? 0) + 1;
+    const key = q.status ?? "submitted";
+    acc[key] = (acc[key] ?? 0) + 1;
     return acc;
   }, {});
   const transactions = walletData?.transactions ?? [];
@@ -116,7 +117,7 @@ function DashboardPage() {
                   {quotes.slice(0, 5).map((q) => (
                     <TableRow key={q.id}>
                       <TableCell className="max-w-48 truncate text-sm">
-                        {q.product_name || q.product_url}
+                        {q.product_name || q.product_url || "—"}
                       </TableCell>
                       <TableCell>
                         <QuoteStatusBadge status={q.status} validUntil={q.quote_valid_until} />

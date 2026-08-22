@@ -2,15 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { isQuoteExpired } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
-type QuoteStatus =
-  | "submitted"
-  | "sourcing"
-  | "quoted"
-  | "accepted"
-  | "rejected"
-  | "expired";
-
-const QUOTE_STYLES: Record<QuoteStatus, string> = {
+const QUOTE_STYLES: Record<string, string> = {
   submitted: "bg-info/10 text-info border-info/25",
   sourcing: "bg-warning/10 text-warning border-warning/25",
   quoted: "bg-primary/10 text-primary border-primary/25",
@@ -26,9 +18,8 @@ export function QuoteStatusBadge({
   status: string | null;
   validUntil?: string | null;
 }) {
-  const effective: QuoteStatus = isQuoteExpired(status, validUntil)
-    ? "expired"
-    : (status as QuoteStatus);
+  const raw = status ?? "submitted";
+  const effective = isQuoteExpired(raw, validUntil) ? "expired" : raw;
   return (
     <Badge variant="outline" className={cn("font-medium capitalize", QUOTE_STYLES[effective] ?? "")}>
       {effective}
@@ -43,9 +34,10 @@ const PROFILE_STYLES: Record<string, string> = {
 };
 
 export function ProfileStatusBadge({ status }: { status: string | null }) {
+  const key = status ?? "";
   return (
-    <Badge variant="outline" className={cn("font-medium capitalize", PROFILE_STYLES[status] ?? "")}>
-      {status}
+    <Badge variant="outline" className={cn("font-medium capitalize", PROFILE_STYLES[key] ?? "")}>
+      {key || "—"}
     </Badge>
   );
 }
@@ -58,12 +50,10 @@ const PROVISIONING_STYLES: Record<string, string> = {
 };
 
 export function ProvisioningBadge({ status }: { status: string | null }) {
+  const key = status ?? "";
   return (
-    <Badge
-      variant="outline"
-      className={cn("font-medium", PROVISIONING_STYLES[status] ?? "")}
-    >
-      {status.replaceAll("_", " ")}
+    <Badge variant="outline" className={cn("font-medium", PROVISIONING_STYLES[key] ?? "")}>
+      {key ? key.replaceAll("_", " ") : "—"}
     </Badge>
   );
 }
@@ -75,9 +65,10 @@ const TXN_STYLES: Record<string, string> = {
 };
 
 export function TxnTypeBadge({ type }: { type: string | null }) {
+  const key = type ?? "";
   return (
-    <Badge variant="outline" className={cn("font-medium capitalize", TXN_STYLES[type] ?? "")}>
-      {type}
+    <Badge variant="outline" className={cn("font-medium capitalize", TXN_STYLES[key] ?? "")}>
+      {key || "—"}
     </Badge>
   );
 }
@@ -89,9 +80,10 @@ const TIER_STYLES: Record<string, string> = {
 };
 
 export function TierBadge({ tier }: { tier: string | null }) {
+  const key = tier ?? "";
   return (
-    <Badge variant="outline" className={cn("font-medium capitalize", TIER_STYLES[tier] ?? "")}>
-      {tier}
+    <Badge variant="outline" className={cn("font-medium capitalize", TIER_STYLES[key] ?? "")}>
+      {key || "—"}
     </Badge>
   );
 }
