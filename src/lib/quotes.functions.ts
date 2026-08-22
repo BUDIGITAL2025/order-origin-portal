@@ -131,18 +131,21 @@ export const adminListQuotes = createServerFn({ method: "GET" })
     await requireAdmin(context.supabase, context.userId);
     const admin = await getAdminClient();
 
-    const CLIENT_COLS =
-      "company_name, contact_name, platform, store_url, integration_mode, country, pricing_tier, tier_override, avg_daily_units_30d, subscription_plan";
+    // Hierarchy: quote_requests.store_id → stores → entities → profiles.
+    // The rows are mapped back to the flat `profiles` shape the admin pages
+    // render, with company_name carrying the entity's legal name.
+    const CHAIN_COLS =
+      "stores!quote_requests_store_id_fkey(store_name, store_url, platform, integration_mode, pricing_tier, tier_override, avg_daily_units_30d, subscription_plan, entities(legal_name, country, profiles!entities_account_id_fkey(contact_name)))";
 
     let query = admin
       .from("quote_requests")
-      .select(`*, profiles!quote_requests_client_id_fkey(${CLIENT_COLS})`)
+      .select(`*, ${CHAIN_COLS}`)
       .order("created_at", { ascending: true });
     if (data.status) query = query.eq("status", data.status);
 
     const { data: quotes, error } = await query;
     if (error) throw new Error(error.message);
-    return { quotes: quotes ?? [] };
+    return { quotes: (quotes ?? []).map(mapQuoteForAdmin) };
   });
 
 /** Admin: single quote with client profile and all variant lines (full costing). */
@@ -157,12 +160,13 @@ export const adminGetQuote = createServerFn({ method: "GET" })
     const { data: quote, error } = await admin
       .from("quote_requests")
       .select(
-        "*, profiles!quote_requests_client_id_fkey(company_name, contact_name, platform, store_url, integration_mode, country, pricing_tier, tier_override, avg_daily_units_30d, subscription_plan)",
+        "*, stores!quote_requests_store_id_fkey(store_name, store_url, platform, integration_mode, pricing_tier, tier_override, avg_daily_units_30d, subscription_plan, entities(legal_name, country, profiles!entities_account_id_fkey(contact_name)))",
       )
       .eq("id", data.quote_id)
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!quote) throw new Error("Quote request not found");
+    const mappedQuote = mapQuoteForAdmin(quote);
 
     const { data: lines, error: linesError } = await admin
       .from("quote_lines")
@@ -171,7 +175,7 @@ export const adminGetQuote = createServerFn({ method: "GET" })
       .order("created_at", { ascending: true });
     if (linesError) throw new Error(linesError.message);
 
-    return { quote, lines: lines ?? [] };
+    return { quote: mappedQuote, lines: lines ?? [] };
   });
 
 /** Admin: save variant lines (SKUs generated server-side), move the request to 'quoted'. */
