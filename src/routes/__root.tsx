@@ -1,17 +1,80 @@
-import { createRootRouteWithContext, Outlet, useRouter } from "@tanstack/react-router";
-import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
-import * as React from "react";
-import type { QueryClient } from "@tanstack/react-query";
-import { useQueryClient } from "@tanstack/react-query";
-import { DefaultCatchBoundary } from "~/components/DefaultCatchBoundary";
-import { NotFound } from "~/components/NotFound";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  Outlet,
+  Link,
+  createRootRouteWithContext,
+  useRouter,
+  HeadContent,
+  Scripts,
+} from "@tanstack/react-router";
+import { useEffect, type ReactNode } from "react";
+
+import appCss from "../styles.css?url";
+import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
 import { supabase } from "@/integrations/supabase/client";
-import appCss from "~/styles.css?url";
 
-export const Route = createRootRouteWithContext<{
-  queryClient: QueryClient;
-}>()({
+function NotFoundComponent() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+      <div className="max-w-md text-center">
+        <h1 className="text-7xl font-bold text-foreground">404</h1>
+        <h2 className="mt-4 text-xl font-semibold text-foreground">Page not found</h2>
+        <p className="mt-2 text-sm text-muted-foreground">
+          The page you're looking for doesn't exist or has been moved.
+        </p>
+        <div className="mt-6">
+          <Link
+            to="/"
+            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+          >
+            Go home
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
+  console.error(error);
+  const router = useRouter();
+  useEffect(() => {
+    reportLovableError(error, { boundary: "tanstack_root_error_component" });
+  }, [error]);
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+      <div className="max-w-md text-center">
+        <h1 className="text-xl font-semibold tracking-tight text-foreground">
+          This page didn't load
+        </h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Something went wrong on our end. You can try refreshing or head back home.
+        </p>
+        <div className="mt-6 flex flex-wrap justify-center gap-2">
+          <button
+            onClick={() => {
+              router.invalidate();
+              reset();
+            }}
+            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+          >
+            Try again
+          </button>
+          <a
+            href="/"
+            className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+          >
+            Go home
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   head: () => ({
     meta: [
       { charSet: "utf-8" },
@@ -21,6 +84,12 @@ export const Route = createRootRouteWithContext<{
         name: "description",
         content:
           "Relay Sourcing is the supplier portal for dropshippers: request product quotes, track pricing and lead times, and manage your wallet — all in one place.",
+      },
+      { property: "og:title", content: "Relay Sourcing — B2B Dropshipping Supplier Portal" },
+      {
+        property: "og:description",
+        content:
+          "Request product quotes, track pricing and lead times, and manage your wallet with your dropshipping supplier.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -33,23 +102,34 @@ export const Route = createRootRouteWithContext<{
         rel: "stylesheet",
         href: "https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap",
       },
-      {
-        rel: "icon",
-        href:
-          "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23374050'/><text x='50' y='68' font-size='52' text-anchor='middle' fill='white' font-family='sans-serif' font-weight='bold'>R</text></svg>",
-      },
+      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
     ],
   }),
-  errorComponent: DefaultCatchBoundary,
-  notFoundComponent: () => <NotFound />,
+  shellComponent: RootShell,
   component: RootComponent,
+  notFoundComponent: NotFoundComponent,
+  errorComponent: ErrorComponent,
 });
 
-function RootComponent() {
-  const router = useRouter();
-  const queryClient = useQueryClient();
+function RootShell({ children }: { children: ReactNode }) {
+  return (
+    <html lang="en">
+      <head>
+        <HeadContent />
+      </head>
+      <body className="min-h-screen bg-background font-sans antialiased">
+        {children}
+        <Scripts />
+      </body>
+    </html>
+  );
+}
 
-  React.useEffect(() => {
+function RootComponent() {
+  const { queryClient } = Route.useRouteContext();
+  const router = useRouter();
+
+  useEffect(() => {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event) => {
@@ -63,27 +143,9 @@ function RootComponent() {
   }, [router, queryClient]);
 
   return (
-    <RootDocument>
+    <QueryClientProvider client={queryClient}>
       <Outlet />
-    </RootDocument>
-  );
-}
-
-function RootDocument({ children }: { children: React.ReactNode }) {
-  return (
-    <html lang="en">
-      <body className="min-h-screen font-sans antialiased">
-        {children}
-        <Toaster richColors position="top-right" />
-        <TanStackRouterDevtools position="bottom-right" />
-        <React.Fragment>
-          <script
-            dangerouslySetInnerHTML={{
-              __html: `window.__TSR_DEHYDRATED__ = { data: {} }`,
-            }}
-          />
-        </React.Fragment>
-      </body>
-    </html>
+      <Toaster richColors position="top-right" />
+    </QueryClientProvider>
   );
 }
