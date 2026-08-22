@@ -125,6 +125,13 @@ function cellPrice(c: CellForm): number {
   );
 }
 
+/** Effective margin on the sell price: combined markups as % of unit price. */
+function cellMarginPct(c: CellForm): number | null {
+  const price = cellPrice(c);
+  if (price <= 0) return null;
+  return ((num(c.markup_product) + num(c.markup_shipping)) / price) * 100;
+}
+
 function AdminQuoteDetailPage() {
   const { id } = Route.useParams();
   const queryClient = useQueryClient();
