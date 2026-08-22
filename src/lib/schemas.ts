@@ -42,11 +42,11 @@ export const quoteResponseSchema = z.object({
 
 export const adminQuoteSchema = z.object({
   quote_id: z.string().uuid(),
-  cost_price: z.number().min(0).max(1_000_000),
-  shipping_cost: z.number().min(0).max(1_000_000),
-  markup_percent: z.number().min(0).max(500),
-  quoted_price: z.number().min(0.01).max(10_000_000),
-  price_overridden: z.boolean(),
+  supplier_cogs: z.number().min(0).max(1_000_000),
+  supplier_shipping: z.number().min(0).max(1_000_000),
+  supplier_tax: z.number().min(0).max(1_000_000),
+  markup_product: z.number().min(0).max(1_000_000),
+  markup_shipping: z.number().min(0).max(1_000_000),
   moq: z.number().int().min(1).max(1_000_000).nullable().optional(),
   lead_time_days: z.number().int().min(0).max(365).nullable().optional(),
   quote_valid_until: z
@@ -55,6 +55,10 @@ export const adminQuoteSchema = z.object({
     .nullable()
     .optional(),
   admin_notes: z.string().trim().max(2000).optional().or(z.literal("")),
+});
+
+export const requoteSchema = z.object({
+  quote_id: z.string().uuid(),
 });
 
 export const adminQuoteStatusSchema = z.object({
@@ -74,9 +78,14 @@ export const clientIdSchema = z.object({
   client_id: z.string().uuid(),
 });
 
-export const markupTierSchema = z.object({
+export const subscriptionPlanSchema = z.object({
   client_id: z.string().uuid(),
-  markup_tier: z.enum(["standard", "volume", "partner"]),
+  subscription_plan: z.enum(["basic_49", "pro_99"]),
+});
+
+export const tierOverrideSchema = z.object({
+  client_id: z.string().uuid(),
+  tier_override: z.enum(["starter", "growth", "scale"]).nullable(),
 });
 
 export const clientStatusSchema = z.object({
