@@ -504,6 +504,7 @@ function BillingPage() {
         </Card>
 
         {/* ============ Auto top-up ============ */}
+        {storeId != null && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
@@ -570,7 +571,14 @@ function BillingPage() {
             </Button>
           </CardContent>
         </Card>
+        )}
       </div>
+
+      {billingEntity && (
+        <div className="mt-6">
+          <EntityDetailsCard entity={billingEntity} />
+        </div>
+      )}
 
       {/* ============ Billing history ============ */}
       <div className="mt-8">
