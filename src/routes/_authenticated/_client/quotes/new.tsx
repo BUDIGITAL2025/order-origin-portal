@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
+import { COUNTRIES } from "@/lib/countries";
 import { PLANS, planQuota, quotaResetDate } from "@/lib/plans";
 import { quoteRequestSchema } from "@/lib/schemas";
 import { createQuoteRequest } from "@/lib/quotes.functions";
@@ -37,6 +38,7 @@ function NewQuotePage() {
   const [productName, setProductName] = useState("");
   const [notes, setNotes] = useState("");
   const [volume, setVolume] = useState("");
+  const [countries, setCountries] = useState<string[]>([]);
   const [files, setFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [quotaBlocked, setQuotaBlocked] = useState(false);
@@ -48,6 +50,7 @@ function NewQuotePage() {
         product_name: productName,
         notes,
         target_monthly_volume: volume ? Number(volume) : null,
+        target_countries: countries,
       });
       if (!parsed.success) {
         throw new Error(parsed.error.issues[0]?.message ?? "Check your input");
@@ -163,6 +166,38 @@ function NewQuotePage() {
                 value={productUrl}
                 onChange={(e) => setProductUrl(e.target.value)}
               />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Destination countries *</Label>
+              <div className="flex flex-wrap gap-1.5">
+                {COUNTRIES.map((c) => {
+                  const selected = countries.includes(c.code);
+                  return (
+                    <button
+                      key={c.code}
+                      type="button"
+                      aria-pressed={selected}
+                      onClick={() =>
+                        setCountries((prev) =>
+                          selected ? prev.filter((v) => v !== c.code) : [...prev, c.code],
+                        )
+                      }
+                      className={`rounded-full border px-2.5 py-1 text-xs transition-colors ${
+                        selected
+                          ? "border-primary bg-primary/10 font-medium text-primary"
+                          : "border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                      }`}
+                    >
+                      {c.name}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {countries.length === 0
+                  ? "Pick every country you sell into."
+                  : `${countries.length} ${countries.length === 1 ? "country" : "countries"} selected — each country adds its own priced line per variant.`}
+              </p>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="q-name">Product name</Label>
