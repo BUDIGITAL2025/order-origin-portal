@@ -26,6 +26,13 @@ function orderLabel(order: { id: string; external_order_number: string | null })
   return order.external_order_number ?? order.id.slice(0, 8);
 }
 
+/** Resolves the owning account (auth user) id through the store → entity chain. */
+function accountIdOf(order: {
+  stores?: { entities?: { account_id?: string | null } | null } | null;
+}): string | null {
+  return order.stores?.entities?.account_id ?? null;
+}
+
 export const Route = createFileRoute("/api/public/cron/order-expiry")({
   server: {
     handlers: {
@@ -45,7 +52,9 @@ export const Route = createFileRoute("/api/public/cron/order-expiry")({
             const cutoff = new Date(now - step.hours * 3_600_000).toISOString();
             const { data: orders, error } = await supabaseAdmin
               .from("orders")
-              .select("id, client_id, external_order_number, total_amount")
+              .select(
+                "id, store_id, external_order_number, total_amount, stores(entities(account_id))",
+              )
               .eq("status", "awaiting_payment")
               .lte("created_at", cutoff)
               .is(step.column, null);
@@ -69,17 +78,21 @@ export const Route = createFileRoute("/api/public/cron/order-expiry")({
 
               const label = orderLabel(order);
               const body = `Order ${label} (${formatUsd(order.total_amount)}) is still awaiting payment. It will auto-cancel ${AUTO_CANCEL_DAYS} days after it was created.`;
+              // Order-status notifications are store-scoped.
               await supabaseAdmin.from("notifications").insert({
-                client_id: order.client_id,
+                store_id: order.store_id,
                 kind: step.kind,
                 title: "Payment reminder",
                 body,
               });
-              await sendClientEmail(supabaseAdmin, {
-                clientId: order.client_id,
-                subject: `Payment reminder — order ${label}`,
-                text: body,
-              });
+              const accountId = accountIdOf(order);
+              if (accountId) {
+                await sendClientEmail(supabaseAdmin, {
+                  clientId: accountId,
+                  subject: `Payment reminder — order ${label}`,
+                  text: body,
+                });
+              }
               summary[`reminder_${step.hours}` as keyof typeof summary] += 1;
             }
           }
@@ -89,7 +102,9 @@ export const Route = createFileRoute("/api/public/cron/order-expiry")({
           ).toISOString();
           const { data: stale, error: staleError } = await supabaseAdmin
             .from("orders")
-            .select("id, client_id, external_order_number, total_amount")
+            .select(
+              "id, store_id, external_order_number, total_amount, stores(entities(account_id))",
+            )
             .eq("status", "awaiting_payment")
             .lte("created_at", cancelCutoff);
           if (staleError) throw new Error(staleError.message);
@@ -106,16 +121,19 @@ export const Route = createFileRoute("/api/public/cron/order-expiry")({
             const label = orderLabel(order);
             const body = `Order ${label} (${formatUsd(order.total_amount)}) was cancelled after ${AUTO_CANCEL_DAYS} days without payment.`;
             await supabaseAdmin.from("notifications").insert({
-              client_id: order.client_id,
+              store_id: order.store_id,
               kind: "order_auto_cancelled",
               title: "Order cancelled",
               body,
             });
-            await sendClientEmail(supabaseAdmin, {
-              clientId: order.client_id,
-              subject: `Order ${label} cancelled`,
-              text: body,
-            });
+            const accountId = accountIdOf(order);
+            if (accountId) {
+              await sendClientEmail(supabaseAdmin, {
+                clientId: accountId,
+                subject: `Order ${label} cancelled`,
+                text: body,
+              });
+            }
             summary.cancelled += 1;
           }
 
