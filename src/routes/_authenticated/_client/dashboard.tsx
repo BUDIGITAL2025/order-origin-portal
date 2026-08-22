@@ -51,7 +51,8 @@ function DashboardPage() {
     queryFn: fetchWallet,
   });
 
-  const profile = context?.profile ?? null;
+  const entity = context?.currentEntity ?? null;
+  const store = context?.currentStore ?? null;
   const quotes = quotesData?.quotes ?? [];
   const counts = quotes.reduce<Record<string, number>>((acc, q) => {
     const key = q.status ?? "submitted";
@@ -69,11 +70,11 @@ function DashboardPage() {
   }, []);
   const hasCredit = transactions.some((t) => t.type === "credit");
   const showAutoTopupPrompt =
-    !promptDismissed && hasCredit && profile != null && !profile.auto_topup_enabled;
+    !promptDismissed && hasCredit && entity != null && !entity.auto_topup_enabled;
 
-  const plan = profile?.subscription_plan ?? "basic";
+  const plan = store?.subscription_plan ?? "basic";
   const quota = planQuota(plan); // null = unlimited
-  const quotesUsed = profile?.quotes_used_this_month ?? 0;
+  const quotesUsed = store?.quotes_used_this_month ?? 0;
   const usagePercent =
     quota == null ? 0 : Math.min(100, Math.round((quotesUsed / quota) * 100));
 
@@ -122,10 +123,10 @@ function DashboardPage() {
             <CreditCard className="h-3.5 w-3.5" /> Subscription
           </CardTitle>
           <div className="flex items-center gap-2">
-            {profile?.fee_waived && <Badge variant="secondary">Fee waived</Badge>}
+            {store?.fee_waived && <Badge variant="secondary">Fee waived</Badge>}
             <span className="text-xs font-medium text-muted-foreground">
               {planLabel(plan)} plan — {formatUSD(PLANS[plan].priceUsd)}/month
-              {profile?.fee_waived ? " · not billed" : ""}
+              {store?.fee_waived ? " · not billed" : ""}
             </span>
           </div>
         </CardHeader>
@@ -141,8 +142,8 @@ function DashboardPage() {
               </div>
               <div className="text-xs text-muted-foreground">
                 used this month
-                {profile?.quotes_period_start
-                  ? ` · resets ${quotaResetDate(profile.quotes_period_start)}`
+                {store?.quotes_period_start
+                  ? ` · resets ${quotaResetDate(store.quotes_period_start)}`
                   : ""}
               </div>
             </div>

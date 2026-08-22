@@ -1,7 +1,5 @@
 import { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { Store } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import {
   Select,
   SelectContent,
@@ -11,6 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useMyContext } from "@/routes/_authenticated/_client";
 
 const STORAGE_KEY = "flysales:current-store";
 
@@ -21,27 +20,16 @@ export function getCurrentStoreId(): string | null {
 }
 
 /**
- * Account → Entity → Store switcher. In step 1 of the hierarchy refactor the
- * selection is only persisted (pages still scope by client_id); later steps
- * wire business data to it. Stores are grouped under their legal entity.
+ * Account → Entity → Store switcher. Reads entities and their stores from
+ * the shared my-context query. Stores are grouped under their legal entity.
  */
 export function StoreSwitcher() {
-  const { data: entities } = useQuery({
-    queryKey: ["my-entities-stores"],
-    staleTime: 60_000,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("entities")
-        .select("id, legal_name, stores(id, store_name, store_url, status)")
-        .order("created_at", { ascending: true });
-      if (error) throw error;
-      return data;
-    },
-  });
+  const { data: ctx } = useMyContext();
+  const entities = ctx?.entities ?? [];
 
   const [current, setCurrent] = useState<string | null>(null);
 
-  const allStores = (entities ?? []).flatMap((e) => e.stores);
+  const allStores = entities.flatMap((e) => e.stores);
 
   // Restore the persisted choice (or fall back to the first store) after
   // hydration — localStorage is not readable during SSR.
@@ -53,9 +41,9 @@ export function StoreSwitcher() {
     if (stored !== valid) window.localStorage.setItem(STORAGE_KEY, valid);
     setCurrent(valid);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [entities]);
+  }, [ctx]);
 
-  if (!entities || entities.length === 0 || !current) return null;
+  if (entities.length === 0 || !current) return null;
 
   return (
     <Select

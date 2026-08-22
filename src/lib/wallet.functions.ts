@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { clientIdSchema, walletAdjustmentSchema } from "./schemas";
 
-/** Client: my balance (latest ledger row) + transaction history. */
+/** Client: my balance (latest ledger row) + transaction history. RLS scopes to the caller's entity. */
 export const getMyWallet = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
@@ -21,28 +21,25 @@ export const getMyWallet = createServerFn({ method: "GET" })
   });
 
 /**
- * Admin: credit or debit a client's wallet. All writes go through the
- * apply_wallet_transaction Postgres function — it locks the client's ledger,
+ * Admin: credit or debit an entity's wallet. All writes go through the
+ * apply_wallet_transaction Postgres function — it locks the entity's ledger,
  * computes balance_after, enforces non-negative balance and reference
  * idempotency inside one transaction. The app never inserts ledger rows.
+ *
+ * NOTE: `client_id` in walletAdjustmentSchema now identifies the *entity*
+ * (the wallet lives on the entity, not the account) — the admin picker on
+ * /admin/wallet lists entities directly.
  */
 export const adminAdjustWallet = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => walletAdjustmentSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const { data: entity, error: entityError } = await context.supabase
-      .from("entities")
-      .select("id")
-      .eq("account_id", data.client_id)
-      .order("created_at", { ascending: true })
-      .limit(1)
-      .maybeSingle();
-    if (entityError) throw new Error(entityError.message);
-    if (!entity) throw new Error("No entity found for this client.");
+    const { requireAdmin } = await import("./admin.server");
+    await requireAdmin(context.supabase, context.userId);
     const { data: result, error } = await context.supabase.rpc(
       "apply_wallet_transaction",
       {
-        p_entity_id: entity.id,
+        p_entity_id: data.client_id,
         p_type: data.type,
         p_amount: data.amount,
         p_description: data.description,
@@ -53,7 +50,7 @@ export const adminAdjustWallet = createServerFn({ method: "POST" })
     return { ok: true, entry: result };
   });
 
-/** Admin: a client's balance + recent ledger entries. */
+/** Admin: an entity's balance + recent ledger entries. */
 export const adminGetWallet = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => clientIdSchema.parse(input))
@@ -64,7 +61,7 @@ export const adminGetWallet = createServerFn({ method: "GET" })
     const { data: rows, error } = await admin
       .from("wallet_transactions")
       .select("id, type, amount, balance_after, description, reference, created_at")
-      .eq("client_id", data.client_id)
+      .eq("entity_id", data.client_id)
       .order("created_at", { ascending: false })
       .limit(100);
     if (error) throw new Error(error.message);
