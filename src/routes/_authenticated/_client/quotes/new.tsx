@@ -11,9 +11,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
-import { PLANS, planQuota } from "@/lib/plans";
+import { PLANS, planQuota, quotaResetDate } from "@/lib/plans";
 import { quoteRequestSchema } from "@/lib/schemas";
 import { createQuoteRequest } from "@/lib/quotes.functions";
+import { upgradeToUnlimited } from "@/lib/profiles.functions";
 import { useMyContext } from "../../_client";
 
 export const Route = createFileRoute("/_authenticated/_client/quotes/new")({
@@ -31,6 +32,7 @@ function NewQuotePage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const callCreate = useServerFn(createQuoteRequest);
+  const callUpgrade = useServerFn(upgradeToUnlimited);
   const { data: ctx } = useMyContext();
 
   const [productUrl, setProductUrl] = useState("");
@@ -90,8 +92,23 @@ function NewQuotePage() {
     },
   });
 
-  if (quotaBlocked) {
-    const plan = ctx?.profile?.subscription_plan ?? "basic_49";
+  // Explicit upgrade — only ever triggered by the client clicking the button.
+  const upgrade = useMutation({
+    mutationFn: () => callUpgrade(),
+    onSuccess: async () => {
+      toast.success("You're now on Unlimited — resubmit your request below.");
+      setQuotaBlocked(false);
+      await queryClient.invalidateQueries({ queryKey: ["my-context"] });
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const plan = ctx?.profile?.subscription_plan ?? "basic";
+  const quota = planQuota(plan);
+  const quotesUsed = ctx?.profile?.quotes_used_this_month ?? 0;
+  const limitReached = quota != null && quotesUsed >= quota;
+
+  if (quotaBlocked || limitReached) {
     return (
       <div className="max-w-2xl">
         <PageHeader
@@ -103,18 +120,25 @@ function NewQuotePage() {
             <ArrowUpCircle className="h-8 w-8 text-warning-foreground" />
             <h2 className="text-lg font-semibold">Monthly quote allowance reached</h2>
             <p className="text-sm text-muted-foreground">
-              You've used all {planQuota(plan)} quote requests included in your{" "}
-              {plan === "pro_99" ? PLANS.pro_99.label : PLANS.basic_49.label} plan this month.
-              Upgrade to {PLANS.pro_99.label} (${PLANS.pro_99.priceUsd}/month) for{" "}
-              {PLANS.pro_99.quoteQuota} quote requests per month, or wait until your allowance
-              resets on the 1st of next month.
+              You've used all {quota ?? PLANS.basic.quoteQuota} quote requests included in your{" "}
+              {PLANS.basic.label} plan this month. Your allowance resets on{" "}
+              {quotaResetDate(ctx?.profile?.quotes_period_start)}.
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Upgrade to {PLANS.unlimited.label} for ${PLANS.unlimited.priceUsd}/month and send
+              unlimited quote requests. Nothing is charged or changed until you click below — your
+              request has not been submitted; resubmit it after upgrading.
             </p>
             <div className="flex gap-2">
-              <Button asChild size="sm">
-                <Link to="/dashboard">Back to dashboard</Link>
+              <Button
+                size="sm"
+                disabled={upgrade.isPending}
+                onClick={() => upgrade.mutate()}
+              >
+                {upgrade.isPending ? "Upgrading…" : `Upgrade to ${PLANS.unlimited.label}`}
               </Button>
               <Button asChild size="sm" variant="outline">
-                <Link to="/quotes">View my quotes</Link>
+                <Link to="/dashboard">Back to dashboard</Link>
               </Button>
             </div>
           </CardContent>
