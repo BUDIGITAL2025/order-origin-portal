@@ -337,6 +337,24 @@ function BillingPage() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* ============ Plan ============ */}
+        {storeId == null ? (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <CreditCard className="h-4 w-4" /> Subscription
+              </CardTitle>
+              <CardDescription>Plans are per store.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Add a store to choose its plan. Wallet top-ups work without one.
+              </p>
+              <Button asChild size="sm">
+                <Link to="/stores/new">Add store</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
