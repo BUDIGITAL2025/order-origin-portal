@@ -544,118 +544,148 @@ function AdminQuoteDetailPage() {
                 </div>
               </div>
 
-              {respondedLines.length > 0 && (
-                <div className="space-y-2">
-                  <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    Answered lines (locked)
-                  </div>
-                  {respondedLines.map((l) => (
-                    <div
-                      key={l.id ?? l.variant_label}
-                      className="flex items-center justify-between gap-3 rounded-md border border-border bg-muted/30 px-3 py-2 text-sm"
-                    >
-                      <div>
-                        <span className="font-medium">{l.variant_label}</span>{" "}
-                        <span className="font-mono text-xs text-muted-foreground">{l.sku}</span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className="font-mono text-sm">{formatUSD(linePrice(l))}</span>
-                        <LineStatusBadge status={l.status as "accepted" | "rejected"} />
-                      </div>
+              {rows.length > 0 && (
+                <div className="overflow-x-auto rounded-md border border-border">
+                  <div
+                    className="grid min-w-max"
+                    style={{
+                      gridTemplateColumns: `220px repeat(${Math.max(countries.length, 1)}, minmax(200px, 1fr))`,
+                    }}
+                  >
+                    <div className="border-b border-border bg-muted/40 p-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      Variant
                     </div>
-                  ))}
+                    {countries.map((c) => (
+                      <div
+                        key={c}
+                        className="border-b border-l border-border bg-muted/40 p-2 text-center"
+                      >
+                        <div className="text-xs font-semibold">{c}</div>
+                        <div className="text-[10px] text-muted-foreground">{countryName(c)}</div>
+                      </div>
+                    ))}
+
+                    {rows.map((row) => {
+                      const rowLocked = Object.values(row.cells).some(cellLocked);
+                      const rowEditable = requestEditable && !rowLocked;
+                      return (
+                        <div key={row.key} className="contents">
+                          <div className="space-y-2 border-b border-border p-2">
+                            <Input
+                              value={row.label}
+                              onChange={(e) => updateRow(row.key, { label: e.target.value })}
+                              placeholder='e.g. "20cm", "Red / L"'
+                              disabled={!rowEditable}
+                              aria-label="Variant label"
+                            />
+                            <div className="font-mono text-[10px] text-muted-foreground">
+                              {row.sku ?? "SKU on save"}
+                            </div>
+                            <div className="grid grid-cols-2 gap-1.5">
+                              <Input
+                                type="number"
+                                min={1}
+                                value={row.moq}
+                                onChange={(e) => updateRow(row.key, { moq: e.target.value })}
+                                disabled={!rowEditable}
+                                placeholder="MOQ"
+                                aria-label="MOQ"
+                                className="h-7 text-xs"
+                              />
+                              <Input
+                                type="number"
+                                min={0}
+                                value={row.lead_time_days}
+                                onChange={(e) =>
+                                  updateRow(row.key, { lead_time_days: e.target.value })
+                                }
+                                disabled={!rowEditable}
+                                placeholder="Lead days"
+                                aria-label="Lead time (days)"
+                                className="h-7 text-xs"
+                              />
+                            </div>
+                            {rowEditable && countries.length > 1 && (
+                              <div className="space-y-1">
+                                <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                                  Copy {countries[0]} → all
+                                </div>
+                                <div className="flex flex-wrap gap-1">
+                                  {GRID_FIELDS.map((f) => (
+                                    <button
+                                      key={f.key}
+                                      type="button"
+                                      onClick={() => copyAcross(row.key, f.key)}
+                                      className="rounded border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                                    >
+                                      {f.label}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            {rowEditable && rows.length > 1 && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 gap-1 px-1.5 text-[10px] text-muted-foreground"
+                                onClick={() =>
+                                  setRows((prev) => prev.filter((r) => r.key !== row.key))
+                                }
+                              >
+                                <Trash2 className="h-3 w-3" /> Remove variant
+                              </Button>
+                            )}
+                          </div>
+                          {countries.map((country) => {
+                            const cell = row.cells[country] ?? emptyCell();
+                            const locked = cellLocked(cell);
+                            const cellEditable = requestEditable && !locked;
+                            return (
+                              <div
+                                key={country}
+                                className="space-y-1 border-b border-l border-border p-2"
+                              >
+                                {GRID_FIELDS.map((f) => (
+                                  <div key={f.key} className="flex items-center gap-1">
+                                    <span className="w-12 shrink-0 text-[10px] text-muted-foreground">
+                                      {f.label}
+                                    </span>
+                                    <Input
+                                      type="number"
+                                      step="0.01"
+                                      min="0"
+                                      value={cell[f.key]}
+                                      onChange={(e) =>
+                                        updateCell(row.key, country, { [f.key]: e.target.value })
+                                      }
+                                      disabled={!cellEditable}
+                                      aria-label={`${f.label} (${country})`}
+                                      className="h-7 font-mono text-xs"
+                                    />
+                                  </div>
+                                ))}
+                                <div className="flex items-center justify-between pt-1">
+                                  <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                                    Price
+                                  </span>
+                                  <span className="font-mono text-xs font-semibold">
+                                    {formatUSD(cellPrice(cell))}
+                                  </span>
+                                </div>
+                                {locked && (
+                                  <LineStatusBadge status={cell.status as "accepted" | "rejected"} />
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
-
-              <div className="space-y-4">
-                {lines.map((l, i) => {
-                  if (l.status !== "pending") return null;
-                  const editable = requestEditable;
-                  return (
-                    <div key={l.id ?? `new-${i}`} className="space-y-3 rounded-md border border-border p-3">
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="flex-1 space-y-1.5">
-                          <Label htmlFor={`aq-label-${i}`}>Variant label</Label>
-                          <Input
-                            id={`aq-label-${i}`}
-                            value={l.variant_label}
-                            onChange={(e) => updateLine(i, { variant_label: e.target.value })}
-                            placeholder='e.g. "20cm", "Red / L"'
-                            disabled={!editable}
-                            required
-                          />
-                        </div>
-                        <div className="pt-6 font-mono text-xs text-muted-foreground">
-                          {l.sku ?? "SKU on save"}
-                        </div>
-                        {editable && editableLines.length > 1 && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="mt-6 text-muted-foreground"
-                            onClick={() => setLines((prev) => prev.filter((_, j) => j !== i))}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                      <div className="grid grid-cols-3 gap-3">
-                        <div className="space-y-1.5">
-                          <Label htmlFor={`aq-cogs-${i}`}>Supplier COGS ($)</Label>
-                          <Input id={`aq-cogs-${i}`} type="number" step="0.01" min="0" required value={l.supplier_cogs} onChange={(e) => updateLine(i, { supplier_cogs: e.target.value })} disabled={!editable} />
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label htmlFor={`aq-ship-${i}`}>Supplier shipping ($)</Label>
-                          <Input id={`aq-ship-${i}`} type="number" step="0.01" min="0" required value={l.supplier_shipping} onChange={(e) => updateLine(i, { supplier_shipping: e.target.value })} disabled={!editable} />
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label htmlFor={`aq-tax-${i}`}>Supplier tax ($)</Label>
-                          <Input id={`aq-tax-${i}`} type="number" step="0.01" min="0" required value={l.supplier_tax} onChange={(e) => updateLine(i, { supplier_tax: e.target.value })} disabled={!editable} />
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-1.5">
-                          <Label htmlFor={`aq-mkprod-${i}`}>Markup — product ($)</Label>
-                          <Input id={`aq-mkprod-${i}`} type="number" step="0.01" min="0" required value={l.markup_product} onChange={(e) => updateLine(i, { markup_product: e.target.value })} disabled={!editable} />
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label htmlFor={`aq-mkship-${i}`}>Markup — shipping ($)</Label>
-                          <Input id={`aq-mkship-${i}`} type="number" step="0.01" min="0" required value={l.markup_shipping} onChange={(e) => updateLine(i, { markup_shipping: e.target.value })} disabled={!editable} />
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-1.5">
-                          <Label htmlFor={`aq-moq-${i}`}>MOQ</Label>
-                          <Input id={`aq-moq-${i}`} type="number" min="1" value={l.moq} onChange={(e) => updateLine(i, { moq: e.target.value })} disabled={!editable} />
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label htmlFor={`aq-lead-${i}`}>Lead time (days)</Label>
-                          <Input id={`aq-lead-${i}`} type="number" min="0" value={l.lead_time_days} onChange={(e) => updateLine(i, { lead_time_days: e.target.value })} disabled={!editable} />
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-4 gap-px overflow-hidden rounded-md border border-border bg-border text-xs">
-                        <div className="bg-muted/40 p-2">
-                          <div className="uppercase tracking-wide text-muted-foreground">Cost</div>
-                          <div className="font-mono font-medium">{formatUSD(lineCost(l))}</div>
-                        </div>
-                        <div className="bg-muted/40 p-2">
-                          <div className="uppercase tracking-wide text-muted-foreground">Markup</div>
-                          <div className="font-mono font-medium">{formatUSD(lineMarkup(l))}</div>
-                        </div>
-                        <div className="bg-muted/40 p-2">
-                          <div className="uppercase tracking-wide text-muted-foreground">Client price</div>
-                          <div className="font-mono font-semibold">{formatUSD(linePrice(l))}</div>
-                        </div>
-                        <div className="bg-muted/40 p-2">
-                          <div className="uppercase tracking-wide text-muted-foreground">Margin</div>
-                          <div className="font-mono font-medium">{lineMargin(l).toFixed(1)}%</div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
 
               {requestEditable && (
                 <Button
@@ -663,25 +693,33 @@ function AdminQuoteDetailPage() {
                   variant="outline"
                   size="sm"
                   className="gap-1.5"
-                  onClick={() => setLines((prev) => [...prev, emptyLine()])}
+                  onClick={() => setRows((prev) => [...prev, emptyVariant(countries)])}
                 >
-                  <Plus className="h-3.5 w-3.5" /> Add variant
+                  <Plus className="h-3.5 w-3.5" /> Add variant (all {countries.length}{" "}
+                  {countries.length === 1 ? "country" : "countries"})
                 </Button>
               )}
 
-              {editableLines.length > 0 && (
+              {rows.length > 0 && (
                 <div className="grid grid-cols-3 gap-px overflow-hidden rounded-md border border-border bg-border text-sm">
                   <div className="bg-muted/40 p-3">
-                    <div className="text-xs uppercase tracking-wide text-muted-foreground">Total cost</div>
-                    <div className="font-mono font-medium">{formatUSD(totals.cost)}</div>
+                    <div className="text-xs uppercase tracking-wide text-muted-foreground">Grid</div>
+                    <div className="font-mono font-medium">
+                      {rows.length} variant{rows.length === 1 ? "" : "s"} × {countries.length}{" "}
+                      {countries.length === 1 ? "country" : "countries"}
+                    </div>
                   </div>
                   <div className="bg-muted/40 p-3">
-                    <div className="text-xs uppercase tracking-wide text-muted-foreground">Total markup</div>
-                    <div className="font-mono font-medium">{formatUSD(totals.markup)}</div>
+                    <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                      Lowest unit price
+                    </div>
+                    <div className="font-mono font-medium">{formatUSD(minPrice)}</div>
                   </div>
                   <div className="bg-muted/40 p-3">
-                    <div className="text-xs uppercase tracking-wide text-muted-foreground">Total client price</div>
-                    <div className="font-mono font-semibold">{formatUSD(totals.price)}</div>
+                    <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                      Highest unit price
+                    </div>
+                    <div className="font-mono font-semibold">{formatUSD(maxPrice)}</div>
                   </div>
                 </div>
               )}
