@@ -106,7 +106,21 @@ function AdminProductsPage() {
 
   const products = (data?.products ?? []) as unknown as Product[];
   const prices = (data?.prices ?? []) as BundlePrice[];
-  const priceByBundle = new Map(prices.map((p) => [p.bundle_product_id, p]));
+  const countryPrices = (data?.countryPrices ?? []) as CountryPrice[];
+  const priceByBundle = new Map<string, BundlePrice[]>();
+  for (const p of prices) {
+    if (!p.bundle_product_id) continue;
+    const list = priceByBundle.get(p.bundle_product_id) ?? [];
+    list.push(p);
+    priceByBundle.set(p.bundle_product_id, list);
+  }
+  const priceByProduct = new Map<string, CountryPrice[]>();
+  for (const cp of countryPrices) {
+    if (!cp.product_id) continue;
+    const list = priceByProduct.get(cp.product_id) ?? [];
+    list.push(cp);
+    priceByProduct.set(cp.product_id, list);
+  }
 
   const [overrideFor, setOverrideFor] = useState<Product | null>(null);
   const [overrideValue, setOverrideValue] = useState("");

@@ -125,7 +125,12 @@ export const adminListProducts = createServerFn({ method: "GET" })
     const { data: prices, error: pricesError } = await admin.from("bundle_prices").select("*");
     if (pricesError) throw new Error(pricesError.message);
 
-    return { products: products ?? [], prices: prices ?? [] };
+    const { data: countryPrices, error: countryPricesError } = await admin
+      .from("product_country_prices")
+      .select("product_id, country_code, unit_price, lead_time_days");
+    if (countryPricesError) throw new Error(countryPricesError.message);
+
+    return { products: products ?? [], prices: prices ?? [], countryPrices: countryPrices ?? [] };
   });
 
 /** Admin: set or clear the price override on a bundle. */
