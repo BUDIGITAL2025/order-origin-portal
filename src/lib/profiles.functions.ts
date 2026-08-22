@@ -213,6 +213,24 @@ export const upgradeToUnlimited = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+/**
+ * Admin: set a client's integration mode. Only meaningful for Shopify stores —
+ * the DB CHECK forces 'manual' for every other platform.
+ */
+export const adminSetIntegrationMode = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => integrationModeSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const { requireAdmin } = await import("./admin.server");
+    await requireAdmin(context.supabase, context.userId);
+    const { error } = await context.supabase
+      .from("profiles")
+      .update({ integration_mode: data.integration_mode })
+      .eq("id", data.client_id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
 /** Admin: set or clear a client's pricing tier override. */
 export const adminSetTierOverride = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -257,8 +275,8 @@ export const provisionClient = createServerFn({ method: "POST" })
     if (!isPending && !isRetry) {
       throw new Error("Client is not pending approval (or awaiting provisioning retry)");
     }
-    if (!profile.shopify_domain) {
-      throw new Error("Client has no Shopify domain on file");
+    if (!profile.store_url) {
+      throw new Error("Client has no store URL on file");
     }
 
     // Server-only middleware credentials — never exposed to the browser.
@@ -328,7 +346,7 @@ export const provisionClient = createServerFn({ method: "POST" })
         // TODO: create the tenant in the external middleware:
         //   POST {MIDDLEWARE_URL}/api/admin/tenants/create
         //   auth: service account (MIDDLEWARE_SERVICE_USER / MIDDLEWARE_SERVICE_PASSWORD)
-        //   body: { name: profile.company_name, shop_domain: profile.shopify_domain, tenant_id: tenantId }
+        //   body: { name: profile.company_name, shop_domain: profile.store_url, tenant_id: tenantId }
         //   Idempotency: treat "tenant already exists" (e.g. HTTP 409) as success.
         void MIDDLEWARE_URL;
       }
@@ -354,38 +372,44 @@ export const provisionClient = createServerFn({ method: "POST" })
     }
 
     // ------------------------------------------------------------------
-    // Step 4 — select_tenant: exchange the service credentials for a JWT
-    // scoped to this tenant, used for the remaining calls.
+    // Steps 4–5 only apply to automatic integration. In manual mode the
+    // tenant exists and the membership is granted — provisioning stops here.
     // ------------------------------------------------------------------
-    let tenantScopedJwt: string | null = null;
-    await setStep("select_tenant");
-    try {
-      if (middlewareConfigured) {
-        // TODO: POST {MIDDLEWARE_URL}/api/admin/auth/select-tenant
-        //   body: { tenant_id: tenantId }
-        //   → returns a new JWT scoped to the tenant.
-        // tenantScopedJwt = response.token
-        void MIDDLEWARE_SERVICE_PASSWORD;
+    if (profile.integration_mode === "automatic") {
+      // ------------------------------------------------------------------
+      // Step 4 — select_tenant: exchange the service credentials for a JWT
+      // scoped to this tenant, used for the remaining calls.
+      // ------------------------------------------------------------------
+      let tenantScopedJwt: string | null = null;
+      await setStep("select_tenant");
+      try {
+        if (middlewareConfigured) {
+          // TODO: POST {MIDDLEWARE_URL}/api/admin/auth/select-tenant
+          //   body: { tenant_id: tenantId }
+          //   → returns a new JWT scoped to the tenant.
+          // tenantScopedJwt = response.token
+          void MIDDLEWARE_SERVICE_PASSWORD;
+        }
+      } catch (e) {
+        await fail("select_tenant", e instanceof Error ? e.message : String(e));
       }
-    } catch (e) {
-      await fail("select_tenant", e instanceof Error ? e.message : String(e));
-    }
 
-    // ------------------------------------------------------------------
-    // Step 5 — health_check: confirm the wiring works now, not on the
-    // first order.
-    // ------------------------------------------------------------------
-    await setStep("health_check");
-    try {
-      if (middlewareConfigured) {
-        // TODO: GET {MIDDLEWARE_URL}/api/admin/tenants/shops
-        //   headers: { Authorization: `Bearer ${tenantScopedJwt}` }
-        //   Any non-2xx means the tenant is not reachable externally.
-        void tenantScopedJwt;
-        void MIDDLEWARE_SERVICE_USER_ID;
+      // ------------------------------------------------------------------
+      // Step 5 — health_check: confirm the wiring works now, not on the
+      // first order.
+      // ------------------------------------------------------------------
+      await setStep("health_check");
+      try {
+        if (middlewareConfigured) {
+          // TODO: GET {MIDDLEWARE_URL}/api/admin/tenants/shops
+          //   headers: { Authorization: `Bearer ${tenantScopedJwt}` }
+          //   Any non-2xx means the tenant is not reachable externally.
+          void tenantScopedJwt;
+          void MIDDLEWARE_SERVICE_USER_ID;
+        }
+      } catch (e) {
+        await fail("health_check", e instanceof Error ? e.message : String(e));
       }
-    } catch (e) {
-      await fail("health_check", e instanceof Error ? e.message : String(e));
     }
 
     // All steps done.
