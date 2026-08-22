@@ -30,6 +30,7 @@ import { Route as AuthenticatedAdminWalletRouteImport } from './routes/_authenti
 import { Route as AuthenticatedClientQuotesIndexRouteImport } from './routes/_authenticated/_client/quotes/index'
 import { Route as AuthenticatedClientQuotesIdRouteImport } from './routes/_authenticated/_client/quotes/$id'
 import { Route as AuthenticatedClientQuotesNewRouteImport } from './routes/_authenticated/_client/quotes/new'
+import { Route as AuthenticatedClientStoresNewRouteImport } from './routes/_authenticated/_client/stores/new'
 import { Route as AuthenticatedAdminQuotesIndexRouteImport } from './routes/_authenticated/admin/quotes/index'
 import { Route as AuthenticatedAdminQuotesIdRouteImport } from './routes/_authenticated/admin/quotes/$id'
 import { Route as ApiPublicCronAutoTopupRouteImport } from './routes/api/public/cron/auto-topup'
@@ -154,6 +155,12 @@ const AuthenticatedClientQuotesNewRoute =
     path: '/quotes/new',
     getParentRoute: () => AuthenticatedClientRoute,
   } as any)
+const AuthenticatedClientStoresNewRoute =
+  AuthenticatedClientStoresNewRouteImport.update({
+    id: '/stores/new',
+    path: '/stores/new',
+    getParentRoute: () => AuthenticatedClientRoute,
+  } as any)
 const AuthenticatedAdminQuotesIndexRoute =
   AuthenticatedAdminQuotesIndexRouteImport.update({
     id: '/quotes/',
@@ -209,6 +216,7 @@ export interface FileRoutesByFullPath {
   '/admin/wallet': typeof AuthenticatedAdminWalletRoute
   '/quotes/$id': typeof AuthenticatedClientQuotesIdRoute
   '/quotes/new': typeof AuthenticatedClientQuotesNewRoute
+  '/stores/new': typeof AuthenticatedClientStoresNewRoute
   '/admin/quotes/$id': typeof AuthenticatedAdminQuotesIdRoute
   '/api/public/cron/auto-topup': typeof ApiPublicCronAutoTopupRoute
   '/api/public/cron/documents-sweep': typeof ApiPublicCronDocumentsSweepRoute
@@ -236,6 +244,7 @@ export interface FileRoutesByTo {
   '/admin/wallet': typeof AuthenticatedAdminWalletRoute
   '/quotes/$id': typeof AuthenticatedClientQuotesIdRoute
   '/quotes/new': typeof AuthenticatedClientQuotesNewRoute
+  '/stores/new': typeof AuthenticatedClientStoresNewRoute
   '/admin/quotes/$id': typeof AuthenticatedAdminQuotesIdRoute
   '/api/public/cron/auto-topup': typeof ApiPublicCronAutoTopupRoute
   '/api/public/cron/documents-sweep': typeof ApiPublicCronDocumentsSweepRoute
@@ -266,6 +275,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/wallet': typeof AuthenticatedAdminWalletRoute
   '/_authenticated/_client/quotes/$id': typeof AuthenticatedClientQuotesIdRoute
   '/_authenticated/_client/quotes/new': typeof AuthenticatedClientQuotesNewRoute
+  '/_authenticated/_client/stores/new': typeof AuthenticatedClientStoresNewRoute
   '/_authenticated/admin/quotes/$id': typeof AuthenticatedAdminQuotesIdRoute
   '/api/public/cron/auto-topup': typeof ApiPublicCronAutoTopupRoute
   '/api/public/cron/documents-sweep': typeof ApiPublicCronDocumentsSweepRoute
@@ -295,6 +305,7 @@ export interface FileRouteTypes {
     | '/admin/wallet'
     | '/quotes/$id'
     | '/quotes/new'
+    | '/stores/new'
     | '/admin/quotes/$id'
     | '/api/public/cron/auto-topup'
     | '/api/public/cron/documents-sweep'
@@ -322,6 +333,7 @@ export interface FileRouteTypes {
     | '/admin/wallet'
     | '/quotes/$id'
     | '/quotes/new'
+    | '/stores/new'
     | '/admin/quotes/$id'
     | '/api/public/cron/auto-topup'
     | '/api/public/cron/documents-sweep'
@@ -351,6 +363,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/wallet'
     | '/_authenticated/_client/quotes/$id'
     | '/_authenticated/_client/quotes/new'
+    | '/_authenticated/_client/stores/new'
     | '/_authenticated/admin/quotes/$id'
     | '/api/public/cron/auto-topup'
     | '/api/public/cron/documents-sweep'
@@ -520,6 +533,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedClientQuotesNewRouteImport
       parentRoute: typeof AuthenticatedClientRoute
     }
+    '/_authenticated/_client/stores/new': {
+      id: '/_authenticated/_client/stores/new'
+      path: '/stores/new'
+      fullPath: '/stores/new'
+      preLoaderRoute: typeof AuthenticatedClientStoresNewRouteImport
+      parentRoute: typeof AuthenticatedClientRoute
+    }
     '/_authenticated/admin/quotes/': {
       id: '/_authenticated/admin/quotes/'
       path: '/quotes'
@@ -574,6 +594,7 @@ interface AuthenticatedClientRouteChildren {
   AuthenticatedClientWalletRoute: typeof AuthenticatedClientWalletRoute
   AuthenticatedClientQuotesIdRoute: typeof AuthenticatedClientQuotesIdRoute
   AuthenticatedClientQuotesNewRoute: typeof AuthenticatedClientQuotesNewRoute
+  AuthenticatedClientStoresNewRoute: typeof AuthenticatedClientStoresNewRoute
   AuthenticatedClientQuotesIndexRoute: typeof AuthenticatedClientQuotesIndexRoute
 }
 
@@ -586,6 +607,7 @@ const AuthenticatedClientRouteChildren: AuthenticatedClientRouteChildren = {
   AuthenticatedClientWalletRoute: AuthenticatedClientWalletRoute,
   AuthenticatedClientQuotesIdRoute: AuthenticatedClientQuotesIdRoute,
   AuthenticatedClientQuotesNewRoute: AuthenticatedClientQuotesNewRoute,
+  AuthenticatedClientStoresNewRoute: AuthenticatedClientStoresNewRoute,
   AuthenticatedClientQuotesIndexRoute: AuthenticatedClientQuotesIndexRoute,
 }
 

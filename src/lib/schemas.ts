@@ -4,16 +4,6 @@ export const storePlatformSchema = z.enum(["shopify", "woocommerce", "other"]);
 
 const SHOPIFY_DOMAIN_RE = /^[a-z0-9][a-z0-9-]*\.myshopify\.com$/;
 
-const companyDetailsBase = z.object({
-  company_name: z.string().trim().min(2, "Company name is required").max(120),
-  contact_name: z.string().trim().min(2, "Contact name is required").max(120),
-  phone: z.string().trim().min(5, "Phone is required").max(40),
-  country: z.string().trim().min(2, "Country is required").max(80),
-  vat_number: z.string().trim().min(4, "VAT number is required").max(40),
-  platform: storePlatformSchema,
-  store_url: z.string().trim().min(3, "Store URL is required").max(500),
-});
-
 const storeUrlMatchesPlatform = (
   val: { platform: "shopify" | "woocommerce" | "other"; store_url: string },
   ctx: z.RefinementCtx,
@@ -27,14 +17,36 @@ const storeUrlMatchesPlatform = (
   }
 };
 
-export const companyDetailsSchema = companyDetailsBase.superRefine(storeUrlMatchesPlatform);
+// Signup collects the account and the entity's basics only — no store at
+// this step. The entity's legal name defaults to the contact name; fiscal
+// fields are completed later from the billing page.
+export const signupSchema = z.object({
+  email: z.string().trim().email("Invalid email address").max(255),
+  password: z.string().min(8, "Password must be at least 8 characters").max(128),
+  contact_name: z.string().trim().min(2, "Contact name is required").max(120),
+  phone: z.string().trim().min(5, "Phone is required").max(40),
+  country: z.string().trim().min(2, "Country is required").max(80),
+});
 
-export const signupSchema = companyDetailsBase
-  .extend({
-    email: z.string().trim().email("Invalid email address").max(255),
-    password: z.string().min(8, "Password must be at least 8 characters").max(128),
-  })
-  .superRefine(storeUrlMatchesPlatform);
+export const completeSignupSchema = signupSchema.omit({ email: true, password: true });
+
+// Stores are added after signup — the *.myshopify.com rule applies here,
+// not at signup.
+const addStoreBase = z.object({
+  platform: storePlatformSchema,
+  store_url: z.string().trim().min(3, "Store URL is required").max(500),
+  store_name: z.string().trim().max(120).optional().or(z.literal("")),
+});
+export const addStoreSchema = addStoreBase.superRefine(storeUrlMatchesPlatform);
+
+// Entity fiscal details — completed by the client after signup.
+export const entityDetailsSchema = z.object({
+  entity_id: z.string().uuid(),
+  legal_name: z.string().trim().min(2, "Legal name is required").max(160),
+  country: z.string().trim().min(2, "Country is required").max(80),
+  vat_number: z.string().trim().max(40).optional().or(z.literal("")),
+  address: z.string().trim().max(500).optional().or(z.literal("")),
+});
 
 export const loginSchema = z.object({
   email: z.string().trim().email("Invalid email address").max(255),

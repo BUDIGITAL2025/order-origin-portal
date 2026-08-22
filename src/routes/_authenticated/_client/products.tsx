@@ -1,3 +1,4 @@
+import { StoreGate } from "@/components/store-gate";
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -51,7 +52,7 @@ export const Route = createFileRoute("/_authenticated/_client/products")({
       { name: "robots", content: "noindex" },
     ],
   }),
-  component: MyProductsPage,
+  component: MyProductsPageGated,
 });
 
 type Product = {
@@ -282,7 +283,7 @@ function BundleDialog({
   );
 }
 
-function MyProductsPage() {
+function MyProductsPageInner() {
   const queryClient = useQueryClient();
   const fetchProducts = useServerFn(listMyProducts);
   const callDiscontinue = useServerFn(discontinueMyBundle);
@@ -534,5 +535,13 @@ function MyProductsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+function MyProductsPageGated() {
+  return (
+    <StoreGate feature="Your catalogue">
+      <MyProductsPageInner />
+    </StoreGate>
   );
 }

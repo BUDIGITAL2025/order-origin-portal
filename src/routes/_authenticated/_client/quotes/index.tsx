@@ -1,3 +1,4 @@
+import { StoreGate } from "@/components/store-gate";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
@@ -22,10 +23,10 @@ export const Route = createFileRoute("/_authenticated/_client/quotes/")({
       { name: "robots", content: "noindex" },
     ],
   }),
-  component: MyQuotesPage,
+  component: MyQuotesPageGated,
 });
 
-function MyQuotesPage() {
+function MyQuotesPageInner() {
   const fetchQuotes = useServerFn(listMyQuotes);
   const { data, isPending } = useQuery({
     queryKey: ["my-quotes"],
@@ -98,5 +99,13 @@ function MyQuotesPage() {
         </div>
       )}
     </div>
+  );
+}
+
+function MyQuotesPageGated() {
+  return (
+    <StoreGate feature="Quotes">
+      <MyQuotesPageInner />
+    </StoreGate>
   );
 }

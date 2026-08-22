@@ -1,3 +1,4 @@
+import { StoreGate } from "@/components/store-gate";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -26,10 +27,10 @@ export const Route = createFileRoute("/_authenticated/_client/quotes/new")({
       { name: "robots", content: "noindex" },
     ],
   }),
-  component: NewQuotePage,
+  component: NewQuotePageGated,
 });
 
-function NewQuotePage() {
+function NewQuotePageInner() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const callCreate = useServerFn(createQuoteRequest);
@@ -264,5 +265,13 @@ function NewQuotePage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+function NewQuotePageGated() {
+  return (
+    <StoreGate feature="Quote requests">
+      <NewQuotePageInner />
+    </StoreGate>
   );
 }

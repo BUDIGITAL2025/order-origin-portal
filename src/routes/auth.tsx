@@ -12,14 +12,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { APP_BASE_URL, MARKETING_URL } from "@/lib/config";
@@ -53,26 +47,12 @@ function AuthPage() {
   const [showReset, setShowReset] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
 
-  const [signup, setSignup] = useState<{
-    email: string;
-    password: string;
-    company_name: string;
-    contact_name: string;
-    phone: string;
-    country: string;
-    vat_number: string;
-    platform: "shopify" | "woocommerce" | "other";
-    store_url: string;
-  }>({
+  const [signup, setSignup] = useState({
     email: "",
     password: "",
-    company_name: "",
     contact_name: "",
     phone: "",
     country: "",
-    vat_number: "",
-    platform: "shopify",
-    store_url: "",
   });
 
   const routeAfterSignIn = async () => {
@@ -162,24 +142,18 @@ function AuthPage() {
         return;
       }
       if (!data.session) {
-        toast.success(
-          "Account created. Please confirm your email address, then sign in to finish your company profile.",
-        );
+        toast.success("Account created. Please confirm your email address, then sign in.");
         return;
       }
       await callCompleteSignup({
         data: {
-          company_name: parsed.data.company_name,
           contact_name: parsed.data.contact_name,
           phone: parsed.data.phone,
           country: parsed.data.country,
-          vat_number: parsed.data.vat_number,
-          platform: parsed.data.platform,
-          store_url: parsed.data.store_url,
         },
       });
-      toast.success("Account created — your application is pending review.");
-      await navigate({ to: "/pending" });
+      toast.success("Account created — welcome to FlySales.");
+      await navigate({ to: "/dashboard" });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Sign up failed");
     } finally {
@@ -268,9 +242,8 @@ function AuthPage() {
                         Forgot password?
                       </button>
                     </div>
-                    <Input
+                    <PasswordInput
                       id="login-password"
-                      type="password"
                       autoComplete="current-password"
                       required
                       value={loginPassword}
@@ -288,9 +261,9 @@ function AuthPage() {
           <TabsContent value="signup">
             <form onSubmit={handleSignup}>
               <CardContent className="space-y-3">
-                <CardTitle className="text-lg">Request access</CardTitle>
+                <CardTitle className="text-lg">Create your account</CardTitle>
                 <CardDescription>
-                  New accounts are reviewed by our team before activation.
+                  Just the basics — you'll add your store and company details from the dashboard.
                 </CardDescription>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="col-span-2 space-y-1.5">
@@ -306,19 +279,14 @@ function AuthPage() {
                   </div>
                   <div className="col-span-2 space-y-1.5">
                     <Label htmlFor="su-password">Password (min. 8 characters)</Label>
-                    <Input
+                    <PasswordInput
                       id="su-password"
-                      type="password"
                       autoComplete="new-password"
                       required
                       minLength={8}
                       value={signup.password}
                       onChange={setField("password")}
                     />
-                  </div>
-                  <div className="col-span-2 space-y-1.5">
-                    <Label htmlFor="su-company">Company name</Label>
-                    <Input id="su-company" required value={signup.company_name} onChange={setField("company_name")} />
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="su-contact">Contact name</Label>
@@ -328,57 +296,10 @@ function AuthPage() {
                     <Label htmlFor="su-phone">Phone</Label>
                     <Input id="su-phone" required value={signup.phone} onChange={setField("phone")} />
                   </div>
-                  <div className="space-y-1.5">
+                  <div className="col-span-2 space-y-1.5">
                     <Label htmlFor="su-country">Country</Label>
                     <Input id="su-country" required value={signup.country} onChange={setField("country")} />
                   </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="su-vat">VAT number</Label>
-                    <Input id="su-vat" required value={signup.vat_number} onChange={setField("vat_number")} />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="su-platform">Platform</Label>
-                    <Select
-                      value={signup.platform}
-                      onValueChange={(v) =>
-                        setSignup((s) => ({
-                          ...s,
-                          platform: v as "shopify" | "woocommerce" | "other",
-                        }))
-                      }
-                    >
-                      <SelectTrigger id="su-platform">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="shopify">Shopify</SelectItem>
-                        <SelectItem value="woocommerce">WooCommerce</SelectItem>
-                        <SelectItem value="other">Other</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="su-store-url">
-                      {signup.platform === "shopify" ? "Shopify domain" : "Store URL"}
-                    </Label>
-                    <Input
-                      id="su-store-url"
-                      required
-                      placeholder={
-                        signup.platform === "shopify"
-                          ? "your-store.myshopify.com"
-                          : "https://your-store.com"
-                      }
-                      value={signup.store_url}
-                      onChange={setField("store_url")}
-                    />
-                  </div>
-                  {signup.platform !== "shopify" && (
-                    <p className="col-span-2 text-xs text-muted-foreground">
-                      Non-Shopify stores operate in manual mode for now — orders are synced by
-                      our team instead of automatically.
-                    </p>
-                  )}
                 </div>
                 <Button type="submit" className="w-full" disabled={busy}>
                   {busy ? "Creating account…" : "Create account"}
