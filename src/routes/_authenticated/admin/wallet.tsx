@@ -29,7 +29,7 @@ import { adminListClients } from "@/lib/profiles.functions";
 import { walletAdjustmentSchema } from "@/lib/schemas";
 import { adminAdjustWallet, adminGetWallet } from "@/lib/wallet.functions";
 
-export const Route = createFileRoute("/_authenticated/_admin/wallet")({
+export const Route = createFileRoute("/_authenticated/admin-tmp-mid/wallet")({
   head: () => ({
     meta: [
       { title: "Wallet adjustments — Relay Sourcing Admin" },

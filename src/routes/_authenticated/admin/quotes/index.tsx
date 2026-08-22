@@ -23,7 +23,7 @@ const searchSchema = z.object({
   status: z.enum(STATUSES).optional(),
 });
 
-export const Route = createFileRoute("/_authenticated/_admin/quotes/")({
+export const Route = createFileRoute("/_authenticated/admin-tmp-mid/quotes/")({
   validateSearch: (search) => searchSchema.parse(search),
   head: () => ({
     meta: [

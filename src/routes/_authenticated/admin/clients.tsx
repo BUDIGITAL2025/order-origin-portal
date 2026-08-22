@@ -28,7 +28,7 @@ import {
   provisionClient,
 } from "@/lib/profiles.functions";
 
-export const Route = createFileRoute("/_authenticated/_admin/clients")({
+export const Route = createFileRoute("/_authenticated/admin-tmp-mid/clients")({
   head: () => ({
     meta: [
       { title: "Clients — Relay Sourcing Admin" },
