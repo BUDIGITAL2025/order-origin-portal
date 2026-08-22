@@ -7,6 +7,8 @@ import { sendClientEmail } from "./email.server";
 import { PLANS, planLabel } from "./plans";
 
 type Admin = SupabaseClient<Database>;
+type EntityRow = Database["public"]["Tables"]["entities"]["Row"];
+type StoreRow = Database["public"]["Tables"]["stores"]["Row"];
 
 /** Human-readable price ids (lookup keys) created via the payments tools. */
 export const PLAN_PRICE_IDS = {
@@ -86,18 +88,64 @@ function isDuplicateReference(message: string): boolean {
   return message.includes("already exists");
 }
 
-/** Wallet lives at entity level: resolve a client's (first) entity id. */
-async function resolveEntityId(admin: Admin, clientId: string): Promise<string> {
+// ============= Entity / store lookups =============
+
+/** First entity owned by an account (used when a store-scoped id isn't available). */
+export async function resolveEntityIdForAccount(admin: Admin, accountId: string): Promise<string> {
   const { data, error } = await admin
     .from("entities")
     .select("id")
-    .eq("account_id", clientId)
+    .eq("account_id", accountId)
     .order("created_at", { ascending: true })
     .limit(1)
     .maybeSingle();
   if (error) throw new Error(error.message);
-  if (!data) throw new Error(`No entity found for client ${clientId}`);
+  if (!data) throw new Error(`No entity found for account ${accountId}`);
   return data.id;
+}
+
+export async function findEntityByStripeCustomer(
+  admin: Admin,
+  customerId: string,
+): Promise<EntityRow | null> {
+  const { data } = await admin
+    .from("entities")
+    .select("*")
+    .eq("stripe_customer_id", customerId)
+    .maybeSingle();
+  return data;
+}
+
+export async function findEntityById(admin: Admin, id: string): Promise<EntityRow | null> {
+  const { data } = await admin.from("entities").select("*").eq("id", id).maybeSingle();
+  return data;
+}
+
+export async function findStoreByStripeSubscription(
+  admin: Admin,
+  subscriptionId: string,
+): Promise<StoreRow | null> {
+  const { data } = await admin
+    .from("stores")
+    .select("*")
+    .eq("stripe_subscription_id", subscriptionId)
+    .maybeSingle();
+  return data;
+}
+
+export async function findStoreById(admin: Admin, id: string): Promise<StoreRow | null> {
+  const { data } = await admin.from("stores").select("*").eq("id", id).maybeSingle();
+  return data;
+}
+
+/** The account (profile id) that owns an entity — needed for transactional emails. */
+async function accountIdForEntity(admin: Admin, entityId: string): Promise<string | null> {
+  const { data } = await admin
+    .from("entities")
+    .select("account_id")
+    .eq("id", entityId)
+    .maybeSingle();
+  return data?.account_id ?? null;
 }
 
 /**
@@ -109,10 +157,10 @@ async function resolveEntityId(admin: Admin, clientId: string): Promise<string> 
  */
 export async function creditWalletOnce(
   admin: Admin,
-  args: { clientId: string; amountUsd: number; reference: string; description: string },
+  args: { entityId: string; amountUsd: number; reference: string; description: string },
 ): Promise<Database["public"]["Tables"]["wallet_transactions"]["Row"] | null> {
   const { data, error } = await admin.rpc("apply_wallet_transaction", {
-    p_entity_id: await resolveEntityId(admin, args.clientId),
+    p_entity_id: args.entityId,
     p_type: "credit",
     p_amount: round2(args.amountUsd),
     p_description: args.description,
@@ -128,10 +176,10 @@ export async function creditWalletOnce(
 /** Debit the wallet exactly once per Stripe reference (refunds). */
 export async function debitWalletOnce(
   admin: Admin,
-  args: { clientId: string; amountUsd: number; reference: string; description: string },
+  args: { entityId: string; amountUsd: number; reference: string; description: string },
 ): Promise<void> {
   const { error } = await admin.rpc("apply_wallet_transaction", {
-    p_entity_id: await resolveEntityId(admin, args.clientId),
+    p_entity_id: args.entityId,
     p_type: "debit",
     p_amount: round2(args.amountUsd),
     p_description: args.description,
@@ -140,13 +188,18 @@ export async function debitWalletOnce(
   if (error && !isDuplicateReference(error.message)) throw new Error(error.message);
 }
 
-/** In-app notification for a client (the billing page surfaces unread ones). */
-export async function notifyClient(
+/**
+ * In-app notification. Scoping rule: wallet/balance/payment notifications
+ * carry entity_id only; subscription/quota/order notifications carry
+ * store_id (and may also set entity_id when known).
+ */
+export async function notify(
   admin: Admin,
-  args: { clientId: string; kind: string; title: string; body: string },
+  args: { entityId?: string | null; storeId?: string | null; kind: string; title: string; body: string },
 ): Promise<void> {
   await admin.from("notifications").insert({
-    client_id: args.clientId,
+    entity_id: args.entityId ?? null,
+    store_id: args.storeId ?? null,
     kind: args.kind,
     title: args.title,
     body: args.body,
@@ -154,11 +207,11 @@ export async function notifyClient(
 }
 
 /** Current wallet balance = balance_after of the latest ledger row. */
-export async function getWalletBalance(admin: Admin, clientId: string): Promise<number> {
+export async function getWalletBalance(admin: Admin, entityId: string): Promise<number> {
   const { data } = await admin
     .from("wallet_transactions")
     .select("balance_after")
-    .eq("client_id", clientId)
+    .eq("entity_id", entityId)
     .order("created_at", { ascending: false })
     .order("id", { ascending: false })
     .limit(1)
@@ -166,22 +219,8 @@ export async function getWalletBalance(admin: Admin, clientId: string): Promise<
   return data ? Number(data.balance_after) : 0;
 }
 
-export async function findProfileByStripeCustomer(admin: Admin, customerId: string) {
-  const { data } = await admin
-    .from("profiles")
-    .select("*")
-    .eq("stripe_customer_id", customerId)
-    .maybeSingle();
-  return data;
-}
-
-export async function findProfileById(admin: Admin, id: string) {
-  const { data } = await admin.from("profiles").select("*").eq("id", id).maybeSingle();
-  return data;
-}
-
 /**
- * Sync profile billing state from a Stripe Subscription object
+ * Sync a store's subscription state from a Stripe Subscription object
  * (customer.subscription.created / .updated). The webhook is the ONLY writer
  * of these fields — never the redirect.
  */
@@ -205,13 +244,21 @@ export async function syncSubscriptionFromStripe(
   };
   const customerId =
     typeof subAny.customer === "string" ? subAny.customer : subAny.customer?.id;
-  const clientId = subAny.metadata?.["flysales_user_id"] ?? subAny.metadata?.["userId"] ?? null;
+  const storeId = subAny.metadata?.["flysales_store_id"] ?? null;
 
-  let profile = customerId ? await findProfileByStripeCustomer(admin, customerId) : null;
-  if (!profile && clientId) profile = await findProfileById(admin, clientId);
-  if (!profile) {
-    console.error("subscription event for unknown customer", customerId);
+  let store = await findStoreByStripeSubscription(admin, subAny.id);
+  if (!store && storeId) store = await findStoreById(admin, storeId);
+  if (!store) {
+    console.error("subscription event for unknown store", customerId, storeId);
     return;
+  }
+
+  // Make sure the entity's Stripe customer id is on file.
+  if (customerId) {
+    const entity = await findEntityById(admin, store.entity_id);
+    if (entity && entity.stripe_customer_id !== customerId) {
+      await admin.from("entities").update({ stripe_customer_id: customerId }).eq("id", entity.id);
+    }
   }
 
   const item = subAny.items?.data?.[0];
@@ -224,8 +271,7 @@ export async function syncSubscriptionFromStripe(
     ? new Date(periodEndUnix * 1000).toISOString().slice(0, 10)
     : null;
 
-  const patch: Database["public"]["Tables"]["profiles"]["Update"] = {
-    stripe_customer_id: customerId ?? profile.stripe_customer_id,
+  const patch: Database["public"]["Tables"]["stores"]["Update"] = {
     stripe_subscription_id: subAny.id,
     subscription_status: status,
   };
@@ -235,8 +281,8 @@ export async function syncSubscriptionFromStripe(
   if (plan && status === "active") {
     patch.subscription_plan = plan;
 
-    if (profile.pending_plan_change) {
-      if (profile.pending_plan_change === plan) {
+    if (store.pending_plan_change) {
+      if (store.pending_plan_change === plan) {
         // The scheduled change just took effect.
         patch.pending_plan_change = null;
         patch.pending_plan_change_date = null;
@@ -257,31 +303,38 @@ export async function syncSubscriptionFromStripe(
   }
 
   // Cancellation notice — emailed once per cancellation; the flag clears if
-  // the client reactivates before the period ends.
+  // the client reactivates before the period ends. Tracked on the entity.
+  const entity = await findEntityById(admin, store.entity_id);
   let sendCancellationNotice = false;
-  if (status === "active" && subAny.cancel_at_period_end && !profile.cancel_notice_sent_at) {
-    patch.cancel_notice_sent_at = new Date().toISOString();
+  if (entity && status === "active" && subAny.cancel_at_period_end && !entity.cancel_notice_sent_at) {
+    await admin
+      .from("entities")
+      .update({ cancel_notice_sent_at: new Date().toISOString() })
+      .eq("id", entity.id);
     sendCancellationNotice = true;
-  } else if (!subAny.cancel_at_period_end && profile.cancel_notice_sent_at) {
-    patch.cancel_notice_sent_at = null;
+  } else if (entity && !subAny.cancel_at_period_end && entity.cancel_notice_sent_at) {
+    await admin.from("entities").update({ cancel_notice_sent_at: null }).eq("id", entity.id);
   }
 
-  const { error } = await admin.from("profiles").update(patch).eq("id", profile.id);
+  const { error } = await admin.from("stores").update(patch).eq("id", store.id);
   if (error) throw new Error(error.message);
 
   if (sendCancellationNotice) {
-    // Cancellation restricts new work; it never breaks work in flight.
-    await sendClientEmail(admin, {
-      clientId: profile.id,
-      subject: "Your FlySales subscription cancellation",
-      text: [
-        "Your subscription cancellation is confirmed.",
-        periodEndDate
-          ? `Your plan stays active until ${periodEndDate}.`
-          : "Your plan stays active until the end of the current billing period.",
-        "Your product catalogue and any open orders are unaffected, and your wallet balance remains yours.",
-      ].join("\n"),
-    });
+    const accountId = await accountIdForEntity(admin, store.entity_id);
+    if (accountId) {
+      // Cancellation restricts new work; it never breaks work in flight.
+      await sendClientEmail(admin, {
+        clientId: accountId,
+        subject: "Your FlySales subscription cancellation",
+        text: [
+          "Your subscription cancellation is confirmed.",
+          periodEndDate
+            ? `Your plan stays active until ${periodEndDate}.`
+            : "Your plan stays active until the end of the current billing period.",
+          "Your product catalogue and any open orders are unaffected, and your wallet balance remains yours.",
+        ].join("\n"),
+      });
+    }
   }
 }
 
@@ -326,13 +379,13 @@ export async function handleWalletTopup(
 ): Promise<void> {
   const pi = await stripe.paymentIntents.retrieve(paymentIntentId);
   if (pi.status !== "succeeded") return;
-  const clientId = pi.metadata?.["flysales_user_id"];
-  if (!clientId) {
-    throw new Error(`payment intent ${paymentIntentId} missing flysales_user_id`);
+  const entityId = pi.metadata?.["flysales_entity_id"];
+  if (!entityId) {
+    throw new Error(`payment intent ${paymentIntentId} missing flysales_entity_id`);
   }
   const kind = pi.metadata?.["kind"];
   const creditTxn = await creditWalletOnce(admin, {
-    clientId,
+    entityId,
     amountUsd: pi.amount_received / 100,
     reference: pi.id,
     // Human-readable description — the Stripe id lives in reference only.
@@ -343,9 +396,9 @@ export async function handleWalletTopup(
   const pm = idOf(pi.payment_method);
   if (pm) {
     await admin
-      .from("profiles")
+      .from("entities")
       .update({ default_payment_method_id: pm })
-      .eq("id", clientId);
+      .eq("id", entityId);
   }
 
   if (!creditTxn) return; // replay of an already-processed payment
@@ -363,7 +416,7 @@ export async function handleWalletTopup(
   // apply_wallet_transaction with the order id as the reference.
   const { data: releasedRows, error: releaseError } = await admin.rpc(
     "release_awaiting_payment_orders",
-    { p_entity_id: await resolveEntityId(admin, clientId) },
+    { p_entity_id: entityId },
   );
   if (releaseError) {
     console.error("release_awaiting_payment_orders failed:", releaseError.message);
@@ -380,7 +433,7 @@ export async function handleWalletTopup(
     }
   }
 
-  const balance = await getWalletBalance(admin, clientId);
+  const balance = await getWalletBalance(admin, entityId);
   const lines = [
     `Amount credited: $${(pi.amount_received / 100).toFixed(2)}`,
     `New balance: $${balance.toFixed(2)}`,
@@ -391,11 +444,14 @@ export async function handleWalletTopup(
       lines.push(`- Order ${o.order_id} — $${Number(o.amount).toFixed(2)}`);
     }
   }
-  await sendClientEmail(admin, {
-    clientId,
-    subject: "Your FlySales wallet was topped up",
-    text: lines.join("\n"),
-  });
+  const accountId = await accountIdForEntity(admin, entityId);
+  if (accountId) {
+    await sendClientEmail(admin, {
+      clientId: accountId,
+      subject: "Your FlySales wallet was topped up",
+      text: lines.join("\n"),
+    });
+  }
 }
 
 /** The single entry point called by the webhook route after idempotency. */
@@ -415,27 +471,35 @@ export async function processStripeEvent(
 
       const kind = meta(session)["kind"];
       if (kind === "flysales_subscription") {
-        const clientId = meta(session)["flysales_user_id"];
-        if (!clientId) throw new Error("subscription session missing flysales_user_id");
+        const storeId = meta(session)["flysales_store_id"];
+        if (!storeId) throw new Error("subscription session missing flysales_store_id");
         const plan = meta(session)["plan"] === "unlimited" ? "unlimited" : "basic";
         const customerId = idOf(session["customer"]);
         const subscriptionId = idOf(session["subscription"]);
-        const patch: Database["public"]["Tables"]["profiles"]["Update"] = {
+        const store = await findStoreById(admin, storeId);
+        if (!store) throw new Error(`subscription session for unknown store ${storeId}`);
+        const patch: Database["public"]["Tables"]["stores"]["Update"] = {
           subscription_status: "active",
           subscription_plan: plan,
         };
-        if (customerId) patch.stripe_customer_id = customerId;
         if (subscriptionId) patch.stripe_subscription_id = subscriptionId;
-        const { error } = await admin.from("profiles").update(patch).eq("id", clientId);
+        const { error } = await admin.from("stores").update(patch).eq("id", storeId);
         if (error) throw new Error(error.message);
-        // Backfill userId on the Customer so search-based reads resolve.
         if (customerId) {
-          try {
-            await stripe.customers.update(customerId, {
-              metadata: { userId: clientId, flysales_user_id: clientId },
-            });
-          } catch (e) {
-            console.error("customer metadata backfill failed", e);
+          await admin
+            .from("entities")
+            .update({ stripe_customer_id: customerId })
+            .eq("id", store.entity_id);
+          // Backfill userId on the Customer so search-based reads resolve.
+          const accountId = await accountIdForEntity(admin, store.entity_id);
+          if (accountId) {
+            try {
+              await stripe.customers.update(customerId, {
+                metadata: { userId: accountId, flysales_user_id: accountId },
+              });
+            } catch (e) {
+              console.error("customer metadata backfill failed", e);
+            }
           }
         }
         // Confirmation email: plan, price, next billing date. The new plan's
@@ -457,17 +521,20 @@ export async function processStripeEvent(
             console.error("subscription retrieve for confirmation email failed", e);
           }
         }
-        await sendClientEmail(admin, {
-          clientId,
-          subject: `Your FlySales ${planLabel(plan)} subscription is active`,
-          text: [
-            `Plan: ${planLabel(plan)} — $${PLANS[plan].priceUsd}/month`,
-            nextBilling ? `Next billing date: ${nextBilling}` : null,
-            "Your new plan's quota applies immediately.",
-          ]
-            .filter(Boolean)
-            .join("\n"),
-        });
+        const accountId = await accountIdForEntity(admin, store.entity_id);
+        if (accountId) {
+          await sendClientEmail(admin, {
+            clientId: accountId,
+            subject: `Your FlySales ${planLabel(plan)} subscription is active`,
+            text: [
+              `Plan: ${planLabel(plan)} — $${PLANS[plan].priceUsd}/month`,
+              nextBilling ? `Next billing date: ${nextBilling}` : null,
+              "Your new plan's quota applies immediately.",
+            ]
+              .filter(Boolean)
+              .join("\n"),
+          });
+        }
       } else if (kind === "wallet_topup") {
         const piId = idOf(session["payment_intent"]);
         if (piId) await handleWalletTopup(stripe, admin, piId);
@@ -483,63 +550,67 @@ export async function processStripeEvent(
 
     case "customer.subscription.deleted": {
       const sub = event.data.object;
-      const customerId = idOf(sub["customer"]);
-      const profile = customerId
-        ? await findProfileByStripeCustomer(admin, customerId)
-        : null;
-      if (!profile) {
-        console.error("subscription.deleted for unknown customer", customerId);
+      const store = await findStoreByStripeSubscription(admin, String(sub["id"] ?? ""));
+      if (!store) {
+        console.error("subscription.deleted for unknown store", sub["id"]);
         return;
       }
       // Access ends with the subscription — fall back to the Basic tier.
       // The wallet balance is the client's money: never zeroed or expired.
       // The catalogue and in-flight orders stay untouched.
       const { error } = await admin
-        .from("profiles")
+        .from("stores")
         .update({
           subscription_status: "canceled",
           subscription_plan: "basic",
           pending_plan_change: null,
           pending_plan_change_date: null,
-          cancel_notice_sent_at: null,
         })
-        .eq("id", profile.id);
+        .eq("id", store.id);
       if (error) throw new Error(error.message);
+      await admin
+        .from("entities")
+        .update({ cancel_notice_sent_at: null })
+        .eq("id", store.entity_id);
       return;
     }
 
     case "invoice.payment_failed": {
       const invoice = event.data.object;
-      const customerId = idOf(invoice["customer"]);
-      const profile = customerId
-        ? await findProfileByStripeCustomer(admin, customerId)
+      const subscriptionId = idOf(invoice["subscription"]);
+      const store = subscriptionId
+        ? await findStoreByStripeSubscription(admin, subscriptionId)
         : null;
-      if (!profile) {
-        console.error("invoice.payment_failed for unknown customer", customerId);
+      if (!store) {
+        console.error("invoice.payment_failed for unknown subscription", subscriptionId);
         return;
       }
-      const wasAlreadyPastDue = profile.subscription_status === "past_due";
+      const wasAlreadyPastDue = store.subscription_status === "past_due";
       const { error } = await admin
-        .from("profiles")
+        .from("stores")
         .update({ subscription_status: "past_due" })
-        .eq("id", profile.id);
+        .eq("id", store.id);
       if (error) throw new Error(error.message);
       // Notify once, on the transition into past_due — Stripe retries for
       // days and the client must not get an email per retry. Nothing is
       // blocked at this stage; restrictions only apply if Stripe ultimately
       // cancels the subscription.
       if (!wasAlreadyPastDue) {
-        await notifyClient(admin, {
-          clientId: profile.id,
+        await notify(admin, {
+          storeId: store.id,
+          entityId: store.entity_id,
           kind: "subscription_payment_failed",
           title: "Subscription payment failed",
           body: "We could not charge your card for your FlySales subscription. Stripe will retry automatically — update your payment method from the Billing page to keep your plan.",
         });
-        await sendClientEmail(admin, {
-          clientId: profile.id,
-          subject: "We could not charge your card",
-          text: "Your last FlySales subscription payment failed. Stripe will retry automatically over the next few days — please update your payment method from the Billing page to keep your plan.",
-        });
+        const accountId = await accountIdForEntity(admin, store.entity_id);
+        if (accountId) {
+          await sendClientEmail(admin, {
+            clientId: accountId,
+            subject: "We could not charge your card",
+            text: "Your last FlySales subscription payment failed. Stripe will retry automatically over the next few days — please update your payment method from the Billing page to keep your plan.",
+          });
+        }
       }
       return;
     }
@@ -574,10 +645,10 @@ export async function processStripeEvent(
       const refundedUsd = (Number(charge["amount_refunded"]) || 0) / 100;
       if (!piId || refundedUsd <= 0) return;
       // The original credit's reference is the payment intent id — it tells
-      // us which client this refund debits.
+      // us which entity this refund debits.
       const { data: original } = await admin
         .from("wallet_transactions")
-        .select("client_id, amount")
+        .select("entity_id, amount")
         .eq("reference", piId)
         .maybeSingle();
       if (!original) {
@@ -585,7 +656,7 @@ export async function processStripeEvent(
         return;
       }
       await debitWalletOnce(admin, {
-        clientId: original.client_id,
+        entityId: original.entity_id,
         amountUsd: Math.min(refundedUsd, Number(original.amount)),
         reference: `refund:${String(charge["id"])}`,
         description: "Card payment refunded",

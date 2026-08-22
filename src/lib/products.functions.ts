@@ -98,11 +98,11 @@ export const discontinueMyBundle = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => productIdSchema.parse(input))
   .handler(async ({ data, context }) => {
+    // RLS already scopes products to the caller's own stores.
     const { error } = await context.supabase
       .from("products")
       .update({ status: "discontinued" })
       .eq("id", data.product_id)
-      .eq("client_id", context.userId)
       .eq("product_type", "bundle");
     if (error) throw new Error(error.message);
     return { ok: true };

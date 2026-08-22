@@ -1,57 +1,78 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
-  clientIdSchema,
   clientStatusSchema,
   companyDetailsSchema,
   feeWaivedSchema,
   integrationModeSchema,
   subscriptionPlanSchema,
   profileUpdateSchema,
+  storeIdSchema,
   tierOverrideSchema,
 } from "./schemas";
+
+export interface ContextStore {
+  id: string;
+  entity_id: string;
+  store_name: string | null;
+  store_url: string;
+  platform: "shopify" | "woocommerce" | "other";
+  integration_mode: "automatic" | "manual";
+  subscription_plan: "basic" | "unlimited";
+  subscription_status: "none" | "active" | "past_due" | "canceled";
+  quotes_used_this_month: number;
+  quotes_period_start: string;
+  fee_waived: boolean;
+  pricing_tier: "starter" | "growth" | "scale";
+  status: "pending" | "active" | "suspended";
+  created_at: string;
+}
+
+export interface ContextEntity {
+  id: string;
+  legal_name: string;
+  country: string | null;
+  vat_number: string | null;
+  status: "active" | "suspended";
+  auto_topup_enabled: boolean;
+  created_at: string;
+  stores: ContextStore[];
+}
 
 export interface MyContext {
   userId: string;
   email: string | null;
   role: "admin" | "client";
   isAdmin: boolean;
+  /** Account identity only — billing, catalogue and quota live on entities/stores. */
   profile: {
     id: string;
-    company_name: string;
     contact_name: string;
     phone: string;
-    country: string;
-    vat_number: string;
-    platform: "shopify" | "woocommerce" | "other";
-    store_url: string;
-    integration_mode: "automatic" | "manual";
-    pricing_tier: "starter" | "growth" | "scale";
-    tier_override: "starter" | "growth" | "scale" | null;
-    avg_daily_units_30d: number;
-    subscription_plan: "basic" | "unlimited";
-    quotes_used_this_month: number;
-    quotes_period_start: string;
-    fee_waived: boolean;
-    auto_topup_enabled: boolean;
     status: "pending" | "active" | "suspended";
-    middleware_tenant_id: string | null;
-    provisioning_status: "not_started" | "in_progress" | "complete" | "failed";
-    provisioning_step: string | null;
-    provisioning_error: string | null;
-    approved_at: string | null;
     created_at: string;
   } | null;
+  /** Legal entities owned by this account, each with their stores. */
+  entities: ContextEntity[];
 }
 
-/** Session + profile + role for the signed-in user. Called client-side only. */
+const PROFILE_SELECT = "id, contact_name, phone, status, created_at";
+const STORE_SELECT =
+  "id, entity_id, store_name, store_url, platform, integration_mode, subscription_plan, subscription_status, quotes_used_this_month, quotes_period_start, fee_waived, pricing_tier, status, created_at";
+const ENTITY_SELECT = `id, legal_name, country, vat_number, status, auto_topup_enabled, created_at, stores(${STORE_SELECT})`;
+
+/** Session + profile + role + entity/store hierarchy for the signed-in user. */
 export const getMyContext = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<MyContext> => {
     const { supabase, userId, claims } = context;
-    const [{ data: profile }, { data: roleRows }] = await Promise.all([
-      supabase.from("profiles").select("*").eq("id", userId).maybeSingle(),
+    const [{ data: profile }, { data: roleRows }, { data: entities }] = await Promise.all([
+      supabase.from("profiles").select(PROFILE_SELECT).eq("id", userId).maybeSingle(),
       supabase.from("user_roles").select("role").eq("user_id", userId),
+      supabase
+        .from("entities")
+        .select(ENTITY_SELECT)
+        .order("created_at", { ascending: true }),
     ]);
     const roles = (roleRows ?? []).map((r) => r.role);
     const isAdmin = roles.includes("admin");
@@ -61,11 +82,13 @@ export const getMyContext = createServerFn({ method: "GET" })
       role: isAdmin ? "admin" : "client",
       isAdmin,
       profile: profile ?? null,
+      entities: (entities ?? []) as unknown as ContextEntity[],
     };
   });
 
 /**
- * First-login onboarding: create the caller's own profile (status 'pending') and
+ * First-login onboarding: create the caller's account profile (status
+ * 'pending'), their first legal entity and their first store, plus the
  * client role. Only the caller's own id is ever written.
  */
 export const completeSignup = createServerFn({ method: "POST" })
@@ -79,29 +102,50 @@ export const completeSignup = createServerFn({ method: "POST" })
       .select("id")
       .eq("id", userId)
       .maybeSingle();
-    if (existing) return { ok: true, already: true };
 
-    const { error: profileError } = await supabase.from("profiles").insert({
-      id: userId,
-      company_name: data.company_name,
-      contact_name: data.contact_name,
-      phone: data.phone,
-      country: data.country,
-      vat_number: data.vat_number,
-      platform: data.platform,
-      store_url: data.store_url,
-    });
-    if (profileError) throw new Error(profileError.message);
+    if (!existing) {
+      const { error: profileError } = await supabase.from("profiles").insert({
+        id: userId,
+        contact_name: data.contact_name,
+        phone: data.phone,
+      });
+      if (profileError) throw new Error(profileError.message);
+    }
+
+    // Ensure the entity + first store exist (covers retries after a partial
+    // earlier attempt where the profile row was written but the rest failed).
+    const { data: entityRows } = await supabase.from("entities").select("id").limit(1);
+    if (!entityRows || entityRows.length === 0) {
+      const { data: entity, error: entityError } = await supabase
+        .from("entities")
+        .insert({
+          account_id: userId,
+          legal_name: data.company_name,
+          vat_number: data.vat_number,
+          country: data.country,
+        })
+        .select("id")
+        .single();
+      if (entityError || !entity) throw new Error(entityError?.message ?? "Could not create entity");
+
+      const { error: storeError } = await supabase.from("stores").insert({
+        entity_id: entity.id,
+        platform: data.platform,
+        store_url: data.store_url,
+        store_name: data.company_name,
+      });
+      if (storeError) throw new Error(storeError.message);
+    }
 
     const { error: roleError } = await supabase
       .from("user_roles")
       .insert({ user_id: userId, role: "client" });
     if (roleError && roleError.code !== "23505") throw new Error(roleError.message);
 
-    return { ok: true, already: false };
+    return { ok: true, already: Boolean(existing) };
   });
 
-/** Client edits their own company details. Protected columns are DB-enforced. */
+/** Client edits their own account details. Protected columns are DB-enforced. */
 export const updateMyProfile = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => profileUpdateSchema.parse(input))
@@ -109,20 +153,15 @@ export const updateMyProfile = createServerFn({ method: "POST" })
     const { error } = await context.supabase
       .from("profiles")
       .update({
-        company_name: data.company_name,
         contact_name: data.contact_name,
         phone: data.phone,
-        country: data.country,
-        vat_number: data.vat_number,
-        platform: data.platform,
-        store_url: data.store_url,
       })
       .eq("id", context.userId);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
 
-/** Admin: full client list. */
+/** Admin: full account list with the entity/store hierarchy embedded. */
 export const adminListClients = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
@@ -131,13 +170,13 @@ export const adminListClients = createServerFn({ method: "GET" })
     const admin = await getAdminClient();
     const { data, error } = await admin
       .from("profiles")
-      .select("*")
+      .select(`id, contact_name, phone, status, created_at, entities(id, legal_name, vat_number, country, status, created_at, stores(*))`)
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
     return { clients: data ?? [] };
   });
 
-/** Admin: suspend a client or reactivate a suspended one. Approvals go through provisionClient. */
+/** Admin: suspend an account or reactivate a suspended one. */
 export const adminSetClientStatus = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => clientStatusSchema.parse(input))
@@ -152,7 +191,7 @@ export const adminSetClientStatus = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-/** Admin: change a client's subscription plan. */
+/** Admin: change a store's subscription plan. */
 export const adminSetPlan = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => subscriptionPlanSchema.parse(input))
@@ -160,14 +199,14 @@ export const adminSetPlan = createServerFn({ method: "POST" })
     const { requireAdmin } = await import("./admin.server");
     await requireAdmin(context.supabase, context.userId);
     const { error } = await context.supabase
-      .from("profiles")
+      .from("stores")
       .update({ subscription_plan: data.subscription_plan })
-      .eq("id", data.client_id);
+      .eq("id", data.store_id);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
 
-/** Admin: toggle the monthly-fee waiver on a client (manual commercial gesture). */
+/** Admin: toggle the monthly-fee waiver on a store (manual commercial gesture). */
 export const adminSetFeeWaived = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => feeWaivedSchema.parse(input))
@@ -175,9 +214,9 @@ export const adminSetFeeWaived = createServerFn({ method: "POST" })
     const { requireAdmin } = await import("./admin.server");
     await requireAdmin(context.supabase, context.userId);
     const { error } = await context.supabase
-      .from("profiles")
+      .from("stores")
       .update({ fee_waived: data.fee_waived })
-      .eq("id", data.client_id);
+      .eq("id", data.store_id);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
@@ -186,7 +225,7 @@ export const adminSetFeeWaived = createServerFn({ method: "POST" })
 // the client checks out and the webhook flips the plan — never the app itself.
 
 /**
- * Admin: set a client's integration mode. Only meaningful for Shopify stores —
+ * Admin: set a store's integration mode. Only meaningful for Shopify stores —
  * the DB CHECK forces 'manual' for every other platform.
  */
 export const adminSetIntegrationMode = createServerFn({ method: "POST" })
@@ -196,14 +235,14 @@ export const adminSetIntegrationMode = createServerFn({ method: "POST" })
     const { requireAdmin } = await import("./admin.server");
     await requireAdmin(context.supabase, context.userId);
     const { error } = await context.supabase
-      .from("profiles")
+      .from("stores")
       .update({ integration_mode: data.integration_mode })
-      .eq("id", data.client_id);
+      .eq("id", data.store_id);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
 
-/** Admin: set or clear a client's pricing tier override. */
+/** Admin: set or clear a store's pricing tier override. */
 export const adminSetTierOverride = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => tierOverrideSchema.parse(input))
@@ -211,45 +250,48 @@ export const adminSetTierOverride = createServerFn({ method: "POST" })
     const { requireAdmin } = await import("./admin.server");
     await requireAdmin(context.supabase, context.userId);
     const { error } = await context.supabase
-      .from("profiles")
+      .from("stores")
       .update({ tier_override: data.tier_override })
-      .eq("id", data.client_id);
+      .eq("id", data.store_id);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
 
 /**
- * Admin: approve a pending client (or retry a failed provisioning).
+ * Admin: approve a pending store (or retry a failed provisioning).
  *
  * Orchestrates tenant provisioning against the external middleware. Every step
- * updates provisioning_step before attempting; any failure marks the profile
+ * updates provisioning_step before attempting; any failure marks the store
  * provisioning_status='failed' with the step and message. Safe to re-run: the
  * tenant id is never regenerated once set and each external call must tolerate
  * the resource already existing.
  */
-export const provisionClient = createServerFn({ method: "POST" })
+export const provisionStore = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => clientIdSchema.parse(input))
+  .inputValidator((input) => storeIdSchema.parse(input))
   .handler(async ({ data, context }) => {
     const { requireAdmin } = await import("./admin.server");
     await requireAdmin(context.supabase, context.userId);
 
-    const { data: profile, error } = await context.supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", data.client_id)
+    const { data: store, error } = await context.supabase
+      .from("stores")
+      .select("*, entities(account_id, legal_name)")
+      .eq("id", data.store_id)
       .single();
-    if (error || !profile) throw new Error("Client not found");
+    if (error || !store) throw new Error("Store not found");
 
     // Preconditions
-    const isPending = profile.status === "pending";
-    const isRetry = profile.provisioning_status === "failed";
+    const isPending = store.status === "pending";
+    const isRetry = store.provisioning_status === "failed";
     if (!isPending && !isRetry) {
-      throw new Error("Client is not pending approval (or awaiting provisioning retry)");
+      throw new Error("Store is not pending approval (or awaiting provisioning retry)");
     }
-    if (!profile.store_url) {
-      throw new Error("Client has no store URL on file");
+    if (!store.store_url) {
+      throw new Error("Store has no URL on file");
     }
+
+    const accountId = (store.entities as { account_id: string; legal_name: string } | null)
+      ?.account_id;
 
     // Server-only middleware credentials — never exposed to the browser.
     const MIDDLEWARE_URL = process.env["MIDDLEWARE_URL"];
@@ -262,36 +304,37 @@ export const provisionClient = createServerFn({ method: "POST" })
 
     const setStep = async (step: string) => {
       await context.supabase
-        .from("profiles")
+        .from("stores")
         .update({
           provisioning_status: "in_progress",
           provisioning_step: step,
           provisioning_error: null,
         })
-        .eq("id", profile.id);
+        .eq("id", store.id);
     };
 
     const fail = async (step: string, message: string): Promise<never> => {
       await context.supabase
-        .from("profiles")
+        .from("stores")
         .update({
           provisioning_status: "failed",
           provisioning_step: step,
           provisioning_error: message.slice(0, 500),
         })
-        .eq("id", profile.id);
+        .eq("id", store.id);
       throw new Error(`Provisioning failed at "${step}": ${message}`);
     };
 
     // ------------------------------------------------------------------
     // Step 1 — generate_tenant_id (idempotent: never regenerate once set).
+    // Approving the first store also activates the account itself.
     // ------------------------------------------------------------------
-    let tenantId = profile.middleware_tenant_id;
+    let tenantId = store.middleware_tenant_id;
     try {
       if (!tenantId) {
         tenantId = `rs_${crypto.randomUUID().replaceAll("-", "")}`;
         const { error: updateError } = await context.supabase
-          .from("profiles")
+          .from("stores")
           .update({
             middleware_tenant_id: tenantId,
             status: "active",
@@ -300,8 +343,15 @@ export const provisionClient = createServerFn({ method: "POST" })
             provisioning_step: "generate_tenant_id",
             provisioning_error: null,
           })
-          .eq("id", profile.id);
+          .eq("id", store.id);
         if (updateError) throw updateError;
+        if (accountId) {
+          await context.supabase
+            .from("profiles")
+            .update({ status: "active" })
+            .eq("id", accountId)
+            .eq("status", "pending");
+        }
       } else {
         await setStep("generate_tenant_id");
       }
@@ -318,7 +368,7 @@ export const provisionClient = createServerFn({ method: "POST" })
         // TODO: create the tenant in the external middleware:
         //   POST {MIDDLEWARE_URL}/api/admin/tenants/create
         //   auth: service account (MIDDLEWARE_SERVICE_USER / MIDDLEWARE_SERVICE_PASSWORD)
-        //   body: { name: profile.company_name, shop_domain: profile.store_url, tenant_id: tenantId }
+        //   body: { name: store.store_name, shop_domain: store.store_url, tenant_id: tenantId }
         //   Idempotency: treat "tenant already exists" (e.g. HTTP 409) as success.
         void MIDDLEWARE_URL;
       }
@@ -347,7 +397,7 @@ export const provisionClient = createServerFn({ method: "POST" })
     // Steps 4–5 only apply to automatic integration. In manual mode the
     // tenant exists and the membership is granted — provisioning stops here.
     // ------------------------------------------------------------------
-    if (profile.integration_mode === "automatic") {
+    if (store.integration_mode === "automatic") {
       // ------------------------------------------------------------------
       // Step 4 — select_tenant: exchange the service credentials for a JWT
       // scoped to this tenant, used for the remaining calls.
@@ -386,13 +436,13 @@ export const provisionClient = createServerFn({ method: "POST" })
 
     // All steps done.
     const { error: completeError } = await context.supabase
-      .from("profiles")
+      .from("stores")
       .update({
         provisioning_status: "complete",
         provisioning_step: "complete",
         provisioning_error: null,
       })
-      .eq("id", profile.id);
+      .eq("id", store.id);
     if (completeError) {
       await fail("complete", completeError.message);
     }

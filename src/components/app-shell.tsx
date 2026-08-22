@@ -55,16 +55,14 @@ function PastDueBanner() {
     queryKey: ["my-subscription-status"],
     staleTime: 60_000,
     queryFn: async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return null;
+      // Subscriptions live on stores — RLS scopes this to the caller's own
+      // stores, so any past_due store surfaces the banner.
       const { data } = await supabase
-        .from("profiles")
-        .select("subscription_status")
-        .eq("id", user.id)
-        .maybeSingle();
-      return data?.subscription_status ?? null;
+        .from("stores")
+        .select("id")
+        .eq("subscription_status", "past_due")
+        .limit(1);
+      return (data ?? []).length > 0 ? "past_due" : null;
     },
   });
   if (status !== "past_due") return null;
@@ -88,7 +86,7 @@ const ADMIN_NAV: NavItem[] = [
   { to: "/admin/documents", label: "Receipts", icon: FileText },
 ];
 
-interface OnboardingProfile {
+interface OnboardingStore {
   platform: string;
   store_url: string;
   integration_mode: string;
@@ -101,7 +99,7 @@ interface OnboardingProfile {
  *  - "Install our Shopify app" to Shopify clients not yet on automatic mode.
  * Hidden entirely once platform is Shopify with a store and automatic sync.
  */
-function GetStartedSection({ profile }: { profile: OnboardingProfile }) {
+function GetStartedSection({ store }: { store: OnboardingStore }) {
   const fetchLinks = useServerFn(getOnboardingLinks);
   const { data: links } = useQuery({
     queryKey: ["onboarding-links"],
@@ -109,9 +107,9 @@ function GetStartedSection({ profile }: { profile: OnboardingProfile }) {
     queryFn: fetchLinks,
   });
 
-  const isShopify = profile.platform === "shopify";
-  const hasStore = profile.store_url.trim().length > 0;
-  const isAutomatic = profile.integration_mode === "automatic";
+  const isShopify = store.platform === "shopify";
+  const hasStore = store.store_url.trim().length > 0;
+  const isAutomatic = store.integration_mode === "automatic";
 
   const showCreateStore = !isShopify || !hasStore;
   const showInstallApp = isShopify && !isAutomatic;
@@ -175,13 +173,13 @@ export function AppShell({
   role,
   email,
   companyName,
-  onboardingProfile,
+  onboardingStore,
   children,
 }: {
   role: "client" | "admin";
   email: string | null;
   companyName: string | null;
-  onboardingProfile?: OnboardingProfile | null;
+  onboardingStore?: OnboardingStore | null;
   children: React.ReactNode;
 }) {
   const navigate = useNavigate();
@@ -233,8 +231,8 @@ export function AppShell({
             </Link>
           ))}
         </nav>
-        {role === "client" && onboardingProfile && (
-          <GetStartedSection profile={onboardingProfile} />
+        {role === "client" && onboardingStore && (
+          <GetStartedSection store={onboardingStore} />
         )}
         <Separator />
         <div className="p-3">

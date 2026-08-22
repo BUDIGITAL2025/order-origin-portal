@@ -35,8 +35,10 @@ export const Route = createFileRoute("/api/public/cron/auto-topup")({
 
         const stripe = createStripeClient(env);
 
-        const { data: profiles, error } = await supabaseAdmin
-          .from("profiles")
+        // Auto top-up is entity-level: the wallet and the Stripe customer
+        // both belong to the legal entity, not to any single store.
+        const { data: entities, error } = await supabaseAdmin
+          .from("entities")
           .select(
             "id, stripe_customer_id, default_payment_method_id, auto_topup_threshold, auto_topup_amount",
           )
@@ -50,37 +52,37 @@ export const Route = createFileRoute("/api/public/cron/auto-topup")({
         }
 
         const results: Array<Record<string, unknown>> = [];
-        for (const profile of profiles ?? []) {
+        for (const entity of entities ?? []) {
           try {
-            const balance = await billing.getWalletBalance(supabaseAdmin, profile.id);
-            const threshold = Number(profile.auto_topup_threshold ?? 0);
+            const balance = await billing.getWalletBalance(supabaseAdmin, entity.id);
+            const threshold = Number(entity.auto_topup_threshold ?? 0);
             if (balance >= threshold) continue;
 
-            const amount = Number(profile.auto_topup_amount);
+            const amount = Number(entity.auto_topup_amount);
             const day = new Date().toISOString().slice(0, 10);
             const pi = await stripe.paymentIntents.create(
               {
                 amount: Math.round(amount * 100),
                 currency: "usd",
-                customer: profile.stripe_customer_id!,
-                payment_method: profile.default_payment_method_id!,
+                customer: entity.stripe_customer_id!,
+                payment_method: entity.default_payment_method_id!,
                 off_session: true,
                 confirm: true,
                 description: "FlySales wallet auto top-up",
                 metadata: {
                   kind: "wallet_auto_topup",
-                  flysales_user_id: profile.id,
+                  flysales_entity_id: entity.id,
                   amount_usd: String(amount),
                 },
               },
-              { idempotencyKey: `flysales-auto-topup-${profile.id}-${day}` },
+              { idempotencyKey: `flysales-auto-topup-${entity.id}-${day}` },
             );
 
             if (pi.status === "succeeded") {
               // Reference = payment intent id: the payment_intent.succeeded
               // webhook credits the same reference, so exactly one wins.
               const creditTxn = await billing.creditWalletOnce(supabaseAdmin, {
-                clientId: profile.id,
+                entityId: entity.id,
                 amountUsd: pi.amount_received / 100,
                 reference: pi.id,
                 description: "Wallet auto top-up (saved card)",
@@ -95,26 +97,37 @@ export const Route = createFileRoute("/api/public/cron/auto-topup")({
                 } catch (e) {
                   console.error("auto top-up receipt failed:", creditTxn.id, e);
                 }
+                // Settle orders waiting on funds for this entity.
+                const { error: releaseError } = await supabaseAdmin.rpc(
+                  "release_awaiting_payment_orders",
+                  { p_entity_id: entity.id },
+                );
+                if (releaseError) {
+                  console.error(
+                    "release_awaiting_payment_orders failed:",
+                    releaseError.message,
+                  );
+                }
               }
-              results.push({ client: profile.id, status: "credited" });
+              results.push({ entity: entity.id, status: "credited" });
             } else {
               console.error(
-                `auto top-up for ${profile.id}: unexpected PI status ${pi.status}`,
+                `auto top-up for ${entity.id}: unexpected PI status ${pi.status}`,
               );
-              results.push({ client: profile.id, status: pi.status });
+              results.push({ entity: entity.id, status: pi.status });
             }
           } catch (e) {
             const message = getStripeErrorMessage(e);
-            console.error(`auto top-up failed for ${profile.id}: ${message}`);
-            await billing.notifyClient(supabaseAdmin, {
-              clientId: profile.id,
+            console.error(`auto top-up failed for ${entity.id}: ${message}`);
+            await billing.notify(supabaseAdmin, {
+              entityId: entity.id,
               kind: "auto_topup_failed",
               title: "Auto top-up failed",
               body: `We could not charge your saved card ($${Number(
-                profile.auto_topup_amount,
+                entity.auto_topup_amount,
               ).toFixed(2)}): ${message}. Top up manually or update your card from the Billing page.`,
             });
-            results.push({ client: profile.id, status: "failed" });
+            results.push({ entity: entity.id, status: "failed" });
           }
         }
 

@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { ArrowRight, ClipboardList, CreditCard, RefreshCcw, Wallet } from "lucide-react";
 import { EmptyState, PageHeader } from "@/components/app-shell";
+import { getCurrentStoreId } from "@/components/store-switcher";
 import { QuoteStatusBadge, TxnTypeBadge } from "@/components/status-badges";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -51,8 +52,16 @@ function DashboardPage() {
     queryFn: fetchWallet,
   });
 
-  const entity = context?.currentEntity ?? null;
-  const store = context?.currentStore ?? null;
+  // Current store selection is persisted in localStorage (client-only), so
+  // resolve it after hydration and fall back to the first store.
+  const entities = context?.entities ?? [];
+  const [currentStoreId, setCurrentStoreId] = useState<string | null>(null);
+  useEffect(() => {
+    setCurrentStoreId(getCurrentStoreId());
+  }, []);
+  const allStores = entities.flatMap((e) => e.stores);
+  const store = allStores.find((s) => s.id === currentStoreId) ?? allStores[0] ?? null;
+  const entity = entities.find((e) => e.id === store?.entity_id) ?? null;
   const quotes = quotesData?.quotes ?? [];
   const counts = quotes.reduce<Record<string, number>>((acc, q) => {
     const key = q.status ?? "submitted";

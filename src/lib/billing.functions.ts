@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
   autoTopupSettingsSchema,
@@ -20,44 +21,90 @@ async function stripeErrorText(error: unknown): Promise<string> {
   return getStripeErrorMessage(error);
 }
 
-const BILLING_PROFILE_SELECT =
-  "subscription_plan, fee_waived, status, stripe_customer_id, stripe_subscription_id, subscription_status, auto_topup_enabled, auto_topup_threshold, auto_topup_amount, default_payment_method_id, pending_plan_change, pending_plan_change_date";
+// Store-scoped variants of the shared schemas — the caller's current store
+// (from the store switcher) carries the subscription; entity-level flows
+// (top-up, auto top-up) resolve the entity from that same store.
+const billingOverviewInputSchema = z.object({
+  storeId: z.string().uuid(),
+  environment: stripeEnvSchema,
+});
+const storeSubscriptionCheckoutSchema = subscriptionCheckoutSchema.extend({
+  storeId: z.string().uuid(),
+});
+const storeChangePlanSchema = changePlanSchema.extend({ storeId: z.string().uuid() });
+const storeStripeEnvSchema = z.object({ storeId: z.string().uuid(), environment: stripeEnvSchema });
+const entityTopUpCheckoutSchema = topUpCheckoutSchema.extend({ storeId: z.string().uuid() });
+const entityAutoTopupSettingsSchema = autoTopupSettingsSchema.extend({
+  storeId: z.string().uuid(),
+});
+
+/** Resolve the store + its entity, verifying the store belongs to the caller's account. */
+async function resolveStoreAndEntity(
+  admin: Awaited<ReturnType<typeof import("./admin.server").getAdminClient>>,
+  storeId: string,
+  accountId: string,
+) {
+  const { data: store, error } = await admin
+    .from("stores")
+    .select("*, entities!inner(*)")
+    .eq("id", storeId)
+    .eq("entities.account_id", accountId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!store) throw new Error("Store not found for your account");
+  const { entities: entity, ...storeRow } = store;
+  return { store: storeRow, entity };
+}
 
 /**
- * Billing overview for the signed-in client: plan/subscription state (from
- * the profile — written only by the webhook), live next-billing date and
- * saved card from Stripe, wallet balance, and unread notifications.
+ * Billing overview for the signed-in client's CURRENT store: subscription
+ * state (from the store — written only by the webhook), live next-billing
+ * date and saved card from Stripe, wallet balance, and unread notifications.
  */
 export const getBillingOverview = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => stripeEnvSchema.parse(input))
-  .handler(async ({ data: environment, context }) => {
-    const { supabase, userId } = context;
-    const [{ data: profile }, { data: latestTxn }, { data: notifications }] =
-      await Promise.all([
-        supabase
-          .from("profiles")
-          .select(BILLING_PROFILE_SELECT)
-          .eq("id", userId)
-          .maybeSingle(),
-        supabase
-          .from("wallet_transactions")
-          .select("balance_after")
-          .order("created_at", { ascending: false })
-          .order("id", { ascending: false })
-          .limit(1)
-          .maybeSingle(),
-        supabase
-          .from("notifications")
-          .select("id, kind, title, body, created_at")
-          .is("read_at", null)
-          .order("created_at", { ascending: false })
-          .limit(10),
-      ]);
-    if (!profile) throw new Error("Profile not found");
+  .inputValidator((input) => billingOverviewInputSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const { userId } = context;
+    const { getAdminClient } = await import("./admin.server");
+    const admin = await getAdminClient();
+    const { store, entity } = await resolveStoreAndEntity(admin, data.storeId, userId);
+
+    const [{ data: latestTxn }, { data: notifications }] = await Promise.all([
+      admin
+        .from("wallet_transactions")
+        .select("balance_after")
+        .eq("entity_id", entity.id)
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+      admin
+        .from("notifications")
+        .select("id, kind, title, body, created_at")
+        .or(`entity_id.eq.${entity.id},store_id.eq.${store.id}`)
+        .is("read_at", null)
+        .order("created_at", { ascending: false })
+        .limit(10),
+    ]);
 
     const base = {
-      profile,
+      store: {
+        id: store.id,
+        subscription_plan: store.subscription_plan,
+        subscription_status: store.subscription_status,
+        pending_plan_change: store.pending_plan_change,
+        pending_plan_change_date: store.pending_plan_change_date,
+        fee_waived: store.fee_waived,
+        stripe_subscription_id: store.stripe_subscription_id,
+      },
+      entity: {
+        id: entity.id,
+        auto_topup_enabled: entity.auto_topup_enabled,
+        auto_topup_threshold: entity.auto_topup_threshold,
+        auto_topup_amount: entity.auto_topup_amount,
+        has_default_payment_method: Boolean(entity.default_payment_method_id),
+      },
       balance: latestTxn ? Number(latestTxn.balance_after) : 0,
       notifications: notifications ?? [],
       nextBillingDate: null as string | null,
@@ -71,18 +118,17 @@ export const getBillingOverview = createServerFn({ method: "GET" })
     };
 
     const hasSubscription =
-      profile.stripe_subscription_id &&
-      (profile.subscription_status === "active" ||
-        profile.subscription_status === "past_due");
-    const hasCard = Boolean(profile.default_payment_method_id);
+      store.stripe_subscription_id &&
+      (store.subscription_status === "active" || store.subscription_status === "past_due");
+    const hasCard = Boolean(entity.default_payment_method_id);
     if (!hasSubscription && !hasCard) return base;
 
     try {
       const { createStripeClient } = await import("./stripe.server");
-      const stripe = createStripeClient(environment);
+      const stripe = createStripeClient(data.environment);
       let nextBillingDate: string | null = null;
-      if (hasSubscription && profile.stripe_subscription_id) {
-        const sub = await stripe.subscriptions.retrieve(profile.stripe_subscription_id);
+      if (hasSubscription && store.stripe_subscription_id) {
+        const sub = await stripe.subscriptions.retrieve(store.stripe_subscription_id);
         const item = sub.items?.data?.[0] as
           | { current_period_end?: number }
           | undefined;
@@ -92,11 +138,9 @@ export const getBillingOverview = createServerFn({ method: "GET" })
         nextBillingDate = periodEnd ? new Date(periodEnd * 1000).toISOString() : null;
       }
       let paymentMethod = base.paymentMethod;
-      if (profile.default_payment_method_id) {
+      if (entity.default_payment_method_id) {
         try {
-          const pm = await stripe.paymentMethods.retrieve(
-            profile.default_payment_method_id,
-          );
+          const pm = await stripe.paymentMethods.retrieve(entity.default_payment_method_id);
           if (pm.card) {
             paymentMethod = {
               brand: pm.card.brand,
@@ -116,34 +160,30 @@ export const getBillingOverview = createServerFn({ method: "GET" })
   });
 
 /**
- * Start a NEW subscription: creates a Checkout Session (subscription mode) and
- * returns the Stripe URL — the client is redirected there. State changes only
- * ever come from the webhook; the redirect back carries no authority.
- * Waived clients never enter Stripe billing.
+ * Start a NEW subscription for a store: creates a Checkout Session
+ * (subscription mode) and returns the Stripe URL — the client is redirected
+ * there. State changes only ever come from the webhook; the redirect back
+ * carries no authority. Waived stores never enter Stripe billing.
  */
 export const createSubscriptionCheckout = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => subscriptionCheckoutSchema.parse(input))
+  .inputValidator((input) => storeSubscriptionCheckoutSchema.parse(input))
   .handler(async ({ data, context }): Promise<Result<{ url: string }>> => {
     try {
       const { createStripeClient } = await import("./stripe.server");
       const billing = await import("./billing.server");
       const { getAdminClient } = await import("./admin.server");
       const stripe = createStripeClient(data.environment);
+      const admin = await getAdminClient();
 
-      const { data: profile } = await context.supabase
-        .from("profiles")
-        .select(BILLING_PROFILE_SELECT)
-        .eq("id", context.userId)
-        .maybeSingle();
-      if (!profile) throw new Error("Complete your company profile first");
-      if (profile.status !== "active") throw new Error("Your account is not active yet");
-      if (profile.fee_waived) {
+      const { store, entity } = await resolveStoreAndEntity(admin, data.storeId, context.userId);
+      if (store.status !== "active") throw new Error("Your store is not active yet");
+      if (store.fee_waived) {
         throw new Error("Your plan is managed by FlySales — no payment needed.");
       }
       if (
-        profile.subscription_status === "active" ||
-        profile.subscription_status === "past_due"
+        store.subscription_status === "active" ||
+        store.subscription_status === "past_due"
       ) {
         throw new Error("You already have a subscription — use change plan instead.");
       }
@@ -152,17 +192,13 @@ export const createSubscriptionCheckout = createServerFn({ method: "POST" })
       const customerId = await billing.resolveOrCreateCustomer(stripe, {
         ...(email ? { email } : {}),
         userId: context.userId,
-        existingCustomerId: profile.stripe_customer_id,
+        existingCustomerId: entity.stripe_customer_id,
       });
 
       // Persist the customer id immediately so the webhook can resolve the
-      // profile even if the user closes the tab mid-checkout.
-      if (profile.stripe_customer_id !== customerId) {
-        const admin = await getAdminClient();
-        await admin
-          .from("profiles")
-          .update({ stripe_customer_id: customerId })
-          .eq("id", context.userId);
+      // entity even if the user closes the tab mid-checkout.
+      if (entity.stripe_customer_id !== customerId) {
+        await admin.from("entities").update({ stripe_customer_id: customerId }).eq("id", entity.id);
       }
 
       const prices = await stripe.prices.list({
@@ -180,11 +216,13 @@ export const createSubscriptionCheckout = createServerFn({ method: "POST" })
         metadata: {
           kind: "flysales_subscription",
           flysales_user_id: context.userId,
+          flysales_store_id: store.id,
           plan: data.plan,
         },
         subscription_data: {
           metadata: {
             flysales_user_id: context.userId,
+            flysales_store_id: store.id,
             userId: context.userId,
             plan: data.plan,
           },
@@ -201,38 +239,30 @@ export const createSubscriptionCheckout = createServerFn({ method: "POST" })
  * Wallet top-up: Checkout Session in PAYMENT mode (embedded) with
  * setup_future_usage so the card stays on file for auto top-up. The amount is
  * free-form (>= $50) via price_data. Crediting happens ONLY in the webhook,
- * keyed on the payment intent id.
+ * keyed on the payment intent id. Wallets live at the entity level — the
+ * caller's current store resolves which entity is credited.
  */
 export const createWalletTopupCheckout = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => topUpCheckoutSchema.parse(input))
+  .inputValidator((input) => entityTopUpCheckoutSchema.parse(input))
   .handler(async ({ data, context }): Promise<Result<{ clientSecret: string }>> => {
     try {
       const { createStripeClient } = await import("./stripe.server");
       const billing = await import("./billing.server");
       const { getAdminClient } = await import("./admin.server");
       const stripe = createStripeClient(data.environment);
+      const admin = await getAdminClient();
 
-      const { data: profile } = await context.supabase
-        .from("profiles")
-        .select(BILLING_PROFILE_SELECT)
-        .eq("id", context.userId)
-        .maybeSingle();
-      if (!profile) throw new Error("Complete your company profile first");
-      if (profile.status !== "active") throw new Error("Your account is not active yet");
+      const { entity } = await resolveStoreAndEntity(admin, data.storeId, context.userId);
 
       const email = (context.claims?.email as string | undefined) ?? undefined;
       const customerId = await billing.resolveOrCreateCustomer(stripe, {
         ...(email ? { email } : {}),
         userId: context.userId,
-        existingCustomerId: profile.stripe_customer_id,
+        existingCustomerId: entity.stripe_customer_id,
       });
-      if (profile.stripe_customer_id !== customerId) {
-        const admin = await getAdminClient();
-        await admin
-          .from("profiles")
-          .update({ stripe_customer_id: customerId })
-          .eq("id", context.userId);
+      if (entity.stripe_customer_id !== customerId) {
+        await admin.from("entities").update({ stripe_customer_id: customerId }).eq("id", entity.id);
       }
 
       const session = await stripe.checkout.sessions.create({
@@ -256,12 +286,14 @@ export const createWalletTopupCheckout = createServerFn({ method: "POST" })
           setup_future_usage: "off_session",
           metadata: {
             kind: "wallet_topup",
+            flysales_entity_id: entity.id,
             flysales_user_id: context.userId,
             amount_usd: String(data.amountUsd),
           },
         },
         metadata: {
           kind: "wallet_topup",
+          flysales_entity_id: entity.id,
           flysales_user_id: context.userId,
           amount_usd: String(data.amountUsd),
         },
@@ -276,13 +308,14 @@ export const createWalletTopupCheckout = createServerFn({ method: "POST" })
   });
 
 /**
- * Change plan on an EXISTING subscription. Upgrades apply immediately with
- * proration; downgrades are scheduled and take effect at period end. The
- * webhook applies the resulting state to the profile in both cases.
+ * Change plan on an EXISTING subscription (per store). Upgrades apply
+ * immediately with proration; downgrades are scheduled and take effect at
+ * period end. The webhook applies the resulting state to the store in both
+ * cases.
  */
 export const changePlan = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => changePlanSchema.parse(input))
+  .inputValidator((input) => storeChangePlanSchema.parse(input))
   .handler(
     async ({
       data,
@@ -291,25 +324,19 @@ export const changePlan = createServerFn({ method: "POST" })
       try {
         const { createStripeClient } = await import("./stripe.server");
         const billing = await import("./billing.server");
+        const { getAdminClient } = await import("./admin.server");
         const stripe = createStripeClient(data.environment);
+        const admin = await getAdminClient();
 
-        const { data: profile } = await context.supabase
-          .from("profiles")
-          .select(BILLING_PROFILE_SELECT)
-          .eq("id", context.userId)
-          .maybeSingle();
-        if (!profile) throw new Error("Profile not found");
-        if (profile.fee_waived) {
+        const { store } = await resolveStoreAndEntity(admin, data.storeId, context.userId);
+        if (store.fee_waived) {
           throw new Error("Your plan is managed by FlySales — contact support.");
         }
-        if (
-          !profile.stripe_subscription_id ||
-          profile.subscription_status !== "active"
-        ) {
+        if (!store.stripe_subscription_id || store.subscription_status !== "active") {
           throw new Error("No active subscription — subscribe first.");
         }
         // No repeated changes: one scheduled change at a time.
-        if (profile.pending_plan_change) {
+        if (store.pending_plan_change) {
           throw new Error(
             "A plan change is already scheduled — keep your current plan or wait for it to take effect.",
           );
@@ -320,9 +347,7 @@ export const changePlan = createServerFn({ method: "POST" })
         const newPrice = prices.data[0];
         if (!newPrice) throw new Error("Plan price not found");
 
-        const sub = await stripe.subscriptions.retrieve(
-          profile.stripe_subscription_id,
-        );
+        const sub = await stripe.subscriptions.retrieve(store.stripe_subscription_id);
         const item = sub.items?.data?.[0] as
           | {
               id: string;
@@ -339,7 +364,7 @@ export const changePlan = createServerFn({ method: "POST" })
         const isUpgrade = data.plan === "unlimited";
         if (isUpgrade) {
           // Immediate: Stripe invoices the prorated difference now.
-          await stripe.subscriptions.update(profile.stripe_subscription_id, {
+          await stripe.subscriptions.update(store.stripe_subscription_id, {
             items: [{ id: item.id, price: newPrice.id }],
             proration_behavior: "create_prorations",
           });
@@ -354,7 +379,7 @@ export const changePlan = createServerFn({ method: "POST" })
           throw new Error("Cannot schedule the downgrade — missing billing period");
         }
         const schedule = await stripe.subscriptionSchedules.create({
-          from_subscription: profile.stripe_subscription_id,
+          from_subscription: store.stripe_subscription_id,
         });
         await stripe.subscriptionSchedules.update(schedule.id, {
           end_behavior: "release",
@@ -368,19 +393,16 @@ export const changePlan = createServerFn({ method: "POST" })
           ],
         });
         // Record the pending change so the billing page can show it and
-        // block stacking a second change. Admin client: guard_profile_update
-        // protects these fields from direct client writes.
-        const { getAdminClient } = await import("./admin.server");
-        const admin = await getAdminClient();
+        // block stacking a second change.
         const { error: pendingError } = await admin
-          .from("profiles")
+          .from("stores")
           .update({
             pending_plan_change: data.plan,
             pending_plan_change_date: new Date(periodEnd * 1000)
               .toISOString()
               .slice(0, 10),
           })
-          .eq("id", context.userId);
+          .eq("id", store.id);
         if (pendingError) throw new Error(pendingError.message);
         return { applied: "period_end" };
       } catch (error) {
@@ -390,42 +412,41 @@ export const changePlan = createServerFn({ method: "POST" })
   );
 
 /**
- * Auto top-up settings — entirely client-controlled. Enabling requires a
- * saved card (written by the top-up webhook) plus threshold and amount ($50+).
+ * Auto top-up settings — entirely client-controlled, at the entity level.
+ * Enabling requires a saved card (written by the top-up webhook) plus
+ * threshold and amount ($50+).
  */
 export const saveAutoTopupSettings = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => autoTopupSettingsSchema.parse(input))
+  .inputValidator((input) => entityAutoTopupSettingsSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const { supabase, userId } = context;
+    const { getAdminClient } = await import("./admin.server");
+    const admin = await getAdminClient();
+    const { entity } = await resolveStoreAndEntity(admin, data.storeId, context.userId);
+
     if (data.enabled) {
       if (data.threshold == null || data.amount == null) {
         throw new Error("Set both a threshold and an amount to enable auto top-up");
       }
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("default_payment_method_id")
-        .eq("id", userId)
-        .maybeSingle();
-      if (!profile?.default_payment_method_id) {
+      if (!entity.default_payment_method_id) {
         throw new Error(
           "Make a card top-up first so we have a payment method on file",
         );
       }
     }
-    const { error } = await supabase
-      .from("profiles")
+    const { error } = await admin
+      .from("entities")
       .update({
         auto_topup_enabled: data.enabled,
         auto_topup_threshold: data.enabled ? data.threshold : null,
         auto_topup_amount: data.enabled ? data.amount : null,
       })
-      .eq("id", userId);
+      .eq("id", entity.id);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
 
-/** Mark own notifications as read. */
+/** Mark own notifications as read — RLS scopes rows to the caller's account. */
 export const markNotificationsRead = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => notificationIdsSchema.parse(input))
@@ -433,41 +454,35 @@ export const markNotificationsRead = createServerFn({ method: "POST" })
     const { error } = await context.supabase
       .from("notifications")
       .update({ read_at: new Date().toISOString() })
-      .in("id", data.ids)
-      .eq("client_id", context.userId);
+      .in("id", data.ids);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
 
 /**
  * Cancel a scheduled downgrade ("Keep current plan"): releases the Stripe
- * subscription schedule and clears the pending fields. Free — the client
- * simply stays on the plan they already have.
+ * subscription schedule and clears the pending fields on the store. Free —
+ * the client simply stays on the plan they already have.
  */
 export const cancelPendingPlanChange = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => stripeEnvSchema.parse(input))
-  .handler(async ({ data: environment, context }): Promise<Result<{ ok: true }>> => {
+  .inputValidator((input) => storeStripeEnvSchema.parse(input))
+  .handler(async ({ data, context }): Promise<Result<{ ok: true }>> => {
     try {
       const { createStripeClient } = await import("./stripe.server");
       const { getAdminClient } = await import("./admin.server");
-      const stripe = createStripeClient(environment);
+      const stripe = createStripeClient(data.environment);
+      const admin = await getAdminClient();
 
-      const { data: profile } = await context.supabase
-        .from("profiles")
-        .select(BILLING_PROFILE_SELECT)
-        .eq("id", context.userId)
-        .maybeSingle();
-      if (!profile) throw new Error("Profile not found");
-      if (!profile.pending_plan_change) {
+      const { store } = await resolveStoreAndEntity(admin, data.storeId, context.userId);
+      if (!store.pending_plan_change) {
         throw new Error("No pending plan change to cancel");
       }
-      if (!profile.stripe_subscription_id) throw new Error("No subscription found");
+      if (!store.stripe_subscription_id) throw new Error("No subscription found");
 
-      const sub = await stripe.subscriptions.retrieve(
-        profile.stripe_subscription_id,
-        { expand: ["schedule"] },
-      );
+      const sub = await stripe.subscriptions.retrieve(store.stripe_subscription_id, {
+        expand: ["schedule"],
+      });
       const scheduleRef = (
         sub as unknown as { schedule?: string | { id: string } | null }
       ).schedule;
@@ -477,11 +492,10 @@ export const cancelPendingPlanChange = createServerFn({ method: "POST" })
         await stripe.subscriptionSchedules.release(scheduleId);
       }
 
-      const admin = await getAdminClient();
       const { error } = await admin
-        .from("profiles")
+        .from("stores")
         .update({ pending_plan_change: null, pending_plan_change_date: null })
-        .eq("id", context.userId);
+        .eq("id", store.id);
       if (error) throw new Error(error.message);
       return { ok: true };
     } catch (error) {

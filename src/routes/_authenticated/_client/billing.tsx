@@ -39,6 +39,8 @@ import {
   saveAutoTopupSettings,
 } from "@/lib/billing.functions";
 import { getMyWallet } from "@/lib/wallet.functions";
+import { getCurrentStoreId } from "@/components/store-switcher";
+import { useMyContext } from "../_client";
 
 type StripeEnv = "sandbox" | "live";
 
@@ -110,10 +112,27 @@ function BillingPage() {
   const callMarkRead = useServerFn(markNotificationsRead);
   const fetchWallet = useServerFn(getMyWallet);
 
+  // Billing is per store: the subscription lives on the store selected in
+  // the switcher; the wallet/auto top-up resolve to that store's entity.
+  const { data: ctx } = useMyContext();
+  const [storeId, setStoreId] = useState<string | null>(null);
+  useEffect(() => {
+    const entities = ctx?.entities ?? [];
+    const stored = getCurrentStoreId();
+    const valid =
+      stored && entities.some((e) => e.stores.some((s) => s.id === stored))
+        ? stored
+        : null;
+    setStoreId(valid ?? entities[0]?.stores[0]?.id ?? null);
+  }, [ctx]);
+
   const { data, isPending } = useQuery({
-    queryKey: ["billing-overview"],
-    queryFn: () => fetchOverview({ data: environment ?? "sandbox" }),
-    enabled: environment != null,
+    queryKey: ["billing-overview", storeId, environment],
+    queryFn: () =>
+      fetchOverview({
+        data: { storeId: storeId!, environment: environment ?? "sandbox" },
+      }),
+    enabled: environment != null && storeId != null,
   });
   const { data: wallet } = useQuery({ queryKey: ["my-wallet"], queryFn: fetchWallet });
 
@@ -140,12 +159,12 @@ function BillingPage() {
   const [autoAmount, setAutoAmount] = useState("");
   useEffect(() => {
     if (!data) return;
-    setAutoEnabled(data.profile.auto_topup_enabled);
+    setAutoEnabled(data.entity.auto_topup_enabled);
     setAutoThreshold(
-      data.profile.auto_topup_threshold != null ? String(data.profile.auto_topup_threshold) : "",
+      data.entity.auto_topup_threshold != null ? String(data.entity.auto_topup_threshold) : "",
     );
     setAutoAmount(
-      data.profile.auto_topup_amount != null ? String(data.profile.auto_topup_amount) : "",
+      data.entity.auto_topup_amount != null ? String(data.entity.auto_topup_amount) : "",
     );
   }, [data]);
 
@@ -154,11 +173,13 @@ function BillingPage() {
   const subscribe = useMutation({
     mutationFn: async (plan: "basic" | "unlimited") => {
       if (!environment) throw new Error("Payments are not configured for this build");
+      if (!storeId) throw new Error("No store selected");
       const result = await callSubscribe({
         data: {
           plan,
           returnUrl: `${window.location.origin}/billing`,
           environment,
+          storeId,
         },
       });
       if ("error" in result) throw new Error(result.error);
@@ -173,7 +194,8 @@ function BillingPage() {
   const change = useMutation({
     mutationFn: async (plan: "basic" | "unlimited") => {
       if (!environment) throw new Error("Payments are not configured for this build");
-      const result = await callChangePlan({ data: { plan, environment } });
+      if (!storeId) throw new Error("No store selected");
+      const result = await callChangePlan({ data: { plan, environment, storeId } });
       if ("error" in result) throw new Error(result.error);
       return result;
     },
@@ -192,7 +214,8 @@ function BillingPage() {
   const keepPlan = useMutation({
     mutationFn: async () => {
       if (!environment) throw new Error("Payments are not configured for this build");
-      const result = await callCancelPending({ data: environment });
+      if (!storeId) throw new Error("No store selected");
+      const result = await callCancelPending({ data: { storeId, environment } });
       if ("error" in result) throw new Error(result.error);
       return result;
     },
@@ -213,7 +236,8 @@ function BillingPage() {
       if (autoEnabled && (amount ?? 0) < TOPUP_MIN) {
         throw new Error(`Auto top-up amount must be at least $${TOPUP_MIN}`);
       }
-      return callSaveAuto({ data: { enabled: autoEnabled, threshold, amount } });
+      if (!storeId) throw new Error("No store selected");
+      return callSaveAuto({ data: { enabled: autoEnabled, threshold, amount, storeId } });
     },
     onSuccess: async () => {
       toast.success("Auto top-up settings saved");
@@ -254,11 +278,11 @@ function BillingPage() {
     );
   }
 
-  const profile = data?.profile;
-  const plan = profile?.subscription_plan ?? "basic";
-  const subStatus = profile?.subscription_status ?? "none";
+  const store = data?.store;
+  const plan = store?.subscription_plan ?? "basic";
+  const subStatus = store?.subscription_status ?? "none";
   const hasActiveSub = subStatus === "active" || subStatus === "past_due";
-  const feeWaived = profile?.fee_waived ?? false;
+  const feeWaived = store?.fee_waived ?? false;
   const transactions = wallet?.transactions ?? [];
 
   return (
@@ -356,16 +380,16 @@ function BillingPage() {
                   {subscribe.isPending ? "Redirecting…" : `Subscribe — Unlimited $${PLANS.unlimited.priceUsd}/mo`}
                 </Button>
               </div>
-            ) : profile?.pending_plan_change ? (
+            ) : store?.pending_plan_change ? (
               <div className="space-y-3">
                 <p className="rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-sm">
                   Your subscription changes to{" "}
-                  <span className="font-medium">{planLabel(profile.pending_plan_change)}</span>
-                  {profile.pending_plan_change_date && (
+                  <span className="font-medium">{planLabel(store.pending_plan_change)}</span>
+                  {store.pending_plan_change_date && (
                     <>
                       {" "}on{" "}
                       <span className="font-medium">
-                        {formatDate(profile.pending_plan_change_date)}
+                        {formatDate(store.pending_plan_change_date)}
                       </span>
                     </>
                   )}
@@ -573,9 +597,10 @@ function BillingPage() {
         )}
       </div>
 
-      {topupAmount != null && (
+      {topupAmount != null && storeId != null && (
         <TopUpCheckoutDialog
           key={topupAmount}
+          storeId={storeId}
           amountUsd={topupAmount}
           open={topupAmount != null}
           onOpenChange={(open) => {

@@ -58,12 +58,13 @@ export const adminListDocuments = createServerFn({ method: "GET" })
     let query = context.supabase
       .from("documents")
       .select(
-        "id, client_id, document_type, document_number, amount, issued_at, created_at, order_id, orders(external_order_number), profiles(company_name)",
+        "id, entity_id, store_id, document_type, document_number, amount, issued_at, created_at, order_id, orders(external_order_number), entities(legal_name)",
       )
       .order("created_at", { ascending: false })
       .limit(500);
     if (data.type) query = query.eq("document_type", data.type);
-    if (data.clientId) query = query.eq("client_id", data.clientId);
+    // clientId in the filter schema identifies the ENTITY post-hierarchy.
+    if (data.clientId) query = query.eq("entity_id", data.clientId);
     const { data: rows, error } = await query;
     if (error) throw new Error(error.message);
     return rows ?? [];

@@ -64,10 +64,12 @@ function PendingPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {ctx?.profile && (
+          {ctx?.entities?.[0] && (
             <div className="rounded-md border border-border bg-muted/40 px-4 py-3 text-left text-sm">
-              <div className="font-medium">{ctx.profile.company_name}</div>
-              <div className="text-muted-foreground">{ctx.profile.store_url}</div>
+              <div className="font-medium">{ctx.entities[0].legal_name}</div>
+              <div className="text-muted-foreground">
+                {ctx.entities[0].stores[0]?.store_url ?? ""}
+              </div>
             </div>
           )}
           <Button variant="outline" className="w-full" onClick={() => void handleSignOut()}>

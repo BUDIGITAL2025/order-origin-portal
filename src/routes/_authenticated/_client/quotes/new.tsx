@@ -2,9 +2,10 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowUpCircle } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/app-shell";
+import { getCurrentStoreId } from "@/components/store-switcher";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -96,9 +97,18 @@ function NewQuotePage() {
   // Upgrades go through Stripe checkout on the Billing page — the webhook
   // flips the plan after payment confirms.
 
-  const plan = ctx?.profile?.subscription_plan ?? "basic";
+  // Quota and plan live on the current store (localStorage selection,
+  // resolved after hydration; falls back to the first store).
+  const [currentStoreId, setCurrentStoreId] = useState<string | null>(null);
+  useEffect(() => {
+    setCurrentStoreId(getCurrentStoreId());
+  }, []);
+  const allStores = ctx?.entities?.flatMap((e) => e.stores) ?? [];
+  const currentStore = allStores.find((s) => s.id === currentStoreId) ?? allStores[0] ?? null;
+
+  const plan = currentStore?.subscription_plan ?? "basic";
   const quota = planQuota(plan);
-  const quotesUsed = ctx?.profile?.quotes_used_this_month ?? 0;
+  const quotesUsed = currentStore?.quotes_used_this_month ?? 0;
   const limitReached = quota != null && quotesUsed >= quota;
 
   if (quotaBlocked || limitReached) {
@@ -115,7 +125,7 @@ function NewQuotePage() {
             <p className="text-sm text-muted-foreground">
               You've used all {quota ?? PLANS.basic.quoteQuota} quote requests included in your{" "}
               {PLANS.basic.label} plan this month. Your allowance resets on{" "}
-              {quotaResetDate(ctx?.profile?.quotes_period_start)}.
+              {quotaResetDate(currentStore?.quotes_period_start)}.
             </p>
             <p className="text-sm text-muted-foreground">
               Upgrade to {PLANS.unlimited.label} for ${PLANS.unlimited.priceUsd}/month and send
