@@ -51,13 +51,9 @@ export const quoteRequestSchema = z.object({
   image_urls: z.array(z.string().max(500)).max(10).optional(),
 });
 
-export const quoteResponseSchema = z.object({
-  quote_id: z.string().uuid(),
-  accept: z.boolean(),
-});
-
-export const adminQuoteSchema = z.object({
-  quote_id: z.string().uuid(),
+export const quoteLineInputSchema = z.object({
+  id: z.string().uuid().optional(),
+  variant_label: z.string().trim().min(1, "Every variant needs a label").max(120),
   supplier_cogs: z.number().min(0).max(1_000_000),
   supplier_shipping: z.number().min(0).max(1_000_000),
   supplier_tax: z.number().min(0).max(1_000_000),
@@ -65,12 +61,32 @@ export const adminQuoteSchema = z.object({
   markup_shipping: z.number().min(0).max(1_000_000),
   moq: z.number().int().min(1).max(1_000_000).nullable().optional(),
   lead_time_days: z.number().int().min(0).max(365).nullable().optional(),
+});
+
+export const adminQuoteLinesSchema = z.object({
+  quote_id: z.string().uuid(),
+  lines: z.array(quoteLineInputSchema).min(1, "Add at least one variant line").max(50),
+  internal_reference: z.string().trim().max(120).optional().or(z.literal("")),
   quote_valid_until: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD")
     .nullable()
     .optional(),
   admin_notes: z.string().trim().max(2000).optional().or(z.literal("")),
+});
+
+export const respondLinesSchema = z.object({
+  quote_id: z.string().uuid(),
+  product_name: z.string().trim().max(200).optional().or(z.literal("")),
+  decisions: z
+    .array(
+      z.object({
+        line_id: z.string().uuid(),
+        accept: z.boolean(),
+      }),
+    )
+    .min(1)
+    .max(50),
 });
 
 export const requoteSchema = z.object({
@@ -80,6 +96,37 @@ export const requoteSchema = z.object({
 export const adminQuoteStatusSchema = z.object({
   quote_id: z.string().uuid(),
   status: z.enum(["submitted", "sourcing", "expired"]),
+});
+
+export const bundleComponentSchema = z.object({
+  product_id: z.string().uuid(),
+  quantity: z.number().int().min(1).max(10_000),
+});
+
+export const createBundleSchema = z.object({
+  name: z.string().trim().min(2, "Bundle name is required").max(200),
+  components: z
+    .array(bundleComponentSchema)
+    .min(1, "Add at least one component")
+    .max(50),
+});
+
+export const updateBundleSchema = createBundleSchema.extend({
+  bundle_id: z.string().uuid(),
+});
+
+export const productIdSchema = z.object({
+  product_id: z.string().uuid(),
+});
+
+export const priceOverrideSchema = z.object({
+  product_id: z.string().uuid(),
+  price_override: z.number().min(0).max(1_000_000).nullable(),
+});
+
+export const adminProductStatusSchema = z.object({
+  product_id: z.string().uuid(),
+  status: z.enum(["active", "discontinued"]),
 });
 
 export const walletAdjustmentSchema = z.object({
