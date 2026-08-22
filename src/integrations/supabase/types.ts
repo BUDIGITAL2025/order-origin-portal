@@ -17,53 +17,68 @@ export type Database = {
       profiles: {
         Row: {
           approved_at: string | null
+          avg_daily_units_30d: number
           company_name: string
           contact_name: string
           country: string
           created_at: string
           id: string
-          markup_tier: Database["public"]["Enums"]["markup_tier"]
           middleware_tenant_id: string | null
           phone: string
+          pricing_tier: Database["public"]["Enums"]["pricing_tier"]
           provisioning_error: string | null
           provisioning_status: Database["public"]["Enums"]["provisioning_status"]
           provisioning_step: string | null
+          quotes_period_start: string
+          quotes_used_this_month: number
           shopify_domain: string
           status: Database["public"]["Enums"]["profile_status"]
+          subscription_plan: Database["public"]["Enums"]["subscription_plan"]
+          tier_override: Database["public"]["Enums"]["pricing_tier"] | null
           vat_number: string
         }
         Insert: {
           approved_at?: string | null
+          avg_daily_units_30d?: number
           company_name: string
           contact_name: string
           country: string
           created_at?: string
           id: string
-          markup_tier?: Database["public"]["Enums"]["markup_tier"]
           middleware_tenant_id?: string | null
           phone: string
+          pricing_tier?: Database["public"]["Enums"]["pricing_tier"]
           provisioning_error?: string | null
           provisioning_status?: Database["public"]["Enums"]["provisioning_status"]
           provisioning_step?: string | null
+          quotes_period_start?: string
+          quotes_used_this_month?: number
           shopify_domain: string
           status?: Database["public"]["Enums"]["profile_status"]
+          subscription_plan?: Database["public"]["Enums"]["subscription_plan"]
+          tier_override?: Database["public"]["Enums"]["pricing_tier"] | null
           vat_number: string
         }
         Update: {
           approved_at?: string | null
+          avg_daily_units_30d?: number
           company_name?: string
           contact_name?: string
           country?: string
           created_at?: string
           id?: string
-          markup_tier?: Database["public"]["Enums"]["markup_tier"]
           middleware_tenant_id?: string | null
           phone?: string
+          pricing_tier?: Database["public"]["Enums"]["pricing_tier"]
           provisioning_error?: string | null
           provisioning_status?: Database["public"]["Enums"]["provisioning_status"]
           provisioning_step?: string | null
+          quotes_period_start?: string
+          quotes_used_this_month?: number
           shopify_domain?: string
           status?: Database["public"]["Enums"]["profile_status"]
+          subscription_plan?: Database["public"]["Enums"]["subscription_plan"]
+          tier_override?: Database["public"]["Enums"]["pricing_tier"] | null
           vat_number?: string
         }
         Relationships: []
@@ -72,65 +87,77 @@ export type Database = {
         Row: {
           admin_notes: string | null
           client_id: string
-          cost_price: number | null
           created_at: string
           id: string
           image_urls: string[] | null
           lead_time_days: number | null
-          markup_percent: number | null
+          markup_product: number | null
+          markup_shipping: number | null
           moq: number | null
           notes: string | null
           product_name: string | null
           product_url: string
           quote_valid_until: string | null
           quoted_at: string | null
-          quoted_price: number | null
+          quoted_price_total: number | null
           responded_at: string | null
-          shipping_cost: number | null
           status: Database["public"]["Enums"]["quote_status"]
+          supersedes_quote_id: string | null
+          supplier_cogs: number | null
+          supplier_shipping: number | null
+          supplier_tax: number | null
           target_monthly_volume: number | null
+          tier_at_quote: string | null
         }
         Insert: {
           admin_notes?: string | null
           client_id: string
-          cost_price?: number | null
           created_at?: string
           id?: string
           image_urls?: string[] | null
           lead_time_days?: number | null
-          markup_percent?: number | null
+          markup_product?: number | null
+          markup_shipping?: number | null
           moq?: number | null
           notes?: string | null
           product_name?: string | null
           product_url: string
           quote_valid_until?: string | null
           quoted_at?: string | null
-          quoted_price?: number | null
+          quoted_price_total?: number | null
           responded_at?: string | null
-          shipping_cost?: number | null
           status?: Database["public"]["Enums"]["quote_status"]
+          supersedes_quote_id?: string | null
+          supplier_cogs?: number | null
+          supplier_shipping?: number | null
+          supplier_tax?: number | null
           target_monthly_volume?: number | null
+          tier_at_quote?: string | null
         }
         Update: {
           admin_notes?: string | null
           client_id?: string
-          cost_price?: number | null
           created_at?: string
           id?: string
           image_urls?: string[] | null
           lead_time_days?: number | null
-          markup_percent?: number | null
+          markup_product?: number | null
+          markup_shipping?: number | null
           moq?: number | null
           notes?: string | null
           product_name?: string | null
           product_url?: string
           quote_valid_until?: string | null
           quoted_at?: string | null
-          quoted_price?: number | null
+          quoted_price_total?: number | null
           responded_at?: string | null
-          shipping_cost?: number | null
           status?: Database["public"]["Enums"]["quote_status"]
+          supersedes_quote_id?: string | null
+          supplier_cogs?: number | null
+          supplier_shipping?: number | null
+          supplier_tax?: number | null
           target_monthly_volume?: number | null
+          tier_at_quote?: string | null
         }
         Relationships: [
           {
@@ -138,6 +165,20 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quote_requests_supersedes_quote_id_fkey"
+            columns: ["supersedes_quote_id"]
+            isOneToOne: false
+            referencedRelation: "quote_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quote_requests_supersedes_quote_id_fkey"
+            columns: ["supersedes_quote_id"]
+            isOneToOne: false
+            referencedRelation: "quote_requests_client"
             referencedColumns: ["id"]
           },
         ]
@@ -226,9 +267,10 @@ export type Database = {
           product_url: string | null
           quote_valid_until: string | null
           quoted_at: string | null
-          quoted_price: number | null
+          quoted_price_total: number | null
           responded_at: string | null
           status: Database["public"]["Enums"]["quote_status"] | null
+          supersedes_quote_id: string | null
           target_monthly_volume: number | null
         }
         Insert: {
@@ -243,9 +285,10 @@ export type Database = {
           product_url?: string | null
           quote_valid_until?: string | null
           quoted_at?: string | null
-          quoted_price?: number | null
+          quoted_price_total?: number | null
           responded_at?: string | null
           status?: Database["public"]["Enums"]["quote_status"] | null
+          supersedes_quote_id?: string | null
           target_monthly_volume?: number | null
         }
         Update: {
@@ -260,9 +303,10 @@ export type Database = {
           product_url?: string | null
           quote_valid_until?: string | null
           quoted_at?: string | null
-          quoted_price?: number | null
+          quoted_price_total?: number | null
           responded_at?: string | null
           status?: Database["public"]["Enums"]["quote_status"] | null
+          supersedes_quote_id?: string | null
           target_monthly_volume?: number | null
         }
         Relationships: [
@@ -271,6 +315,20 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quote_requests_supersedes_quote_id_fkey"
+            columns: ["supersedes_quote_id"]
+            isOneToOne: false
+            referencedRelation: "quote_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quote_requests_supersedes_quote_id_fkey"
+            columns: ["supersedes_quote_id"]
+            isOneToOne: false
+            referencedRelation: "quote_requests_client"
             referencedColumns: ["id"]
           },
         ]
@@ -314,10 +372,52 @@ export type Database = {
         Args: { p_accept: boolean; p_quote_id: string }
         Returns: undefined
       }
+      submit_quote_request: {
+        Args: {
+          p_image_urls?: string[]
+          p_notes?: string
+          p_on_behalf_of?: string
+          p_product_name?: string
+          p_product_url?: string
+          p_supersedes_quote_id?: string
+          p_target_monthly_volume?: number
+        }
+        Returns: {
+          admin_notes: string | null
+          client_id: string
+          created_at: string
+          id: string
+          image_urls: string[] | null
+          lead_time_days: number | null
+          markup_product: number | null
+          markup_shipping: number | null
+          moq: number | null
+          notes: string | null
+          product_name: string | null
+          product_url: string
+          quote_valid_until: string | null
+          quoted_at: string | null
+          quoted_price_total: number | null
+          responded_at: string | null
+          status: Database["public"]["Enums"]["quote_status"]
+          supersedes_quote_id: string | null
+          supplier_cogs: number | null
+          supplier_shipping: number | null
+          supplier_tax: number | null
+          target_monthly_volume: number | null
+          tier_at_quote: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "quote_requests"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
     }
     Enums: {
       app_role: "admin" | "client"
-      markup_tier: "standard" | "volume" | "partner"
+      pricing_tier: "starter" | "growth" | "scale"
       profile_status: "pending" | "active" | "suspended"
       provisioning_status: "not_started" | "in_progress" | "complete" | "failed"
       quote_status:
@@ -327,6 +427,7 @@ export type Database = {
         | "accepted"
         | "rejected"
         | "expired"
+      subscription_plan: "basic_49" | "pro_99"
       wallet_txn_type: "credit" | "debit" | "adjustment"
     }
     CompositeTypes: {
@@ -456,7 +557,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "client"],
-      markup_tier: ["standard", "volume", "partner"],
+      pricing_tier: ["starter", "growth", "scale"],
       profile_status: ["pending", "active", "suspended"],
       provisioning_status: ["not_started", "in_progress", "complete", "failed"],
       quote_status: [
@@ -467,6 +568,7 @@ export const Constants = {
         "rejected",
         "expired",
       ],
+      subscription_plan: ["basic_49", "pro_99"],
       wallet_txn_type: ["credit", "debit", "adjustment"],
     },
   },
