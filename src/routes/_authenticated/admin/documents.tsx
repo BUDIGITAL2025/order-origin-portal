@@ -50,7 +50,7 @@ function AdminDocumentsPage() {
   const search = clientSearch.trim().toLowerCase();
   const documents = (data ?? []).filter(
     (doc) =>
-      !search || (doc.profiles?.company_name ?? "").toLowerCase().includes(search),
+      !search || (doc.entities?.legal_name ?? "").toLowerCase().includes(search),
   );
 
   return (
@@ -75,7 +75,7 @@ function AdminDocumentsPage() {
         <Input
           value={clientSearch}
           onChange={(e) => setClientSearch(e.target.value)}
-          placeholder="Search client company…"
+          placeholder="Search entity name…"
           className="w-64"
         />
       </div>
@@ -105,7 +105,7 @@ function AdminDocumentsPage() {
                     {doc.document_number}
                   </TableCell>
                   <TableCell className="max-w-48 truncate text-sm">
-                    {doc.profiles?.company_name ?? "—"}
+                    {doc.entities?.legal_name ?? "—"}
                   </TableCell>
                   <TableCell>
                     <DocumentTypeBadge type={doc.document_type} />

@@ -45,23 +45,26 @@ function AdminWalletPage() {
   const fetchWallet = useServerFn(adminGetWallet);
   const callAdjust = useServerFn(adminAdjustWallet);
 
-  const [clientId, setClientId] = useState<string>("");
+  const [entityId, setEntityId] = useState<string>("");
   const [type, setType] = useState<"credit" | "debit">("credit");
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
   const [reference, setReference] = useState("");
 
   const { data: clientsData } = useQuery({ queryKey: ["admin-clients"], queryFn: fetchClients });
+  const entities = (clientsData?.clients ?? []).flatMap((c) =>
+    c.entities.map((e) => ({ id: e.id, legal_name: e.legal_name, contact_name: c.contact_name })),
+  );
   const { data: walletData } = useQuery({
-    queryKey: ["admin-wallet", clientId],
-    queryFn: () => fetchWallet({ data: { client_id: clientId } }),
-    enabled: Boolean(clientId),
+    queryKey: ["admin-wallet", entityId],
+    queryFn: () => fetchWallet({ data: { client_id: entityId } }),
+    enabled: Boolean(entityId),
   });
 
   const adjust = useMutation({
     mutationFn: () => {
       const parsed = walletAdjustmentSchema.safeParse({
-        client_id: clientId,
+        client_id: entityId,
         type,
         amount: Number(amount),
         description,
@@ -75,12 +78,11 @@ function AdminWalletPage() {
       setAmount("");
       setDescription("");
       setReference("");
-      void queryClient.invalidateQueries({ queryKey: ["admin-wallet", clientId] });
+      void queryClient.invalidateQueries({ queryKey: ["admin-wallet", entityId] });
     },
     onError: (err) => toast.error(err.message),
   });
 
-  const clients = clientsData?.clients ?? [];
   const transactions = walletData?.transactions ?? [];
 
   return (
@@ -108,27 +110,27 @@ function AdminWalletPage() {
               className="space-y-4"
             >
               <div className="space-y-1.5">
-                <Label>Client</Label>
-                <Select value={clientId} onValueChange={setClientId}>
+                <Label>Entity</Label>
+                <Select value={entityId} onValueChange={setEntityId}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select a client" />
+                    <SelectValue placeholder="Select an entity" />
                   </SelectTrigger>
                   <SelectContent>
-                    {clients.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.company_name}
+                    {entities.map((e) => (
+                      <SelectItem key={e.id} value={e.id}>
+                        {e.legal_name} ({e.contact_name})
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-              {clientId && walletData && (
+              {entityId && walletData && (
                 <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm">
                   Current balance:{" "}
                   <span className="font-mono font-medium">{formatUSD(walletData.balance)}</span>
                 </div>
               )}
-              {clientId && walletData && walletData.balance > 0 && (
+              {entityId && walletData && walletData.balance > 0 && (
                 <Button
                   type="button"
                   variant="outline"
@@ -191,7 +193,7 @@ function AdminWalletPage() {
                   onChange={(e) => setReference(e.target.value)}
                 />
               </div>
-              <Button type="submit" disabled={adjust.isPending || !clientId}>
+              <Button type="submit" disabled={adjust.isPending || !entityId}>
                 {adjust.isPending ? "Applying…" : "Apply adjustment"}
               </Button>
             </form>
@@ -202,16 +204,16 @@ function AdminWalletPage() {
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Ledger</CardTitle>
             <CardDescription>
-              {clientId ? "Recent entries for the selected client." : "Select a client to view their ledger."}
+              {entityId ? "Recent entries for the selected entity." : "Select an entity to view their ledger."}
             </CardDescription>
           </CardHeader>
           <CardContent className="p-0">
-            {clientId && transactions.length === 0 ? (
+            {entityId && transactions.length === 0 ? (
               <div className="p-6">
                 <EmptyState title="No entries yet" />
               </div>
             ) : (
-              clientId && (
+              entityId && (
                 <Table>
                   <TableHeader>
                     <TableRow>

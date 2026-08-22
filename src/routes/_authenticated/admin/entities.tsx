@@ -45,12 +45,12 @@ function AdminEntitiesPage() {
       const accountIds = [...new Set(data.map((e) => e.account_id))];
       const { data: profiles } = await supabase
         .from("profiles")
-        .select("id, company_name")
+        .select("id, contact_name")
         .in("id", accountIds);
-      const companyById = new Map((profiles ?? []).map((p) => [p.id, p.company_name]));
+      const contactById = new Map((profiles ?? []).map((p) => [p.id, p.contact_name]));
       return data.map((e) => ({
         ...e,
-        account_company: companyById.get(e.account_id) ?? null,
+        account_contact: contactById.get(e.account_id) ?? null,
       }));
     },
   });
@@ -76,9 +76,9 @@ function AdminEntitiesPage() {
                 <div className="flex flex-wrap items-center gap-2">
                   <CardTitle className="text-base">{entity.legal_name}</CardTitle>
                   <ProfileStatusBadge status={entity.status} />
-                  {entity.account_company && entity.account_company !== entity.legal_name && (
+                  {entity.account_contact && (
                     <span className="text-xs text-muted-foreground">
-                      account: {entity.account_company}
+                      account: {entity.account_contact}
                     </span>
                   )}
                   <span className="ml-auto text-xs text-muted-foreground">
