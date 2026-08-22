@@ -97,7 +97,7 @@ function LandingPage() {
               <CardTitle className="text-base">Prepaid wallet</CardTitle>
             </CardHeader>
             <CardContent className="text-sm text-muted-foreground">
-              A transparent EUR ledger of every credit and debit, so your balance is
+              A transparent USD ledger of every credit and debit, so your balance is
               always auditable down to the cent.
             </CardContent>
           </Card>
@@ -116,7 +116,7 @@ function LandingPage() {
 
       <footer className="border-t border-border py-6">
         <div className="mx-auto max-w-5xl px-6 text-xs text-muted-foreground">
-          © {new Date().getFullYear()} Relay Sourcing. Prices in EUR, quotes in writing.
+          © {new Date().getFullYear()} Relay Sourcing. Prices in USD, quotes in writing.
         </div>
       </footer>
     </div>
