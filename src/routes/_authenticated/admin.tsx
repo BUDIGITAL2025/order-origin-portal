@@ -20,7 +20,11 @@ function AdminLayout() {
   if (!ctx?.isAdmin) return <Navigate to="/dashboard" />;
 
   return (
-    <AppShell role="admin" email={ctx.email} companyName={ctx.profile?.company_name ?? null}>
+    <AppShell
+      role="admin"
+      email={ctx.email}
+      companyName={ctx.entities[0]?.legal_name ?? null}
+    >
       <Outlet />
     </AppShell>
   );
