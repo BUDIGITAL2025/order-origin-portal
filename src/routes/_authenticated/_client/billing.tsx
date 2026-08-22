@@ -31,6 +31,7 @@ import { formatDate, formatDateTime, formatUSD } from "@/lib/format";
 import { PLANS, planLabel } from "@/lib/plans";
 import { getStripeEnvironment } from "@/lib/stripe";
 import {
+  cancelPendingPlanChange,
   changePlan,
   createSubscriptionCheckout,
   getBillingOverview,
@@ -187,6 +188,21 @@ function BillingPage() {
     onError: (e) => toast.error(e.message),
   });
 
+  const callCancelPending = useServerFn(cancelPendingPlanChange);
+  const keepPlan = useMutation({
+    mutationFn: async () => {
+      if (!environment) throw new Error("Payments are not configured for this build");
+      const result = await callCancelPending({ data: environment });
+      if ("error" in result) throw new Error(result.error);
+      return result;
+    },
+    onSuccess: async () => {
+      toast.success("Scheduled change cancelled — you keep your current plan.");
+      await invalidate();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
   const saveAuto = useMutation({
     mutationFn: () => {
       const threshold = autoThreshold === "" ? null : Number(autoThreshold);
@@ -338,6 +354,29 @@ function BillingPage() {
                   onClick={() => subscribe.mutate("unlimited")}
                 >
                   {subscribe.isPending ? "Redirecting…" : `Subscribe — Unlimited $${PLANS.unlimited.priceUsd}/mo`}
+                </Button>
+              </div>
+            ) : profile?.pending_plan_change ? (
+              <div className="space-y-3">
+                <p className="rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-sm">
+                  Your subscription changes to{" "}
+                  <span className="font-medium">{planLabel(profile.pending_plan_change)}</span>
+                  {profile.pending_plan_change_date && (
+                    <>
+                      {" "}on{" "}
+                      <span className="font-medium">
+                        {formatDate(profile.pending_plan_change_date)}
+                      </span>
+                    </>
+                  )}
+                  . Until then you keep {planLabel(plan)} with its full quota.
+                </p>
+                <Button
+                  variant="outline"
+                  disabled={keepPlan.isPending}
+                  onClick={() => keepPlan.mutate()}
+                >
+                  {keepPlan.isPending ? "Cancelling…" : `Keep ${planLabel(plan)}`}
                 </Button>
               </div>
             ) : plan === "basic" ? (

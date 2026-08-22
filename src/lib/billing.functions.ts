@@ -21,7 +21,7 @@ async function stripeErrorText(error: unknown): Promise<string> {
 }
 
 const BILLING_PROFILE_SELECT =
-  "subscription_plan, fee_waived, status, stripe_customer_id, stripe_subscription_id, subscription_status, auto_topup_enabled, auto_topup_threshold, auto_topup_amount, default_payment_method_id";
+  "subscription_plan, fee_waived, status, stripe_customer_id, stripe_subscription_id, subscription_status, auto_topup_enabled, auto_topup_threshold, auto_topup_amount, default_payment_method_id, pending_plan_change, pending_plan_change_date";
 
 /**
  * Billing overview for the signed-in client: plan/subscription state (from
@@ -308,6 +308,12 @@ export const changePlan = createServerFn({ method: "POST" })
         ) {
           throw new Error("No active subscription — subscribe first.");
         }
+        // No repeated changes: one scheduled change at a time.
+        if (profile.pending_plan_change) {
+          throw new Error(
+            "A plan change is already scheduled — keep your current plan or wait for it to take effect.",
+          );
+        }
 
         const newPriceLookup = billing.PLAN_PRICE_IDS[data.plan];
         const prices = await stripe.prices.list({ lookup_keys: [newPriceLookup] });
@@ -361,6 +367,21 @@ export const changePlan = createServerFn({ method: "POST" })
             { items: [{ price: newPrice.id, quantity: 1 }] },
           ],
         });
+        // Record the pending change so the billing page can show it and
+        // block stacking a second change. Admin client: guard_profile_update
+        // protects these fields from direct client writes.
+        const { getAdminClient } = await import("./admin.server");
+        const admin = await getAdminClient();
+        const { error: pendingError } = await admin
+          .from("profiles")
+          .update({
+            pending_plan_change: data.plan,
+            pending_plan_change_date: new Date(periodEnd * 1000)
+              .toISOString()
+              .slice(0, 10),
+          })
+          .eq("id", context.userId);
+        if (pendingError) throw new Error(pendingError.message);
         return { applied: "period_end" };
       } catch (error) {
         return { error: await stripeErrorText(error) };
@@ -416,4 +437,54 @@ export const markNotificationsRead = createServerFn({ method: "POST" })
       .eq("client_id", context.userId);
     if (error) throw new Error(error.message);
     return { ok: true };
+  });
+
+/**
+ * Cancel a scheduled downgrade ("Keep current plan"): releases the Stripe
+ * subscription schedule and clears the pending fields. Free — the client
+ * simply stays on the plan they already have.
+ */
+export const cancelPendingPlanChange = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => stripeEnvSchema.parse(input))
+  .handler(async ({ data: environment, context }): Promise<Result<{ ok: true }>> => {
+    try {
+      const { createStripeClient } = await import("./stripe.server");
+      const { getAdminClient } = await import("./admin.server");
+      const stripe = createStripeClient(environment);
+
+      const { data: profile } = await context.supabase
+        .from("profiles")
+        .select(BILLING_PROFILE_SELECT)
+        .eq("id", context.userId)
+        .maybeSingle();
+      if (!profile) throw new Error("Profile not found");
+      if (!profile.pending_plan_change) {
+        throw new Error("No pending plan change to cancel");
+      }
+      if (!profile.stripe_subscription_id) throw new Error("No subscription found");
+
+      const sub = await stripe.subscriptions.retrieve(
+        profile.stripe_subscription_id,
+        { expand: ["schedule"] },
+      );
+      const scheduleRef = (
+        sub as unknown as { schedule?: string | { id: string } | null }
+      ).schedule;
+      const scheduleId =
+        typeof scheduleRef === "string" ? scheduleRef : scheduleRef?.id;
+      if (scheduleId) {
+        await stripe.subscriptionSchedules.release(scheduleId);
+      }
+
+      const admin = await getAdminClient();
+      const { error } = await admin
+        .from("profiles")
+        .update({ pending_plan_change: null, pending_plan_change_date: null })
+        .eq("id", context.userId);
+      if (error) throw new Error(error.message);
+      return { ok: true };
+    } catch (error) {
+      return { error: await stripeErrorText(error) };
+    }
   });

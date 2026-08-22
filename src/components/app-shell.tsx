@@ -1,6 +1,6 @@
 import * as React from "react";
 import { Link, useNavigate, useRouter } from "@tanstack/react-router";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Boxes,
   ClipboardList,
@@ -32,6 +32,40 @@ const CLIENT_NAV: NavItem[] = [
   { to: "/wallet", label: "Wallet", icon: Wallet },
   { to: "/billing", label: "Billing", icon: CreditCard },
 ];
+
+/**
+ * Persistent portal banner while a subscription is past_due. Nothing is
+ * blocked at this stage — Stripe retries for days — but the client should
+ * always see the ask to update their card.
+ */
+function PastDueBanner() {
+  const { data: status } = useQuery({
+    queryKey: ["my-subscription-status"],
+    staleTime: 60_000,
+    queryFn: async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return null;
+      const { data } = await supabase
+        .from("profiles")
+        .select("subscription_status")
+        .eq("id", user.id)
+        .maybeSingle();
+      return data?.subscription_status ?? null;
+    },
+  });
+  if (status !== "past_due") return null;
+  return (
+    <div className="w-full border-b border-destructive/30 bg-destructive/10 px-4 py-2 text-center text-sm text-destructive">
+      Your last subscription payment failed — Stripe retries automatically.{" "}
+      <Link to="/billing" className="font-medium underline">
+        Update your card
+      </Link>{" "}
+      to keep your plan.
+    </div>
+  );
+}
 
 const ADMIN_NAV: NavItem[] = [
   { to: "/admin/quotes", label: "Quote queue", icon: ClipboardList },
@@ -114,6 +148,7 @@ export function AppShell({
       </aside>
       <main className="min-w-0 flex-1">
         <PaymentTestModeBanner />
+        {role === "client" && <PastDueBanner />}
         <div className="mx-auto max-w-6xl px-6 py-6">{children}</div>
       </main>
     </div>

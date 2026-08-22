@@ -191,6 +191,7 @@ export type Database = {
           auto_topup_enabled: boolean
           auto_topup_threshold: number | null
           avg_daily_units_30d: number
+          cancel_notice_sent_at: string | null
           company_name: string
           contact_name: string
           country: string
@@ -200,6 +201,10 @@ export type Database = {
           id: string
           integration_mode: Database["public"]["Enums"]["integration_mode"]
           middleware_tenant_id: string | null
+          pending_plan_change:
+            | Database["public"]["Enums"]["subscription_plan"]
+            | null
+          pending_plan_change_date: string | null
           phone: string
           platform: Database["public"]["Enums"]["store_platform"]
           pricing_tier: Database["public"]["Enums"]["pricing_tier"]
@@ -223,6 +228,7 @@ export type Database = {
           auto_topup_enabled?: boolean
           auto_topup_threshold?: number | null
           avg_daily_units_30d?: number
+          cancel_notice_sent_at?: string | null
           company_name: string
           contact_name: string
           country: string
@@ -232,6 +238,10 @@ export type Database = {
           id: string
           integration_mode?: Database["public"]["Enums"]["integration_mode"]
           middleware_tenant_id?: string | null
+          pending_plan_change?:
+            | Database["public"]["Enums"]["subscription_plan"]
+            | null
+          pending_plan_change_date?: string | null
           phone: string
           platform?: Database["public"]["Enums"]["store_platform"]
           pricing_tier?: Database["public"]["Enums"]["pricing_tier"]
@@ -255,6 +265,7 @@ export type Database = {
           auto_topup_enabled?: boolean
           auto_topup_threshold?: number | null
           avg_daily_units_30d?: number
+          cancel_notice_sent_at?: string | null
           company_name?: string
           contact_name?: string
           country?: string
@@ -264,6 +275,10 @@ export type Database = {
           id?: string
           integration_mode?: Database["public"]["Enums"]["integration_mode"]
           middleware_tenant_id?: string | null
+          pending_plan_change?:
+            | Database["public"]["Enums"]["subscription_plan"]
+            | null
+          pending_plan_change_date?: string | null
           phone?: string
           platform?: Database["public"]["Enums"]["store_platform"]
           pricing_tier?: Database["public"]["Enums"]["pricing_tier"]
@@ -662,6 +677,13 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      release_awaiting_payment_orders: {
+        Args: { p_client_id: string }
+        Returns: {
+          amount: number
+          order_id: string
+        }[]
       }
       respond_to_quote_lines: {
         Args: { p_decisions: Json; p_product_name: string; p_quote_id: string }

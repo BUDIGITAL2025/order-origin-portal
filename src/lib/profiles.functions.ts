@@ -33,6 +33,7 @@ export interface MyContext {
     quotes_used_this_month: number;
     quotes_period_start: string;
     fee_waived: boolean;
+    auto_topup_enabled: boolean;
     status: "pending" | "active" | "suspended";
     middleware_tenant_id: string | null;
     provisioning_status: "not_started" | "in_progress" | "complete" | "failed";
