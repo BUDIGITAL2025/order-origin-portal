@@ -51,7 +51,17 @@ export const createBundle = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => createBundleSchema.parse(input))
   .handler(async ({ data, context }) => {
+    // Bundles live at store level: use the caller's first store.
+    const { data: store, error: storeError } = await context.supabase
+      .from("stores")
+      .select("id")
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    if (storeError) throw new Error(storeError.message);
+    if (!store) throw new Error("No store registered for this account.");
     const { data: product, error } = await context.supabase.rpc("create_bundle", {
+      p_store_id: store.id,
       p_name: data.name,
       p_components: data.components,
     });

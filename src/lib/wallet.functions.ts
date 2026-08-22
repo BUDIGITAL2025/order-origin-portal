@@ -30,10 +30,19 @@ export const adminAdjustWallet = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => walletAdjustmentSchema.parse(input))
   .handler(async ({ data, context }) => {
+    const { data: entity, error: entityError } = await context.supabase
+      .from("entities")
+      .select("id")
+      .eq("account_id", data.client_id)
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    if (entityError) throw new Error(entityError.message);
+    if (!entity) throw new Error("No entity found for this client.");
     const { data: result, error } = await context.supabase.rpc(
       "apply_wallet_transaction",
       {
-        p_client_id: data.client_id,
+        p_entity_id: entity.id,
         p_type: data.type,
         p_amount: data.amount,
         p_description: data.description,
