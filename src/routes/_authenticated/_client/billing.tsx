@@ -452,6 +452,7 @@ function BillingPage() {
             )}
           </CardContent>
         </Card>
+        )}
 
         {/* ============ Wallet top-up ============ */}
         <Card>
