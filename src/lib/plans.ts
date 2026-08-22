@@ -7,6 +7,12 @@ export const PLANS = {
 export type SubscriptionPlan = keyof typeof PLANS;
 export type PricingTier = "starter" | "growth" | "scale";
 
+export const TIER_LABELS: Record<string, string> = {
+  starter: "Starter",
+  growth: "Growth",
+  scale: "Scale",
+};
+
 export function planLabel(plan: string | null | undefined): string {
   return PLANS[(plan as SubscriptionPlan) ?? "basic_49"]?.label ?? plan ?? "—";
 }
