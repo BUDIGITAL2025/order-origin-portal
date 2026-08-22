@@ -6,10 +6,27 @@ import {
   adminQuoteStatusSchema,
   quoteRequestSchema,
   quoteResponseSchema,
+  requoteSchema,
   signedUrlsSchema,
 } from "./schemas";
 
-/** Client: submit a new quote request. Caller must be an active client. */
+export class QuotaExceededError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "QuotaExceededError";
+  }
+}
+
+function toSubmitError(message: string): Error {
+  if (message.includes("QUOTE_LIMIT_REACHED")) {
+    return new QuotaExceededError(
+      "You've used all quote requests in your current plan this month. Upgrade to Pro for a higher allowance.",
+    );
+  }
+  return new Error(message);
+}
+
+/** Client: submit a new quote request. Quota enforced atomically in Postgres. */
 export const createQuoteRequest = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => quoteRequestSchema.parse(input))
@@ -26,17 +43,14 @@ export const createQuoteRequest = createServerFn({ method: "POST" })
       throw new Error("Your account is not active yet");
     }
 
-    // No .select() on insert: the RLS INSERT policy's qual only exposes client_id,
-    // so returning other columns would error. The list refetches anyway.
-    const { error } = await supabase.from("quote_requests").insert({
-      client_id: userId,
-      product_url: data.product_url,
-      product_name: data.product_name || null,
-      notes: data.notes || null,
-      target_monthly_volume: data.target_monthly_volume ?? null,
-      image_urls: data.image_urls ?? [],
+    const { error } = await supabase.rpc("submit_quote_request", {
+      p_product_url: data.product_url,
+      p_product_name: data.product_name || null,
+      p_notes: data.notes || null,
+      p_target_monthly_volume: data.target_monthly_volume ?? null,
+      p_image_urls: data.image_urls ?? [],
     });
-    if (error) throw new Error(error.message);
+    if (error) throw toSubmitError(error.message);
     return { ok: true };
   });
 
