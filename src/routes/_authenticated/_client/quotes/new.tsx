@@ -90,6 +90,39 @@ function NewQuotePage() {
     },
   });
 
+  if (quotaBlocked) {
+    const plan = ctx?.profile?.subscription_plan ?? "basic_49";
+    return (
+      <div className="max-w-2xl">
+        <PageHeader
+          title="Request a quote"
+          description="Send us a product link and we'll come back with a price, MOQ and lead time."
+        />
+        <Card>
+          <CardContent className="flex flex-col items-start gap-3 p-8">
+            <ArrowUpCircle className="h-8 w-8 text-warning-foreground" />
+            <h2 className="text-lg font-semibold">Monthly quote allowance reached</h2>
+            <p className="text-sm text-muted-foreground">
+              You've used all {planQuota(plan)} quote requests included in your{" "}
+              {plan === "pro_99" ? PLANS.pro_99.label : PLANS.basic_49.label} plan this month.
+              Upgrade to {PLANS.pro_99.label} (${PLANS.pro_99.priceUsd}/month) for{" "}
+              {PLANS.pro_99.quoteQuota} quote requests per month, or wait until your allowance
+              resets on the 1st of next month.
+            </p>
+            <div className="flex gap-2">
+              <Button asChild size="sm">
+                <Link to="/dashboard">Back to dashboard</Link>
+              </Button>
+              <Button asChild size="sm" variant="outline">
+                <Link to="/quotes">View my quotes</Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-2xl">
       <PageHeader
