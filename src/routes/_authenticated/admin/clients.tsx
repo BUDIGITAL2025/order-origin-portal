@@ -34,6 +34,13 @@ import {
   provisionClient,
 } from "@/lib/profiles.functions";
 
+// Stripe dashboard links differ between the test environment and live.
+const STRIPE_TEST_PREFIX = (
+  import.meta.env["VITE_PAYMENTS_CLIENT_TOKEN"] as string | undefined
+)?.startsWith("pk_test_")
+  ? "/test"
+  : "";
+
 export const Route = createFileRoute("/_authenticated/admin/clients")({
   head: () => ({
     meta: [
@@ -140,6 +147,7 @@ function AdminClientsPage() {
                 <TableHead>Integration</TableHead>
                 <TableHead>Plan</TableHead>
                 <TableHead>Fee waived</TableHead>
+                <TableHead>Stripe</TableHead>
                 <TableHead>Effective tier</TableHead>
                 <TableHead className="text-right">Units/day (30d)</TableHead>
                 <TableHead className="text-right">Quotes used</TableHead>
@@ -222,6 +230,36 @@ function AdminClientsPage() {
                         />
                         {c.fee_waived && <Badge variant="secondary">Fee waived</Badge>}
                       </div>
+                    </TableCell>
+                    {/* Read-only Stripe state — written by the payment webhook only.
+                        Admins never charge from inside the portal. */}
+                    <TableCell>
+                      {c.stripe_customer_id ? (
+                        <div className="space-y-1">
+                          <Badge
+                            variant="outline"
+                            className={
+                              c.subscription_status === "active"
+                                ? "border-success/40 bg-success/10 text-success"
+                                : c.subscription_status === "past_due"
+                                  ? "border-destructive/40 bg-destructive/10 text-destructive"
+                                  : "text-muted-foreground"
+                            }
+                          >
+                            {c.subscription_status}
+                          </Badge>
+                          <a
+                            href={`https://dashboard.stripe.com${STRIPE_TEST_PREFIX}/customers/${c.stripe_customer_id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block max-w-32 truncate font-mono text-xs text-primary underline"
+                          >
+                            {c.stripe_customer_id}
+                          </a>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1.5">

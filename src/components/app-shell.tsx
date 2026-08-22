@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   Boxes,
   ClipboardList,
+  CreditCard,
   FilePlus2,
   LayoutDashboard,
   LogOut,
@@ -13,6 +14,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { MARKETING_URL } from "@/lib/config";
+import { PaymentTestModeBanner } from "@/components/PaymentTestModeBanner";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 
@@ -28,6 +30,7 @@ const CLIENT_NAV: NavItem[] = [
   { to: "/quotes", label: "My quotes", icon: ClipboardList },
   { to: "/products", label: "My products", icon: Package },
   { to: "/wallet", label: "Wallet", icon: Wallet },
+  { to: "/billing", label: "Billing", icon: CreditCard },
 ];
 
 const ADMIN_NAV: NavItem[] = [
@@ -110,6 +113,7 @@ export function AppShell({
         </div>
       </aside>
       <main className="min-w-0 flex-1">
+        <PaymentTestModeBanner />
         <div className="mx-auto max-w-6xl px-6 py-6">{children}</div>
       </main>
     </div>

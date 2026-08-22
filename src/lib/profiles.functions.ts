@@ -181,37 +181,8 @@ export const adminSetFeeWaived = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-/**
- * Client: explicit self-upgrade from Basic to Unlimited.
- * Never called automatically — only from the upgrade panel button.
- * TODO(payments): collect payment via Stripe before flipping the plan;
- * the call is stubbed and the plan is switched immediately for now.
- */
-export const upgradeToUnlimited = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    const { supabase, userId } = context;
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("subscription_plan, status")
-      .eq("id", userId)
-      .maybeSingle();
-    if (!profile) throw new Error("Complete your company profile first");
-    if (profile.status !== "active") throw new Error("Your account is not active yet");
-    if (profile.subscription_plan !== "basic") {
-      throw new Error("Your plan is already Unlimited");
-    }
-
-    // TODO(payments): create a Stripe Checkout session / subscription here and
-    // only switch the plan after the payment confirms (webhook). Stubbed for now.
-    const { error } = await supabase
-      .from("profiles")
-      .update({ subscription_plan: "unlimited" })
-      .eq("id", userId);
-    if (error) throw new Error(error.message);
-    return { ok: true };
-  });
+// Plan changes go through Stripe billing (src/lib/billing.functions.ts):
+// the client checks out and the webhook flips the plan — never the app itself.
 
 /**
  * Admin: set a client's integration mode. Only meaningful for Shopify stores —
