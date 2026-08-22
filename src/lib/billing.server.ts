@@ -3,6 +3,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import { getAdminClient, round2 } from "./admin.server";
 import { createStripeClient, type StripeEnv } from "./stripe.server";
+import { sendClientEmail } from "./email.server";
+import { PLANS, planLabel } from "./plans";
 
 type Admin = SupabaseClient<Database>;
 
@@ -88,11 +90,13 @@ function isDuplicateReference(message: string): boolean {
  * Credit the wallet exactly once per Stripe reference. Replays (webhook
  * retries, checkout.session.completed + payment_intent.succeeded both
  * firing) hit the reference uniqueness rule and become no-ops.
+ * Returns true when the credit was actually written, false on a replay —
+ * callers use this to never release orders or email twice.
  */
 export async function creditWalletOnce(
   admin: Admin,
   args: { clientId: string; amountUsd: number; reference: string; description: string },
-): Promise<void> {
+): Promise<boolean> {
   const { error } = await admin.rpc("apply_wallet_transaction", {
     p_client_id: args.clientId,
     p_type: "credit",
@@ -100,7 +104,11 @@ export async function creditWalletOnce(
     p_description: args.description,
     p_reference: args.reference,
   });
-  if (error && !isDuplicateReference(error.message)) throw new Error(error.message);
+  if (error) {
+    if (isDuplicateReference(error.message)) return false;
+    throw new Error(error.message);
+  }
+  return true;
 }
 
 /** Debit the wallet exactly once per Stripe reference (refunds). */
@@ -171,9 +179,12 @@ export async function syncSubscriptionFromStripe(
     id: string;
     status?: string;
     customer?: string | { id: string };
+    cancel_at_period_end?: boolean;
+    current_period_end?: number;
     metadata?: Record<string, string>;
     items?: {
       data?: Array<{
+        current_period_end?: number;
         price?: { lookup_key?: string | null; metadata?: Record<string, string> };
       }>;
     };
@@ -194,21 +205,77 @@ export async function syncSubscriptionFromStripe(
     item?.price?.lookup_key ?? item?.price?.metadata?.["lovable_external_id"] ?? null,
   );
   const status = mapSubscriptionStatus(subAny.status ?? null);
+  const periodEndUnix = item?.current_period_end ?? subAny.current_period_end ?? null;
+  const periodEndDate = periodEndUnix
+    ? new Date(periodEndUnix * 1000).toISOString().slice(0, 10)
+    : null;
 
   const patch: Database["public"]["Tables"]["profiles"]["Update"] = {
     stripe_customer_id: customerId ?? profile.stripe_customer_id,
     stripe_subscription_id: subAny.id,
     subscription_status: status,
   };
+
   // The plan follows the subscribed price only while in good standing;
   // past_due keeps the current plan during Stripe's retry window.
-  if (plan && status === "active") patch.subscription_plan = plan;
+  if (plan && status === "active") {
+    patch.subscription_plan = plan;
+
+    if (profile.pending_plan_change) {
+      if (profile.pending_plan_change === plan) {
+        // The scheduled change just took effect.
+        patch.pending_plan_change = null;
+        patch.pending_plan_change_date = null;
+        if (plan === "basic") {
+          // Quota on the day a downgrade lands: the monthly counter resets
+          // for the new period so usage accrued on Unlimited (e.g. 40
+          // quotes) does not instantly block the client on day one of Basic.
+          patch.quotes_used_this_month = 0;
+          patch.quotes_period_start = new Date().toISOString().slice(0, 8) + "01";
+        }
+      } else {
+        // The schedule was released or replaced outside this flow — the
+        // live price wins and the pending marker is stale.
+        patch.pending_plan_change = null;
+        patch.pending_plan_change_date = null;
+      }
+    }
+  }
+
+  // Cancellation notice — emailed once per cancellation; the flag clears if
+  // the client reactivates before the period ends.
+  let sendCancellationNotice = false;
+  if (status === "active" && subAny.cancel_at_period_end && !profile.cancel_notice_sent_at) {
+    patch.cancel_notice_sent_at = new Date().toISOString();
+    sendCancellationNotice = true;
+  } else if (!subAny.cancel_at_period_end && profile.cancel_notice_sent_at) {
+    patch.cancel_notice_sent_at = null;
+  }
 
   const { error } = await admin.from("profiles").update(patch).eq("id", profile.id);
   if (error) throw new Error(error.message);
+
+  if (sendCancellationNotice) {
+    // Cancellation restricts new work; it never breaks work in flight.
+    await sendClientEmail(admin, {
+      clientId: profile.id,
+      subject: "Your FlySales subscription cancellation",
+      text: [
+        "Your subscription cancellation is confirmed.",
+        periodEndDate
+          ? `Your plan stays active until ${periodEndDate}.`
+          : "Your plan stays active until the end of the current billing period.",
+        "Your product catalogue and any open orders are unaffected, and your wallet balance remains yours.",
+      ].join("\n"),
+    });
+  }
 }
 
 // ============= Webhook event processing =============
+//
+// NOTE: syncSubscriptionFromStripe lives above; everything below runs inside
+// the webhook route's idempotency gate (stripe_events), so replaying the
+// same stripe_event_id never credits, releases or emails twice.
 
 type StripeEvent = {
   id: string;
