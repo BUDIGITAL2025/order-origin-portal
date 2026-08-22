@@ -180,7 +180,7 @@ function MyQuoteDetailPage() {
                         {l.lead_time_days != null ? `${l.lead_time_days}d` : "—"}
                       </TableCell>
                       <TableCell>
-                        <LineStatusBadge status={l.status} />
+                        <LineStatusBadge status={l.status ?? "pending"} />
                       </TableCell>
                       {canRespond && (
                         <TableCell className="text-right">
@@ -216,9 +216,10 @@ function MyQuoteDetailPage() {
                                     <AlertDialogCancel>Cancel</AlertDialogCancel>
                                     <AlertDialogAction
                                       disabled={respond.isPending}
-                                      onClick={() =>
-                                        respond.mutate({ lineId: l.id, accept: false, name: "" })
-                                      }
+                                      onClick={() => {
+                                        if (l.id)
+                                          respond.mutate({ lineId: l.id, accept: false, name: "" });
+                                      }}
                                     >
                                       Reject variant
                                     </AlertDialogAction>
