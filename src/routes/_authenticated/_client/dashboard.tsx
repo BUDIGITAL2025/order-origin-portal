@@ -14,7 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatDate, formatDateTime, formatUSD } from "@/lib/format";
+import { formatDateTime, formatUSD } from "@/lib/format";
 import { PLANS, planLabel, planQuota, quotaResetDate } from "@/lib/plans";
 import { getMyContext } from "@/lib/profiles.functions";
 import { listMyQuotes } from "@/lib/quotes.functions";
