@@ -169,3 +169,34 @@ export const clientStatusSchema = z.object({
 export const signedUrlsSchema = z.object({
   paths: z.array(z.string().min(1).max(500)).max(20),
 });
+
+// ============= Billing (Stripe) =============
+
+export const stripeEnvSchema = z.enum(["sandbox", "live"]);
+
+export const subscriptionCheckoutSchema = z.object({
+  plan: z.enum(["basic", "unlimited"]),
+  returnUrl: z.string().trim().url("Invalid return URL").max(500),
+  environment: stripeEnvSchema,
+});
+
+export const topUpCheckoutSchema = z.object({
+  amountUsd: z.number().min(50, "Minimum top-up is $50").max(100_000),
+  returnUrl: z.string().trim().url("Invalid return URL").max(500),
+  environment: stripeEnvSchema,
+});
+
+export const changePlanSchema = z.object({
+  plan: z.enum(["basic", "unlimited"]),
+  environment: stripeEnvSchema,
+});
+
+export const autoTopupSettingsSchema = z.object({
+  enabled: z.boolean(),
+  threshold: z.number().min(0).max(1_000_000).nullable(),
+  amount: z.number().min(50, "Minimum auto top-up is $50").max(100_000).nullable(),
+});
+
+export const notificationIdsSchema = z.object({
+  ids: z.array(z.string().uuid()).min(1).max(100),
+});
