@@ -1,6 +1,7 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { ArrowUpCircle } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/app-shell";
@@ -10,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
+import { PLANS, planQuota } from "@/lib/plans";
 import { quoteRequestSchema } from "@/lib/schemas";
 import { createQuoteRequest } from "@/lib/quotes.functions";
 import { useMyContext } from "../../_client";
@@ -37,6 +39,7 @@ function NewQuotePage() {
   const [volume, setVolume] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [quotaBlocked, setQuotaBlocked] = useState(false);
 
   const submit = useMutation({
     mutationFn: async () => {
@@ -76,9 +79,15 @@ function NewQuotePage() {
     onSuccess: async () => {
       toast.success("Quote request submitted");
       await queryClient.invalidateQueries({ queryKey: ["my-quotes"] });
+      await queryClient.invalidateQueries({ queryKey: ["my-context"] });
       await navigate({ to: "/quotes" });
     },
-    onError: (err) => toast.error(err.message),
+    onError: (err) => {
+      if (err.message.includes("used all quote requests")) {
+        setQuotaBlocked(true);
+      }
+      toast.error(err.message);
+    },
   });
 
   return (
