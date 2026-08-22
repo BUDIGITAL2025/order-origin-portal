@@ -125,6 +125,13 @@ function cellPrice(c: CellForm): number {
   );
 }
 
+/** Effective margin on the sell price: combined markups as % of unit price. */
+function cellMarginPct(c: CellForm): number | null {
+  const price = cellPrice(c);
+  if (price <= 0) return null;
+  return ((num(c.markup_product) + num(c.markup_shipping)) / price) * 100;
+}
+
 function AdminQuoteDetailPage() {
   const { id } = Route.useParams();
   const queryClient = useQueryClient();
@@ -672,6 +679,17 @@ function AdminQuoteDetailPage() {
                                   </span>
                                   <span className="font-mono text-xs font-semibold">
                                     {formatUSD(cellPrice(cell))}
+                                  </span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                                    Margin
+                                  </span>
+                                  <span className="font-mono text-xs text-muted-foreground">
+                                    {(() => {
+                                      const m = cellMarginPct(cell);
+                                      return m == null ? "—" : `${m.toFixed(1)}%`;
+                                    })()}
                                   </span>
                                 </div>
                                 {locked && (
