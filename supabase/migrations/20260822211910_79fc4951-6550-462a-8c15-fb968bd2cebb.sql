@@ -1,0 +1,1 @@
+DROP POLICY IF EXISTS "Clients read own fulfillment items" ON public.order_fulfillment_items;
