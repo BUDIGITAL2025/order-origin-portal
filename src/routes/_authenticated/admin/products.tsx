@@ -54,10 +54,8 @@ type Product = {
   product_name: string;
   variant_label: string | null;
   product_type: "simple" | "bundle";
-  unit_price: number | null;
   price_override: number | null;
   moq: number | null;
-  lead_time_days: number | null;
   status: "active" | "discontinued" | "needs_review";
   push_status: "pending" | "pushed" | "failed";
   push_error: string | null;
@@ -68,10 +66,18 @@ type Product = {
 
 type BundlePrice = {
   bundle_product_id: string | null;
+  country_code: string | null;
   calculated_price: number | null;
   component_count: number | null;
   effective_price: number | null;
   max_lead_time_days: number | null;
+};
+
+type CountryPrice = {
+  product_id: string | null;
+  country_code: string | null;
+  unit_price: number | null;
+  lead_time_days: number | null;
 };
 
 const STATUS_FILTERS = ["active", "needs_review", "discontinued"] as const;
@@ -100,7 +106,21 @@ function AdminProductsPage() {
 
   const products = (data?.products ?? []) as unknown as Product[];
   const prices = (data?.prices ?? []) as BundlePrice[];
-  const priceByBundle = new Map(prices.map((p) => [p.bundle_product_id, p]));
+  const countryPrices = (data?.countryPrices ?? []) as CountryPrice[];
+  const priceByBundle = new Map<string, BundlePrice[]>();
+  for (const p of prices) {
+    if (!p.bundle_product_id) continue;
+    const list = priceByBundle.get(p.bundle_product_id) ?? [];
+    list.push(p);
+    priceByBundle.set(p.bundle_product_id, list);
+  }
+  const priceByProduct = new Map<string, CountryPrice[]>();
+  for (const cp of countryPrices) {
+    if (!cp.product_id) continue;
+    const list = priceByProduct.get(cp.product_id) ?? [];
+    list.push(cp);
+    priceByProduct.set(cp.product_id, list);
+  }
 
   const [overrideFor, setOverrideFor] = useState<Product | null>(null);
   const [overrideValue, setOverrideValue] = useState("");
@@ -202,7 +222,8 @@ function AdminProductsPage() {
             <TableBody>
               {products.map((p) => {
                 const isBundle = p.product_type === "bundle";
-                const bundlePrice = isBundle ? priceByBundle.get(p.id) : undefined;
+                const bundlePrices = isBundle ? (priceByBundle.get(p.id) ?? []) : [];
+                const simplePrices = priceByProduct.get(p.id) ?? [];
                 return (
                   <TableRow key={p.id}>
                     <TableCell className="text-sm">{p.profiles?.company_name ?? "—"}</TableCell>
@@ -213,7 +234,7 @@ function AdminProductsPage() {
                       )}
                       {isBundle && (
                         <div className="text-xs text-muted-foreground">
-                          {bundlePrice?.component_count ?? 0} components
+                          {bundlePrices[0]?.component_count ?? 0} components
                         </div>
                       )}
                     </TableCell>
@@ -222,28 +243,34 @@ function AdminProductsPage() {
                       <ProductTypeBadge type={p.product_type} />
                     </TableCell>
                     <TableCell className="text-right">
-                      {isBundle ? (
-                        <div>
-                          <div className="font-mono text-sm">
-                            {bundlePrice?.effective_price != null
-                              ? formatUSD(bundlePrice.effective_price)
-                              : "—"}
-                          </div>
-                          <div className="font-mono text-xs text-muted-foreground">
-                            calc{" "}
-                            {bundlePrice?.calculated_price != null
-                              ? formatUSD(bundlePrice.calculated_price)
-                              : "—"}
-                            {p.price_override != null
-                              ? ` · override ${formatUSD(p.price_override)}`
-                              : ""}
-                          </div>
-                        </div>
-                      ) : (
-                        <span className="font-mono text-sm">
-                          {p.unit_price != null ? formatUSD(p.unit_price) : "—"}
-                        </span>
-                      )}
+                      <div className="flex flex-wrap justify-end gap-1">
+                        {isBundle
+                          ? bundlePrices.map((r) => (
+                              <span
+                                key={r.country_code}
+                                className="inline-flex items-center gap-1 rounded-md bg-muted/60 px-1.5 py-0.5 font-mono text-xs"
+                                title={`Calculated ${formatUSD(r.calculated_price ?? 0)}${p.price_override != null ? ` · override ${formatUSD(p.price_override)}` : ""}`}
+                              >
+                                <span className="font-semibold">{r.country_code}</span>
+                                {r.effective_price != null ? formatUSD(r.effective_price) : "—"}
+                              </span>
+                            ))
+                          : simplePrices.map((r) => (
+                              <span
+                                key={r.country_code}
+                                className="inline-flex items-center gap-1 rounded-md bg-muted/60 px-1.5 py-0.5 font-mono text-xs"
+                              >
+                                <span className="font-semibold">{r.country_code}</span>
+                                {r.unit_price != null ? formatUSD(r.unit_price) : "—"}
+                                {r.lead_time_days != null && (
+                                  <span className="text-muted-foreground">· {r.lead_time_days}d</span>
+                                )}
+                              </span>
+                            ))}
+                        {(isBundle ? bundlePrices : simplePrices).length === 0 && (
+                          <span className="text-sm text-muted-foreground">—</span>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <ProductStatusBadge status={p.status} />
@@ -324,7 +351,7 @@ function AdminProductsPage() {
             <DialogTitle>Price override — {overrideFor?.product_name}</DialogTitle>
             <DialogDescription>
               Set a fixed sell price for this bundle. Leave empty to clear the override and use the
-              calculated price ({overrideFor && formatUSD(priceByBundle.get(overrideFor.id)?.calculated_price ?? 0)}).
+              calculated price ({overrideFor && (priceByBundle.get(overrideFor.id) ?? []).map((r) => `${r.country_code} ${formatUSD(r.calculated_price ?? 0)}`).join(", ") || "—"}).
               Only admins can change this.
             </DialogDescription>
           </DialogHeader>

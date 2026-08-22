@@ -9,22 +9,27 @@ import {
   updateBundleSchema,
 } from "./schemas";
 
-/** Client: my catalogue — products, bundle components and computed bundle pricing. */
+/** Client: my catalogue — products, per-country prices, bundle components and bundle pricing. */
 export const listMyProducts = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { data: products, error } = await context.supabase
       .from("products")
       .select(
-        "id, sku, product_name, variant_label, product_type, unit_price, moq, lead_time_days, status, created_at",
+        "id, sku, product_name, variant_label, product_type, moq, status, created_at",
       )
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
 
+    const { data: countryPrices, error: countryPricesError } = await context.supabase
+      .from("product_country_prices")
+      .select("product_id, country_code, unit_price, lead_time_days");
+    if (countryPricesError) throw new Error(countryPricesError.message);
+
     const { data: components, error: componentsError } = await context.supabase
       .from("bundle_components")
       .select(
-        "id, bundle_product_id, component_product_id, quantity, component:products!bundle_components_component_product_id_fkey(sku, product_name, variant_label, unit_price)",
+        "id, bundle_product_id, component_product_id, quantity, component:products!bundle_components_component_product_id_fkey(sku, product_name, variant_label)",
       );
     if (componentsError) throw new Error(componentsError.message);
 
@@ -33,7 +38,12 @@ export const listMyProducts = createServerFn({ method: "GET" })
       .select("*");
     if (pricesError) throw new Error(pricesError.message);
 
-    return { products: products ?? [], components: components ?? [], prices: prices ?? [] };
+    return {
+      products: products ?? [],
+      countryPrices: countryPrices ?? [],
+      components: components ?? [],
+      prices: prices ?? [],
+    };
   });
 
 /** Client: create a bundle from own active simple products. SKU generated server-side (FSB-). */
@@ -115,7 +125,12 @@ export const adminListProducts = createServerFn({ method: "GET" })
     const { data: prices, error: pricesError } = await admin.from("bundle_prices").select("*");
     if (pricesError) throw new Error(pricesError.message);
 
-    return { products: products ?? [], prices: prices ?? [] };
+    const { data: countryPrices, error: countryPricesError } = await admin
+      .from("product_country_prices")
+      .select("product_id, country_code, unit_price, lead_time_days");
+    if (countryPricesError) throw new Error(countryPricesError.message);
+
+    return { products: products ?? [], prices: prices ?? [], countryPrices: countryPrices ?? [] };
   });
 
 /** Admin: set or clear the price override on a bundle. */
