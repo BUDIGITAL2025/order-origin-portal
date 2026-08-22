@@ -300,7 +300,10 @@ function idOf(ref: unknown): string | null {
  * Credit a wallet top-up exactly once per PaymentIntent. Called from BOTH
  * checkout.session.completed (payment mode) and payment_intent.succeeded —
  * the reference uniqueness rule makes the second call a no-op. Also stores
- * the saved card (setup_future_usage) for auto top-up.
+ * the saved card (setup_future_usage) for auto top-up, releases orders
+ * waiting on funds (oldest first), and sends the confirmation email. All of
+ * it is gated on the credit actually landing, so a replayed payment never
+ * releases or emails twice.
  */
 export async function handleWalletTopup(
   stripe: Stripe,
@@ -314,15 +317,15 @@ export async function handleWalletTopup(
     throw new Error(`payment intent ${paymentIntentId} missing flysales_user_id`);
   }
   const kind = pi.metadata?.["kind"];
-  await creditWalletOnce(admin, {
+  const credited = await creditWalletOnce(admin, {
     clientId,
     amountUsd: pi.amount_received / 100,
     reference: pi.id,
-    description:
-      kind === "wallet_auto_topup"
-        ? "Wallet auto top-up (saved card)"
-        : "Wallet top-up via card",
+    // Human-readable description — the Stripe id lives in reference only.
+    description: kind === "wallet_auto_topup" ? "Wallet auto top-up" : "Wallet top-up",
   });
+
+  // Keep the card on file so auto top-up has a payment method later.
   const pm = idOf(pi.payment_method);
   if (pm) {
     await admin
@@ -330,6 +333,37 @@ export async function handleWalletTopup(
       .update({ default_payment_method_id: pm })
       .eq("id", clientId);
   }
+
+  if (!credited) return; // replay of an already-processed payment
+
+  // Settle orders waiting on funds, oldest first, debiting through
+  // apply_wallet_transaction with the order id as the reference. Until the
+  // orders table exists this is a safe no-op (see the function's TODO).
+  const { data: releasedRows, error: releaseError } = await admin.rpc(
+    "release_awaiting_payment_orders",
+    { p_client_id: clientId },
+  );
+  if (releaseError) {
+    console.error("release_awaiting_payment_orders failed:", releaseError.message);
+  }
+  const released = (releasedRows ?? []) as Array<{ order_id: string; amount: number }>;
+
+  const balance = await getWalletBalance(admin, clientId);
+  const lines = [
+    `Amount credited: $${(pi.amount_received / 100).toFixed(2)}`,
+    `New balance: $${balance.toFixed(2)}`,
+  ];
+  if (released.length > 0) {
+    lines.push("", "Orders released by this top-up:");
+    for (const o of released) {
+      lines.push(`- Order ${o.order_id} — $${Number(o.amount).toFixed(2)}`);
+    }
+  }
+  await sendClientEmail(admin, {
+    clientId,
+    subject: "Your FlySales wallet was topped up",
+    text: lines.join("\n"),
+  });
 }
 
 /** The single entry point called by the webhook route after idempotency. */
@@ -372,6 +406,36 @@ export async function processStripeEvent(
             console.error("customer metadata backfill failed", e);
           }
         }
+        // Confirmation email: plan, price, next billing date. The new plan's
+        // quota applies immediately — the monthly counter is NOT reset.
+        let nextBilling: string | null = null;
+        if (subscriptionId) {
+          try {
+            const sub = await stripe.subscriptions.retrieve(subscriptionId);
+            const firstItem = sub.items?.data?.[0] as
+              | { current_period_end?: number }
+              | undefined;
+            const periodEnd =
+              firstItem?.current_period_end ??
+              (sub as unknown as { current_period_end?: number }).current_period_end;
+            nextBilling = periodEnd
+              ? new Date(periodEnd * 1000).toISOString().slice(0, 10)
+              : null;
+          } catch (e) {
+            console.error("subscription retrieve for confirmation email failed", e);
+          }
+        }
+        await sendClientEmail(admin, {
+          clientId,
+          subject: `Your FlySales ${planLabel(plan)} subscription is active`,
+          text: [
+            `Plan: ${planLabel(plan)} — $${PLANS[plan].priceUsd}/month`,
+            nextBilling ? `Next billing date: ${nextBilling}` : null,
+            "Your new plan's quota applies immediately.",
+          ]
+            .filter(Boolean)
+            .join("\n"),
+        });
       } else if (kind === "wallet_topup") {
         const piId = idOf(session["payment_intent"]);
         if (piId) await handleWalletTopup(stripe, admin, piId);
@@ -396,9 +460,17 @@ export async function processStripeEvent(
         return;
       }
       // Access ends with the subscription — fall back to the Basic tier.
+      // The wallet balance is the client's money: never zeroed or expired.
+      // The catalogue and in-flight orders stay untouched.
       const { error } = await admin
         .from("profiles")
-        .update({ subscription_status: "canceled", subscription_plan: "basic" })
+        .update({
+          subscription_status: "canceled",
+          subscription_plan: "basic",
+          pending_plan_change: null,
+          pending_plan_change_date: null,
+          cancel_notice_sent_at: null,
+        })
         .eq("id", profile.id);
       if (error) throw new Error(error.message);
       return;
@@ -414,17 +486,29 @@ export async function processStripeEvent(
         console.error("invoice.payment_failed for unknown customer", customerId);
         return;
       }
+      const wasAlreadyPastDue = profile.subscription_status === "past_due";
       const { error } = await admin
         .from("profiles")
         .update({ subscription_status: "past_due" })
         .eq("id", profile.id);
       if (error) throw new Error(error.message);
-      await notifyClient(admin, {
-        clientId: profile.id,
-        kind: "subscription_payment_failed",
-        title: "Subscription payment failed",
-        body: "We could not charge your card for your FlySales subscription. Stripe will retry automatically — update your payment method from the Billing page to keep your plan.",
-      });
+      // Notify once, on the transition into past_due — Stripe retries for
+      // days and the client must not get an email per retry. Nothing is
+      // blocked at this stage; restrictions only apply if Stripe ultimately
+      // cancels the subscription.
+      if (!wasAlreadyPastDue) {
+        await notifyClient(admin, {
+          clientId: profile.id,
+          kind: "subscription_payment_failed",
+          title: "Subscription payment failed",
+          body: "We could not charge your card for your FlySales subscription. Stripe will retry automatically — update your payment method from the Billing page to keep your plan.",
+        });
+        await sendClientEmail(admin, {
+          clientId: profile.id,
+          subject: "We could not charge your card",
+          text: "Your last FlySales subscription payment failed. Stripe will retry automatically over the next few days — please update your payment method from the Billing page to keep your plan.",
+        });
+      }
       return;
     }
 
