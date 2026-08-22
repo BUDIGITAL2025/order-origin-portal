@@ -16,11 +16,11 @@ function stripTrailingSlash(url: string): string {
 
 /** Base URL of this portal. Used for auth email confirmation / reset links. */
 export const APP_BASE_URL: string = stripTrailingSlash(
-  (import.meta.env.VITE_APP_BASE_URL as string | undefined) ||
+  (import.meta.env["VITE_APP_BASE_URL"] as string | undefined) ||
     (typeof window !== "undefined" ? window.location.origin : ""),
 );
 
 /** Public marketing site. The header logo links here. */
 export const MARKETING_URL: string = stripTrailingSlash(
-  (import.meta.env.VITE_MARKETING_URL as string | undefined) || APP_BASE_URL || "/",
+  (import.meta.env["VITE_MARKETING_URL"] as string | undefined) || APP_BASE_URL || "/",
 );
