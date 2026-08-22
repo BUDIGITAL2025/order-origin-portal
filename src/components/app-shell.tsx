@@ -55,16 +55,14 @@ function PastDueBanner() {
     queryKey: ["my-subscription-status"],
     staleTime: 60_000,
     queryFn: async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return null;
+      // Subscriptions live on stores — RLS scopes this to the caller's own
+      // stores, so any past_due store surfaces the banner.
       const { data } = await supabase
-        .from("profiles")
-        .select("subscription_status")
-        .eq("id", user.id)
-        .maybeSingle();
-      return data?.subscription_status ?? null;
+        .from("stores")
+        .select("id")
+        .eq("subscription_status", "past_due")
+        .limit(1);
+      return (data ?? []).length > 0 ? "past_due" : null;
     },
   });
   if (status !== "past_due") return null;
@@ -88,7 +86,7 @@ const ADMIN_NAV: NavItem[] = [
   { to: "/admin/documents", label: "Receipts", icon: FileText },
 ];
 
-interface OnboardingProfile {
+interface OnboardingStore {
   platform: string;
   store_url: string;
   integration_mode: string;
