@@ -205,7 +205,7 @@ export const adminRequote = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => requoteSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const { requireAdmin } = await import("./admin.server");
+    const { requireAdmin, getAdminClient } = await import("./admin.server");
     await requireAdmin(context.supabase, context.userId);
 
     const admin = await getAdminClient();
