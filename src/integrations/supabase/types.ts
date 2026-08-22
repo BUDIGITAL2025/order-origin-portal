@@ -80,6 +80,7 @@ export type Database = {
           order_id: string | null
           payment_reference: string | null
           storage_path: string | null
+          store_id: string
           wallet_transaction_id: string | null
         }
         Insert: {
@@ -94,6 +95,7 @@ export type Database = {
           order_id?: string | null
           payment_reference?: string | null
           storage_path?: string | null
+          store_id: string
           wallet_transaction_id?: string | null
         }
         Update: {
@@ -108,6 +110,7 @@ export type Database = {
           order_id?: string | null
           payment_reference?: string | null
           storage_path?: string | null
+          store_id?: string
           wallet_transaction_id?: string | null
         }
         Relationships: [
@@ -126,10 +129,61 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "documents_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "documents_wallet_transaction_id_fkey"
             columns: ["wallet_transaction_id"]
             isOneToOne: false
             referencedRelation: "wallet_transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      entities: {
+        Row: {
+          account_id: string
+          address: string | null
+          country: string | null
+          created_at: string
+          id: string
+          legal_name: string
+          max_stores: number
+          status: Database["public"]["Enums"]["entity_status"]
+          vat_number: string | null
+        }
+        Insert: {
+          account_id: string
+          address?: string | null
+          country?: string | null
+          created_at?: string
+          id?: string
+          legal_name: string
+          max_stores?: number
+          status?: Database["public"]["Enums"]["entity_status"]
+          vat_number?: string | null
+        }
+        Update: {
+          account_id?: string
+          address?: string | null
+          country?: string | null
+          created_at?: string
+          id?: string
+          legal_name?: string
+          max_stores?: number
+          status?: Database["public"]["Enums"]["entity_status"]
+          vat_number?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "entities_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -279,6 +333,7 @@ export type Database = {
           reminder_72_sent_at: string | null
           shipping_address: Json | null
           status: Database["public"]["Enums"]["order_status"]
+          store_id: string
           total_amount: number | null
         }
         Insert: {
@@ -300,6 +355,7 @@ export type Database = {
           reminder_72_sent_at?: string | null
           shipping_address?: Json | null
           status?: Database["public"]["Enums"]["order_status"]
+          store_id: string
           total_amount?: number | null
         }
         Update: {
@@ -321,6 +377,7 @@ export type Database = {
           reminder_72_sent_at?: string | null
           shipping_address?: Json | null
           status?: Database["public"]["Enums"]["order_status"]
+          store_id?: string
           total_amount?: number | null
         }
         Relationships: [
@@ -329,6 +386,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
             referencedColumns: ["id"]
           },
         ]
@@ -390,6 +454,7 @@ export type Database = {
           quote_line_id: string | null
           sku: string
           status: Database["public"]["Enums"]["product_status"]
+          store_id: string
           variant_label: string | null
         }
         Insert: {
@@ -406,6 +471,7 @@ export type Database = {
           quote_line_id?: string | null
           sku: string
           status?: Database["public"]["Enums"]["product_status"]
+          store_id: string
           variant_label?: string | null
         }
         Update: {
@@ -422,6 +488,7 @@ export type Database = {
           quote_line_id?: string | null
           sku?: string
           status?: Database["public"]["Enums"]["product_status"]
+          store_id?: string
           variant_label?: string | null
         }
         Relationships: [
@@ -444,6 +511,13 @@ export type Database = {
             columns: ["quote_line_id"]
             isOneToOne: true
             referencedRelation: "quote_lines_client"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
             referencedColumns: ["id"]
           },
         ]
@@ -643,6 +717,7 @@ export type Database = {
           quoted_by: string | null
           responded_at: string | null
           status: Database["public"]["Enums"]["quote_status"]
+          store_id: string
           supersedes_quote_id: string | null
           target_countries: string[]
           target_monthly_volume: number | null
@@ -662,6 +737,7 @@ export type Database = {
           quoted_by?: string | null
           responded_at?: string | null
           status?: Database["public"]["Enums"]["quote_status"]
+          store_id: string
           supersedes_quote_id?: string | null
           target_countries: string[]
           target_monthly_volume?: number | null
@@ -681,6 +757,7 @@ export type Database = {
           quoted_by?: string | null
           responded_at?: string | null
           status?: Database["public"]["Enums"]["quote_status"]
+          store_id?: string
           supersedes_quote_id?: string | null
           target_countries?: string[]
           target_monthly_volume?: number | null
@@ -701,10 +778,103 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "quote_requests_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "quote_requests_supersedes_quote_id_fkey"
             columns: ["supersedes_quote_id"]
             isOneToOne: false
             referencedRelation: "quote_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stores: {
+        Row: {
+          approved_at: string | null
+          created_at: string
+          entity_id: string
+          fee_waived: boolean
+          id: string
+          integration_mode: Database["public"]["Enums"]["integration_mode"]
+          middleware_tenant_id: string | null
+          pending_plan_change:
+            | Database["public"]["Enums"]["subscription_plan"]
+            | null
+          pending_plan_change_date: string | null
+          platform: Database["public"]["Enums"]["store_platform"]
+          provisioning_error: string | null
+          provisioning_status: Database["public"]["Enums"]["provisioning_status"]
+          provisioning_step: string | null
+          quotes_period_start: string
+          quotes_used_this_month: number
+          status: Database["public"]["Enums"]["profile_status"]
+          store_name: string | null
+          store_url: string
+          stripe_subscription_id: string | null
+          subscription_plan: Database["public"]["Enums"]["subscription_plan"]
+          subscription_status: Database["public"]["Enums"]["subscription_status"]
+        }
+        Insert: {
+          approved_at?: string | null
+          created_at?: string
+          entity_id: string
+          fee_waived?: boolean
+          id?: string
+          integration_mode?: Database["public"]["Enums"]["integration_mode"]
+          middleware_tenant_id?: string | null
+          pending_plan_change?:
+            | Database["public"]["Enums"]["subscription_plan"]
+            | null
+          pending_plan_change_date?: string | null
+          platform?: Database["public"]["Enums"]["store_platform"]
+          provisioning_error?: string | null
+          provisioning_status?: Database["public"]["Enums"]["provisioning_status"]
+          provisioning_step?: string | null
+          quotes_period_start?: string
+          quotes_used_this_month?: number
+          status?: Database["public"]["Enums"]["profile_status"]
+          store_name?: string | null
+          store_url: string
+          stripe_subscription_id?: string | null
+          subscription_plan?: Database["public"]["Enums"]["subscription_plan"]
+          subscription_status?: Database["public"]["Enums"]["subscription_status"]
+        }
+        Update: {
+          approved_at?: string | null
+          created_at?: string
+          entity_id?: string
+          fee_waived?: boolean
+          id?: string
+          integration_mode?: Database["public"]["Enums"]["integration_mode"]
+          middleware_tenant_id?: string | null
+          pending_plan_change?:
+            | Database["public"]["Enums"]["subscription_plan"]
+            | null
+          pending_plan_change_date?: string | null
+          platform?: Database["public"]["Enums"]["store_platform"]
+          provisioning_error?: string | null
+          provisioning_status?: Database["public"]["Enums"]["provisioning_status"]
+          provisioning_step?: string | null
+          quotes_period_start?: string
+          quotes_used_this_month?: number
+          status?: Database["public"]["Enums"]["profile_status"]
+          store_name?: string | null
+          store_url?: string
+          stripe_subscription_id?: string | null
+          subscription_plan?: Database["public"]["Enums"]["subscription_plan"]
+          subscription_status?: Database["public"]["Enums"]["subscription_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stores_entity_id_fkey"
+            columns: ["entity_id"]
+            isOneToOne: false
+            referencedRelation: "entities"
             referencedColumns: ["id"]
           },
         ]
@@ -768,6 +938,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           description: string
+          entity_id: string
           id: string
           reference: string | null
           type: Database["public"]["Enums"]["wallet_txn_type"]
@@ -779,6 +950,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           description: string
+          entity_id: string
           id?: string
           reference?: string | null
           type: Database["public"]["Enums"]["wallet_txn_type"]
@@ -790,6 +962,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           description?: string
+          entity_id?: string
           id?: string
           reference?: string | null
           type?: Database["public"]["Enums"]["wallet_txn_type"]
@@ -807,6 +980,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wallet_transactions_entity_id_fkey"
+            columns: ["entity_id"]
+            isOneToOne: false
+            referencedRelation: "entities"
             referencedColumns: ["id"]
           },
         ]
@@ -871,6 +1051,7 @@ export type Database = {
           reminder_72_sent_at: string | null
           shipping_address: Json | null
           status: Database["public"]["Enums"]["order_status"]
+          store_id: string
           total_amount: number | null
         }
         SetofOptions: {
@@ -928,6 +1109,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           description: string
+          entity_id: string
           id: string
           reference: string | null
           type: Database["public"]["Enums"]["wallet_txn_type"]
@@ -955,6 +1137,7 @@ export type Database = {
           quote_line_id: string | null
           sku: string
           status: Database["public"]["Enums"]["product_status"]
+          store_id: string
           variant_label: string | null
         }
         SetofOptions: {
@@ -1008,6 +1191,7 @@ export type Database = {
           reminder_72_sent_at: string | null
           shipping_address: Json | null
           status: Database["public"]["Enums"]["order_status"]
+          store_id: string
           total_amount: number | null
         }
         SetofOptions: {
@@ -1058,6 +1242,7 @@ export type Database = {
           quoted_by: string | null
           responded_at: string | null
           status: Database["public"]["Enums"]["quote_status"]
+          store_id: string
           supersedes_quote_id: string | null
           target_countries: string[]
           target_monthly_volume: number | null
@@ -1085,6 +1270,7 @@ export type Database = {
           quote_line_id: string | null
           sku: string
           status: Database["public"]["Enums"]["product_status"]
+          store_id: string
           variant_label: string | null
         }
         SetofOptions: {
@@ -1098,6 +1284,7 @@ export type Database = {
     Enums: {
       app_role: "admin" | "client"
       document_type: "order_receipt" | "wallet_topup" | "subscription"
+      entity_status: "active" | "suspended"
       integration_mode: "automatic" | "manual"
       order_payment_method: "wallet" | "direct"
       order_status:
@@ -1249,6 +1436,7 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "client"],
       document_type: ["order_receipt", "wallet_topup", "subscription"],
+      entity_status: ["active", "suspended"],
       integration_mode: ["automatic", "manual"],
       order_payment_method: ["wallet", "direct"],
       order_status: [
