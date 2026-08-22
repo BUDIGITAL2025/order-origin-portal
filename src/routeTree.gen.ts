@@ -29,6 +29,7 @@ import { Route as AuthenticatedClientQuotesNewRouteImport } from './routes/_auth
 import { Route as AuthenticatedAdminQuotesIndexRouteImport } from './routes/_authenticated/admin/quotes/index'
 import { Route as AuthenticatedAdminQuotesIdRouteImport } from './routes/_authenticated/admin/quotes/$id'
 import { Route as ApiPublicCronAutoTopupRouteImport } from './routes/api/public/cron/auto-topup'
+import { Route as ApiPublicCronDocumentsSweepRouteImport } from './routes/api/public/cron/documents-sweep'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
 
 const IndexRoute = IndexRouteImport.update({
@@ -141,6 +142,12 @@ const ApiPublicCronAutoTopupRoute = ApiPublicCronAutoTopupRouteImport.update({
   path: '/api/public/cron/auto-topup',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicCronDocumentsSweepRoute =
+  ApiPublicCronDocumentsSweepRouteImport.update({
+    id: '/api/public/cron/documents-sweep',
+    path: '/api/public/cron/documents-sweep',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicPaymentsWebhookRoute =
   ApiPublicPaymentsWebhookRouteImport.update({
     id: '/api/public/payments/webhook',
@@ -165,6 +172,7 @@ export interface FileRoutesByFullPath {
   '/quotes/new': typeof AuthenticatedClientQuotesNewRoute
   '/admin/quotes/$id': typeof AuthenticatedAdminQuotesIdRoute
   '/api/public/cron/auto-topup': typeof ApiPublicCronAutoTopupRoute
+  '/api/public/cron/documents-sweep': typeof ApiPublicCronDocumentsSweepRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/quotes/': typeof AuthenticatedClientQuotesIndexRoute
   '/admin/quotes/': typeof AuthenticatedAdminQuotesIndexRoute
@@ -186,6 +194,7 @@ export interface FileRoutesByTo {
   '/quotes/new': typeof AuthenticatedClientQuotesNewRoute
   '/admin/quotes/$id': typeof AuthenticatedAdminQuotesIdRoute
   '/api/public/cron/auto-topup': typeof ApiPublicCronAutoTopupRoute
+  '/api/public/cron/documents-sweep': typeof ApiPublicCronDocumentsSweepRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/quotes': typeof AuthenticatedClientQuotesIndexRoute
   '/admin/quotes': typeof AuthenticatedAdminQuotesIndexRoute
@@ -210,6 +219,7 @@ export interface FileRoutesById {
   '/_authenticated/_client/quotes/new': typeof AuthenticatedClientQuotesNewRoute
   '/_authenticated/admin/quotes/$id': typeof AuthenticatedAdminQuotesIdRoute
   '/api/public/cron/auto-topup': typeof ApiPublicCronAutoTopupRoute
+  '/api/public/cron/documents-sweep': typeof ApiPublicCronDocumentsSweepRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/_authenticated/_client/quotes/': typeof AuthenticatedClientQuotesIndexRoute
   '/_authenticated/admin/quotes/': typeof AuthenticatedAdminQuotesIndexRoute
@@ -233,6 +243,7 @@ export interface FileRouteTypes {
     | '/quotes/new'
     | '/admin/quotes/$id'
     | '/api/public/cron/auto-topup'
+    | '/api/public/cron/documents-sweep'
     | '/api/public/payments/webhook'
     | '/quotes/'
     | '/admin/quotes/'
@@ -254,6 +265,7 @@ export interface FileRouteTypes {
     | '/quotes/new'
     | '/admin/quotes/$id'
     | '/api/public/cron/auto-topup'
+    | '/api/public/cron/documents-sweep'
     | '/api/public/payments/webhook'
     | '/quotes'
     | '/admin/quotes'
@@ -277,6 +289,7 @@ export interface FileRouteTypes {
     | '/_authenticated/_client/quotes/new'
     | '/_authenticated/admin/quotes/$id'
     | '/api/public/cron/auto-topup'
+    | '/api/public/cron/documents-sweep'
     | '/api/public/payments/webhook'
     | '/_authenticated/_client/quotes/'
     | '/_authenticated/admin/quotes/'
@@ -288,6 +301,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   ApiPublicCronAutoTopupRoute: typeof ApiPublicCronAutoTopupRoute
+  ApiPublicCronDocumentsSweepRoute: typeof ApiPublicCronDocumentsSweepRoute
   ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
 }
 
@@ -433,6 +447,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCronAutoTopupRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/cron/documents-sweep': {
+      id: '/api/public/cron/documents-sweep'
+      path: '/api/public/cron/documents-sweep'
+      fullPath: '/api/public/cron/documents-sweep'
+      preLoaderRoute: typeof ApiPublicCronDocumentsSweepRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/payments/webhook': {
       id: '/api/public/payments/webhook'
       path: '/api/public/payments/webhook'
@@ -506,6 +527,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   ApiPublicCronAutoTopupRoute: ApiPublicCronAutoTopupRoute,
+  ApiPublicCronDocumentsSweepRoute: ApiPublicCronDocumentsSweepRoute,
   ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
 }
 export const routeTree = rootRouteImport
