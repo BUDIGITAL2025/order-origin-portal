@@ -208,3 +208,16 @@ export const autoTopupSettingsSchema = z.object({
 export const notificationIdsSchema = z.object({
   ids: z.array(z.string().uuid()).min(1).max(100),
 });
+
+// ============= Payment receipts (documents) =============
+
+export const documentTypeSchema = z.enum(["order_receipt", "wallet_topup", "subscription"]);
+
+export const documentIdSchema = z.object({
+  id: z.string().uuid(),
+});
+
+export const adminDocumentsFilterSchema = z.object({
+  type: documentTypeSchema.optional(),
+  clientId: z.string().uuid().optional(),
+});
