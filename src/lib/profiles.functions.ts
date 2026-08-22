@@ -61,7 +61,7 @@ export interface MyContext {
 const PROFILE_SELECT = "id, contact_name, phone, status, created_at";
 const STORE_SELECT =
   "id, entity_id, store_name, store_url, platform, integration_mode, subscription_plan, subscription_status, quotes_used_this_month, quotes_period_start, fee_waived, pricing_tier, status, created_at";
-const ENTITY_SELECT = `id, legal_name, country, vat_number, status, auto_topup_enabled, created_at, stores(${STORE_SELECT})`;
+const ENTITY_SELECT = `id, legal_name, country, vat_number, address, status, auto_topup_enabled, created_at, stores(${STORE_SELECT})`;
 
 /** Session + profile + role + entity/store hierarchy for the signed-in user. */
 export const getMyContext = createServerFn({ method: "GET" })

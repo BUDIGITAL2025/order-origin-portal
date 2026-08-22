@@ -1,7 +1,7 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { BellRing, CreditCard, RefreshCcw, Wallet } from "lucide-react";
+import { BellRing, Building2, CreditCard, RefreshCcw, Wallet } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/app-shell";
@@ -39,6 +39,8 @@ import {
   saveAutoTopupSettings,
 } from "@/lib/billing.functions";
 import { getMyWallet } from "@/lib/wallet.functions";
+import { updateMyEntity } from "@/lib/profiles.functions";
+import { entityDetailsSchema } from "@/lib/schemas";
 import { getCurrentStoreId } from "@/components/store-switcher";
 import { useMyContext } from "../_client";
 
@@ -125,6 +127,13 @@ function BillingPage() {
         : null;
     setStoreId(valid ?? entities[0]?.stores[0]?.id ?? null);
   }, [ctx]);
+
+  // The entity the wallet/auto top-up belong to — the current store's owner,
+  // or the account's first entity when storeless.
+  const billingEntity =
+    ctx?.entities?.find((e) => e.stores.some((s) => s.id === storeId)) ??
+    ctx?.entities?.[0] ??
+    null;
 
   const { data, isPending } = useQuery({
     queryKey: ["billing-overview", storeId, environment],
