@@ -133,7 +133,7 @@ function MyQuotesPage() {
                             accept
                             pending={respond.isPending}
                             onConfirm={() =>
-                              respond.mutate({ quote_id: q.id, accept: true })
+                              respond.mutate({ quote_id: q.id ?? "", accept: true })
                             }
                           />
                           <ConfirmRespond
@@ -141,7 +141,7 @@ function MyQuotesPage() {
                             accept={false}
                             pending={respond.isPending}
                             onConfirm={() =>
-                              respond.mutate({ quote_id: q.id, accept: false })
+                              respond.mutate({ quote_id: q.id ?? "", accept: false })
                             }
                           />
                         </div>
