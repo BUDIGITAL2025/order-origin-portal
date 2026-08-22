@@ -177,3 +177,43 @@ export function ProfileStatusBadge({ status }: { status: ProfileStatus }) {
     </Badge>
   );
 }
+
+type TxnType = "credit" | "debit" | "adjustment";
+
+const TXN_STYLES: Record<TxnType, string> = {
+  credit: "bg-success/10 text-success border-success/25",
+  debit: "bg-destructive/10 text-destructive border-destructive/25",
+  adjustment: "bg-info/10 text-info border-info/25",
+};
+
+export function TxnTypeBadge({ type }: { type: TxnType }) {
+  return (
+    <Badge variant="outline" className={cn("font-normal", TXN_STYLES[type])}>
+      {type.charAt(0).toUpperCase() + type.slice(1)}
+    </Badge>
+  );
+}
+
+type ProvisioningStatus = "not_started" | "in_progress" | "complete" | "failed";
+
+const PROVISIONING_STYLES: Record<ProvisioningStatus, string> = {
+  not_started: "bg-muted text-muted-foreground border-border",
+  in_progress: "bg-warning/10 text-warning border-warning/25",
+  complete: "bg-success/10 text-success border-success/25",
+  failed: "bg-destructive/10 text-destructive border-destructive/25",
+};
+
+const PROVISIONING_LABELS: Record<ProvisioningStatus, string> = {
+  not_started: "Not started",
+  in_progress: "In progress",
+  complete: "Complete",
+  failed: "Failed",
+};
+
+export function ProvisioningBadge({ status }: { status: ProvisioningStatus }) {
+  return (
+    <Badge variant="outline" className={cn("font-normal", PROVISIONING_STYLES[status])}>
+      {PROVISIONING_LABELS[status]}
+    </Badge>
+  );
+}

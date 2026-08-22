@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import type { Database } from "@/integrations/supabase/types";
 import { z } from "zod";
 import {
   adminQuoteLinesSchema,
@@ -189,7 +190,7 @@ export const adminSaveQuoteLines = createServerFn({ method: "POST" })
       p_internal_reference: data.internal_reference || null,
       p_quote_valid_until: data.quote_valid_until ?? null,
       p_admin_notes: data.admin_notes || null,
-    } as unknown as Parameters<typeof context.supabase.rpc>[1];
+    } as unknown as Database["Functions"]["admin_save_quote_lines"]["Args"];
     const { data: lines, error } = await context.supabase.rpc("admin_save_quote_lines", args);
     if (error) throw new Error(error.message);
     return { ok: true, lines: lines ?? [] };

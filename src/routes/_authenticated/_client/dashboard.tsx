@@ -14,7 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatDateTime, formatUSD } from "@/lib/format";
+import { formatDate, formatDateTime, formatUSD } from "@/lib/format";
 import { PLANS, planLabel, planQuota, quotaResetDate } from "@/lib/plans";
 import { Badge } from "@/components/ui/badge";
 import { getMyContext } from "@/lib/profiles.functions";
@@ -90,7 +90,7 @@ function DashboardPage() {
             </div>
           </CardContent>
         </Card>
-        {(["submitted", "quoted", "accepted"] as const).map((status) => (
+        {(["submitted", "quoted", "closed"] as const).map((status) => (
           <Card key={status}>
             <CardHeader className="pb-1">
               <CardTitle className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -186,20 +186,26 @@ function DashboardPage() {
                   <TableRow>
                     <TableHead>Product</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Price</TableHead>
+                    <TableHead className="text-right">Valid until</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {quotes.slice(0, 5).map((q) => (
                     <TableRow key={q.id}>
                       <TableCell className="max-w-48 truncate text-sm">
-                        {q.product_name || q.product_url || "—"}
+                        <Link
+                          to="/quotes/$id"
+                          params={{ id: q.id }}
+                          className="underline-offset-2 hover:underline"
+                        >
+                          {q.product_name || q.product_url || "—"}
+                        </Link>
                       </TableCell>
                       <TableCell>
                         <QuoteStatusBadge status={q.status} validUntil={q.quote_valid_until} />
                       </TableCell>
                       <TableCell className="text-right font-mono text-sm">
-                        {q.quoted_price_total != null ? formatUSD(q.quoted_price_total) : "—"}
+                        {q.quote_valid_until ? formatDate(q.quote_valid_until) : "—"}
                       </TableCell>
                     </TableRow>
                   ))}
