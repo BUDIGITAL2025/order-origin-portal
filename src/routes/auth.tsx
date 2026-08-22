@@ -256,7 +256,7 @@ function AuthPage() {
       </Card>
 
       <p className="mt-6 text-xs text-muted-foreground">
-        Access is granted after manual approval. All prices are quoted in EUR.
+        Access is granted after manual approval. All prices are quoted in USD.
       </p>
     </div>
   );

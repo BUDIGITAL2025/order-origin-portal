@@ -14,7 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatDate, formatEUR } from "@/lib/format";
+import { formatDate, formatUSD } from "@/lib/format";
 import { adminListQuotes } from "@/lib/quotes.functions";
 
 const STATUSES = ["submitted", "sourcing", "quoted", "accepted", "rejected", "expired"] as const;
@@ -92,7 +92,11 @@ function AdminQuotesPage() {
             </TableHeader>
             <TableBody>
               {quotes.map((q) => {
-                const client = q.profiles as { company_name?: string; markup_tier?: string } | null;
+                const client = q.profiles as {
+                  company_name?: string;
+                  pricing_tier?: string;
+                  tier_override?: string | null;
+                } | null;
                 return (
                   <TableRow key={q.id}>
                     <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
@@ -100,7 +104,7 @@ function AdminQuotesPage() {
                     </TableCell>
                     <TableCell>
                       <div className="text-sm font-medium">{client?.company_name ?? "—"}</div>
-                      <TierBadge tier={client?.markup_tier ?? null} />
+                      <TierBadge tier={client?.tier_override ?? client?.pricing_tier ?? null} />
                     </TableCell>
                     <TableCell className="max-w-56">
                       <div className="truncate text-sm">{q.product_name || q.product_url}</div>
@@ -112,7 +116,7 @@ function AdminQuotesPage() {
                       <QuoteStatusBadge status={q.status} validUntil={q.quote_valid_until} />
                     </TableCell>
                     <TableCell className="text-right font-mono text-sm">
-                      {q.quoted_price != null ? formatEUR(q.quoted_price) : "—"}
+                      {q.quoted_price_total != null ? formatUSD(q.quoted_price_total) : "—"}
                     </TableCell>
                     <TableCell className="text-right">
                       <Button asChild size="sm" variant="outline">

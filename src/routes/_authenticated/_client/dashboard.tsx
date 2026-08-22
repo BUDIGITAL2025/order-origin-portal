@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, ClipboardList, Wallet } from "lucide-react";
+import { ArrowRight, ClipboardList, CreditCard, Wallet } from "lucide-react";
 import { EmptyState, PageHeader } from "@/components/app-shell";
 import { QuoteStatusBadge, TxnTypeBadge } from "@/components/status-badges";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatDateTime, formatEUR } from "@/lib/format";
+import { formatDateTime, formatUSD } from "@/lib/format";
+import { PLANS, planLabel, planQuota, quotaResetDate } from "@/lib/plans";
+import { getMyContext } from "@/lib/profiles.functions";
 import { listMyQuotes } from "@/lib/quotes.functions";
 import { getMyWallet } from "@/lib/wallet.functions";
 
@@ -30,9 +32,14 @@ export const Route = createFileRoute("/_authenticated/_client/dashboard")({
 });
 
 function DashboardPage() {
+  const fetchContext = useServerFn(getMyContext);
   const fetchQuotes = useServerFn(listMyQuotes);
   const fetchWallet = useServerFn(getMyWallet);
 
+  const { data: context } = useQuery({
+    queryKey: ["my-context"],
+    queryFn: fetchContext,
+  });
   const { data: quotesData } = useQuery({
     queryKey: ["my-quotes"],
     queryFn: fetchQuotes,
@@ -42,6 +49,7 @@ function DashboardPage() {
     queryFn: fetchWallet,
   });
 
+  const profile = context?.profile ?? null;
   const quotes = quotesData?.quotes ?? [];
   const counts = quotes.reduce<Record<string, number>>((acc, q) => {
     const key = q.status ?? "submitted";
@@ -49,6 +57,11 @@ function DashboardPage() {
     return acc;
   }, {});
   const transactions = walletData?.transactions ?? [];
+
+  const plan = profile?.subscription_plan ?? "basic_49";
+  const quota = planQuota(plan);
+  const quotesUsed = profile?.quotes_used_this_month ?? 0;
+  const usagePercent = Math.min(100, Math.round((quotesUsed / quota) * 100));
 
   return (
     <div>
@@ -71,7 +84,7 @@ function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="font-mono text-2xl font-semibold">
-              {formatEUR(walletData?.balance ?? 0)}
+              {formatUSD(walletData?.balance ?? 0)}
             </div>
           </CardContent>
         </Card>
@@ -88,6 +101,54 @@ function DashboardPage() {
           </Card>
         ))}
       </div>
+
+      <Card className="mt-4">
+        <CardHeader className="flex-row items-center justify-between pb-2">
+          <CardTitle className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            <CreditCard className="h-3.5 w-3.5" /> Subscription
+          </CardTitle>
+          <span className="text-xs font-medium text-muted-foreground">
+            {planLabel(plan)} plan — {formatUSD(plan === "pro_99" ? 99 : 49)}/month
+          </span>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap items-center gap-x-8 gap-y-2">
+            <div>
+              <div className="font-mono text-xl font-semibold">
+                {quotesUsed}
+                <span className="text-sm font-normal text-muted-foreground"> / {quota} quotes</span>
+              </div>
+              <div className="text-xs text-muted-foreground">
+                used this month
+                {profile?.quotes_period_start
+                  ? ` · resets ${quotaResetDate(profile.quotes_period_start)}`
+                  : ""}
+              </div>
+            </div>
+            <div className="min-w-40 flex-1">
+              <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                <div
+                  className={
+                    "h-full rounded-full transition-all " +
+                    (usagePercent >= 100
+                      ? "bg-destructive"
+                      : usagePercent >= 80
+                        ? "bg-warning"
+                        : "bg-success")
+                  }
+                  style={{ width: `${usagePercent}%` }}
+                />
+              </div>
+            </div>
+            {quotesUsed >= quota && (
+              <p className="text-xs font-medium text-warning-foreground">
+                Monthly allowance reached — contact us to upgrade to Pro ({PLANS.pro_99.quoteQuota}{" "}
+                quotes/month).
+              </p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
         <Card>
@@ -123,7 +184,7 @@ function DashboardPage() {
                         <QuoteStatusBadge status={q.status} validUntil={q.quote_valid_until} />
                       </TableCell>
                       <TableCell className="text-right font-mono text-sm">
-                        {q.quoted_price != null ? formatEUR(q.quoted_price) : "—"}
+                        {q.quoted_price_total != null ? formatUSD(q.quoted_price_total) : "—"}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -174,7 +235,7 @@ function DashboardPage() {
                         }
                       >
                         {t.type === "debit" ? "−" : "+"}
-                        {formatEUR(t.amount)}
+                        {formatUSD(t.amount)}
                       </TableCell>
                     </TableRow>
                   ))}

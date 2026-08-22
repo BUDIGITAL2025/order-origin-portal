@@ -1,13 +1,13 @@
-const eurNumber = new Intl.NumberFormat("de-DE", {
+const usdNumber = new Intl.NumberFormat("en-US", {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
 });
 
-/** €1.234,56 — European style with the symbol prefixed. */
-export function formatEUR(value: number | string | null | undefined): string {
+/** $1,234.56 — US style: period decimal, comma thousands. */
+export function formatUSD(value: number | string | null | undefined): string {
   const n = typeof value === "string" ? Number(value) : (value ?? 0);
-  if (!Number.isFinite(n)) return "€0,00";
-  return `€${eurNumber.format(n)}`;
+  if (!Number.isFinite(n)) return "$0.00";
+  return `$${usdNumber.format(n)}`;
 }
 
 function pad2(n: number): string {
@@ -41,9 +41,3 @@ export function isQuoteExpired(status: string | null, validUntil: string | null 
   const todayStr = `${today.getFullYear()}-${pad2(today.getMonth() + 1)}-${pad2(today.getDate())}`;
   return validUntil < todayStr;
 }
-
-export const MARKUP_BY_TIER: Record<string, number> = {
-  standard: 35,
-  volume: 25,
-  partner: 18,
-};

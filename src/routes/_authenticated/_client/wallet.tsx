@@ -12,7 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatDateTime, formatEUR } from "@/lib/format";
+import { formatDateTime, formatUSD } from "@/lib/format";
 import { getMyWallet } from "@/lib/wallet.functions";
 
 export const Route = createFileRoute("/_authenticated/_client/wallet")({
@@ -44,7 +44,7 @@ function WalletPage() {
         </CardHeader>
         <CardContent>
           <div className="font-mono text-3xl font-semibold">
-            {isPending ? "…" : formatEUR(data?.balance ?? 0)}
+            {isPending ? "…" : formatUSD(data?.balance ?? 0)}
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
             Balance is derived from the ledger — every entry below is final.
@@ -89,10 +89,10 @@ function WalletPage() {
                     }
                   >
                     {t.type === "debit" ? "−" : "+"}
-                    {formatEUR(t.amount)}
+                    {formatUSD(t.amount)}
                   </TableCell>
                   <TableCell className="text-right font-mono text-sm">
-                    {formatEUR(t.balance_after)}
+                    {formatUSD(t.balance_after)}
                   </TableCell>
                 </TableRow>
               ))}

@@ -4,8 +4,9 @@ import {
   clientIdSchema,
   clientStatusSchema,
   companyDetailsSchema,
-  markupTierSchema,
+  subscriptionPlanSchema,
   profileUpdateSchema,
+  tierOverrideSchema,
 } from "./schemas";
 
 export interface MyContext {
@@ -21,7 +22,12 @@ export interface MyContext {
     country: string;
     vat_number: string;
     shopify_domain: string;
-    markup_tier: "standard" | "volume" | "partner";
+    pricing_tier: "starter" | "growth" | "scale";
+    tier_override: "starter" | "growth" | "scale" | null;
+    avg_daily_units_30d: number;
+    subscription_plan: "basic_49" | "pro_99";
+    quotes_used_this_month: number;
+    quotes_period_start: string;
     status: "pending" | "active" | "suspended";
     middleware_tenant_id: string | null;
     provisioning_status: "not_started" | "in_progress" | "complete" | "failed";
@@ -138,16 +144,31 @@ export const adminSetClientStatus = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-/** Admin: change a client's markup tier. */
-export const adminSetMarkupTier = createServerFn({ method: "POST" })
+/** Admin: change a client's subscription plan. */
+export const adminSetPlan = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => markupTierSchema.parse(input))
+  .inputValidator((input) => subscriptionPlanSchema.parse(input))
   .handler(async ({ data, context }) => {
     const { requireAdmin } = await import("./admin.server");
     await requireAdmin(context.supabase, context.userId);
     const { error } = await context.supabase
       .from("profiles")
-      .update({ markup_tier: data.markup_tier })
+      .update({ subscription_plan: data.subscription_plan })
+      .eq("id", data.client_id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+/** Admin: set or clear a client's pricing tier override. */
+export const adminSetTierOverride = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => tierOverrideSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const { requireAdmin } = await import("./admin.server");
+    await requireAdmin(context.supabase, context.userId);
+    const { error } = await context.supabase
+      .from("profiles")
+      .update({ tier_override: data.tier_override })
       .eq("id", data.client_id);
     if (error) throw new Error(error.message);
     return { ok: true };

@@ -74,9 +74,9 @@ export function TxnTypeBadge({ type }: { type: string | null }) {
 }
 
 const TIER_STYLES: Record<string, string> = {
-  standard: "bg-muted text-muted-foreground border-border",
-  volume: "bg-info/10 text-info border-info/25",
-  partner: "bg-success/10 text-success border-success/25",
+  starter: "bg-muted text-muted-foreground border-border",
+  growth: "bg-info/10 text-info border-info/25",
+  scale: "bg-success/10 text-success border-success/25",
 };
 
 export function TierBadge({ tier }: { tier: string | null }) {

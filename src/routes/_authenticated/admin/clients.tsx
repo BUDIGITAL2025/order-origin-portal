@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { EmptyState, PageHeader } from "@/components/app-shell";
-import { ProfileStatusBadge, ProvisioningBadge } from "@/components/status-badges";
+import { ProfileStatusBadge, ProvisioningBadge, TierBadge } from "@/components/status-badges";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -21,10 +21,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatDateTime } from "@/lib/format";
+import { PLANS, TIER_LABELS, effectiveTier, planQuota } from "@/lib/plans";
 import {
   adminListClients,
   adminSetClientStatus,
-  adminSetMarkupTier,
+  adminSetPlan,
+  adminSetTierOverride,
   provisionClient,
 } from "@/lib/profiles.functions";
 
@@ -42,7 +44,8 @@ function AdminClientsPage() {
   const queryClient = useQueryClient();
   const fetchClients = useServerFn(adminListClients);
   const callSetStatus = useServerFn(adminSetClientStatus);
-  const callSetTier = useServerFn(adminSetMarkupTier);
+  const callSetPlan = useServerFn(adminSetPlan);
+  const callSetOverride = useServerFn(adminSetTierOverride);
   const callProvision = useServerFn(provisionClient);
 
   const { data, isPending } = useQuery({ queryKey: ["admin-clients"], queryFn: fetchClients });
@@ -71,11 +74,21 @@ function AdminClientsPage() {
     onError: (err) => toast.error(err.message),
   });
 
-  const setTier = useMutation({
-    mutationFn: (input: { client_id: string; markup_tier: "standard" | "volume" | "partner" }) =>
-      callSetTier({ data: input }),
+  const setPlan = useMutation({
+    mutationFn: (input: { client_id: string; subscription_plan: "basic_49" | "pro_99" }) =>
+      callSetPlan({ data: input }),
     onSuccess: () => {
-      toast.success("Markup tier updated");
+      toast.success("Subscription plan updated");
+      void invalidate();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const setOverride = useMutation({
+    mutationFn: (input: { client_id: string; tier_override: "starter" | "growth" | "scale" | null }) =>
+      callSetOverride({ data: input }),
+    onSuccess: () => {
+      toast.success("Tier override updated");
       void invalidate();
     },
     onError: (err) => toast.error(err.message),
@@ -85,7 +98,7 @@ function AdminClientsPage() {
 
   return (
     <div>
-      <PageHeader title="Clients" description="Approve, suspend and manage pricing tiers." />
+      <PageHeader title="Clients" description="Approve, suspend and manage plans and pricing tiers." />
 
       {isPending ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
@@ -97,110 +110,155 @@ function AdminClientsPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Company</TableHead>
-                <TableHead>Shopify</TableHead>
-                <TableHead>Tier</TableHead>
+                <TableHead>Plan</TableHead>
+                <TableHead>Effective tier</TableHead>
+                <TableHead className="text-right">Units/day (30d)</TableHead>
+                <TableHead className="text-right">Quotes used</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Provisioning</TableHead>
-                <TableHead>Tenant ID</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {clients.map((c) => (
-                <TableRow key={c.id}>
-                  <TableCell>
-                    <div className="text-sm font-medium">{c.company_name}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {c.contact_name} · {c.country} · VAT {c.vat_number}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-sm">{c.shopify_domain}</TableCell>
-                  <TableCell>
-                    <Select
-                      value={c.markup_tier}
-                      onValueChange={(v) =>
-                        setTier.mutate({
-                          client_id: c.id,
-                          markup_tier: v as "standard" | "volume" | "partner",
-                        })
-                      }
-                    >
-                      <SelectTrigger className="h-8 w-28 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="standard">Standard 35%</SelectItem>
-                        <SelectItem value="volume">Volume 25%</SelectItem>
-                        <SelectItem value="partner">Partner 18%</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </TableCell>
-                  <TableCell>
-                    <ProfileStatusBadge status={c.status} />
-                  </TableCell>
-                  <TableCell>
-                    <ProvisioningBadge status={c.provisioning_status} />
-                    {c.provisioning_status === "failed" && (
-                      <div className="mt-1 max-w-48 text-xs text-destructive">
-                        {c.provisioning_step}: {c.provisioning_error}
+              {clients.map((c) => {
+                const effTier = effectiveTier(c.pricing_tier, c.tier_override);
+                return (
+                  <TableRow key={c.id}>
+                    <TableCell>
+                      <div className="text-sm font-medium">{c.company_name}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {c.contact_name} · {c.country} · {c.shopify_domain}
                       </div>
-                    )}
-                  </TableCell>
-                  <TableCell className="font-mono text-xs text-muted-foreground">
-                    {c.middleware_tenant_id ?? "—"}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      {c.status === "pending" && (
-                        <Button
-                          size="sm"
-                          disabled={provision.isPending}
-                          onClick={() => provision.mutate(c.id)}
-                        >
-                          {provision.isPending ? "Approving…" : "Approve"}
-                        </Button>
-                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Select
+                        value={c.subscription_plan}
+                        onValueChange={(v) =>
+                          setPlan.mutate({
+                            client_id: c.id,
+                            subscription_plan: v as "basic_49" | "pro_99",
+                          })
+                        }
+                      >
+                        <SelectTrigger className="h-8 w-36 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="basic_49">
+                            {PLANS.basic_49.label} ${PLANS.basic_49.priceUsd}/mo
+                          </SelectItem>
+                          <SelectItem value="pro_99">
+                            {PLANS.pro_99.label} ${PLANS.pro_99.priceUsd}/mo
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1.5">
+                        <TierBadge tier={effTier} />
+                        {c.tier_override && (
+                          <span className="text-xs text-warning-foreground">override</span>
+                        )}
+                      </div>
+                      <Select
+                        value={c.tier_override ?? "auto"}
+                        onValueChange={(v) =>
+                          setOverride.mutate({
+                            client_id: c.id,
+                            tier_override:
+                              v === "auto" ? null : (v as "starter" | "growth" | "scale"),
+                          })
+                        }
+                      >
+                        <SelectTrigger className="mt-1 h-7 w-40 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="auto">
+                            Auto ({TIER_LABELS[c.pricing_tier] ?? c.pricing_tier})
+                          </SelectItem>
+                          <SelectItem value="starter">Override: Starter</SelectItem>
+                          <SelectItem value="growth">Override: Growth</SelectItem>
+                          <SelectItem value="scale">Override: Scale</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-sm">
+                      {Number(c.avg_daily_units_30d ?? 0).toFixed(1)}
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-sm">
+                      {c.quotes_used_this_month} / {planQuota(c.subscription_plan)}
+                    </TableCell>
+                    <TableCell>
+                      <ProfileStatusBadge status={c.status} />
+                    </TableCell>
+                    <TableCell>
+                      <ProvisioningBadge status={c.provisioning_status} />
                       {c.provisioning_status === "failed" && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          disabled={provision.isPending}
-                          onClick={() => provision.mutate(c.id)}
-                        >
-                          Retry
-                        </Button>
+                        <div className="mt-1 max-w-48 text-xs text-destructive">
+                          {c.provisioning_step}: {c.provisioning_error}
+                        </div>
                       )}
-                      {c.status === "active" && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          disabled={setStatus.isPending}
-                          onClick={() => setStatus.mutate({ client_id: c.id, status: "suspended" })}
-                        >
-                          Suspend
-                        </Button>
+                      {c.middleware_tenant_id && (
+                        <div className="mt-1 max-w-40 truncate font-mono text-xs text-muted-foreground">
+                          {c.middleware_tenant_id}
+                        </div>
                       )}
-                      {c.status === "suspended" && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          disabled={setStatus.isPending}
-                          onClick={() => setStatus.mutate({ client_id: c.id, status: "active" })}
-                        >
-                          Reactivate
-                        </Button>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        {c.status === "pending" && (
+                          <Button
+                            size="sm"
+                            disabled={provision.isPending}
+                            onClick={() => provision.mutate(c.id)}
+                          >
+                            {provision.isPending ? "Approving…" : "Approve"}
+                          </Button>
+                        )}
+                        {c.provisioning_status === "failed" && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={provision.isPending}
+                            onClick={() => provision.mutate(c.id)}
+                          >
+                            Retry
+                          </Button>
+                        )}
+                        {c.status === "active" && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={setStatus.isPending}
+                            onClick={() => setStatus.mutate({ client_id: c.id, status: "suspended" })}
+                          >
+                            Suspend
+                          </Button>
+                        )}
+                        {c.status === "suspended" && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={setStatus.isPending}
+                            onClick={() => setStatus.mutate({ client_id: c.id, status: "active" })}
+                          >
+                            Reactivate
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </div>
       )}
       <p className="mt-3 text-xs text-muted-foreground">
-        Tenant IDs are assigned once at approval and are immutable. Last signup:{" "}
-        {clients[0] ? formatDateTime(clients[0].created_at) : "—"}.
+        Effective tier = override if set, otherwise the tier auto-calculated from the 30-day average
+        daily units (Starter ≤ 10, Growth ≤ 30, Scale 30+). Tenant IDs are assigned once at approval
+        and are immutable. Last signup: {clients[0] ? formatDateTime(clients[0].created_at) : "—"}.
       </p>
     </div>
   );

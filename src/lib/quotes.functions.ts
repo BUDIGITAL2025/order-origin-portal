@@ -6,10 +6,27 @@ import {
   adminQuoteStatusSchema,
   quoteRequestSchema,
   quoteResponseSchema,
+  requoteSchema,
   signedUrlsSchema,
 } from "./schemas";
 
-/** Client: submit a new quote request. Caller must be an active client. */
+export class QuotaExceededError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "QuotaExceededError";
+  }
+}
+
+function toSubmitError(message: string): Error {
+  if (message.includes("QUOTE_LIMIT_REACHED")) {
+    return new QuotaExceededError(
+      "You've used all quote requests in your current plan this month. Upgrade to Pro for a higher allowance.",
+    );
+  }
+  return new Error(message);
+}
+
+/** Client: submit a new quote request. Quota enforced atomically in Postgres. */
 export const createQuoteRequest = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => quoteRequestSchema.parse(input))
@@ -26,17 +43,16 @@ export const createQuoteRequest = createServerFn({ method: "POST" })
       throw new Error("Your account is not active yet");
     }
 
-    // No .select() on insert: the RLS INSERT policy's qual only exposes client_id,
-    // so returning other columns would error. The list refetches anyway.
-    const { error } = await supabase.from("quote_requests").insert({
-      client_id: userId,
-      product_url: data.product_url,
-      product_name: data.product_name || null,
-      notes: data.notes || null,
-      target_monthly_volume: data.target_monthly_volume ?? null,
-      image_urls: data.image_urls ?? [],
+    const { error } = await supabase.rpc("submit_quote_request", {
+      p_product_url: data.product_url,
+      ...(data.product_name ? { p_product_name: data.product_name } : {}),
+      ...(data.notes ? { p_notes: data.notes } : {}),
+      ...(data.target_monthly_volume != null
+        ? { p_target_monthly_volume: data.target_monthly_volume }
+        : {}),
+      p_image_urls: data.image_urls ?? [],
     });
-    if (error) throw new Error(error.message);
+    if (error) throw toSubmitError(error.message);
     return { ok: true };
   });
 
@@ -80,9 +96,12 @@ export const adminListQuotes = createServerFn({ method: "GET" })
     await requireAdmin(context.supabase, context.userId);
     const admin = await getAdminClient();
 
+    const CLIENT_COLS =
+      "company_name, contact_name, shopify_domain, country, pricing_tier, tier_override, avg_daily_units_30d, subscription_plan";
+
     let query = admin
       .from("quote_requests")
-      .select("*, profiles!quote_requests_client_id_fkey(company_name, contact_name, markup_tier, shopify_domain)")
+      .select(`*, profiles!quote_requests_client_id_fkey(${CLIENT_COLS})`)
       .order("created_at", { ascending: true });
     if (data.status) query = query.eq("status", data.status);
 
@@ -102,7 +121,7 @@ export const adminGetQuote = createServerFn({ method: "GET" })
 
     const { data: quote, error } = await admin
       .from("quote_requests")
-      .select("*, profiles!quote_requests_client_id_fkey(company_name, contact_name, markup_tier, shopify_domain, country)")
+      .select("*, profiles!quote_requests_client_id_fkey(company_name, contact_name, shopify_domain, country, pricing_tier, tier_override, avg_daily_units_30d, subscription_plan)")
       .eq("id", data.quote_id)
       .maybeSingle();
     if (error) throw new Error(error.message);
@@ -110,7 +129,7 @@ export const adminGetQuote = createServerFn({ method: "GET" })
     return { quote };
   });
 
-/** Admin: price a request — saves the quote and moves status to 'quoted'. */
+/** Admin: price a request — saves the quote, freezes the tier, moves to 'quoted'. */
 export const adminSaveQuote = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => adminQuoteSchema.parse(input))
@@ -118,18 +137,42 @@ export const adminSaveQuote = createServerFn({ method: "POST" })
     const { requireAdmin, round2 } = await import("./admin.server");
     await requireAdmin(context.supabase, context.userId);
 
-    // Recompute the quoted price server-side; manual override is honored only
-    // when the caller explicitly flags it.
-    const computed = round2((data.cost_price + data.shipping_cost) * (1 + data.markup_percent / 100));
-    const quotedPrice = data.price_overridden ? round2(data.quoted_price) : computed;
+    // Fetch the quote + client to freeze the effective tier at quote time.
+    const { data: quote, error: quoteError } = await context.supabase
+      .from("quote_requests")
+      .select("client_id")
+      .eq("id", data.quote_id)
+      .maybeSingle();
+    if (quoteError) throw new Error(quoteError.message);
+    if (!quote) throw new Error("Quote request not found");
+
+    const { data: clientProfile, error: profileError } = await context.supabase
+      .from("profiles")
+      .select("pricing_tier, tier_override")
+      .eq("id", quote.client_id)
+      .maybeSingle();
+    if (profileError) throw new Error(profileError.message);
+    const effectiveTier = clientProfile?.tier_override ?? clientProfile?.pricing_tier ?? "starter";
+
+    // supplier_tax is a pass-through: never marked up. The total is a pure sum.
+    const quotedPriceTotal = round2(
+      data.supplier_cogs +
+        data.supplier_shipping +
+        data.supplier_tax +
+        data.markup_product +
+        data.markup_shipping,
+    );
 
     const { error } = await context.supabase
       .from("quote_requests")
       .update({
-        cost_price: data.cost_price,
-        shipping_cost: data.shipping_cost,
-        markup_percent: data.markup_percent,
-        quoted_price: quotedPrice,
+        supplier_cogs: data.supplier_cogs,
+        supplier_shipping: data.supplier_shipping,
+        supplier_tax: data.supplier_tax,
+        markup_product: data.markup_product,
+        markup_shipping: data.markup_shipping,
+        tier_at_quote: effectiveTier,
+        quoted_price_total: quotedPriceTotal,
         moq: data.moq ?? null,
         lead_time_days: data.lead_time_days ?? null,
         quote_valid_until: data.quote_valid_until ?? null,
@@ -139,7 +182,34 @@ export const adminSaveQuote = createServerFn({ method: "POST" })
       })
       .eq("id", data.quote_id);
     if (error) throw new Error(error.message);
-    return { ok: true, quoted_price: quotedPrice };
+    return { ok: true, quoted_price_total: quotedPriceTotal, tier_at_quote: effectiveTier };
+  });
+
+/** Admin: requote an accepted/expired quote — new row, original untouched, no quota cost. */
+export const adminRequote = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => requoteSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const { requireAdmin } = await import("./admin.server");
+    await requireAdmin(context.supabase, context.userId);
+
+    const { data: quote, error: quoteError } = await context.supabase
+      .from("quote_requests")
+      .select("client_id, status")
+      .eq("id", data.quote_id)
+      .maybeSingle();
+    if (quoteError) throw new Error(quoteError.message);
+    if (!quote) throw new Error("Quote request not found");
+    if (quote.status !== "accepted" && quote.status !== "expired") {
+      throw new Error("Only accepted or expired quotes can be requoted");
+    }
+
+    const { data: created, error } = await context.supabase.rpc("submit_quote_request", {
+      p_supersedes_quote_id: data.quote_id,
+      p_on_behalf_of: quote.client_id,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true, quote_id: created?.id ?? null };
   });
 
 /** Admin: move a request between queue states. */

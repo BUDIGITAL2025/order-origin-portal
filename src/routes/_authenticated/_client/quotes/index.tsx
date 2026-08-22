@@ -24,7 +24,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatDate, formatEUR, isQuoteExpired } from "@/lib/format";
+import { formatDate, formatUSD, isQuoteExpired } from "@/lib/format";
 import { listMyQuotes, respondToQuote } from "@/lib/quotes.functions";
 
 export const Route = createFileRoute("/_authenticated/_client/quotes/")({
@@ -116,7 +116,7 @@ function MyQuotesPage() {
                       <QuoteStatusBadge status={q.status} validUntil={q.quote_valid_until} />
                     </TableCell>
                     <TableCell className="text-right font-mono text-sm">
-                      {q.quoted_price != null ? formatEUR(q.quoted_price) : "—"}
+                      {q.quoted_price_total != null ? formatUSD(q.quoted_price_total) : "—"}
                     </TableCell>
                     <TableCell className="text-right font-mono text-sm">{q.moq ?? "—"}</TableCell>
                     <TableCell className="text-right text-sm">
