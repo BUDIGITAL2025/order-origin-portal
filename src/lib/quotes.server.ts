@@ -2,9 +2,9 @@
  * Server-side helpers for the quotes admin stack.
  * Keeps quotes.functions.ts a thin createServerFn wrapper.
  */
-import type { Tables } from "@/integrations/supabase/types";
+import type { Database } from "@/integrations/supabase/types";
 
-type QuoteRequestRow = Tables<"quote_requests">["Row"];
+type QuoteRequestRow = Database["public"]["Tables"]["quote_requests"]["Row"];
 
 /** Flat profile-ish shape the admin quote pages render. */
 export type AdminQuoteProfile = {

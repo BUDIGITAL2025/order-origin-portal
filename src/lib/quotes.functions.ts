@@ -208,9 +208,10 @@ export const adminRequote = createServerFn({ method: "POST" })
     const { requireAdmin } = await import("./admin.server");
     await requireAdmin(context.supabase, context.userId);
 
-    const { data: quote, error: quoteError } = await context.supabase
+    const admin = await getAdminClient();
+    const { data: quote, error: quoteError } = await admin
       .from("quote_requests")
-      .select("client_id, status")
+      .select("store_id, status, stores(entities(account_id))")
       .eq("id", data.quote_id)
       .maybeSingle();
     if (quoteError) throw new Error(quoteError.message);
@@ -218,10 +219,15 @@ export const adminRequote = createServerFn({ method: "POST" })
     if (quote.status !== "closed" && quote.status !== "expired") {
       throw new Error("Only closed or expired quotes can be requoted");
     }
+    // p_on_behalf_of expects the owning ACCOUNT id, resolved via store → entity.
+    const accountId = (
+      quote.stores as { entities?: { account_id?: string | null } | null } | null
+    )?.entities?.account_id;
+    if (!accountId) throw new Error("Quote store has no owning account");
 
     const { data: created, error } = await context.supabase.rpc("submit_quote_request", {
       p_supersedes_quote_id: data.quote_id,
-      p_on_behalf_of: quote.client_id,
+      p_on_behalf_of: accountId,
     });
     if (error) throw new Error(error.message);
     return { ok: true, quote_id: created?.id ?? null };
