@@ -43,17 +43,25 @@ export const loginSchema = z.object({
 
 export const profileUpdateSchema = companyDetailsSchema;
 
+const countryCodeSchema = z
+  .string()
+  .trim()
+  .toUpperCase()
+  .regex(/^[A-Z]{2}$/, "Use a 2-letter country code (e.g. US)");
+
 export const quoteRequestSchema = z.object({
   product_url: z.string().trim().url("Must be a valid URL").max(2000),
   product_name: z.string().trim().max(200).optional().or(z.literal("")),
   notes: z.string().trim().max(2000).optional().or(z.literal("")),
   target_monthly_volume: z.number().int().min(1).max(1_000_000).nullable().optional(),
   image_urls: z.array(z.string().max(500)).max(10).optional(),
+  target_countries: z.array(countryCodeSchema).min(1, "Pick at least one target country").max(30),
 });
 
 export const quoteLineInputSchema = z.object({
   id: z.string().uuid().optional(),
   variant_label: z.string().trim().min(1, "Every variant needs a label").max(120),
+  country_code: countryCodeSchema,
   supplier_cogs: z.number().min(0).max(1_000_000),
   supplier_shipping: z.number().min(0).max(1_000_000),
   supplier_tax: z.number().min(0).max(1_000_000),

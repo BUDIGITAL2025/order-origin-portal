@@ -51,6 +51,7 @@ export const createQuoteRequest = createServerFn({ method: "POST" })
         ? { p_target_monthly_volume: data.target_monthly_volume }
         : {}),
       p_image_urls: data.image_urls ?? [],
+      p_target_countries: data.target_countries,
     });
     if (error) throw toSubmitError(error.message);
     return { ok: true };
