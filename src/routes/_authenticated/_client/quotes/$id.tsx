@@ -37,6 +37,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { countryName } from "@/lib/countries";
 import { formatDate, formatUSD } from "@/lib/format";
 import { getMyQuote, respondToQuoteLines } from "@/lib/quotes.functions";
 
@@ -97,6 +98,28 @@ function MyQuoteDetailPage() {
     new Date(quote.quote_valid_until) < new Date(new Date().setHours(0, 0, 0, 0));
   const canRespond = quote.status === "quoted" && !expired;
   const allAnswered = lines.length > 0 && lines.every((l) => l.status !== "pending");
+
+  // Variant × country grid: rows are variants, columns the requested countries.
+  const gridCountries =
+    quote.target_countries.length > 0
+      ? quote.target_countries
+      : [...new Set(lines.map((l) => l.country_code).filter((c): c is string => c != null))];
+  const variantRows = (() => {
+    const map = new Map<
+      string,
+      { label: string; sku: string | null; moq: number | null; cells: Record<string, (typeof lines)[number]> }
+    >();
+    for (const l of lines) {
+      const label = l.variant_label ?? "";
+      let row = map.get(label);
+      if (!row) {
+        row = { label, sku: l.sku, moq: l.moq, cells: {} };
+        map.set(label, row);
+      }
+      if (l.country_code) row.cells[l.country_code] = l;
+    }
+    return [...map.values()];
+  })();
 
   return (
     <div>
