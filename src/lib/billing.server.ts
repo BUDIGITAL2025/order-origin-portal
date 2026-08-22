@@ -86,6 +86,20 @@ function isDuplicateReference(message: string): boolean {
   return message.includes("already exists");
 }
 
+/** Wallet lives at entity level: resolve a client's (first) entity id. */
+async function resolveEntityId(admin: Admin, clientId: string): Promise<string> {
+  const { data, error } = await admin
+    .from("entities")
+    .select("id")
+    .eq("account_id", clientId)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error(`No entity found for client ${clientId}`);
+  return data.id;
+}
+
 /**
  * Credit the wallet exactly once per Stripe reference. Replays (webhook
  * retries, checkout.session.completed + payment_intent.succeeded both
@@ -98,7 +112,7 @@ export async function creditWalletOnce(
   args: { clientId: string; amountUsd: number; reference: string; description: string },
 ): Promise<Database["public"]["Tables"]["wallet_transactions"]["Row"] | null> {
   const { data, error } = await admin.rpc("apply_wallet_transaction", {
-    p_client_id: args.clientId,
+    p_entity_id: await resolveEntityId(admin, args.clientId),
     p_type: "credit",
     p_amount: round2(args.amountUsd),
     p_description: args.description,
@@ -117,7 +131,7 @@ export async function debitWalletOnce(
   args: { clientId: string; amountUsd: number; reference: string; description: string },
 ): Promise<void> {
   const { error } = await admin.rpc("apply_wallet_transaction", {
-    p_client_id: args.clientId,
+    p_entity_id: await resolveEntityId(admin, args.clientId),
     p_type: "debit",
     p_amount: round2(args.amountUsd),
     p_description: args.description,
@@ -349,7 +363,7 @@ export async function handleWalletTopup(
   // apply_wallet_transaction with the order id as the reference.
   const { data: releasedRows, error: releaseError } = await admin.rpc(
     "release_awaiting_payment_orders",
-    { p_client_id: clientId },
+    { p_entity_id: await resolveEntityId(admin, clientId) },
   );
   if (releaseError) {
     console.error("release_awaiting_payment_orders failed:", releaseError.message);

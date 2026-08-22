@@ -148,34 +148,52 @@ export type Database = {
         Row: {
           account_id: string
           address: string | null
+          auto_topup_amount: number | null
+          auto_topup_enabled: boolean
+          auto_topup_threshold: number | null
+          cancel_notice_sent_at: string | null
           country: string | null
           created_at: string
+          default_payment_method_id: string | null
           id: string
           legal_name: string
           max_stores: number
           status: Database["public"]["Enums"]["entity_status"]
+          stripe_customer_id: string | null
           vat_number: string | null
         }
         Insert: {
           account_id: string
           address?: string | null
+          auto_topup_amount?: number | null
+          auto_topup_enabled?: boolean
+          auto_topup_threshold?: number | null
+          cancel_notice_sent_at?: string | null
           country?: string | null
           created_at?: string
+          default_payment_method_id?: string | null
           id?: string
           legal_name: string
           max_stores?: number
           status?: Database["public"]["Enums"]["entity_status"]
+          stripe_customer_id?: string | null
           vat_number?: string | null
         }
         Update: {
           account_id?: string
           address?: string | null
+          auto_topup_amount?: number | null
+          auto_topup_enabled?: boolean
+          auto_topup_threshold?: number | null
+          cancel_notice_sent_at?: string | null
           country?: string | null
           created_at?: string
+          default_payment_method_id?: string | null
           id?: string
           legal_name?: string
           max_stores?: number
           status?: Database["public"]["Enums"]["entity_status"]
+          stripe_customer_id?: string | null
           vat_number?: string | null
         }
         Relationships: [
@@ -193,27 +211,33 @@ export type Database = {
           body: string
           client_id: string
           created_at: string
+          entity_id: string | null
           id: string
           kind: string
           read_at: string | null
+          store_id: string | null
           title: string
         }
         Insert: {
           body: string
           client_id: string
           created_at?: string
+          entity_id?: string | null
           id?: string
           kind: string
           read_at?: string | null
+          store_id?: string | null
           title: string
         }
         Update: {
           body?: string
           client_id?: string
           created_at?: string
+          entity_id?: string | null
           id?: string
           kind?: string
           read_at?: string | null
+          store_id?: string | null
           title?: string
         }
         Relationships: [
@@ -222,6 +246,20 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_entity_id_fkey"
+            columns: ["entity_id"]
+            isOneToOne: false
+            referencedRelation: "entities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
             referencedColumns: ["id"]
           },
         ]
@@ -1097,8 +1135,8 @@ export type Database = {
       apply_wallet_transaction: {
         Args: {
           p_amount: number
-          p_client_id: string
           p_description: string
+          p_entity_id: string
           p_reference?: string
           p_type: string
         }
@@ -1122,7 +1160,7 @@ export type Database = {
         }
       }
       create_bundle: {
-        Args: { p_components: Json; p_name: string }
+        Args: { p_components: Json; p_name: string; p_store_id: string }
         Returns: {
           client_id: string
           created_at: string
@@ -1165,12 +1203,12 @@ export type Database = {
       }
       ingest_order: {
         Args: {
-          p_client_id: string
           p_destination_country: string
           p_external_order_id: string
           p_external_order_number: string
           p_line_items: Json
           p_shipping_address: Json
+          p_store_id: string
         }
         Returns: {
           cancelled_at: string | null
@@ -1202,7 +1240,7 @@ export type Database = {
         }
       }
       release_awaiting_payment_orders: {
-        Args: { p_client_id: string }
+        Args: { p_entity_id: string }
         Returns: {
           amount: number
           order_id: string
@@ -1223,6 +1261,7 @@ export type Database = {
           p_on_behalf_of?: string
           p_product_name?: string
           p_product_url?: string
+          p_store_id?: string
           p_supersedes_quote_id?: string
           p_target_countries?: string[]
           p_target_monthly_volume?: number
