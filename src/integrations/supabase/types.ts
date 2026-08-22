@@ -67,6 +67,44 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          body: string
+          client_id: string
+          created_at: string
+          id: string
+          kind: string
+          read_at: string | null
+          title: string
+        }
+        Insert: {
+          body: string
+          client_id: string
+          created_at?: string
+          id?: string
+          kind: string
+          read_at?: string | null
+          title: string
+        }
+        Update: {
+          body?: string
+          client_id?: string
+          created_at?: string
+          id?: string
+          kind?: string
+          read_at?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
           client_id: string
@@ -149,11 +187,15 @@ export type Database = {
       profiles: {
         Row: {
           approved_at: string | null
+          auto_topup_amount: number | null
+          auto_topup_enabled: boolean
+          auto_topup_threshold: number | null
           avg_daily_units_30d: number
           company_name: string
           contact_name: string
           country: string
           created_at: string
+          default_payment_method_id: string | null
           fee_waived: boolean
           id: string
           integration_mode: Database["public"]["Enums"]["integration_mode"]
@@ -168,17 +210,24 @@ export type Database = {
           quotes_used_this_month: number
           status: Database["public"]["Enums"]["profile_status"]
           store_url: string
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
           subscription_plan: Database["public"]["Enums"]["subscription_plan"]
+          subscription_status: Database["public"]["Enums"]["subscription_status"]
           tier_override: Database["public"]["Enums"]["pricing_tier"] | null
           vat_number: string
         }
         Insert: {
           approved_at?: string | null
+          auto_topup_amount?: number | null
+          auto_topup_enabled?: boolean
+          auto_topup_threshold?: number | null
           avg_daily_units_30d?: number
           company_name: string
           contact_name: string
           country: string
           created_at?: string
+          default_payment_method_id?: string | null
           fee_waived?: boolean
           id: string
           integration_mode?: Database["public"]["Enums"]["integration_mode"]
@@ -193,17 +242,24 @@ export type Database = {
           quotes_used_this_month?: number
           status?: Database["public"]["Enums"]["profile_status"]
           store_url: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
           subscription_plan?: Database["public"]["Enums"]["subscription_plan"]
+          subscription_status?: Database["public"]["Enums"]["subscription_status"]
           tier_override?: Database["public"]["Enums"]["pricing_tier"] | null
           vat_number: string
         }
         Update: {
           approved_at?: string | null
+          auto_topup_amount?: number | null
+          auto_topup_enabled?: boolean
+          auto_topup_threshold?: number | null
           avg_daily_units_30d?: number
           company_name?: string
           contact_name?: string
           country?: string
           created_at?: string
+          default_payment_method_id?: string | null
           fee_waived?: boolean
           id?: string
           integration_mode?: Database["public"]["Enums"]["integration_mode"]
@@ -218,7 +274,10 @@ export type Database = {
           quotes_used_this_month?: number
           status?: Database["public"]["Enums"]["profile_status"]
           store_url?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
           subscription_plan?: Database["public"]["Enums"]["subscription_plan"]
+          subscription_status?: Database["public"]["Enums"]["subscription_status"]
           tier_override?: Database["public"]["Enums"]["pricing_tier"] | null
           vat_number?: string
         }
@@ -364,6 +423,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      stripe_events: {
+        Row: {
+          created_at: string
+          environment: string
+          error: string | null
+          event_type: string
+          id: string
+          payload: Json | null
+          processed_at: string | null
+          stripe_event_id: string
+        }
+        Insert: {
+          created_at?: string
+          environment?: string
+          error?: string | null
+          event_type: string
+          id?: string
+          payload?: Json | null
+          processed_at?: string | null
+          stripe_event_id: string
+        }
+        Update: {
+          created_at?: string
+          environment?: string
+          error?: string | null
+          event_type?: string
+          id?: string
+          payload?: Json | null
+          processed_at?: string | null
+          stripe_event_id?: string
+        }
+        Relationships: []
       }
       user_roles: {
         Row: {
@@ -651,6 +743,7 @@ export type Database = {
       quote_status: "submitted" | "sourcing" | "quoted" | "closed" | "expired"
       store_platform: "shopify" | "woocommerce" | "other"
       subscription_plan: "basic" | "unlimited"
+      subscription_status: "none" | "active" | "past_due" | "canceled"
       wallet_txn_type: "credit" | "debit" | "adjustment"
     }
     CompositeTypes: {
@@ -791,6 +884,7 @@ export const Constants = {
       quote_status: ["submitted", "sourcing", "quoted", "closed", "expired"],
       store_platform: ["shopify", "woocommerce", "other"],
       subscription_plan: ["basic", "unlimited"],
+      subscription_status: ["none", "active", "past_due", "canceled"],
       wallet_txn_type: ["credit", "debit", "adjustment"],
     },
   },
