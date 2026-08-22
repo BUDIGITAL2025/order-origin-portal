@@ -79,12 +79,23 @@ export const Route = createFileRoute("/api/public/cron/auto-topup")({
             if (pi.status === "succeeded") {
               // Reference = payment intent id: the payment_intent.succeeded
               // webhook credits the same reference, so exactly one wins.
-              await billing.creditWalletOnce(supabaseAdmin, {
+              const creditTxn = await billing.creditWalletOnce(supabaseAdmin, {
                 clientId: profile.id,
                 amountUsd: pi.amount_received / 100,
                 reference: pi.id,
                 description: "Wallet auto top-up (saved card)",
               });
+              if (creditTxn) {
+                // Payment Receipt for the auto top-up (best-effort).
+                try {
+                  const { issueWalletTopupReceipt } = await import(
+                    "@/lib/documents.server"
+                  );
+                  await issueWalletTopupReceipt(supabaseAdmin, creditTxn.id);
+                } catch (e) {
+                  console.error("auto top-up receipt failed:", creditTxn.id, e);
+                }
+              }
               results.push({ client: profile.id, status: "credited" });
             } else {
               console.error(
