@@ -14,7 +14,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { PLANS, planQuota, quotaResetDate } from "@/lib/plans";
 import { quoteRequestSchema } from "@/lib/schemas";
 import { createQuoteRequest } from "@/lib/quotes.functions";
-import { upgradeToUnlimited } from "@/lib/profiles.functions";
 import { useMyContext } from "../../_client";
 
 export const Route = createFileRoute("/_authenticated/_client/quotes/new")({
@@ -32,7 +31,6 @@ function NewQuotePage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const callCreate = useServerFn(createQuoteRequest);
-  const callUpgrade = useServerFn(upgradeToUnlimited);
   const { data: ctx } = useMyContext();
 
   const [productUrl, setProductUrl] = useState("");
@@ -92,16 +90,8 @@ function NewQuotePage() {
     },
   });
 
-  // Explicit upgrade — only ever triggered by the client clicking the button.
-  const upgrade = useMutation({
-    mutationFn: () => callUpgrade(),
-    onSuccess: async () => {
-      toast.success("You're now on Unlimited — resubmit your request below.");
-      setQuotaBlocked(false);
-      await queryClient.invalidateQueries({ queryKey: ["my-context"] });
-    },
-    onError: (err) => toast.error(err.message),
-  });
+  // Upgrades go through Stripe checkout on the Billing page — the webhook
+  // flips the plan after payment confirms.
 
   const plan = ctx?.profile?.subscription_plan ?? "basic";
   const quota = planQuota(plan);
@@ -126,16 +116,13 @@ function NewQuotePage() {
             </p>
             <p className="text-sm text-muted-foreground">
               Upgrade to {PLANS.unlimited.label} for ${PLANS.unlimited.priceUsd}/month and send
-              unlimited quote requests. Nothing is charged or changed until you click below — your
-              request has not been submitted; resubmit it after upgrading.
+              unlimited quote requests. You'll go through secure checkout on the Billing
+              page and your plan changes as soon as the payment confirms — your request
+              has not been submitted; resubmit it after upgrading.
             </p>
             <div className="flex gap-2">
-              <Button
-                size="sm"
-                disabled={upgrade.isPending}
-                onClick={() => upgrade.mutate()}
-              >
-                {upgrade.isPending ? "Upgrading…" : `Upgrade to ${PLANS.unlimited.label}`}
+              <Button asChild size="sm">
+                <Link to="/billing">Upgrade to {PLANS.unlimited.label}</Link>
               </Button>
               <Button asChild size="sm" variant="outline">
                 <Link to="/dashboard">Back to dashboard</Link>
