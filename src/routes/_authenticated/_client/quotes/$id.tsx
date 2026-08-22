@@ -37,6 +37,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { countryName } from "@/lib/countries";
 import { formatDate, formatUSD } from "@/lib/format";
 import { getMyQuote, respondToQuoteLines } from "@/lib/quotes.functions";
 
@@ -98,6 +99,28 @@ function MyQuoteDetailPage() {
   const canRespond = quote.status === "quoted" && !expired;
   const allAnswered = lines.length > 0 && lines.every((l) => l.status !== "pending");
 
+  // Variant × country grid: rows are variants, columns the requested countries.
+  const gridCountries =
+    quote.target_countries.length > 0
+      ? quote.target_countries
+      : [...new Set(lines.map((l) => l.country_code).filter((c): c is string => c != null))];
+  const variantRows = (() => {
+    const map = new Map<
+      string,
+      { label: string; sku: string | null; moq: number | null; cells: Record<string, (typeof lines)[number]> }
+    >();
+    for (const l of lines) {
+      const label = l.variant_label ?? "";
+      let row = map.get(label);
+      if (!row) {
+        row = { label, sku: l.sku, moq: l.moq, cells: {} };
+        map.set(label, row);
+      }
+      if (l.country_code) row.cells[l.country_code] = l;
+    }
+    return [...map.values()];
+  })();
+
   return (
     <div>
       <PageHeader
@@ -143,9 +166,9 @@ function MyQuoteDetailPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="lg:col-span-2">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Variant pricing</CardTitle>
+            <CardTitle className="text-base">Variant pricing by country</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             {lines.length === 0 ? (
@@ -155,87 +178,114 @@ function MyQuoteDetailPage() {
                   : "No variant lines."}
               </p>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Variant</TableHead>
-                    <TableHead>SKU</TableHead>
-                    <TableHead className="text-right">Unit price</TableHead>
-                    <TableHead className="text-right">MOQ</TableHead>
-                    <TableHead className="text-right">Lead time</TableHead>
-                    <TableHead>Status</TableHead>
-                    {canRespond && <TableHead />}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {lines.map((l) => (
-                    <TableRow key={l.id}>
-                      <TableCell className="text-sm font-medium">{l.variant_label}</TableCell>
-                      <TableCell className="font-mono text-xs text-muted-foreground">{l.sku}</TableCell>
-                      <TableCell className="text-right font-mono text-sm">
-                        {l.unit_price != null ? formatUSD(l.unit_price) : "—"}
-                      </TableCell>
-                      <TableCell className="text-right font-mono text-sm">{l.moq ?? "—"}</TableCell>
-                      <TableCell className="text-right font-mono text-sm">
-                        {l.lead_time_days != null ? `${l.lead_time_days}d` : "—"}
-                      </TableCell>
-                      <TableCell>
-                        <LineStatusBadge status={l.status ?? "pending"} />
-                      </TableCell>
-                      {canRespond && (
-                        <TableCell className="text-right">
-                          {l.status === "pending" ? (
-                            <div className="flex justify-end gap-1.5">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="gap-1"
-                                disabled={respond.isPending}
-                                onClick={() => {
-                                  setProductName(quote.product_name ?? "");
-                                  setNamingLineId(l.id);
-                                }}
-                              >
-                                <Check className="h-3.5 w-3.5" /> Accept
-                              </Button>
-                              <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                  <Button size="sm" variant="ghost" className="gap-1">
-                                    <X className="h-3.5 w-3.5" /> Reject
-                                  </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle>Reject this variant?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                      Rejected lines are kept as history and never become products.
-                                      This cannot be undone.
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction
-                                      disabled={respond.isPending}
-                                      onClick={() => {
-                                        if (l.id)
-                                          respond.mutate({ lineId: l.id, accept: false, name: "" });
-                                      }}
-                                    >
-                                      Reject variant
-                                    </AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
-                            </div>
-                          ) : (
-                            <span className="text-xs text-muted-foreground">—</span>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Variant</TableHead>
+                      {gridCountries.map((c) => (
+                        <TableHead key={c} title={countryName(c)}>
+                          {c}
+                        </TableHead>
+                      ))}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {variantRows.map((v) => (
+                      <TableRow key={v.label}>
+                        <TableCell className="align-top">
+                          <div className="text-sm font-medium">{v.label}</div>
+                          <div className="font-mono text-xs text-muted-foreground">{v.sku}</div>
+                          {v.moq != null && (
+                            <div className="text-xs text-muted-foreground">MOQ {v.moq}</div>
                           )}
                         </TableCell>
-                      )}
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                        {gridCountries.map((c) => {
+                          const line = v.cells[c];
+                          if (!line) {
+                            return (
+                              <TableCell key={c} className="align-top text-muted-foreground">
+                                —
+                              </TableCell>
+                            );
+                          }
+                          return (
+                            <TableCell key={c} className="align-top">
+                              <div className="space-y-1.5">
+                                <div className="font-mono text-sm font-medium">
+                                  {line.unit_price != null ? formatUSD(line.unit_price) : "—"}
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  {line.lead_time_days != null
+                                    ? `${line.lead_time_days}d lead`
+                                    : "lead time —"}
+                                </div>
+                                {line.status === "pending" && canRespond ? (
+                                  <div className="flex gap-1">
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-7 gap-1 px-2 text-xs"
+                                      disabled={respond.isPending}
+                                      onClick={() => {
+                                        if (!line.id) return;
+                                        setProductName(quote.product_name ?? "");
+                                        setNamingLineId(line.id);
+                                      }}
+                                    >
+                                      <Check className="h-3 w-3" /> Accept
+                                    </Button>
+                                    <AlertDialog>
+                                      <AlertDialogTrigger asChild>
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          className="h-7 gap-1 px-2 text-xs"
+                                        >
+                                          <X className="h-3 w-3" /> Reject
+                                        </Button>
+                                      </AlertDialogTrigger>
+                                      <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                          <AlertDialogTitle>
+                                            Reject {v.label} for {countryName(c)}?
+                                          </AlertDialogTitle>
+                                          <AlertDialogDescription>
+                                            Rejected lines are kept as history and never become
+                                            products. This cannot be undone.
+                                          </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                          <AlertDialogAction
+                                            disabled={respond.isPending}
+                                            onClick={() => {
+                                              if (line.id)
+                                                respond.mutate({
+                                                  lineId: line.id,
+                                                  accept: false,
+                                                  name: "",
+                                                });
+                                            }}
+                                          >
+                                            Reject
+                                          </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                      </AlertDialogContent>
+                                    </AlertDialog>
+                                  </div>
+                                ) : (
+                                  <LineStatusBadge status={line.status ?? "pending"} />
+                                )}
+                              </div>
+                            </TableCell>
+                          );
+                        })}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             )}
           </CardContent>
         </Card>

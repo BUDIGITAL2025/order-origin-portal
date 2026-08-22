@@ -1,20 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { authenticateCronRequest } from "@/integrations/supabase/cron-auth";
 
 /**
  * GET /api/public/cron/documents-sweep
  * Backstop: issues the Payment Receipt for any paid order that lacks one —
  * wallet-paid at intake, admin-resolved orders, or a failed first attempt.
- * Authorization: Authorization: Bearer <LOVABLE_CRON_SECRET>.
+ * Authorization: Bearer or x-cron-secret with LOVABLE_CRON_SECRET (timing-safe).
  */
 export const Route = createFileRoute("/api/public/cron/documents-sweep")({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        const secret = process.env["LOVABLE_CRON_SECRET"];
-        const authHeader = request.headers.get("authorization");
-        if (!secret || authHeader !== `Bearer ${secret}`) {
-          return new Response("Unauthorized", { status: 401 });
-        }
+        const authError = await authenticateCronRequest(request);
+        if (authError) return authError;
 
         try {
           const { supabaseAdmin } = await import(

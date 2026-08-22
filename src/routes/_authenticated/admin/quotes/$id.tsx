@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Copy, Plus, RefreshCw, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/app-shell";
 import { LineStatusBadge, QuoteStatusBadge, TierBadge } from "@/components/status-badges";
@@ -22,6 +22,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { countryName } from "@/lib/countries";
 import { formatDate, formatUSD } from "@/lib/format";
 import { effectiveTier, TIER_LABELS } from "@/lib/plans";
 import {
@@ -50,34 +51,78 @@ function num(value: string): number {
   return value === "" ? 0 : Number(value);
 }
 
-interface LineForm {
-  id: string | null;
-  sku: string | null;
+type GridField =
+  | "supplier_cogs"
+  | "supplier_shipping"
+  | "supplier_tax"
+  | "markup_product"
+  | "markup_shipping";
+
+const GRID_FIELDS: { key: GridField; label: string }[] = [
+  { key: "supplier_cogs", label: "COGS" },
+  { key: "supplier_shipping", label: "Ship" },
+  { key: "supplier_tax", label: "Tax" },
+  { key: "markup_product", label: "Mk prod" },
+  { key: "markup_shipping", label: "Mk ship" },
+];
+
+interface CellForm {
+  lineId: string | null;
   status: string;
-  variant_label: string;
   supplier_cogs: string;
   supplier_shipping: string;
   supplier_tax: string;
   markup_product: string;
   markup_shipping: string;
-  moq: string;
-  lead_time_days: string;
 }
 
-function emptyLine(): LineForm {
+interface VariantRow {
+  key: string;
+  label: string;
+  sku: string | null;
+  moq: string;
+  lead_time_days: string;
+  cells: Record<string, CellForm>;
+}
+
+function emptyCell(): CellForm {
   return {
-    id: null,
-    sku: null,
+    lineId: null,
     status: "pending",
-    variant_label: "",
-    supplier_cogs: "",
-    supplier_shipping: "",
-    supplier_tax: "",
-    markup_product: "",
-    markup_shipping: "",
+    supplier_cogs: "0",
+    supplier_shipping: "0",
+    supplier_tax: "0",
+    markup_product: "0",
+    markup_shipping: "0",
+  };
+}
+
+let rowCounter = 0;
+function emptyVariant(countries: string[]): VariantRow {
+  const cells: Record<string, CellForm> = {};
+  for (const c of countries) cells[c] = emptyCell();
+  return {
+    key: `new-${++rowCounter}`,
+    label: "",
+    sku: null,
     moq: "",
     lead_time_days: "",
+    cells,
   };
+}
+
+function cellLocked(cell: CellForm): boolean {
+  return cell.lineId != null && cell.status !== "pending";
+}
+
+function cellPrice(c: CellForm): number {
+  return round2(
+    num(c.supplier_cogs) +
+      num(c.supplier_shipping) +
+      num(c.supplier_tax) +
+      num(c.markup_product) +
+      num(c.markup_shipping),
+  );
 }
 
 function AdminQuoteDetailPage() {
@@ -119,82 +164,135 @@ function AdminQuoteDetailPage() {
   const [internalReference, setInternalReference] = useState("");
   const [validUntil, setValidUntil] = useState("");
   const [adminNotes, setAdminNotes] = useState("");
-  const [lines, setLines] = useState<LineForm[]>([]);
+  const [rows, setRows] = useState<VariantRow[]>([]);
   const [hydrated, setHydrated] = useState(false);
+
+  const countries = useMemo<string[]>(
+    () => (quote?.target_countries ?? []) as string[],
+    [quote?.target_countries],
+  );
 
   useEffect(() => {
     if (!data || hydrated) return;
     setInternalReference(data.quote.internal_reference ?? "");
     setValidUntil(data.quote.quote_valid_until ?? "");
     setAdminNotes(data.quote.admin_notes ?? "");
+    const targetCountries = (data.quote.target_countries ?? []) as string[];
     if (data.lines.length > 0) {
-      setLines(
-        data.lines.map((l) => ({
-          id: l.id,
-          sku: l.sku,
+      const byVariant = new Map<string, VariantRow>();
+      for (const l of data.lines) {
+        let row = byVariant.get(l.variant_label);
+        if (!row) {
+          row = {
+            key: l.variant_label,
+            label: l.variant_label,
+            sku: l.sku,
+            moq: l.moq != null ? String(l.moq) : "",
+            lead_time_days: l.lead_time_days != null ? String(l.lead_time_days) : "",
+            cells: {},
+          };
+          byVariant.set(l.variant_label, row);
+        }
+        row.cells[l.country_code] = {
+          lineId: l.id,
           status: l.status,
-          variant_label: l.variant_label,
-          supplier_cogs: l.supplier_cogs != null ? String(l.supplier_cogs) : "",
-          supplier_shipping: l.supplier_shipping != null ? String(l.supplier_shipping) : "",
-          supplier_tax: l.supplier_tax != null ? String(l.supplier_tax) : "",
-          markup_product: l.markup_product != null ? String(l.markup_product) : "",
-          markup_shipping: l.markup_shipping != null ? String(l.markup_shipping) : "",
-          moq: l.moq != null ? String(l.moq) : "",
-          lead_time_days: l.lead_time_days != null ? String(l.lead_time_days) : "",
-        })),
-      );
+          supplier_cogs: l.supplier_cogs != null ? String(l.supplier_cogs) : "0",
+          supplier_shipping: l.supplier_shipping != null ? String(l.supplier_shipping) : "0",
+          supplier_tax: l.supplier_tax != null ? String(l.supplier_tax) : "0",
+          markup_product: l.markup_product != null ? String(l.markup_product) : "0",
+          markup_shipping: l.markup_shipping != null ? String(l.markup_shipping) : "0",
+        };
+      }
+      for (const row of byVariant.values()) {
+        for (const c of targetCountries) {
+          if (!row.cells[c]) row.cells[c] = emptyCell();
+        }
+      }
+      setRows([...byVariant.values()]);
     } else {
-      setLines([emptyLine()]);
+      setRows([emptyVariant(targetCountries)]);
     }
     setHydrated(true);
   }, [data, hydrated]);
 
   const requestEditable =
     quote != null && ["submitted", "sourcing", "quoted"].includes(quote.status);
-  const editableLines = lines.filter((l) => l.status === "pending");
-  const respondedLines = lines.filter((l) => l.status !== "pending");
 
-  const lineCost = (l: LineForm) =>
-    round2(num(l.supplier_cogs) + num(l.supplier_shipping) + num(l.supplier_tax));
-  const lineMarkup = (l: LineForm) => round2(num(l.markup_product) + num(l.markup_shipping));
-  const linePrice = (l: LineForm) => round2(lineCost(l) + lineMarkup(l));
-  const lineMargin = (l: LineForm) =>
-    lineCost(l) > 0 ? round2((lineMarkup(l) / lineCost(l)) * 100) : 0;
-
-  const totals = editableLines.reduce(
-    (acc, l) => ({
-      cost: round2(acc.cost + lineCost(l)),
-      markup: round2(acc.markup + lineMarkup(l)),
-      price: round2(acc.price + linePrice(l)),
-    }),
-    { cost: 0, markup: 0, price: 0 },
+  const allCells = rows.flatMap((r) =>
+    countries.map((c) => r.cells[c]).filter((c): c is CellForm => c != null),
   );
+  const prices = allCells.map(cellPrice);
+  const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
+  const maxPrice = prices.length > 0 ? Math.max(...prices) : 0;
 
-  const updateLine = (index: number, patch: Partial<LineForm>) => {
-    setLines((prev) => prev.map((l, i) => (i === index ? { ...l, ...patch } : l)));
+  const updateRow = (key: string, patch: Partial<VariantRow>) => {
+    setRows((prev) => prev.map((r) => (r.key === key ? { ...r, ...patch } : r)));
+  };
+
+  const updateCell = (key: string, country: string, patch: Partial<CellForm>) => {
+    setRows((prev) =>
+      prev.map((r) =>
+        r.key === key
+          ? { ...r, cells: { ...r.cells, [country]: { ...emptyCell(), ...r.cells[country], ...patch } } }
+          : r,
+      ),
+    );
+  };
+
+  // "Copy across countries": push the first country's value for one field down the whole row.
+  const copyAcross = (key: string, field: GridField) => {
+    const source = countries[0];
+    if (!source) return;
+    setRows((prev) =>
+      prev.map((r) => {
+        if (r.key !== key) return r;
+        const value = r.cells[source]?.[field] ?? "0";
+        const cells = { ...r.cells };
+        for (const c of countries) {
+          const cell = cells[c];
+          if (cell && !cellLocked(cell)) cells[c] = { ...cell, [field]: value };
+        }
+        return { ...r, cells };
+      }),
+    );
+    toast.success(
+      `${GRID_FIELDS.find((f) => f.key === field)?.label} copied from ${source} to all countries`,
+    );
   };
 
   const save = useMutation({
     mutationFn: () => {
-      if (editableLines.length === 0) throw new Error("Add at least one variant line");
-      for (const l of editableLines) {
-        if (!l.variant_label.trim()) throw new Error("Every variant needs a label");
-        if (l.supplier_cogs === "") throw new Error("Enter the supplier COGS for every variant");
+      if (rows.length === 0) throw new Error("Add at least one variant");
+      const labels = rows.map((r) => r.label.trim());
+      if (labels.some((l) => !l)) throw new Error("Every variant needs a label");
+      if (new Set(labels).size !== labels.length) {
+        throw new Error("Variant labels must be unique");
       }
+      const lines = rows.flatMap((row) =>
+        countries.flatMap((country) => {
+          const cell = row.cells[country] ?? emptyCell();
+          if (cellLocked(cell)) return [];
+          return [
+            {
+              ...(cell.lineId ? { id: cell.lineId } : {}),
+              variant_label: row.label.trim(),
+              country_code: country,
+              supplier_cogs: num(cell.supplier_cogs),
+              supplier_shipping: num(cell.supplier_shipping),
+              supplier_tax: num(cell.supplier_tax),
+              markup_product: num(cell.markup_product),
+              markup_shipping: num(cell.markup_shipping),
+              moq: row.moq ? Number(row.moq) : null,
+              lead_time_days: row.lead_time_days ? Number(row.lead_time_days) : null,
+            },
+          ];
+        }),
+      );
+      if (lines.length === 0) throw new Error("No editable lines to save");
       return callSave({
         data: {
           quote_id: id,
-          lines: editableLines.map((l) => ({
-            ...(l.id ? { id: l.id } : {}),
-            variant_label: l.variant_label.trim(),
-            supplier_cogs: num(l.supplier_cogs),
-            supplier_shipping: num(l.supplier_shipping),
-            supplier_tax: num(l.supplier_tax),
-            markup_product: num(l.markup_product),
-            markup_shipping: num(l.markup_shipping),
-            moq: l.moq ? Number(l.moq) : null,
-            lead_time_days: l.lead_time_days ? Number(l.lead_time_days) : null,
-          })),
+          lines,
           internal_reference: internalReference,
           quote_valid_until: validUntil || null,
           admin_notes: adminNotes,
@@ -202,7 +300,22 @@ function AdminQuoteDetailPage() {
       });
     },
     onSuccess: (r) => {
-      toast.success(`Quote saved — ${r.lines.length} variant line(s), request is now "quoted"`);
+      // Re-key local cells with the persisted line ids / SKUs so a second save
+      // updates the same rows instead of inserting duplicates.
+      const byKey = new Map(r.lines.map((l) => [`${l.variant_label}::${l.country_code}`, l]));
+      setRows((prev) =>
+        prev.map((row) => ({
+          ...row,
+          sku: byKey.get(`${row.label.trim()}::${countries[0]}`)?.sku ?? row.sku,
+          cells: Object.fromEntries(
+            Object.entries(row.cells).map(([country, cell]) => {
+              const saved = byKey.get(`${row.label.trim()}::${country}`);
+              return [country, saved ? { ...cell, lineId: saved.id, status: saved.status } : cell];
+            }),
+          ),
+        })),
+      );
+      toast.success(`Quote saved — ${r.lines.length} line(s), request is now "quoted"`);
       void queryClient.invalidateQueries({ queryKey: ["admin-quote", id] });
       void queryClient.invalidateQueries({ queryKey: ["admin-quotes"] });
     },
@@ -393,10 +506,11 @@ function AdminQuoteDetailPage() {
               </span>
             </div>
             <CardDescription>
-              One line per variant. All amounts in USD. Supplier tax (IOSS / duties) passes through
-              at exact cost — it is never marked up. Cost and margin are never visible to the
-              client. Saving with at least one line moves the request to "quoted" and generates
-              SKUs.
+              Rows are variants, columns are the requested countries — each cell is a priced
+              variant × country line. All amounts in USD. Supplier tax (IOSS / duties) passes
+              through at exact cost — it is never marked up. Cost and margin are never visible to
+              the client. Saving with at least one line moves the request to "quoted" and
+              generates one SKU per variant, shared across its country rows.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -430,118 +544,148 @@ function AdminQuoteDetailPage() {
                 </div>
               </div>
 
-              {respondedLines.length > 0 && (
-                <div className="space-y-2">
-                  <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    Answered lines (locked)
-                  </div>
-                  {respondedLines.map((l) => (
-                    <div
-                      key={l.id ?? l.variant_label}
-                      className="flex items-center justify-between gap-3 rounded-md border border-border bg-muted/30 px-3 py-2 text-sm"
-                    >
-                      <div>
-                        <span className="font-medium">{l.variant_label}</span>{" "}
-                        <span className="font-mono text-xs text-muted-foreground">{l.sku}</span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className="font-mono text-sm">{formatUSD(linePrice(l))}</span>
-                        <LineStatusBadge status={l.status as "accepted" | "rejected"} />
-                      </div>
+              {rows.length > 0 && (
+                <div className="overflow-x-auto rounded-md border border-border">
+                  <div
+                    className="grid min-w-max"
+                    style={{
+                      gridTemplateColumns: `220px repeat(${Math.max(countries.length, 1)}, minmax(200px, 1fr))`,
+                    }}
+                  >
+                    <div className="border-b border-border bg-muted/40 p-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      Variant
                     </div>
-                  ))}
+                    {countries.map((c) => (
+                      <div
+                        key={c}
+                        className="border-b border-l border-border bg-muted/40 p-2 text-center"
+                      >
+                        <div className="text-xs font-semibold">{c}</div>
+                        <div className="text-[10px] text-muted-foreground">{countryName(c)}</div>
+                      </div>
+                    ))}
+
+                    {rows.map((row) => {
+                      const rowLocked = Object.values(row.cells).some(cellLocked);
+                      const rowEditable = requestEditable && !rowLocked;
+                      return (
+                        <div key={row.key} className="contents">
+                          <div className="space-y-2 border-b border-border p-2">
+                            <Input
+                              value={row.label}
+                              onChange={(e) => updateRow(row.key, { label: e.target.value })}
+                              placeholder='e.g. "20cm", "Red / L"'
+                              disabled={!rowEditable}
+                              aria-label="Variant label"
+                            />
+                            <div className="font-mono text-[10px] text-muted-foreground">
+                              {row.sku ?? "SKU on save"}
+                            </div>
+                            <div className="grid grid-cols-2 gap-1.5">
+                              <Input
+                                type="number"
+                                min={1}
+                                value={row.moq}
+                                onChange={(e) => updateRow(row.key, { moq: e.target.value })}
+                                disabled={!rowEditable}
+                                placeholder="MOQ"
+                                aria-label="MOQ"
+                                className="h-7 text-xs"
+                              />
+                              <Input
+                                type="number"
+                                min={0}
+                                value={row.lead_time_days}
+                                onChange={(e) =>
+                                  updateRow(row.key, { lead_time_days: e.target.value })
+                                }
+                                disabled={!rowEditable}
+                                placeholder="Lead days"
+                                aria-label="Lead time (days)"
+                                className="h-7 text-xs"
+                              />
+                            </div>
+                            {rowEditable && countries.length > 1 && (
+                              <div className="space-y-1">
+                                <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                                  Copy {countries[0]} → all
+                                </div>
+                                <div className="flex flex-wrap gap-1">
+                                  {GRID_FIELDS.map((f) => (
+                                    <button
+                                      key={f.key}
+                                      type="button"
+                                      onClick={() => copyAcross(row.key, f.key)}
+                                      className="rounded border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                                    >
+                                      {f.label}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            {rowEditable && rows.length > 1 && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 gap-1 px-1.5 text-[10px] text-muted-foreground"
+                                onClick={() =>
+                                  setRows((prev) => prev.filter((r) => r.key !== row.key))
+                                }
+                              >
+                                <Trash2 className="h-3 w-3" /> Remove variant
+                              </Button>
+                            )}
+                          </div>
+                          {countries.map((country) => {
+                            const cell = row.cells[country] ?? emptyCell();
+                            const locked = cellLocked(cell);
+                            const cellEditable = requestEditable && !locked;
+                            return (
+                              <div
+                                key={country}
+                                className="space-y-1 border-b border-l border-border p-2"
+                              >
+                                {GRID_FIELDS.map((f) => (
+                                  <div key={f.key} className="flex items-center gap-1">
+                                    <span className="w-12 shrink-0 text-[10px] text-muted-foreground">
+                                      {f.label}
+                                    </span>
+                                    <Input
+                                      type="number"
+                                      step="0.01"
+                                      min="0"
+                                      value={cell[f.key]}
+                                      onChange={(e) =>
+                                        updateCell(row.key, country, { [f.key]: e.target.value })
+                                      }
+                                      disabled={!cellEditable}
+                                      aria-label={`${f.label} (${country})`}
+                                      className="h-7 font-mono text-xs"
+                                    />
+                                  </div>
+                                ))}
+                                <div className="flex items-center justify-between pt-1">
+                                  <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                                    Price
+                                  </span>
+                                  <span className="font-mono text-xs font-semibold">
+                                    {formatUSD(cellPrice(cell))}
+                                  </span>
+                                </div>
+                                {locked && (
+                                  <LineStatusBadge status={cell.status as "accepted" | "rejected"} />
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
-
-              <div className="space-y-4">
-                {lines.map((l, i) => {
-                  if (l.status !== "pending") return null;
-                  const editable = requestEditable;
-                  return (
-                    <div key={l.id ?? `new-${i}`} className="space-y-3 rounded-md border border-border p-3">
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="flex-1 space-y-1.5">
-                          <Label htmlFor={`aq-label-${i}`}>Variant label</Label>
-                          <Input
-                            id={`aq-label-${i}`}
-                            value={l.variant_label}
-                            onChange={(e) => updateLine(i, { variant_label: e.target.value })}
-                            placeholder='e.g. "20cm", "Red / L"'
-                            disabled={!editable}
-                            required
-                          />
-                        </div>
-                        <div className="pt-6 font-mono text-xs text-muted-foreground">
-                          {l.sku ?? "SKU on save"}
-                        </div>
-                        {editable && editableLines.length > 1 && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="mt-6 text-muted-foreground"
-                            onClick={() => setLines((prev) => prev.filter((_, j) => j !== i))}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                      <div className="grid grid-cols-3 gap-3">
-                        <div className="space-y-1.5">
-                          <Label htmlFor={`aq-cogs-${i}`}>Supplier COGS ($)</Label>
-                          <Input id={`aq-cogs-${i}`} type="number" step="0.01" min="0" required value={l.supplier_cogs} onChange={(e) => updateLine(i, { supplier_cogs: e.target.value })} disabled={!editable} />
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label htmlFor={`aq-ship-${i}`}>Supplier shipping ($)</Label>
-                          <Input id={`aq-ship-${i}`} type="number" step="0.01" min="0" required value={l.supplier_shipping} onChange={(e) => updateLine(i, { supplier_shipping: e.target.value })} disabled={!editable} />
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label htmlFor={`aq-tax-${i}`}>Supplier tax ($)</Label>
-                          <Input id={`aq-tax-${i}`} type="number" step="0.01" min="0" required value={l.supplier_tax} onChange={(e) => updateLine(i, { supplier_tax: e.target.value })} disabled={!editable} />
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-1.5">
-                          <Label htmlFor={`aq-mkprod-${i}`}>Markup — product ($)</Label>
-                          <Input id={`aq-mkprod-${i}`} type="number" step="0.01" min="0" required value={l.markup_product} onChange={(e) => updateLine(i, { markup_product: e.target.value })} disabled={!editable} />
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label htmlFor={`aq-mkship-${i}`}>Markup — shipping ($)</Label>
-                          <Input id={`aq-mkship-${i}`} type="number" step="0.01" min="0" required value={l.markup_shipping} onChange={(e) => updateLine(i, { markup_shipping: e.target.value })} disabled={!editable} />
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-1.5">
-                          <Label htmlFor={`aq-moq-${i}`}>MOQ</Label>
-                          <Input id={`aq-moq-${i}`} type="number" min="1" value={l.moq} onChange={(e) => updateLine(i, { moq: e.target.value })} disabled={!editable} />
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label htmlFor={`aq-lead-${i}`}>Lead time (days)</Label>
-                          <Input id={`aq-lead-${i}`} type="number" min="0" value={l.lead_time_days} onChange={(e) => updateLine(i, { lead_time_days: e.target.value })} disabled={!editable} />
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-4 gap-px overflow-hidden rounded-md border border-border bg-border text-xs">
-                        <div className="bg-muted/40 p-2">
-                          <div className="uppercase tracking-wide text-muted-foreground">Cost</div>
-                          <div className="font-mono font-medium">{formatUSD(lineCost(l))}</div>
-                        </div>
-                        <div className="bg-muted/40 p-2">
-                          <div className="uppercase tracking-wide text-muted-foreground">Markup</div>
-                          <div className="font-mono font-medium">{formatUSD(lineMarkup(l))}</div>
-                        </div>
-                        <div className="bg-muted/40 p-2">
-                          <div className="uppercase tracking-wide text-muted-foreground">Client price</div>
-                          <div className="font-mono font-semibold">{formatUSD(linePrice(l))}</div>
-                        </div>
-                        <div className="bg-muted/40 p-2">
-                          <div className="uppercase tracking-wide text-muted-foreground">Margin</div>
-                          <div className="font-mono font-medium">{lineMargin(l).toFixed(1)}%</div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
 
               {requestEditable && (
                 <Button
@@ -549,25 +693,33 @@ function AdminQuoteDetailPage() {
                   variant="outline"
                   size="sm"
                   className="gap-1.5"
-                  onClick={() => setLines((prev) => [...prev, emptyLine()])}
+                  onClick={() => setRows((prev) => [...prev, emptyVariant(countries)])}
                 >
-                  <Plus className="h-3.5 w-3.5" /> Add variant
+                  <Plus className="h-3.5 w-3.5" /> Add variant (all {countries.length}{" "}
+                  {countries.length === 1 ? "country" : "countries"})
                 </Button>
               )}
 
-              {editableLines.length > 0 && (
+              {rows.length > 0 && (
                 <div className="grid grid-cols-3 gap-px overflow-hidden rounded-md border border-border bg-border text-sm">
                   <div className="bg-muted/40 p-3">
-                    <div className="text-xs uppercase tracking-wide text-muted-foreground">Total cost</div>
-                    <div className="font-mono font-medium">{formatUSD(totals.cost)}</div>
+                    <div className="text-xs uppercase tracking-wide text-muted-foreground">Grid</div>
+                    <div className="font-mono font-medium">
+                      {rows.length} variant{rows.length === 1 ? "" : "s"} × {countries.length}{" "}
+                      {countries.length === 1 ? "country" : "countries"}
+                    </div>
                   </div>
                   <div className="bg-muted/40 p-3">
-                    <div className="text-xs uppercase tracking-wide text-muted-foreground">Total markup</div>
-                    <div className="font-mono font-medium">{formatUSD(totals.markup)}</div>
+                    <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                      Lowest unit price
+                    </div>
+                    <div className="font-mono font-medium">{formatUSD(minPrice)}</div>
                   </div>
                   <div className="bg-muted/40 p-3">
-                    <div className="text-xs uppercase tracking-wide text-muted-foreground">Total client price</div>
-                    <div className="font-mono font-semibold">{formatUSD(totals.price)}</div>
+                    <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                      Highest unit price
+                    </div>
+                    <div className="font-mono font-semibold">{formatUSD(maxPrice)}</div>
                   </div>
                 </div>
               )}
