@@ -99,7 +99,7 @@ interface OnboardingStore {
  *  - "Install our Shopify app" to Shopify clients not yet on automatic mode.
  * Hidden entirely once platform is Shopify with a store and automatic sync.
  */
-function GetStartedSection({ profile }: { profile: OnboardingProfile }) {
+function GetStartedSection({ store }: { store: OnboardingStore }) {
   const fetchLinks = useServerFn(getOnboardingLinks);
   const { data: links } = useQuery({
     queryKey: ["onboarding-links"],
@@ -173,13 +173,13 @@ export function AppShell({
   role,
   email,
   companyName,
-  onboardingProfile,
+  onboardingStore,
   children,
 }: {
   role: "client" | "admin";
   email: string | null;
   companyName: string | null;
-  onboardingProfile?: OnboardingProfile | null;
+  onboardingStore?: OnboardingStore | null;
   children: React.ReactNode;
 }) {
   const navigate = useNavigate();
