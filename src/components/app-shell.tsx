@@ -107,9 +107,9 @@ function GetStartedSection({ store }: { store: OnboardingStore }) {
     queryFn: fetchLinks,
   });
 
-  const isShopify = profile.platform === "shopify";
-  const hasStore = profile.store_url.trim().length > 0;
-  const isAutomatic = profile.integration_mode === "automatic";
+  const isShopify = store.platform === "shopify";
+  const hasStore = store.store_url.trim().length > 0;
+  const isAutomatic = store.integration_mode === "automatic";
 
   const showCreateStore = !isShopify || !hasStore;
   const showInstallApp = isShopify && !isAutomatic;
@@ -231,8 +231,8 @@ export function AppShell({
             </Link>
           ))}
         </nav>
-        {role === "client" && onboardingProfile && (
-          <GetStartedSection profile={onboardingProfile} />
+        {role === "client" && onboardingStore && (
+          <GetStartedSection store={onboardingStore} />
         )}
         <Separator />
         <div className="p-3">
