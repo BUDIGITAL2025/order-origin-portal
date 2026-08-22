@@ -73,7 +73,7 @@ export const quoteLineInputSchema = z.object({
 
 export const adminQuoteLinesSchema = z.object({
   quote_id: z.string().uuid(),
-  lines: z.array(quoteLineInputSchema).min(1, "Add at least one variant line").max(50),
+  lines: z.array(quoteLineInputSchema).min(1, "Add at least one variant line").max(200),
   internal_reference: z.string().trim().max(120).optional().or(z.literal("")),
   quote_valid_until: z
     .string()

@@ -1,0 +1,131 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { authenticateCronRequest } from "@/integrations/supabase/cron-auth";
+
+/**
+ * GET /api/public/cron/order-expiry
+ * Payment gate housekeeping for orders stuck in 'awaiting_payment':
+ *  - 24h / 48h / 72h payment reminders (in-app notification + email stub), each sent once
+ *  - auto-cancel after 7 days unpaid
+ * Authorization: Bearer or x-cron-secret with LOVABLE_CRON_SECRET (timing-safe).
+ * Idempotent: reminder columns and the status filter make re-runs no-ops.
+ */
+
+const REMINDER_STEPS = [
+  { hours: 24, column: "reminder_24_sent_at", kind: "order_reminder_24" },
+  { hours: 48, column: "reminder_48_sent_at", kind: "order_reminder_48" },
+  { hours: 72, column: "reminder_72_sent_at", kind: "order_reminder_72" },
+] as const;
+
+const AUTO_CANCEL_DAYS = 7;
+
+function formatUsd(amount: number | null): string {
+  return `$${Number(amount ?? 0).toFixed(2)}`;
+}
+
+function orderLabel(order: { id: string; external_order_number: string | null }): string {
+  return order.external_order_number ?? order.id.slice(0, 8);
+}
+
+export const Route = createFileRoute("/api/public/cron/order-expiry")({
+  server: {
+    handlers: {
+      GET: async ({ request }) => {
+        const authError = await authenticateCronRequest(request);
+        if (authError) return authError;
+
+        try {
+          const { supabaseAdmin } = await import(
+            "@/integrations/supabase/client.server"
+          );
+          const { sendClientEmail } = await import("@/lib/email.server");
+          const now = Date.now();
+          const summary = { reminder_24: 0, reminder_48: 0, reminder_72: 0, cancelled: 0 };
+
+          for (const step of REMINDER_STEPS) {
+            const cutoff = new Date(now - step.hours * 3_600_000).toISOString();
+            const { data: orders, error } = await supabaseAdmin
+              .from("orders")
+              .select("id, client_id, external_order_number, total_amount")
+              .eq("status", "awaiting_payment")
+              .lte("created_at", cutoff)
+              .is(step.column, null);
+            if (error) throw new Error(error.message);
+
+            for (const order of orders ?? []) {
+              // Mark first with a guarded update so a concurrent run can't double-send.
+              const stamp = new Date().toISOString();
+              const patch =
+                step.column === "reminder_24_sent_at"
+                  ? { reminder_24_sent_at: stamp }
+                  : step.column === "reminder_48_sent_at"
+                    ? { reminder_48_sent_at: stamp }
+                    : { reminder_72_sent_at: stamp };
+              const { error: markError } = await supabaseAdmin
+                .from("orders")
+                .update(patch)
+                .eq("id", order.id)
+                .is(step.column, null);
+              if (markError) continue;
+
+              const label = orderLabel(order);
+              const body = `Order ${label} (${formatUsd(order.total_amount)}) is still awaiting payment. It will auto-cancel ${AUTO_CANCEL_DAYS} days after it was created.`;
+              await supabaseAdmin.from("notifications").insert({
+                client_id: order.client_id,
+                kind: step.kind,
+                title: "Payment reminder",
+                body,
+              });
+              await sendClientEmail(supabaseAdmin, {
+                clientId: order.client_id,
+                subject: `Payment reminder — order ${label}`,
+                text: body,
+              });
+              summary[`reminder_${step.hours}` as keyof typeof summary] += 1;
+            }
+          }
+
+          const cancelCutoff = new Date(
+            now - AUTO_CANCEL_DAYS * 24 * 3_600_000,
+          ).toISOString();
+          const { data: stale, error: staleError } = await supabaseAdmin
+            .from("orders")
+            .select("id, client_id, external_order_number, total_amount")
+            .eq("status", "awaiting_payment")
+            .lte("created_at", cancelCutoff);
+          if (staleError) throw new Error(staleError.message);
+
+          for (const order of stale ?? []) {
+            // Guarded status transition: only cancel if still unpaid.
+            const { error: cancelError } = await supabaseAdmin
+              .from("orders")
+              .update({ status: "cancelled", cancelled_at: new Date().toISOString() })
+              .eq("id", order.id)
+              .eq("status", "awaiting_payment");
+            if (cancelError) continue;
+
+            const label = orderLabel(order);
+            const body = `Order ${label} (${formatUsd(order.total_amount)}) was cancelled after ${AUTO_CANCEL_DAYS} days without payment.`;
+            await supabaseAdmin.from("notifications").insert({
+              client_id: order.client_id,
+              kind: "order_auto_cancelled",
+              title: "Order cancelled",
+              body,
+            });
+            await sendClientEmail(supabaseAdmin, {
+              clientId: order.client_id,
+              subject: `Order ${label} cancelled`,
+              text: body,
+            });
+            summary.cancelled += 1;
+          }
+
+          console.log("order expiry sweep:", JSON.stringify(summary));
+          return Response.json({ ok: true, ...summary });
+        } catch (error) {
+          console.error("order expiry sweep error:", error);
+          return Response.json({ error: "Sweep failed" }, { status: 500 });
+        }
+      },
+    },
+  },
+});
