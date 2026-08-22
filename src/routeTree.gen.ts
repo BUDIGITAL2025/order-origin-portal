@@ -24,6 +24,7 @@ import { Route as AuthenticatedClientProductsRouteImport } from './routes/_authe
 import { Route as AuthenticatedClientWalletRouteImport } from './routes/_authenticated/_client/wallet'
 import { Route as AuthenticatedAdminClientsRouteImport } from './routes/_authenticated/admin/clients'
 import { Route as AuthenticatedAdminDocumentsRouteImport } from './routes/_authenticated/admin/documents'
+import { Route as AuthenticatedAdminEntitiesRouteImport } from './routes/_authenticated/admin/entities'
 import { Route as AuthenticatedAdminProductsRouteImport } from './routes/_authenticated/admin/products'
 import { Route as AuthenticatedAdminWalletRouteImport } from './routes/_authenticated/admin/wallet'
 import { Route as AuthenticatedClientQuotesIndexRouteImport } from './routes/_authenticated/_client/quotes/index'
@@ -117,6 +118,12 @@ const AuthenticatedAdminDocumentsRoute =
     path: '/documents',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminEntitiesRoute =
+  AuthenticatedAdminEntitiesRouteImport.update({
+    id: '/entities',
+    path: '/entities',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminProductsRoute =
   AuthenticatedAdminProductsRouteImport.update({
     id: '/products',
@@ -197,6 +204,7 @@ export interface FileRoutesByFullPath {
   '/wallet': typeof AuthenticatedClientWalletRoute
   '/admin/clients': typeof AuthenticatedAdminClientsRoute
   '/admin/documents': typeof AuthenticatedAdminDocumentsRoute
+  '/admin/entities': typeof AuthenticatedAdminEntitiesRoute
   '/admin/products': typeof AuthenticatedAdminProductsRoute
   '/admin/wallet': typeof AuthenticatedAdminWalletRoute
   '/quotes/$id': typeof AuthenticatedClientQuotesIdRoute
@@ -223,6 +231,7 @@ export interface FileRoutesByTo {
   '/wallet': typeof AuthenticatedClientWalletRoute
   '/admin/clients': typeof AuthenticatedAdminClientsRoute
   '/admin/documents': typeof AuthenticatedAdminDocumentsRoute
+  '/admin/entities': typeof AuthenticatedAdminEntitiesRoute
   '/admin/products': typeof AuthenticatedAdminProductsRoute
   '/admin/wallet': typeof AuthenticatedAdminWalletRoute
   '/quotes/$id': typeof AuthenticatedClientQuotesIdRoute
@@ -252,6 +261,7 @@ export interface FileRoutesById {
   '/_authenticated/_client/wallet': typeof AuthenticatedClientWalletRoute
   '/_authenticated/admin/clients': typeof AuthenticatedAdminClientsRoute
   '/_authenticated/admin/documents': typeof AuthenticatedAdminDocumentsRoute
+  '/_authenticated/admin/entities': typeof AuthenticatedAdminEntitiesRoute
   '/_authenticated/admin/products': typeof AuthenticatedAdminProductsRoute
   '/_authenticated/admin/wallet': typeof AuthenticatedAdminWalletRoute
   '/_authenticated/_client/quotes/$id': typeof AuthenticatedClientQuotesIdRoute
@@ -280,6 +290,7 @@ export interface FileRouteTypes {
     | '/wallet'
     | '/admin/clients'
     | '/admin/documents'
+    | '/admin/entities'
     | '/admin/products'
     | '/admin/wallet'
     | '/quotes/$id'
@@ -306,6 +317,7 @@ export interface FileRouteTypes {
     | '/wallet'
     | '/admin/clients'
     | '/admin/documents'
+    | '/admin/entities'
     | '/admin/products'
     | '/admin/wallet'
     | '/quotes/$id'
@@ -334,6 +346,7 @@ export interface FileRouteTypes {
     | '/_authenticated/_client/wallet'
     | '/_authenticated/admin/clients'
     | '/_authenticated/admin/documents'
+    | '/_authenticated/admin/entities'
     | '/_authenticated/admin/products'
     | '/_authenticated/admin/wallet'
     | '/_authenticated/_client/quotes/$id'
@@ -465,6 +478,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminDocumentsRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/entities': {
+      id: '/_authenticated/admin/entities'
+      path: '/entities'
+      fullPath: '/admin/entities'
+      preLoaderRoute: typeof AuthenticatedAdminEntitiesRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/products': {
       id: '/_authenticated/admin/products'
       path: '/products'
@@ -575,6 +595,7 @@ const AuthenticatedClientRouteWithChildren =
 interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminClientsRoute: typeof AuthenticatedAdminClientsRoute
   AuthenticatedAdminDocumentsRoute: typeof AuthenticatedAdminDocumentsRoute
+  AuthenticatedAdminEntitiesRoute: typeof AuthenticatedAdminEntitiesRoute
   AuthenticatedAdminProductsRoute: typeof AuthenticatedAdminProductsRoute
   AuthenticatedAdminWalletRoute: typeof AuthenticatedAdminWalletRoute
   AuthenticatedAdminQuotesIdRoute: typeof AuthenticatedAdminQuotesIdRoute
@@ -584,6 +605,7 @@ interface AuthenticatedAdminRouteChildren {
 const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminClientsRoute: AuthenticatedAdminClientsRoute,
   AuthenticatedAdminDocumentsRoute: AuthenticatedAdminDocumentsRoute,
+  AuthenticatedAdminEntitiesRoute: AuthenticatedAdminEntitiesRoute,
   AuthenticatedAdminProductsRoute: AuthenticatedAdminProductsRoute,
   AuthenticatedAdminWalletRoute: AuthenticatedAdminWalletRoute,
   AuthenticatedAdminQuotesIdRoute: AuthenticatedAdminQuotesIdRoute,

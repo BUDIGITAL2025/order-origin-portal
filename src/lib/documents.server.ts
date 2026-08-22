@@ -289,6 +289,24 @@ async function getClientBlock(admin: Admin, clientId: string): Promise<ClientBlo
 }
 
 /**
+ * In the Account → Entity → Store model a receipt belongs to a store. Order
+ * receipts carry the order's store; wallet/subscription receipts fall back to
+ * the client's (currently single) store.
+ */
+async function resolveStoreId(admin: Admin, clientId: string): Promise<string> {
+  const { data, error } = await admin
+    .from("stores")
+    .select("id, entities!inner(account_id)")
+    .eq("entities.account_id", clientId)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error("No store found for client");
+  return data.id;
+}
+
+/**
  * Upload the PDF, then insert the immutable row. The unique indexes turn a
  * concurrent/replayed attempt into "exists" instead of a second document.
  */
@@ -296,6 +314,7 @@ async function storeReceipt(
   admin: Admin,
   args: {
     clientId: string;
+    storeId?: string | null;
     documentType: DocumentType;
     orderId?: string | null;
     walletTransactionId?: string | null;
@@ -312,8 +331,10 @@ async function storeReceipt(
     .upload(path, pdf, { contentType: "application/pdf" });
   if (uploadError) throw new Error(uploadError.message);
 
+  const storeId = args.storeId ?? (await resolveStoreId(admin, args.clientId));
   const { error: insertError } = await admin.from("documents").insert({
     client_id: args.clientId,
+    store_id: storeId,
     document_type: args.documentType,
     document_number: number,
     order_id: args.orderId ?? null,
@@ -337,7 +358,7 @@ export async function issueOrderReceipt(
   const { data: order, error } = await admin
     .from("orders")
     .select(
-      "id, client_id, external_order_number, payment_method, total_amount, destination_country, paid_at",
+      "id, client_id, store_id, external_order_number, payment_method, total_amount, destination_country, paid_at",
     )
     .eq("id", orderId)
     .maybeSingle();
@@ -379,6 +400,7 @@ export async function issueOrderReceipt(
 
   return storeReceipt(admin, {
     clientId: order.client_id,
+    storeId: order.store_id,
     documentType: "order_receipt",
     orderId: order.id,
     amount: total,
