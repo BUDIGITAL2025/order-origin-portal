@@ -125,7 +125,7 @@ function NewQuotePage() {
             <p className="text-sm text-muted-foreground">
               You've used all {quota ?? PLANS.basic.quoteQuota} quote requests included in your{" "}
               {PLANS.basic.label} plan this month. Your allowance resets on{" "}
-              {quotaResetDate(ctx?.profile?.quotes_period_start)}.
+              {quotaResetDate(currentStore?.quotes_period_start)}.
             </p>
             <p className="text-sm text-muted-foreground">
               Upgrade to {PLANS.unlimited.label} for ${PLANS.unlimited.priceUsd}/month and send
