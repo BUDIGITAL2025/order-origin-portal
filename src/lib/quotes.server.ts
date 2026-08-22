@@ -2,6 +2,9 @@
  * Server-side helpers for the quotes admin stack.
  * Keeps quotes.functions.ts a thin createServerFn wrapper.
  */
+import type { Tables } from "@/integrations/supabase/types";
+
+type QuoteRequestRow = Tables<"quote_requests">["Row"];
 
 /** Flat profile-ish shape the admin quote pages render. */
 export type AdminQuoteProfile = {
@@ -17,21 +20,21 @@ export type AdminQuoteProfile = {
   subscription_plan: string | null;
 };
 
-type QuoteChainRow = Record<string, unknown> & {
-  stores?: {
-    store_name: string | null;
-    store_url: string | null;
-    platform: string | null;
-    integration_mode: string | null;
-    pricing_tier: string | null;
-    tier_override: string | null;
-    avg_daily_units_30d: number | null;
-    subscription_plan: string | null;
-    entities?: {
-      legal_name: string | null;
-      country: string | null;
-      profiles?: { contact_name: string | null } | null;
-    } | null;
+export type AdminQuote = QuoteRequestRow & { profiles: AdminQuoteProfile };
+
+type QuoteChainStore = {
+  store_name: string | null;
+  store_url: string | null;
+  platform: string | null;
+  integration_mode: string | null;
+  pricing_tier: string | null;
+  tier_override: string | null;
+  avg_daily_units_30d: number | null;
+  subscription_plan: string | null;
+  entities?: {
+    legal_name: string | null;
+    country: string | null;
+    profiles?: { contact_name: string | null } | null;
   } | null;
 };
 
@@ -40,8 +43,10 @@ type QuoteChainRow = Record<string, unknown> & {
  * chain back to the flat shape admin pages consume (`quote.profiles.*`),
  * with company_name carrying the entity's legal name.
  */
-export function mapQuoteForAdmin(row: QuoteChainRow) {
-  const { stores, ...rest } = row;
+export function mapQuoteForAdmin(row: unknown): AdminQuote {
+  const { stores, ...rest } = row as QuoteRequestRow & {
+    stores?: QuoteChainStore | null;
+  };
   const entity = stores?.entities ?? null;
   const profile = entity?.profiles ?? null;
   const profiles: AdminQuoteProfile = {
