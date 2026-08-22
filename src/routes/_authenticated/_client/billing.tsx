@@ -633,10 +633,11 @@ function BillingPage() {
         )}
       </div>
 
-      {topupAmount != null && storeId != null && (
+      {topupAmount != null && (storeId != null || billingEntity != null) && (
         <TopUpCheckoutDialog
           key={topupAmount}
-          storeId={storeId}
+          storeId={storeId ?? undefined}
+          entityId={billingEntity?.id}
           amountUsd={topupAmount}
           open={topupAmount != null}
           onOpenChange={(open) => {
