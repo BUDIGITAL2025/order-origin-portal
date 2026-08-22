@@ -53,12 +53,15 @@ function ClientLayout() {
 
   if (ctx?.profile && ctx.profile.status !== "active") return <Navigate to="/pending" />;
 
+  const firstEntity = ctx?.entities?.[0] ?? null;
+  const firstStore = ctx?.entities?.flatMap((e) => e.stores)[0] ?? null;
+
   return (
     <AppShell
       role="client"
       email={ctx?.email ?? null}
-      companyName={ctx?.profile?.company_name ?? null}
-      onboardingProfile={ctx?.profile ?? null}
+      companyName={firstEntity?.legal_name ?? null}
+      onboardingStore={firstStore}
     >
       <Outlet />
     </AppShell>
