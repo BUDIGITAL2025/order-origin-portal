@@ -1,6 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import type { Database } from "@/integrations/supabase/types";
 import { z } from "zod";
 import {
   adminQuoteLinesSchema,
@@ -183,15 +182,14 @@ export const adminSaveQuoteLines = createServerFn({ method: "POST" })
     await requireAdmin(context.supabase, context.userId);
 
     // Nullable params let the admin clear a previously set value; the generated
-    // types mark defaulted args as optional, so cast the explicit nulls.
-    const args = {
+    // types mark defaulted args as optional strings, so cast the explicit nulls.
+    const { data: lines, error } = await context.supabase.rpc("admin_save_quote_lines", {
       p_quote_id: data.quote_id,
       p_lines: data.lines,
-      p_internal_reference: data.internal_reference || null,
-      p_quote_valid_until: data.quote_valid_until ?? null,
-      p_admin_notes: data.admin_notes || null,
-    } as unknown as Database["Functions"]["admin_save_quote_lines"]["Args"];
-    const { data: lines, error } = await context.supabase.rpc("admin_save_quote_lines", args);
+      p_internal_reference: (data.internal_reference || null) as string,
+      p_quote_valid_until: (data.quote_valid_until ?? null) as string,
+      p_admin_notes: (data.admin_notes || null) as string,
+    });
     if (error) throw new Error(error.message);
     return { ok: true, lines: lines ?? [] };
   });
