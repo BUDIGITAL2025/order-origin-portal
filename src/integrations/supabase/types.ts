@@ -67,6 +67,73 @@ export type Database = {
           },
         ]
       }
+      documents: {
+        Row: {
+          amount: number
+          client_id: string
+          created_at: string
+          document_number: string
+          document_type: Database["public"]["Enums"]["document_type"]
+          external_invoice_id: string | null
+          id: string
+          issued_at: string
+          order_id: string | null
+          payment_reference: string | null
+          storage_path: string | null
+          wallet_transaction_id: string | null
+        }
+        Insert: {
+          amount: number
+          client_id: string
+          created_at?: string
+          document_number: string
+          document_type?: Database["public"]["Enums"]["document_type"]
+          external_invoice_id?: string | null
+          id?: string
+          issued_at?: string
+          order_id?: string | null
+          payment_reference?: string | null
+          storage_path?: string | null
+          wallet_transaction_id?: string | null
+        }
+        Update: {
+          amount?: number
+          client_id?: string
+          created_at?: string
+          document_number?: string
+          document_type?: Database["public"]["Enums"]["document_type"]
+          external_invoice_id?: string | null
+          id?: string
+          issued_at?: string
+          order_id?: string | null
+          payment_reference?: string | null
+          storage_path?: string | null
+          wallet_transaction_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "documents_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_wallet_transaction_id_fkey"
+            columns: ["wallet_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "wallet_transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           body: string
@@ -904,6 +971,7 @@ export type Database = {
           sku: string
         }[]
       }
+      generate_document_number: { Args: never; Returns: string }
       generate_sku: { Args: { p_prefix: string }; Returns: string }
       has_role: {
         Args: {
@@ -1029,6 +1097,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "client"
+      document_type: "order_receipt" | "wallet_topup" | "subscription"
       integration_mode: "automatic" | "manual"
       order_payment_method: "wallet" | "direct"
       order_status:
@@ -1179,6 +1248,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "client"],
+      document_type: ["order_receipt", "wallet_topup", "subscription"],
       integration_mode: ["automatic", "manual"],
       order_payment_method: ["wallet", "direct"],
       order_status: [
