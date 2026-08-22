@@ -97,7 +97,7 @@ export const adminListQuotes = createServerFn({ method: "GET" })
     const admin = await getAdminClient();
 
     const CLIENT_COLS =
-      "company_name, contact_name, shopify_domain, country, pricing_tier, tier_override, avg_daily_units_30d, subscription_plan";
+      "company_name, contact_name, platform, store_url, integration_mode, country, pricing_tier, tier_override, avg_daily_units_30d, subscription_plan";
 
     let query = admin
       .from("quote_requests")
@@ -121,7 +121,7 @@ export const adminGetQuote = createServerFn({ method: "GET" })
 
     const { data: quote, error } = await admin
       .from("quote_requests")
-      .select("*, profiles!quote_requests_client_id_fkey(company_name, contact_name, shopify_domain, country, pricing_tier, tier_override, avg_daily_units_30d, subscription_plan)")
+      .select("*, profiles!quote_requests_client_id_fkey(company_name, contact_name, platform, store_url, integration_mode, country, pricing_tier, tier_override, avg_daily_units_30d, subscription_plan)")
       .eq("id", data.quote_id)
       .maybeSingle();
     if (error) throw new Error(error.message);

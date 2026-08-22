@@ -67,7 +67,9 @@ function AdminQuoteDetailPage() {
   const client = (quote?.profiles ?? null) as {
     company_name?: string;
     contact_name?: string;
-    shopify_domain?: string;
+    platform?: string;
+    store_url?: string;
+    integration_mode?: string;
     country?: string;
     pricing_tier?: string;
     tier_override?: string | null;
@@ -265,7 +267,7 @@ function AdminQuoteDetailPage() {
                     {client?.company_name ?? "—"} <TierBadge tier={clientTier} />
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    {client?.shopify_domain ?? ""}
+                    {client?.store_url ?? ""}
                     {client?.tier_override
                       ? ` · override (auto: ${TIER_LABELS[client?.pricing_tier ?? "starter"] ?? client?.pricing_tier})`
                       : ` · auto · ${Number(client?.avg_daily_units_30d ?? 0).toFixed(1)} units/day`}
