@@ -78,10 +78,9 @@ type Component = {
 type BundlePrice = {
   bundle_product_id: string | null;
   calculated_price: number | null;
-  price_override: number | null;
-  effective_price: number | null;
-  lead_time_days: number | null;
   component_count: number | null;
+  effective_price: number | null;
+  max_lead_time_days: number | null;
 };
 
 function BundleDialog({
@@ -92,9 +91,9 @@ function BundleDialog({
   onClose,
 }: {
   mode: "create" | "edit";
-  bundle?: Product;
+  bundle?: Product | undefined;
   simpleProducts: Product[];
-  existing?: Component[];
+  existing?: Component[] | undefined;
   onClose: () => void;
 }) {
   const queryClient = useQueryClient();
