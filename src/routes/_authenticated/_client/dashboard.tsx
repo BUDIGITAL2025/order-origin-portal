@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { ArrowRight, ClipboardList, CreditCard, RefreshCcw, Wallet } from "lucide-react";
 import { EmptyState, PageHeader } from "@/components/app-shell";
+import { getCurrentStoreId } from "@/components/store-switcher";
 import { QuoteStatusBadge, TxnTypeBadge } from "@/components/status-badges";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
