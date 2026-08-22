@@ -45,10 +45,10 @@ export const createQuoteRequest = createServerFn({ method: "POST" })
 
     const { error } = await supabase.rpc("submit_quote_request", {
       p_product_url: data.product_url,
-      p_product_name: data.product_name || null,
-      p_notes: data.notes || null,
-      p_target_monthly_volume: data.target_monthly_volume ?? null,
-      p_image_urls: data.image_urls ?? [],
+      p_product_name: data.product_name || undefined,
+      p_notes: data.notes || undefined,
+      p_target_monthly_volume: data.target_monthly_volume ?? undefined,
+      p_image_urls: data.image_urls,
     });
     if (error) throw toSubmitError(error.message);
     return { ok: true };
