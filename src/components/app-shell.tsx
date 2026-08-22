@@ -225,6 +225,9 @@ export function AppShell({
             </Link>
           ))}
         </nav>
+        {role === "client" && onboardingProfile && (
+          <GetStartedSection profile={onboardingProfile} />
+        )}
         <Separator />
         <div className="p-3">
           <div className="truncate px-3 pb-1 text-xs text-muted-foreground">
