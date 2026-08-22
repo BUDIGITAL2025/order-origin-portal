@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Copy, Plus, RefreshCw, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/app-shell";
 import { LineStatusBadge, QuoteStatusBadge, TierBadge } from "@/components/status-badges";
@@ -22,6 +22,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { countryName } from "@/lib/countries";
 import { formatDate, formatUSD } from "@/lib/format";
 import { effectiveTier, TIER_LABELS } from "@/lib/plans";
 import {
@@ -50,34 +51,78 @@ function num(value: string): number {
   return value === "" ? 0 : Number(value);
 }
 
-interface LineForm {
-  id: string | null;
-  sku: string | null;
+type GridField =
+  | "supplier_cogs"
+  | "supplier_shipping"
+  | "supplier_tax"
+  | "markup_product"
+  | "markup_shipping";
+
+const GRID_FIELDS: { key: GridField; label: string }[] = [
+  { key: "supplier_cogs", label: "COGS" },
+  { key: "supplier_shipping", label: "Ship" },
+  { key: "supplier_tax", label: "Tax" },
+  { key: "markup_product", label: "Mk prod" },
+  { key: "markup_shipping", label: "Mk ship" },
+];
+
+interface CellForm {
+  lineId: string | null;
   status: string;
-  variant_label: string;
   supplier_cogs: string;
   supplier_shipping: string;
   supplier_tax: string;
   markup_product: string;
   markup_shipping: string;
-  moq: string;
-  lead_time_days: string;
 }
 
-function emptyLine(): LineForm {
+interface VariantRow {
+  key: string;
+  label: string;
+  sku: string | null;
+  moq: string;
+  lead_time_days: string;
+  cells: Record<string, CellForm>;
+}
+
+function emptyCell(): CellForm {
   return {
-    id: null,
-    sku: null,
+    lineId: null,
     status: "pending",
-    variant_label: "",
-    supplier_cogs: "",
-    supplier_shipping: "",
-    supplier_tax: "",
-    markup_product: "",
-    markup_shipping: "",
+    supplier_cogs: "0",
+    supplier_shipping: "0",
+    supplier_tax: "0",
+    markup_product: "0",
+    markup_shipping: "0",
+  };
+}
+
+let rowCounter = 0;
+function emptyVariant(countries: string[]): VariantRow {
+  const cells: Record<string, CellForm> = {};
+  for (const c of countries) cells[c] = emptyCell();
+  return {
+    key: `new-${++rowCounter}`,
+    label: "",
+    sku: null,
     moq: "",
     lead_time_days: "",
+    cells,
   };
+}
+
+function cellLocked(cell: CellForm): boolean {
+  return cell.lineId != null && cell.status !== "pending";
+}
+
+function cellPrice(c: CellForm): number {
+  return round2(
+    num(c.supplier_cogs) +
+      num(c.supplier_shipping) +
+      num(c.supplier_tax) +
+      num(c.markup_product) +
+      num(c.markup_shipping),
+  );
 }
 
 function AdminQuoteDetailPage() {
@@ -119,82 +164,135 @@ function AdminQuoteDetailPage() {
   const [internalReference, setInternalReference] = useState("");
   const [validUntil, setValidUntil] = useState("");
   const [adminNotes, setAdminNotes] = useState("");
-  const [lines, setLines] = useState<LineForm[]>([]);
+  const [rows, setRows] = useState<VariantRow[]>([]);
   const [hydrated, setHydrated] = useState(false);
+
+  const countries = useMemo<string[]>(
+    () => (quote?.target_countries ?? []) as string[],
+    [quote?.target_countries],
+  );
 
   useEffect(() => {
     if (!data || hydrated) return;
     setInternalReference(data.quote.internal_reference ?? "");
     setValidUntil(data.quote.quote_valid_until ?? "");
     setAdminNotes(data.quote.admin_notes ?? "");
+    const targetCountries = (data.quote.target_countries ?? []) as string[];
     if (data.lines.length > 0) {
-      setLines(
-        data.lines.map((l) => ({
-          id: l.id,
-          sku: l.sku,
+      const byVariant = new Map<string, VariantRow>();
+      for (const l of data.lines) {
+        let row = byVariant.get(l.variant_label);
+        if (!row) {
+          row = {
+            key: l.variant_label,
+            label: l.variant_label,
+            sku: l.sku,
+            moq: l.moq != null ? String(l.moq) : "",
+            lead_time_days: l.lead_time_days != null ? String(l.lead_time_days) : "",
+            cells: {},
+          };
+          byVariant.set(l.variant_label, row);
+        }
+        row.cells[l.country_code] = {
+          lineId: l.id,
           status: l.status,
-          variant_label: l.variant_label,
-          supplier_cogs: l.supplier_cogs != null ? String(l.supplier_cogs) : "",
-          supplier_shipping: l.supplier_shipping != null ? String(l.supplier_shipping) : "",
-          supplier_tax: l.supplier_tax != null ? String(l.supplier_tax) : "",
-          markup_product: l.markup_product != null ? String(l.markup_product) : "",
-          markup_shipping: l.markup_shipping != null ? String(l.markup_shipping) : "",
-          moq: l.moq != null ? String(l.moq) : "",
-          lead_time_days: l.lead_time_days != null ? String(l.lead_time_days) : "",
-        })),
-      );
+          supplier_cogs: l.supplier_cogs != null ? String(l.supplier_cogs) : "0",
+          supplier_shipping: l.supplier_shipping != null ? String(l.supplier_shipping) : "0",
+          supplier_tax: l.supplier_tax != null ? String(l.supplier_tax) : "0",
+          markup_product: l.markup_product != null ? String(l.markup_product) : "0",
+          markup_shipping: l.markup_shipping != null ? String(l.markup_shipping) : "0",
+        };
+      }
+      for (const row of byVariant.values()) {
+        for (const c of targetCountries) {
+          if (!row.cells[c]) row.cells[c] = emptyCell();
+        }
+      }
+      setRows([...byVariant.values()]);
     } else {
-      setLines([emptyLine()]);
+      setRows([emptyVariant(targetCountries)]);
     }
     setHydrated(true);
   }, [data, hydrated]);
 
   const requestEditable =
     quote != null && ["submitted", "sourcing", "quoted"].includes(quote.status);
-  const editableLines = lines.filter((l) => l.status === "pending");
-  const respondedLines = lines.filter((l) => l.status !== "pending");
 
-  const lineCost = (l: LineForm) =>
-    round2(num(l.supplier_cogs) + num(l.supplier_shipping) + num(l.supplier_tax));
-  const lineMarkup = (l: LineForm) => round2(num(l.markup_product) + num(l.markup_shipping));
-  const linePrice = (l: LineForm) => round2(lineCost(l) + lineMarkup(l));
-  const lineMargin = (l: LineForm) =>
-    lineCost(l) > 0 ? round2((lineMarkup(l) / lineCost(l)) * 100) : 0;
-
-  const totals = editableLines.reduce(
-    (acc, l) => ({
-      cost: round2(acc.cost + lineCost(l)),
-      markup: round2(acc.markup + lineMarkup(l)),
-      price: round2(acc.price + linePrice(l)),
-    }),
-    { cost: 0, markup: 0, price: 0 },
+  const allCells = rows.flatMap((r) =>
+    countries.map((c) => r.cells[c]).filter((c): c is CellForm => c != null),
   );
+  const prices = allCells.map(cellPrice);
+  const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
+  const maxPrice = prices.length > 0 ? Math.max(...prices) : 0;
 
-  const updateLine = (index: number, patch: Partial<LineForm>) => {
-    setLines((prev) => prev.map((l, i) => (i === index ? { ...l, ...patch } : l)));
+  const updateRow = (key: string, patch: Partial<VariantRow>) => {
+    setRows((prev) => prev.map((r) => (r.key === key ? { ...r, ...patch } : r)));
+  };
+
+  const updateCell = (key: string, country: string, patch: Partial<CellForm>) => {
+    setRows((prev) =>
+      prev.map((r) =>
+        r.key === key
+          ? { ...r, cells: { ...r.cells, [country]: { ...emptyCell(), ...r.cells[country], ...patch } } }
+          : r,
+      ),
+    );
+  };
+
+  // "Copy across countries": push the first country's value for one field down the whole row.
+  const copyAcross = (key: string, field: GridField) => {
+    const source = countries[0];
+    if (!source) return;
+    setRows((prev) =>
+      prev.map((r) => {
+        if (r.key !== key) return r;
+        const value = r.cells[source]?.[field] ?? "0";
+        const cells = { ...r.cells };
+        for (const c of countries) {
+          const cell = cells[c];
+          if (cell && !cellLocked(cell)) cells[c] = { ...cell, [field]: value };
+        }
+        return { ...r, cells };
+      }),
+    );
+    toast.success(
+      `${GRID_FIELDS.find((f) => f.key === field)?.label} copied from ${source} to all countries`,
+    );
   };
 
   const save = useMutation({
     mutationFn: () => {
-      if (editableLines.length === 0) throw new Error("Add at least one variant line");
-      for (const l of editableLines) {
-        if (!l.variant_label.trim()) throw new Error("Every variant needs a label");
-        if (l.supplier_cogs === "") throw new Error("Enter the supplier COGS for every variant");
+      if (rows.length === 0) throw new Error("Add at least one variant");
+      const labels = rows.map((r) => r.label.trim());
+      if (labels.some((l) => !l)) throw new Error("Every variant needs a label");
+      if (new Set(labels).size !== labels.length) {
+        throw new Error("Variant labels must be unique");
       }
+      const lines = rows.flatMap((row) =>
+        countries.flatMap((country) => {
+          const cell = row.cells[country] ?? emptyCell();
+          if (cellLocked(cell)) return [];
+          return [
+            {
+              ...(cell.lineId ? { id: cell.lineId } : {}),
+              variant_label: row.label.trim(),
+              country_code: country,
+              supplier_cogs: num(cell.supplier_cogs),
+              supplier_shipping: num(cell.supplier_shipping),
+              supplier_tax: num(cell.supplier_tax),
+              markup_product: num(cell.markup_product),
+              markup_shipping: num(cell.markup_shipping),
+              moq: row.moq ? Number(row.moq) : null,
+              lead_time_days: row.lead_time_days ? Number(row.lead_time_days) : null,
+            },
+          ];
+        }),
+      );
+      if (lines.length === 0) throw new Error("No editable lines to save");
       return callSave({
         data: {
           quote_id: id,
-          lines: editableLines.map((l) => ({
-            ...(l.id ? { id: l.id } : {}),
-            variant_label: l.variant_label.trim(),
-            supplier_cogs: num(l.supplier_cogs),
-            supplier_shipping: num(l.supplier_shipping),
-            supplier_tax: num(l.supplier_tax),
-            markup_product: num(l.markup_product),
-            markup_shipping: num(l.markup_shipping),
-            moq: l.moq ? Number(l.moq) : null,
-            lead_time_days: l.lead_time_days ? Number(l.lead_time_days) : null,
-          })),
+          lines,
           internal_reference: internalReference,
           quote_valid_until: validUntil || null,
           admin_notes: adminNotes,
@@ -202,7 +300,22 @@ function AdminQuoteDetailPage() {
       });
     },
     onSuccess: (r) => {
-      toast.success(`Quote saved — ${r.lines.length} variant line(s), request is now "quoted"`);
+      // Re-key local cells with the persisted line ids / SKUs so a second save
+      // updates the same rows instead of inserting duplicates.
+      const byKey = new Map(r.lines.map((l) => [`${l.variant_label}::${l.country_code}`, l]));
+      setRows((prev) =>
+        prev.map((row) => ({
+          ...row,
+          sku: byKey.get(`${row.label.trim()}::${countries[0]}`)?.sku ?? row.sku,
+          cells: Object.fromEntries(
+            Object.entries(row.cells).map(([country, cell]) => {
+              const saved = byKey.get(`${row.label.trim()}::${country}`);
+              return [country, saved ? { ...cell, lineId: saved.id, status: saved.status } : cell];
+            }),
+          ),
+        })),
+      );
+      toast.success(`Quote saved — ${r.lines.length} line(s), request is now "quoted"`);
       void queryClient.invalidateQueries({ queryKey: ["admin-quote", id] });
       void queryClient.invalidateQueries({ queryKey: ["admin-quotes"] });
     },
