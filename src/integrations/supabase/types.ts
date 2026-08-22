@@ -70,10 +70,10 @@ export type Database = {
       documents: {
         Row: {
           amount: number
-          client_id: string
           created_at: string
           document_number: string
           document_type: Database["public"]["Enums"]["document_type"]
+          entity_id: string
           external_invoice_id: string | null
           id: string
           issued_at: string
@@ -85,10 +85,10 @@ export type Database = {
         }
         Insert: {
           amount: number
-          client_id: string
           created_at?: string
           document_number: string
           document_type?: Database["public"]["Enums"]["document_type"]
+          entity_id: string
           external_invoice_id?: string | null
           id?: string
           issued_at?: string
@@ -100,10 +100,10 @@ export type Database = {
         }
         Update: {
           amount?: number
-          client_id?: string
           created_at?: string
           document_number?: string
           document_type?: Database["public"]["Enums"]["document_type"]
+          entity_id?: string
           external_invoice_id?: string | null
           id?: string
           issued_at?: string
@@ -115,10 +115,10 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "documents_client_id_fkey"
-            columns: ["client_id"]
+            foreignKeyName: "documents_entity_id_fkey"
+            columns: ["entity_id"]
             isOneToOne: false
-            referencedRelation: "profiles"
+            referencedRelation: "entities"
             referencedColumns: ["id"]
           },
           {
@@ -209,7 +209,6 @@ export type Database = {
       notifications: {
         Row: {
           body: string
-          client_id: string
           created_at: string
           entity_id: string | null
           id: string
@@ -220,7 +219,6 @@ export type Database = {
         }
         Insert: {
           body: string
-          client_id: string
           created_at?: string
           entity_id?: string | null
           id?: string
@@ -231,7 +229,6 @@ export type Database = {
         }
         Update: {
           body?: string
-          client_id?: string
           created_at?: string
           entity_id?: string | null
           id?: string
@@ -241,13 +238,6 @@ export type Database = {
           title?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "notifications_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "notifications_entity_id_fkey"
             columns: ["entity_id"]
@@ -354,7 +344,6 @@ export type Database = {
       orders: {
         Row: {
           cancelled_at: string | null
-          client_id: string
           created_at: string
           destination_country: string | null
           external_order_id: string | null
@@ -376,7 +365,6 @@ export type Database = {
         }
         Insert: {
           cancelled_at?: string | null
-          client_id: string
           created_at?: string
           destination_country?: string | null
           external_order_id?: string | null
@@ -398,7 +386,6 @@ export type Database = {
         }
         Update: {
           cancelled_at?: string | null
-          client_id?: string
           created_at?: string
           destination_country?: string | null
           external_order_id?: string | null
@@ -419,13 +406,6 @@ export type Database = {
           total_amount?: number | null
         }
         Relationships: [
-          {
-            foreignKeyName: "orders_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "orders_store_id_fkey"
             columns: ["store_id"]
@@ -479,7 +459,6 @@ export type Database = {
       }
       products: {
         Row: {
-          client_id: string
           created_at: string
           id: string
           middleware_product_id: string | null
@@ -496,7 +475,6 @@ export type Database = {
           variant_label: string | null
         }
         Insert: {
-          client_id: string
           created_at?: string
           id?: string
           middleware_product_id?: string | null
@@ -513,7 +491,6 @@ export type Database = {
           variant_label?: string | null
         }
         Update: {
-          client_id?: string
           created_at?: string
           id?: string
           middleware_product_id?: string | null
@@ -530,13 +507,6 @@ export type Database = {
           variant_label?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "products_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "products_quote_line_id_fkey"
             columns: ["quote_line_id"]
@@ -562,115 +532,40 @@ export type Database = {
       }
       profiles: {
         Row: {
-          approved_at: string | null
           auto_topup_amount: number | null
           auto_topup_enabled: boolean
           auto_topup_threshold: number | null
-          avg_daily_units_30d: number
           cancel_notice_sent_at: string | null
-          company_name: string
           contact_name: string
-          country: string
           created_at: string
           default_payment_method_id: string | null
-          fee_waived: boolean
           id: string
-          integration_mode: Database["public"]["Enums"]["integration_mode"]
-          middleware_tenant_id: string | null
-          pending_plan_change:
-            | Database["public"]["Enums"]["subscription_plan"]
-            | null
-          pending_plan_change_date: string | null
           phone: string
-          platform: Database["public"]["Enums"]["store_platform"]
-          pricing_tier: Database["public"]["Enums"]["pricing_tier"]
-          provisioning_error: string | null
-          provisioning_status: Database["public"]["Enums"]["provisioning_status"]
-          provisioning_step: string | null
-          quotes_period_start: string
-          quotes_used_this_month: number
           status: Database["public"]["Enums"]["profile_status"]
-          store_url: string
-          stripe_customer_id: string | null
-          stripe_subscription_id: string | null
-          subscription_plan: Database["public"]["Enums"]["subscription_plan"]
-          subscription_status: Database["public"]["Enums"]["subscription_status"]
-          tier_override: Database["public"]["Enums"]["pricing_tier"] | null
-          vat_number: string
         }
         Insert: {
-          approved_at?: string | null
           auto_topup_amount?: number | null
           auto_topup_enabled?: boolean
           auto_topup_threshold?: number | null
-          avg_daily_units_30d?: number
           cancel_notice_sent_at?: string | null
-          company_name: string
           contact_name: string
-          country: string
           created_at?: string
           default_payment_method_id?: string | null
-          fee_waived?: boolean
           id: string
-          integration_mode?: Database["public"]["Enums"]["integration_mode"]
-          middleware_tenant_id?: string | null
-          pending_plan_change?:
-            | Database["public"]["Enums"]["subscription_plan"]
-            | null
-          pending_plan_change_date?: string | null
           phone: string
-          platform?: Database["public"]["Enums"]["store_platform"]
-          pricing_tier?: Database["public"]["Enums"]["pricing_tier"]
-          provisioning_error?: string | null
-          provisioning_status?: Database["public"]["Enums"]["provisioning_status"]
-          provisioning_step?: string | null
-          quotes_period_start?: string
-          quotes_used_this_month?: number
           status?: Database["public"]["Enums"]["profile_status"]
-          store_url: string
-          stripe_customer_id?: string | null
-          stripe_subscription_id?: string | null
-          subscription_plan?: Database["public"]["Enums"]["subscription_plan"]
-          subscription_status?: Database["public"]["Enums"]["subscription_status"]
-          tier_override?: Database["public"]["Enums"]["pricing_tier"] | null
-          vat_number: string
         }
         Update: {
-          approved_at?: string | null
           auto_topup_amount?: number | null
           auto_topup_enabled?: boolean
           auto_topup_threshold?: number | null
-          avg_daily_units_30d?: number
           cancel_notice_sent_at?: string | null
-          company_name?: string
           contact_name?: string
-          country?: string
           created_at?: string
           default_payment_method_id?: string | null
-          fee_waived?: boolean
           id?: string
-          integration_mode?: Database["public"]["Enums"]["integration_mode"]
-          middleware_tenant_id?: string | null
-          pending_plan_change?:
-            | Database["public"]["Enums"]["subscription_plan"]
-            | null
-          pending_plan_change_date?: string | null
           phone?: string
-          platform?: Database["public"]["Enums"]["store_platform"]
-          pricing_tier?: Database["public"]["Enums"]["pricing_tier"]
-          provisioning_error?: string | null
-          provisioning_status?: Database["public"]["Enums"]["provisioning_status"]
-          provisioning_step?: string | null
-          quotes_period_start?: string
-          quotes_used_this_month?: number
           status?: Database["public"]["Enums"]["profile_status"]
-          store_url?: string
-          stripe_customer_id?: string | null
-          stripe_subscription_id?: string | null
-          subscription_plan?: Database["public"]["Enums"]["subscription_plan"]
-          subscription_status?: Database["public"]["Enums"]["subscription_status"]
-          tier_override?: Database["public"]["Enums"]["pricing_tier"] | null
-          vat_number?: string
         }
         Relationships: []
       }
@@ -742,7 +637,6 @@ export type Database = {
       quote_requests: {
         Row: {
           admin_notes: string | null
-          client_id: string
           created_at: string
           id: string
           image_urls: string[] | null
@@ -762,7 +656,6 @@ export type Database = {
         }
         Insert: {
           admin_notes?: string | null
-          client_id: string
           created_at?: string
           id?: string
           image_urls?: string[] | null
@@ -782,7 +675,6 @@ export type Database = {
         }
         Update: {
           admin_notes?: string | null
-          client_id?: string
           created_at?: string
           id?: string
           image_urls?: string[] | null
@@ -801,13 +693,6 @@ export type Database = {
           target_monthly_volume?: number | null
         }
         Relationships: [
-          {
-            foreignKeyName: "quote_requests_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "quote_requests_quoted_by_fkey"
             columns: ["quoted_by"]
@@ -834,6 +719,7 @@ export type Database = {
       stores: {
         Row: {
           approved_at: string | null
+          avg_daily_units_30d: number
           created_at: string
           entity_id: string
           fee_waived: boolean
@@ -845,6 +731,7 @@ export type Database = {
             | null
           pending_plan_change_date: string | null
           platform: Database["public"]["Enums"]["store_platform"]
+          pricing_tier: Database["public"]["Enums"]["pricing_tier"]
           provisioning_error: string | null
           provisioning_status: Database["public"]["Enums"]["provisioning_status"]
           provisioning_step: string | null
@@ -856,9 +743,11 @@ export type Database = {
           stripe_subscription_id: string | null
           subscription_plan: Database["public"]["Enums"]["subscription_plan"]
           subscription_status: Database["public"]["Enums"]["subscription_status"]
+          tier_override: Database["public"]["Enums"]["pricing_tier"] | null
         }
         Insert: {
           approved_at?: string | null
+          avg_daily_units_30d?: number
           created_at?: string
           entity_id: string
           fee_waived?: boolean
@@ -870,6 +759,7 @@ export type Database = {
             | null
           pending_plan_change_date?: string | null
           platform?: Database["public"]["Enums"]["store_platform"]
+          pricing_tier?: Database["public"]["Enums"]["pricing_tier"]
           provisioning_error?: string | null
           provisioning_status?: Database["public"]["Enums"]["provisioning_status"]
           provisioning_step?: string | null
@@ -881,9 +771,11 @@ export type Database = {
           stripe_subscription_id?: string | null
           subscription_plan?: Database["public"]["Enums"]["subscription_plan"]
           subscription_status?: Database["public"]["Enums"]["subscription_status"]
+          tier_override?: Database["public"]["Enums"]["pricing_tier"] | null
         }
         Update: {
           approved_at?: string | null
+          avg_daily_units_30d?: number
           created_at?: string
           entity_id?: string
           fee_waived?: boolean
@@ -895,6 +787,7 @@ export type Database = {
             | null
           pending_plan_change_date?: string | null
           platform?: Database["public"]["Enums"]["store_platform"]
+          pricing_tier?: Database["public"]["Enums"]["pricing_tier"]
           provisioning_error?: string | null
           provisioning_status?: Database["public"]["Enums"]["provisioning_status"]
           provisioning_step?: string | null
@@ -906,6 +799,7 @@ export type Database = {
           stripe_subscription_id?: string | null
           subscription_plan?: Database["public"]["Enums"]["subscription_plan"]
           subscription_status?: Database["public"]["Enums"]["subscription_status"]
+          tier_override?: Database["public"]["Enums"]["pricing_tier"] | null
         }
         Relationships: [
           {
@@ -972,7 +866,6 @@ export type Database = {
         Row: {
           amount: number
           balance_after: number
-          client_id: string
           created_at: string
           created_by: string | null
           description: string
@@ -984,7 +877,6 @@ export type Database = {
         Insert: {
           amount: number
           balance_after: number
-          client_id: string
           created_at?: string
           created_by?: string | null
           description: string
@@ -996,7 +888,6 @@ export type Database = {
         Update: {
           amount?: number
           balance_after?: number
-          client_id?: string
           created_at?: string
           created_by?: string | null
           description?: string
@@ -1006,13 +897,6 @@ export type Database = {
           type?: Database["public"]["Enums"]["wallet_txn_type"]
         }
         Relationships: [
-          {
-            foreignKeyName: "wallet_transactions_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "wallet_transactions_created_by_fkey"
             columns: ["created_by"]
@@ -1072,7 +956,6 @@ export type Database = {
         Args: { p_item_id: string; p_product_id: string }
         Returns: {
           cancelled_at: string | null
-          client_id: string
           created_at: string
           destination_country: string | null
           external_order_id: string | null
@@ -1143,7 +1026,6 @@ export type Database = {
         Returns: {
           amount: number
           balance_after: number
-          client_id: string
           created_at: string
           created_by: string | null
           description: string
@@ -1162,7 +1044,6 @@ export type Database = {
       create_bundle: {
         Args: { p_components: Json; p_name: string; p_store_id: string }
         Returns: {
-          client_id: string
           created_at: string
           id: string
           middleware_product_id: string | null
@@ -1212,7 +1093,6 @@ export type Database = {
         }
         Returns: {
           cancelled_at: string | null
-          client_id: string
           created_at: string
           destination_country: string | null
           external_order_id: string | null
@@ -1268,7 +1148,6 @@ export type Database = {
         }
         Returns: {
           admin_notes: string | null
-          client_id: string
           created_at: string
           id: string
           image_urls: string[] | null
@@ -1296,7 +1175,6 @@ export type Database = {
       update_bundle: {
         Args: { p_bundle_id: string; p_components: Json; p_name: string }
         Returns: {
-          client_id: string
           created_at: string
           id: string
           middleware_product_id: string | null
