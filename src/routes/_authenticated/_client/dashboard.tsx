@@ -15,7 +15,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatDate, formatDateTime, formatUSD } from "@/lib/format";
-import { PLAN_QUOTAS, PLAN_LABELS, quotaResetDate } from "@/lib/plans";
+import { PLANS, planLabel, planQuota, quotaResetDate } from "@/lib/plans";
 import { getMyContext } from "@/lib/profiles.functions";
 import { listMyQuotes } from "@/lib/quotes.functions";
 import { getMyWallet } from "@/lib/wallet.functions";
@@ -59,7 +59,7 @@ function DashboardPage() {
   const transactions = walletData?.transactions ?? [];
 
   const plan = profile?.subscription_plan ?? "basic_49";
-  const quota = PLAN_QUOTAS[plan];
+  const quota = planQuota(plan);
   const quotesUsed = profile?.quotes_used_this_month ?? 0;
   const usagePercent = Math.min(100, Math.round((quotesUsed / quota) * 100));
 
@@ -108,7 +108,7 @@ function DashboardPage() {
             <CreditCard className="h-3.5 w-3.5" /> Subscription
           </CardTitle>
           <span className="text-xs font-medium text-muted-foreground">
-            {PLAN_LABELS[plan]} plan — {formatUSD(plan === "pro_99" ? 99 : 49)}/month
+            {planLabel(plan)} plan — {formatUSD(plan === "pro_99" ? 99 : 49)}/month
           </span>
         </CardHeader>
         <CardContent>
@@ -121,7 +121,7 @@ function DashboardPage() {
               <div className="text-xs text-muted-foreground">
                 used this month
                 {profile?.quotes_period_start
-                  ? ` · resets ${formatDate(quotaResetDate(profile.quotes_period_start))}`
+                  ? ` · resets ${quotaResetDate(profile.quotes_period_start)}`
                   : ""}
               </div>
             </div>
@@ -142,7 +142,7 @@ function DashboardPage() {
             </div>
             {quotesUsed >= quota && (
               <p className="text-xs font-medium text-warning-foreground">
-                Monthly allowance reached — contact us to upgrade to Pro ({PLAN_QUOTAS.pro_99}{" "}
+                Monthly allowance reached — contact us to upgrade to Pro ({PLANS.pro_99.quoteQuota}{" "}
                 quotes/month).
               </p>
             )}
