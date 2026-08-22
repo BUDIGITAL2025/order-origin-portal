@@ -55,10 +55,14 @@ export const Route = createFileRoute("/_authenticated/_client/billing")({
   // come from the webhook.
   validateSearch: (
     search: Record<string, unknown>,
-  ): { sub?: string; topup?: string } => ({
-    sub: typeof search.sub === "string" ? search.sub : undefined,
-    topup: typeof search.topup === "string" ? search.topup : undefined,
-  }),
+  ): { sub?: string; topup?: string } => {
+    const sub = search["sub"];
+    const topup = search["topup"];
+    return {
+      ...(typeof sub === "string" ? { sub } : {}),
+      ...(typeof topup === "string" ? { topup } : {}),
+    };
+  },
   head: () => ({
     meta: [
       { title: "Billing — FlySales" },

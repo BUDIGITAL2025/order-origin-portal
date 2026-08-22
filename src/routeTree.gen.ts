@@ -16,6 +16,7 @@ import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthenticatedClientRouteImport } from './routes/_authenticated/_client'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedPendingRouteImport } from './routes/_authenticated/pending'
+import { Route as AuthenticatedClientBillingRouteImport } from './routes/_authenticated/_client/billing'
 import { Route as AuthenticatedClientDashboardRouteImport } from './routes/_authenticated/_client/dashboard'
 import { Route as AuthenticatedClientProductsRouteImport } from './routes/_authenticated/_client/products'
 import { Route as AuthenticatedClientWalletRouteImport } from './routes/_authenticated/_client/wallet'
@@ -63,6 +64,12 @@ const AuthenticatedPendingRoute = AuthenticatedPendingRouteImport.update({
   path: '/pending',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedClientBillingRoute =
+  AuthenticatedClientBillingRouteImport.update({
+    id: '/billing',
+    path: '/billing',
+    getParentRoute: () => AuthenticatedClientRoute,
+  } as any)
 const AuthenticatedClientDashboardRoute =
   AuthenticatedClientDashboardRouteImport.update({
     id: '/dashboard',
@@ -147,6 +154,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/pending': typeof AuthenticatedPendingRoute
+  '/billing': typeof AuthenticatedClientBillingRoute
   '/dashboard': typeof AuthenticatedClientDashboardRoute
   '/products': typeof AuthenticatedClientProductsRoute
   '/wallet': typeof AuthenticatedClientWalletRoute
@@ -167,6 +175,7 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/pending': typeof AuthenticatedPendingRoute
+  '/billing': typeof AuthenticatedClientBillingRoute
   '/dashboard': typeof AuthenticatedClientDashboardRoute
   '/products': typeof AuthenticatedClientProductsRoute
   '/wallet': typeof AuthenticatedClientWalletRoute
@@ -190,6 +199,7 @@ export interface FileRoutesById {
   '/_authenticated/_client': typeof AuthenticatedClientRouteWithChildren
   '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
   '/_authenticated/pending': typeof AuthenticatedPendingRoute
+  '/_authenticated/_client/billing': typeof AuthenticatedClientBillingRoute
   '/_authenticated/_client/dashboard': typeof AuthenticatedClientDashboardRoute
   '/_authenticated/_client/products': typeof AuthenticatedClientProductsRoute
   '/_authenticated/_client/wallet': typeof AuthenticatedClientWalletRoute
@@ -212,6 +222,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/admin'
     | '/pending'
+    | '/billing'
     | '/dashboard'
     | '/products'
     | '/wallet'
@@ -232,6 +243,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/admin'
     | '/pending'
+    | '/billing'
     | '/dashboard'
     | '/products'
     | '/wallet'
@@ -254,6 +266,7 @@ export interface FileRouteTypes {
     | '/_authenticated/_client'
     | '/_authenticated/admin'
     | '/_authenticated/pending'
+    | '/_authenticated/_client/billing'
     | '/_authenticated/_client/dashboard'
     | '/_authenticated/_client/products'
     | '/_authenticated/_client/wallet'
@@ -328,6 +341,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/pending'
       preLoaderRoute: typeof AuthenticatedPendingRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/_client/billing': {
+      id: '/_authenticated/_client/billing'
+      path: '/billing'
+      fullPath: '/billing'
+      preLoaderRoute: typeof AuthenticatedClientBillingRouteImport
+      parentRoute: typeof AuthenticatedClientRoute
     }
     '/_authenticated/_client/dashboard': {
       id: '/_authenticated/_client/dashboard'
@@ -424,6 +444,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedClientRouteChildren {
+  AuthenticatedClientBillingRoute: typeof AuthenticatedClientBillingRoute
   AuthenticatedClientDashboardRoute: typeof AuthenticatedClientDashboardRoute
   AuthenticatedClientProductsRoute: typeof AuthenticatedClientProductsRoute
   AuthenticatedClientWalletRoute: typeof AuthenticatedClientWalletRoute
@@ -433,6 +454,7 @@ interface AuthenticatedClientRouteChildren {
 }
 
 const AuthenticatedClientRouteChildren: AuthenticatedClientRouteChildren = {
+  AuthenticatedClientBillingRoute: AuthenticatedClientBillingRoute,
   AuthenticatedClientDashboardRoute: AuthenticatedClientDashboardRoute,
   AuthenticatedClientProductsRoute: AuthenticatedClientProductsRoute,
   AuthenticatedClientWalletRoute: AuthenticatedClientWalletRoute,
