@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Boxes,
+  Building2,
   ClipboardList,
   CreditCard,
   Download,
@@ -22,6 +23,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { MARKETING_URL } from "@/lib/config";
 import { getOnboardingLinks } from "@/lib/onboarding.functions";
 import { PaymentTestModeBanner } from "@/components/PaymentTestModeBanner";
+import { StoreSwitcher } from "@/components/store-switcher";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -81,6 +83,7 @@ const ADMIN_NAV: NavItem[] = [
   { to: "/admin/quotes", label: "Quote queue", icon: ClipboardList },
   { to: "/admin/products", label: "Products", icon: Package },
   { to: "/admin/clients", label: "Clients", icon: Users },
+  { to: "/admin/entities", label: "Entities & stores", icon: Building2 },
   { to: "/admin/wallet", label: "Wallet adjustments", icon: Wallet },
   { to: "/admin/documents", label: "Receipts", icon: FileText },
 ];
@@ -208,6 +211,11 @@ export function AppShell({
             {role === "admin" ? "Admin" : "Client"}
           </span>
         </div>
+        {role === "client" && (
+          <div className="border-b border-sidebar-border px-3 py-2">
+            <StoreSwitcher />
+          </div>
+        )}
         <nav className="flex-1 space-y-0.5 p-3">
           {nav.map((item) => (
             <Link
