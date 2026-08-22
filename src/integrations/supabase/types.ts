@@ -14,6 +14,138 @@ export type Database = {
   }
   public: {
     Tables: {
+      bundle_components: {
+        Row: {
+          bundle_product_id: string
+          component_product_id: string
+          created_at: string
+          id: string
+          quantity: number
+        }
+        Insert: {
+          bundle_product_id: string
+          component_product_id: string
+          created_at?: string
+          id?: string
+          quantity: number
+        }
+        Update: {
+          bundle_product_id?: string
+          component_product_id?: string
+          created_at?: string
+          id?: string
+          quantity?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bundle_components_bundle_product_id_fkey"
+            columns: ["bundle_product_id"]
+            isOneToOne: false
+            referencedRelation: "bundle_prices"
+            referencedColumns: ["bundle_product_id"]
+          },
+          {
+            foreignKeyName: "bundle_components_bundle_product_id_fkey"
+            columns: ["bundle_product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bundle_components_component_product_id_fkey"
+            columns: ["component_product_id"]
+            isOneToOne: false
+            referencedRelation: "bundle_prices"
+            referencedColumns: ["bundle_product_id"]
+          },
+          {
+            foreignKeyName: "bundle_components_component_product_id_fkey"
+            columns: ["component_product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      products: {
+        Row: {
+          client_id: string
+          created_at: string
+          id: string
+          lead_time_days: number | null
+          middleware_product_id: string | null
+          moq: number | null
+          price_override: number | null
+          product_name: string
+          product_type: Database["public"]["Enums"]["product_type"]
+          push_error: string | null
+          push_status: Database["public"]["Enums"]["push_status"]
+          quote_line_id: string | null
+          sku: string
+          status: Database["public"]["Enums"]["product_status"]
+          unit_price: number | null
+          variant_label: string | null
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          id?: string
+          lead_time_days?: number | null
+          middleware_product_id?: string | null
+          moq?: number | null
+          price_override?: number | null
+          product_name: string
+          product_type?: Database["public"]["Enums"]["product_type"]
+          push_error?: string | null
+          push_status?: Database["public"]["Enums"]["push_status"]
+          quote_line_id?: string | null
+          sku: string
+          status?: Database["public"]["Enums"]["product_status"]
+          unit_price?: number | null
+          variant_label?: string | null
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          id?: string
+          lead_time_days?: number | null
+          middleware_product_id?: string | null
+          moq?: number | null
+          price_override?: number | null
+          product_name?: string
+          product_type?: Database["public"]["Enums"]["product_type"]
+          push_error?: string | null
+          push_status?: Database["public"]["Enums"]["push_status"]
+          quote_line_id?: string | null
+          sku?: string
+          status?: Database["public"]["Enums"]["product_status"]
+          unit_price?: number | null
+          variant_label?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "products_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_quote_line_id_fkey"
+            columns: ["quote_line_id"]
+            isOneToOne: true
+            referencedRelation: "quote_lines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_quote_line_id_fkey"
+            columns: ["quote_line_id"]
+            isOneToOne: true
+            referencedRelation: "quote_lines_client"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           approved_at: string | null
@@ -92,6 +224,68 @@ export type Database = {
         }
         Relationships: []
       }
+      quote_lines: {
+        Row: {
+          created_at: string
+          id: string
+          lead_time_days: number | null
+          markup_product: number | null
+          markup_shipping: number | null
+          moq: number | null
+          quote_request_id: string
+          responded_at: string | null
+          sku: string
+          status: Database["public"]["Enums"]["quote_line_status"]
+          supplier_cogs: number | null
+          supplier_shipping: number | null
+          supplier_tax: number | null
+          unit_price: number | null
+          variant_label: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          lead_time_days?: number | null
+          markup_product?: number | null
+          markup_shipping?: number | null
+          moq?: number | null
+          quote_request_id: string
+          responded_at?: string | null
+          sku: string
+          status?: Database["public"]["Enums"]["quote_line_status"]
+          supplier_cogs?: number | null
+          supplier_shipping?: number | null
+          supplier_tax?: number | null
+          unit_price?: number | null
+          variant_label: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          lead_time_days?: number | null
+          markup_product?: number | null
+          markup_shipping?: number | null
+          moq?: number | null
+          quote_request_id?: string
+          responded_at?: string | null
+          sku?: string
+          status?: Database["public"]["Enums"]["quote_line_status"]
+          supplier_cogs?: number | null
+          supplier_shipping?: number | null
+          supplier_tax?: number | null
+          unit_price?: number | null
+          variant_label?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_lines_quote_request_id_fkey"
+            columns: ["quote_request_id"]
+            isOneToOne: false
+            referencedRelation: "quote_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quote_requests: {
         Row: {
           admin_notes: string | null
@@ -99,24 +293,17 @@ export type Database = {
           created_at: string
           id: string
           image_urls: string[] | null
-          lead_time_days: number | null
-          markup_product: number | null
-          markup_shipping: number | null
-          moq: number | null
+          internal_reference: string | null
           notes: string | null
           product_name: string | null
           product_url: string
           quote_valid_until: string | null
           quoted_at: string | null
-          quoted_price_total: number | null
+          quoted_by: string | null
           responded_at: string | null
           status: Database["public"]["Enums"]["quote_status"]
           supersedes_quote_id: string | null
-          supplier_cogs: number | null
-          supplier_shipping: number | null
-          supplier_tax: number | null
           target_monthly_volume: number | null
-          tier_at_quote: string | null
         }
         Insert: {
           admin_notes?: string | null
@@ -124,24 +311,17 @@ export type Database = {
           created_at?: string
           id?: string
           image_urls?: string[] | null
-          lead_time_days?: number | null
-          markup_product?: number | null
-          markup_shipping?: number | null
-          moq?: number | null
+          internal_reference?: string | null
           notes?: string | null
           product_name?: string | null
           product_url: string
           quote_valid_until?: string | null
           quoted_at?: string | null
-          quoted_price_total?: number | null
+          quoted_by?: string | null
           responded_at?: string | null
           status?: Database["public"]["Enums"]["quote_status"]
           supersedes_quote_id?: string | null
-          supplier_cogs?: number | null
-          supplier_shipping?: number | null
-          supplier_tax?: number | null
           target_monthly_volume?: number | null
-          tier_at_quote?: string | null
         }
         Update: {
           admin_notes?: string | null
@@ -149,24 +329,17 @@ export type Database = {
           created_at?: string
           id?: string
           image_urls?: string[] | null
-          lead_time_days?: number | null
-          markup_product?: number | null
-          markup_shipping?: number | null
-          moq?: number | null
+          internal_reference?: string | null
           notes?: string | null
           product_name?: string | null
           product_url?: string
           quote_valid_until?: string | null
           quoted_at?: string | null
-          quoted_price_total?: number | null
+          quoted_by?: string | null
           responded_at?: string | null
           status?: Database["public"]["Enums"]["quote_status"]
           supersedes_quote_id?: string | null
-          supplier_cogs?: number | null
-          supplier_shipping?: number | null
-          supplier_tax?: number | null
           target_monthly_volume?: number | null
-          tier_at_quote?: string | null
         }
         Relationships: [
           {
@@ -177,17 +350,17 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "quote_requests_supersedes_quote_id_fkey"
-            columns: ["supersedes_quote_id"]
+            foreignKeyName: "quote_requests_quoted_by_fkey"
+            columns: ["quoted_by"]
             isOneToOne: false
-            referencedRelation: "quote_requests"
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "quote_requests_supersedes_quote_id_fkey"
             columns: ["supersedes_quote_id"]
             isOneToOne: false
-            referencedRelation: "quote_requests_client"
+            referencedRelation: "quote_requests"
             referencedColumns: ["id"]
           },
         ]
@@ -263,87 +436,73 @@ export type Database = {
       }
     }
     Views: {
-      quote_requests_client: {
+      bundle_prices: {
         Row: {
-          client_id: string | null
+          bundle_product_id: string | null
+          calculated_price: number | null
+          component_count: number | null
+          effective_price: number | null
+          max_lead_time_days: number | null
+        }
+        Relationships: []
+      }
+      quote_lines_client: {
+        Row: {
           created_at: string | null
           id: string | null
-          image_urls: string[] | null
           lead_time_days: number | null
           moq: number | null
-          notes: string | null
-          product_name: string | null
-          product_url: string | null
-          quote_valid_until: string | null
-          quoted_at: string | null
-          quoted_price_total: number | null
+          quote_request_id: string | null
           responded_at: string | null
-          status: Database["public"]["Enums"]["quote_status"] | null
-          supersedes_quote_id: string | null
-          target_monthly_volume: number | null
-        }
-        Insert: {
-          client_id?: string | null
-          created_at?: string | null
-          id?: string | null
-          image_urls?: string[] | null
-          lead_time_days?: number | null
-          moq?: number | null
-          notes?: string | null
-          product_name?: string | null
-          product_url?: string | null
-          quote_valid_until?: string | null
-          quoted_at?: string | null
-          quoted_price_total?: number | null
-          responded_at?: string | null
-          status?: Database["public"]["Enums"]["quote_status"] | null
-          supersedes_quote_id?: string | null
-          target_monthly_volume?: number | null
-        }
-        Update: {
-          client_id?: string | null
-          created_at?: string | null
-          id?: string | null
-          image_urls?: string[] | null
-          lead_time_days?: number | null
-          moq?: number | null
-          notes?: string | null
-          product_name?: string | null
-          product_url?: string | null
-          quote_valid_until?: string | null
-          quoted_at?: string | null
-          quoted_price_total?: number | null
-          responded_at?: string | null
-          status?: Database["public"]["Enums"]["quote_status"] | null
-          supersedes_quote_id?: string | null
-          target_monthly_volume?: number | null
+          sku: string | null
+          status: Database["public"]["Enums"]["quote_line_status"] | null
+          unit_price: number | null
+          variant_label: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "quote_requests_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "quote_requests_supersedes_quote_id_fkey"
-            columns: ["supersedes_quote_id"]
+            foreignKeyName: "quote_lines_quote_request_id_fkey"
+            columns: ["quote_request_id"]
             isOneToOne: false
             referencedRelation: "quote_requests"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "quote_requests_supersedes_quote_id_fkey"
-            columns: ["supersedes_quote_id"]
-            isOneToOne: false
-            referencedRelation: "quote_requests_client"
             referencedColumns: ["id"]
           },
         ]
       }
     }
     Functions: {
+      admin_save_quote_lines: {
+        Args: {
+          p_admin_notes?: string
+          p_internal_reference?: string
+          p_lines: Json
+          p_quote_id: string
+          p_quote_valid_until?: string
+        }
+        Returns: {
+          created_at: string
+          id: string
+          lead_time_days: number | null
+          markup_product: number | null
+          markup_shipping: number | null
+          moq: number | null
+          quote_request_id: string
+          responded_at: string | null
+          sku: string
+          status: Database["public"]["Enums"]["quote_line_status"]
+          supplier_cogs: number | null
+          supplier_shipping: number | null
+          supplier_tax: number | null
+          unit_price: number | null
+          variant_label: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "quote_lines"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       apply_wallet_transaction: {
         Args: {
           p_amount: number
@@ -370,6 +529,41 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      create_bundle: {
+        Args: { p_components: Json; p_name: string }
+        Returns: {
+          client_id: string
+          created_at: string
+          id: string
+          lead_time_days: number | null
+          middleware_product_id: string | null
+          moq: number | null
+          price_override: number | null
+          product_name: string
+          product_type: Database["public"]["Enums"]["product_type"]
+          push_error: string | null
+          push_status: Database["public"]["Enums"]["push_status"]
+          quote_line_id: string | null
+          sku: string
+          status: Database["public"]["Enums"]["product_status"]
+          unit_price: number | null
+          variant_label: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "products"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      explode_product: {
+        Args: { p_product_id: string; p_quantity: number }
+        Returns: {
+          quantity: number
+          sku: string
+        }[]
+      }
+      generate_sku: { Args: { p_prefix: string }; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -377,9 +571,9 @@ export type Database = {
         }
         Returns: boolean
       }
-      respond_to_quote: {
-        Args: { p_accept: boolean; p_quote_id: string }
-        Returns: undefined
+      respond_to_quote_lines: {
+        Args: { p_decisions: Json; p_product_name: string; p_quote_id: string }
+        Returns: number
       }
       submit_quote_request: {
         Args: {
@@ -397,28 +591,48 @@ export type Database = {
           created_at: string
           id: string
           image_urls: string[] | null
-          lead_time_days: number | null
-          markup_product: number | null
-          markup_shipping: number | null
-          moq: number | null
+          internal_reference: string | null
           notes: string | null
           product_name: string | null
           product_url: string
           quote_valid_until: string | null
           quoted_at: string | null
-          quoted_price_total: number | null
+          quoted_by: string | null
           responded_at: string | null
           status: Database["public"]["Enums"]["quote_status"]
           supersedes_quote_id: string | null
-          supplier_cogs: number | null
-          supplier_shipping: number | null
-          supplier_tax: number | null
           target_monthly_volume: number | null
-          tier_at_quote: string | null
         }
         SetofOptions: {
           from: "*"
           to: "quote_requests"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      update_bundle: {
+        Args: { p_bundle_id: string; p_components: Json; p_name: string }
+        Returns: {
+          client_id: string
+          created_at: string
+          id: string
+          lead_time_days: number | null
+          middleware_product_id: string | null
+          moq: number | null
+          price_override: number | null
+          product_name: string
+          product_type: Database["public"]["Enums"]["product_type"]
+          push_error: string | null
+          push_status: Database["public"]["Enums"]["push_status"]
+          quote_line_id: string | null
+          sku: string
+          status: Database["public"]["Enums"]["product_status"]
+          unit_price: number | null
+          variant_label: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "products"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -428,15 +642,13 @@ export type Database = {
       app_role: "admin" | "client"
       integration_mode: "automatic" | "manual"
       pricing_tier: "starter" | "growth" | "scale"
+      product_status: "active" | "discontinued" | "needs_review"
+      product_type: "simple" | "bundle"
       profile_status: "pending" | "active" | "suspended"
       provisioning_status: "not_started" | "in_progress" | "complete" | "failed"
-      quote_status:
-        | "submitted"
-        | "sourcing"
-        | "quoted"
-        | "accepted"
-        | "rejected"
-        | "expired"
+      push_status: "pending" | "pushed" | "failed"
+      quote_line_status: "pending" | "accepted" | "rejected"
+      quote_status: "submitted" | "sourcing" | "quoted" | "closed" | "expired"
       store_platform: "shopify" | "woocommerce" | "other"
       subscription_plan: "basic" | "unlimited"
       wallet_txn_type: "credit" | "debit" | "adjustment"
@@ -570,16 +782,13 @@ export const Constants = {
       app_role: ["admin", "client"],
       integration_mode: ["automatic", "manual"],
       pricing_tier: ["starter", "growth", "scale"],
+      product_status: ["active", "discontinued", "needs_review"],
+      product_type: ["simple", "bundle"],
       profile_status: ["pending", "active", "suspended"],
       provisioning_status: ["not_started", "in_progress", "complete", "failed"],
-      quote_status: [
-        "submitted",
-        "sourcing",
-        "quoted",
-        "accepted",
-        "rejected",
-        "expired",
-      ],
+      push_status: ["pending", "pushed", "failed"],
+      quote_line_status: ["pending", "accepted", "rejected"],
+      quote_status: ["submitted", "sourcing", "quoted", "closed", "expired"],
       store_platform: ["shopify", "woocommerce", "other"],
       subscription_plan: ["basic", "unlimited"],
       wallet_txn_type: ["credit", "debit", "adjustment"],

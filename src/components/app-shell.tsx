@@ -7,6 +7,7 @@ import {
   FilePlus2,
   LayoutDashboard,
   LogOut,
+  Package,
   Users,
   Wallet,
 } from "lucide-react";
@@ -25,11 +26,13 @@ const CLIENT_NAV: NavItem[] = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/quotes/new", label: "Request a quote", icon: FilePlus2 },
   { to: "/quotes", label: "My quotes", icon: ClipboardList },
+  { to: "/products", label: "My products", icon: Package },
   { to: "/wallet", label: "Wallet", icon: Wallet },
 ];
 
 const ADMIN_NAV: NavItem[] = [
   { to: "/admin/quotes", label: "Quote queue", icon: ClipboardList },
+  { to: "/admin/products", label: "Products", icon: Package },
   { to: "/admin/clients", label: "Clients", icon: Users },
   { to: "/admin/wallet", label: "Wallet adjustments", icon: Wallet },
 ];

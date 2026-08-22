@@ -17,10 +17,13 @@ import { Route as AuthenticatedClientRouteImport } from './routes/_authenticated
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedPendingRouteImport } from './routes/_authenticated/pending'
 import { Route as AuthenticatedClientDashboardRouteImport } from './routes/_authenticated/_client/dashboard'
+import { Route as AuthenticatedClientProductsRouteImport } from './routes/_authenticated/_client/products'
 import { Route as AuthenticatedClientWalletRouteImport } from './routes/_authenticated/_client/wallet'
 import { Route as AuthenticatedAdminClientsRouteImport } from './routes/_authenticated/admin/clients'
+import { Route as AuthenticatedAdminProductsRouteImport } from './routes/_authenticated/admin/products'
 import { Route as AuthenticatedAdminWalletRouteImport } from './routes/_authenticated/admin/wallet'
 import { Route as AuthenticatedClientQuotesIndexRouteImport } from './routes/_authenticated/_client/quotes/index'
+import { Route as AuthenticatedClientQuotesIdRouteImport } from './routes/_authenticated/_client/quotes/$id'
 import { Route as AuthenticatedClientQuotesNewRouteImport } from './routes/_authenticated/_client/quotes/new'
 import { Route as AuthenticatedAdminQuotesIndexRouteImport } from './routes/_authenticated/admin/quotes/index'
 import { Route as AuthenticatedAdminQuotesIdRouteImport } from './routes/_authenticated/admin/quotes/$id'
@@ -64,6 +67,12 @@ const AuthenticatedClientDashboardRoute =
     path: '/dashboard',
     getParentRoute: () => AuthenticatedClientRoute,
   } as any)
+const AuthenticatedClientProductsRoute =
+  AuthenticatedClientProductsRouteImport.update({
+    id: '/products',
+    path: '/products',
+    getParentRoute: () => AuthenticatedClientRoute,
+  } as any)
 const AuthenticatedClientWalletRoute =
   AuthenticatedClientWalletRouteImport.update({
     id: '/wallet',
@@ -76,6 +85,12 @@ const AuthenticatedAdminClientsRoute =
     path: '/clients',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminProductsRoute =
+  AuthenticatedAdminProductsRouteImport.update({
+    id: '/products',
+    path: '/products',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminWalletRoute =
   AuthenticatedAdminWalletRouteImport.update({
     id: '/wallet',
@@ -86,6 +101,12 @@ const AuthenticatedClientQuotesIndexRoute =
   AuthenticatedClientQuotesIndexRouteImport.update({
     id: '/quotes/',
     path: '/quotes/',
+    getParentRoute: () => AuthenticatedClientRoute,
+  } as any)
+const AuthenticatedClientQuotesIdRoute =
+  AuthenticatedClientQuotesIdRouteImport.update({
+    id: '/quotes/$id',
+    path: '/quotes/$id',
     getParentRoute: () => AuthenticatedClientRoute,
   } as any)
 const AuthenticatedClientQuotesNewRoute =
@@ -114,9 +135,12 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/pending': typeof AuthenticatedPendingRoute
   '/dashboard': typeof AuthenticatedClientDashboardRoute
+  '/products': typeof AuthenticatedClientProductsRoute
   '/wallet': typeof AuthenticatedClientWalletRoute
   '/admin/clients': typeof AuthenticatedAdminClientsRoute
+  '/admin/products': typeof AuthenticatedAdminProductsRoute
   '/admin/wallet': typeof AuthenticatedAdminWalletRoute
+  '/quotes/$id': typeof AuthenticatedClientQuotesIdRoute
   '/quotes/new': typeof AuthenticatedClientQuotesNewRoute
   '/admin/quotes/$id': typeof AuthenticatedAdminQuotesIdRoute
   '/quotes/': typeof AuthenticatedClientQuotesIndexRoute
@@ -129,9 +153,12 @@ export interface FileRoutesByTo {
   '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/pending': typeof AuthenticatedPendingRoute
   '/dashboard': typeof AuthenticatedClientDashboardRoute
+  '/products': typeof AuthenticatedClientProductsRoute
   '/wallet': typeof AuthenticatedClientWalletRoute
   '/admin/clients': typeof AuthenticatedAdminClientsRoute
+  '/admin/products': typeof AuthenticatedAdminProductsRoute
   '/admin/wallet': typeof AuthenticatedAdminWalletRoute
+  '/quotes/$id': typeof AuthenticatedClientQuotesIdRoute
   '/quotes/new': typeof AuthenticatedClientQuotesNewRoute
   '/admin/quotes/$id': typeof AuthenticatedAdminQuotesIdRoute
   '/quotes': typeof AuthenticatedClientQuotesIndexRoute
@@ -147,9 +174,12 @@ export interface FileRoutesById {
   '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
   '/_authenticated/pending': typeof AuthenticatedPendingRoute
   '/_authenticated/_client/dashboard': typeof AuthenticatedClientDashboardRoute
+  '/_authenticated/_client/products': typeof AuthenticatedClientProductsRoute
   '/_authenticated/_client/wallet': typeof AuthenticatedClientWalletRoute
   '/_authenticated/admin/clients': typeof AuthenticatedAdminClientsRoute
+  '/_authenticated/admin/products': typeof AuthenticatedAdminProductsRoute
   '/_authenticated/admin/wallet': typeof AuthenticatedAdminWalletRoute
+  '/_authenticated/_client/quotes/$id': typeof AuthenticatedClientQuotesIdRoute
   '/_authenticated/_client/quotes/new': typeof AuthenticatedClientQuotesNewRoute
   '/_authenticated/admin/quotes/$id': typeof AuthenticatedAdminQuotesIdRoute
   '/_authenticated/_client/quotes/': typeof AuthenticatedClientQuotesIndexRoute
@@ -164,9 +194,12 @@ export interface FileRouteTypes {
     | '/admin'
     | '/pending'
     | '/dashboard'
+    | '/products'
     | '/wallet'
     | '/admin/clients'
+    | '/admin/products'
     | '/admin/wallet'
+    | '/quotes/$id'
     | '/quotes/new'
     | '/admin/quotes/$id'
     | '/quotes/'
@@ -179,9 +212,12 @@ export interface FileRouteTypes {
     | '/admin'
     | '/pending'
     | '/dashboard'
+    | '/products'
     | '/wallet'
     | '/admin/clients'
+    | '/admin/products'
     | '/admin/wallet'
+    | '/quotes/$id'
     | '/quotes/new'
     | '/admin/quotes/$id'
     | '/quotes'
@@ -196,9 +232,12 @@ export interface FileRouteTypes {
     | '/_authenticated/admin'
     | '/_authenticated/pending'
     | '/_authenticated/_client/dashboard'
+    | '/_authenticated/_client/products'
     | '/_authenticated/_client/wallet'
     | '/_authenticated/admin/clients'
+    | '/_authenticated/admin/products'
     | '/_authenticated/admin/wallet'
+    | '/_authenticated/_client/quotes/$id'
     | '/_authenticated/_client/quotes/new'
     | '/_authenticated/admin/quotes/$id'
     | '/_authenticated/_client/quotes/'
@@ -270,6 +309,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedClientDashboardRouteImport
       parentRoute: typeof AuthenticatedClientRoute
     }
+    '/_authenticated/_client/products': {
+      id: '/_authenticated/_client/products'
+      path: '/products'
+      fullPath: '/products'
+      preLoaderRoute: typeof AuthenticatedClientProductsRouteImport
+      parentRoute: typeof AuthenticatedClientRoute
+    }
     '/_authenticated/_client/wallet': {
       id: '/_authenticated/_client/wallet'
       path: '/wallet'
@@ -284,6 +330,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminClientsRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/products': {
+      id: '/_authenticated/admin/products'
+      path: '/products'
+      fullPath: '/admin/products'
+      preLoaderRoute: typeof AuthenticatedAdminProductsRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/wallet': {
       id: '/_authenticated/admin/wallet'
       path: '/wallet'
@@ -296,6 +349,13 @@ declare module '@tanstack/react-router' {
       path: '/quotes'
       fullPath: '/quotes/'
       preLoaderRoute: typeof AuthenticatedClientQuotesIndexRouteImport
+      parentRoute: typeof AuthenticatedClientRoute
+    }
+    '/_authenticated/_client/quotes/$id': {
+      id: '/_authenticated/_client/quotes/$id'
+      path: '/quotes/$id'
+      fullPath: '/quotes/$id'
+      preLoaderRoute: typeof AuthenticatedClientQuotesIdRouteImport
       parentRoute: typeof AuthenticatedClientRoute
     }
     '/_authenticated/_client/quotes/new': {
@@ -324,14 +384,18 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedClientRouteChildren {
   AuthenticatedClientDashboardRoute: typeof AuthenticatedClientDashboardRoute
+  AuthenticatedClientProductsRoute: typeof AuthenticatedClientProductsRoute
   AuthenticatedClientWalletRoute: typeof AuthenticatedClientWalletRoute
+  AuthenticatedClientQuotesIdRoute: typeof AuthenticatedClientQuotesIdRoute
   AuthenticatedClientQuotesNewRoute: typeof AuthenticatedClientQuotesNewRoute
   AuthenticatedClientQuotesIndexRoute: typeof AuthenticatedClientQuotesIndexRoute
 }
 
 const AuthenticatedClientRouteChildren: AuthenticatedClientRouteChildren = {
   AuthenticatedClientDashboardRoute: AuthenticatedClientDashboardRoute,
+  AuthenticatedClientProductsRoute: AuthenticatedClientProductsRoute,
   AuthenticatedClientWalletRoute: AuthenticatedClientWalletRoute,
+  AuthenticatedClientQuotesIdRoute: AuthenticatedClientQuotesIdRoute,
   AuthenticatedClientQuotesNewRoute: AuthenticatedClientQuotesNewRoute,
   AuthenticatedClientQuotesIndexRoute: AuthenticatedClientQuotesIndexRoute,
 }
@@ -341,6 +405,7 @@ const AuthenticatedClientRouteWithChildren =
 
 interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminClientsRoute: typeof AuthenticatedAdminClientsRoute
+  AuthenticatedAdminProductsRoute: typeof AuthenticatedAdminProductsRoute
   AuthenticatedAdminWalletRoute: typeof AuthenticatedAdminWalletRoute
   AuthenticatedAdminQuotesIdRoute: typeof AuthenticatedAdminQuotesIdRoute
   AuthenticatedAdminQuotesIndexRoute: typeof AuthenticatedAdminQuotesIndexRoute
@@ -348,6 +413,7 @@ interface AuthenticatedAdminRouteChildren {
 
 const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminClientsRoute: AuthenticatedAdminClientsRoute,
+  AuthenticatedAdminProductsRoute: AuthenticatedAdminProductsRoute,
   AuthenticatedAdminWalletRoute: AuthenticatedAdminWalletRoute,
   AuthenticatedAdminQuotesIdRoute: AuthenticatedAdminQuotesIdRoute,
   AuthenticatedAdminQuotesIndexRoute: AuthenticatedAdminQuotesIndexRoute,
