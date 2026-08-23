@@ -1339,7 +1339,8 @@ function ShopsTab({
                           <div className="flex gap-1.5">
                             {creatives.map((a, j) => {
                               const img = asStr(a["thumbnailUrl"]) ?? asStr(a["mediaUrl"]);
-                              const isVideo = asStr(a["mediaType"]) === "video";
+                              const isVideo =
+                                (asStr(a["type"]) ?? asStr(a["mediaType"])) === "video";
                               return (
                                 <div
                                   key={j}
@@ -2881,15 +2882,23 @@ function AdDetailDialog({
   const audience = asRec(ad?.["audience"]);
   const flags = asRec(ad?.["flags"]);
   const media = asRec(ad?.["media"]);
+  // The API sends media.type ("video" | "image"); mediaType kept as a safety
+  // fallback for older cached payloads.
+  const mediaKind = asStr(media["type"]) ?? asStr(media["mediaType"]);
+  const isVideo = mediaKind === "video";
+  // Video MP4s already ship in the detail payload — the paid ads/media-url
+  // endpoint is only a fallback when no playable URL is present.
+  const playableUrl = asStr(media["mediaUrl"]);
+  const posterUrl = asStr(media["thumbnailUrl"]);
+  const fetchedMediaUrl =
+    mediaCall.state.kind === "ok"
+      ? asStr(asRec(asRec(mediaCall.state.result.data)["data"])["mediaUrl"]) ??
+        asStr(asRec(asRec(mediaCall.state.result.data)["data"])["url"])
+      : null;
 
   const reachPoints =
     reachCall.state.kind === "ok"
       ? asArr(asRec(reachCall.state.result.data)["data"]).map(asRec)
-      : null;
-  const mediaUrl =
-    mediaCall.state.kind === "ok"
-      ? asStr(asRec(asRec(mediaCall.state.result.data)["data"])["mediaUrl"]) ??
-        asStr(asRec(asRec(mediaCall.state.result.data)["data"])["url"])
       : null;
 
   return (
