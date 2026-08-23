@@ -271,7 +271,26 @@ export function CountryDualContent({
       <div className="flex gap-2">
         {col("Include", include, onIncludeChange, exclude, onExcludeChange, "bg-primary/15 text-primary")}
         <div className="w-px bg-border" />
-        {col("Exclude", exclude, onExcludeChange, include, onIncludeChange, "bg-destructive/10 text-destructive")}
+        {col(
+          <span className="inline-flex items-center gap-1">
+            Exclude
+            <TooltipProvider delayDuration={100}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info className="h-3 w-3 cursor-help text-muted-foreground hover:text-foreground" />
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-xs text-xs">
+                  Exclusions are applied after the search — excluded rows still count toward credit cost.
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </span>,
+          exclude,
+          onExcludeChange,
+          include,
+          onIncludeChange,
+          "bg-destructive/10 text-destructive",
+        )}
       </div>
       {exclude.length > 0 && (
         <p className="text-[10px] text-muted-foreground">
