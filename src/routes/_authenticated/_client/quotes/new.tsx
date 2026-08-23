@@ -261,6 +261,9 @@ function NewQuotePageInner() {
       }
       const filled = entries.filter((e) => e.url.trim() !== "");
       if (filled.length === 0) throw new Error("Add at least one product URL");
+      if (countries.length === 0) {
+        throw new Error("Pick at least one destination country — shipping cost depends on it.");
+      }
 
       // Upload shared reference images once to the private bucket under the
       // caller's own folder; the paths attach to every request in this batch.
