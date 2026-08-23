@@ -102,7 +102,7 @@ async function scrapeWithFirecrawl(url: string, apiKey: string): Promise<Preview
           {
             type: "json",
             prompt:
-              "Extract the product sold on this page: its title, a one-sentence description, the listed price (with currency symbol) if one is visible, and absolute URLs of the main product images.",
+              "Extract the product sold on this page: its title, a one-sentence description, the listed price (with currency symbol) if one is visible, absolute URLs of the main product images, and the purchasable variant options offered on the page (e.g. sizes like \"20cm\", \"26cm\", colors, pack sizes) as short labels — every distinct option across all option groups, empty array if the page sells a single fixed product.",
             schema: {
               type: "object",
               properties: {
@@ -110,6 +110,7 @@ async function scrapeWithFirecrawl(url: string, apiKey: string): Promise<Preview
                 description: { type: "string" },
                 price: { type: ["string", "null"] },
                 images: { type: "array", items: { type: "string" } },
+                variants: { type: "array", items: { type: "string" } },
               },
             },
           },
@@ -145,9 +146,10 @@ async function scrapeWithFirecrawl(url: string, apiKey: string): Promise<Preview
       .filter((v): v is string => v != null)
       .slice(0, 6);
     const priceHint = asString(json["price"]) ?? findPriceInText(markdown);
+    const variants = cleanVariants(asStringArray(json["variants"]));
 
     if (!title && imageUrls.length === 0) return null;
-    return { title, description, imageUrls, priceHint, source: "firecrawl" };
+    return { title, description, imageUrls, priceHint, variants, source: "firecrawl" };
   } catch {
     return null;
   }
