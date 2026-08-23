@@ -89,7 +89,6 @@ function NewQuotePageInner() {
   const [files, setFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [quotaBlocked, setQuotaBlocked] = useState(false);
-  const [plansBlocked, setPlansBlocked] = useState(false);
   const [subscribeError, setSubscribeError] = useState<string | null>(null);
 
   // Return from Stripe checkout: sub=success/cancel. Activation arrives via
@@ -155,11 +154,11 @@ function NewQuotePageInner() {
       setSubscribeError(err instanceof Error ? err.message : "Could not start checkout"),
   });
 
-  // Paywall: submitting needs an active subscription on this workspace (or a
-  // fee waiver). The form stays visible and fillable; the plan options only
-  // appear when an unsubscribed client tries to submit. A storeless account
-  // can't be subscribed (plans live on workspaces), so it counts as needing
-  // one — the subscribe flow creates the draft workspace.
+  // Paywall: quote requests need an active subscription on the current
+  // workspace (or a fee waiver). Without one the plan picker replaces the
+  // form entirely — a client never sees a form they cannot submit. A
+  // storeless account can't be subscribed (plans live on workspaces), so it
+  // counts as needing one; the subscribe checkout creates the draft workspace.
   const needsSubscription =
     currentStore == null ||
     (currentStore.subscription_status !== "active" &&
@@ -255,8 +254,9 @@ function NewQuotePageInner() {
 
   const submit = useMutation({
     mutationFn: async () => {
+      // Unreachable in practice — the paywall replaces the form — but the
+      // server enforces the same gate, so keep the guard as a backstop.
       if (needsSubscription) {
-        setPlansBlocked(true);
         throw new Error("Pick a plan to send quote requests — your request has not been submitted.");
       }
       const filled = entries.filter((e) => e.url.trim() !== "");
@@ -344,6 +344,22 @@ function NewQuotePageInner() {
   // Upgrades go through Stripe checkout on the Billing page — the webhook
   // flips the plan after payment confirms.
 
+  // Wait for the account context before choosing between paywall and form —
+  // otherwise subscribed clients see a paywall flash while it loads.
+  if (!ctx) {
+    return (
+      <div className="max-w-2xl">
+        <PageHeader
+          title="Request a quote"
+          description="Send us a product link and we'll come back with a price, MOQ and lead time."
+        />
+        <Card>
+          <CardContent className="p-8 text-sm text-muted-foreground">Loading…</CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   if (quotaBlocked || limitReached) {
     return (
       <div className="max-w-2xl">
@@ -380,6 +396,65 @@ function NewQuotePageInner() {
     );
   }
 
+  // Plan paywall replaces the form entirely when the current workspace has
+  // no active subscription (or there is no workspace yet). Picking a plan
+  // opens Stripe checkout directly; the webhook lifts the paywall.
+  if (needsSubscription) {
+    return (
+      <div className="max-w-2xl">
+        <PageHeader
+          title="Request a quote"
+          description="Send us a product link and we'll come back with a price, MOQ and lead time."
+        />
+        <Card className="border-primary/40">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <ArrowUpCircle className="h-5 w-5 text-primary" />
+              Pick a plan to request quotes
+            </CardTitle>
+            <CardDescription>
+              Quote requests are part of a workspace subscription — no shop connection needed.
+              Subscribe and you'll land back here, ready to send your first request.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-3 sm:grid-cols-2">
+            {(["basic", "unlimited"] as const).map((key) => (
+              <div key={key} className="rounded-xl border border-border p-4">
+                <p className="text-sm font-semibold">{PLANS[key].label}</p>
+                <p className="tnum text-xl font-semibold">
+                  ${PLANS[key].priceUsd}
+                  <span className="text-xs font-normal text-muted-foreground">/month</span>
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {key === "basic"
+                    ? `${PLANS.basic.quoteQuota} quote requests per month`
+                    : "Unlimited quote requests"}
+                </p>
+                <Button
+                  size="sm"
+                  className="mt-3 w-full"
+                  disabled={subscribe.isPending}
+                  onClick={() => {
+                    setSubscribeError(null);
+                    subscribe.mutate(key);
+                  }}
+                >
+                  {subscribe.isPending ? "Opening checkout…" : `Subscribe to ${PLANS[key].label}`}
+                </Button>
+              </div>
+            ))}
+            {subscribeError && (
+              <p className="text-sm text-destructive sm:col-span-2">
+                Could not start checkout: {subscribeError}. If this keeps happening, contact
+                support.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   const previewed = entries.filter((e) => e.preview.kind !== "idle");
 
   return (
@@ -390,53 +465,6 @@ function NewQuotePageInner() {
       />
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,360px)]">
         <div>
-          {plansBlocked && needsSubscription && (
-            <Card className="mb-4 border-primary/40">
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <ArrowUpCircle className="h-5 w-5 text-primary" />
-                  Pick a plan to send this request
-                </CardTitle>
-                <CardDescription>
-                  Your request above is safe — nothing was submitted. Quote requests are part of a
-                  workspace subscription; no shop connection needed.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="grid gap-3 sm:grid-cols-2">
-                {(["basic", "unlimited"] as const).map((key) => (
-                  <div key={key} className="rounded-xl border border-border p-4">
-                    <p className="text-sm font-semibold">{PLANS[key].label}</p>
-                    <p className="tnum text-xl font-semibold">
-                      ${PLANS[key].priceUsd}
-                      <span className="text-xs font-normal text-muted-foreground">/month</span>
-                    </p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {key === "basic"
-                        ? `${PLANS.basic.quoteQuota} quote requests per month`
-                        : "Unlimited quote requests"}
-                    </p>
-                    <Button
-                      size="sm"
-                      className="mt-3 w-full"
-                      disabled={subscribe.isPending}
-                      onClick={() => {
-                        setSubscribeError(null);
-                        subscribe.mutate(key);
-                      }}
-                    >
-                      {subscribe.isPending ? "Opening checkout…" : `Subscribe to ${PLANS[key].label}`}
-                    </Button>
-                  </div>
-                ))}
-                {subscribeError && (
-                  <p className="text-sm text-destructive sm:col-span-2">
-                    Could not start checkout: {subscribeError}. If this keeps happening, contact
-                    support.
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          )}
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Product details</CardTitle>
@@ -486,10 +514,10 @@ function NewQuotePageInner() {
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label htmlFor={`q-name-${entry.key}`}>Product name</Label>
+                      <Label htmlFor={`q-name-${entry.key}`}>Product name (optional)</Label>
                       <Input
                         id={`q-name-${entry.key}`}
-                        placeholder="e.g. Stainless steel thermos 750ml"
+                        placeholder="Auto-filled from the link — edit if needed"
                         value={entry.name}
                         onChange={(e) =>
                           setEntries((prev) =>
@@ -547,19 +575,26 @@ function NewQuotePageInner() {
                       : `${countries.length} ${countries.length === 1 ? "country" : "countries"} selected — each country adds its own priced line per variant.`}
                   </p>
                 </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="q-volume">Expected monthly volume (units)</Label>
+                <div className="space-y-2 rounded-xl border border-primary/30 bg-primary/5 p-4">
+                  <Label htmlFor="q-volume" className="text-sm font-semibold">
+                    Expected monthly volume (optional)
+                  </Label>
                   <Input
                     id="q-volume"
                     type="number"
                     min={1}
-                    placeholder="e.g. 300"
+                    placeholder="e.g. 300 units / month"
                     value={volume}
                     onChange={(e) => setVolume(e.target.value)}
+                    className="bg-background"
                   />
+                  <p className="text-xs text-muted-foreground">
+                    Even a rough estimate sharpens your quote — volume drives the price breaks we
+                    can negotiate with suppliers.
+                  </p>
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="q-notes">Notes</Label>
+                  <Label htmlFor="q-notes">Notes (optional)</Label>
                   <Textarea
                     id="q-notes"
                     rows={4}
