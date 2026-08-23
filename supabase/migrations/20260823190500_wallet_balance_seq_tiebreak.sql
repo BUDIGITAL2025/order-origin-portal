@@ -117,7 +117,7 @@ begin
   select * into v_order from public.orders where id = v_order.id;
   return v_order;
 end;
-$function$
+$function$;
 
 CREATE OR REPLACE FUNCTION public.create_manual_order_internal(p_store_id uuid, p_customer jsonb, p_shipping jsonb, p_client_reference text, p_lines jsonb)
  RETURNS orders
@@ -257,7 +257,7 @@ begin
   select * into v_order from public.orders where id = v_order.id;
   return v_order;
 end;
-$function$
+$function$;
 
 CREATE OR REPLACE FUNCTION public.ingest_order(p_store_id uuid, p_external_order_id text, p_external_order_number text, p_destination_country text, p_shipping_address jsonb, p_line_items jsonb)
  RETURNS orders
@@ -396,7 +396,7 @@ begin
   select * into v_order from public.orders where id = v_order.id;
   return v_order;
 end;
-$function$
+$function$;
 
 CREATE OR REPLACE FUNCTION public.pay_orders_from_wallet(p_order_ids uuid[])
  RETURNS TABLE(order_id uuid, amount numeric)
@@ -511,7 +511,7 @@ begin
     end if;
   end loop;
 end;
-$function$
+$function$;
 
 CREATE OR REPLACE FUNCTION public.release_awaiting_payment_orders(p_entity_id uuid)
  RETURNS TABLE(order_id uuid, amount numeric)
@@ -576,5 +576,5 @@ begin
     return next;
   end loop;
 end;
-$function$
+$function$;
 
