@@ -376,7 +376,7 @@ function OnboardingCard({
       title: "Add your first workspace",
       description: "Manual mode works from day one — connect your Shopify store later, when you are ready.",
       done: hasStore,
-      to: "/stores/new",
+      to: "/workspaces/new",
       cta: "Add workspace",
     },
     {

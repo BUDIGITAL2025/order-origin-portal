@@ -51,7 +51,7 @@ export const completeSignupSchema = signupSchema
 // not at signup.
 const addStoreBase = z.object({
   platform: storePlatformSchema,
-  store_url: z.string().trim().min(3, "Store URL is required").max(500),
+  store_url: z.string().trim().min(3, "Shop URL is required").max(500),
   store_name: z.string().trim().max(120).optional().or(z.literal("")),
 });
 export const addStoreSchema = addStoreBase.superRefine(storeUrlMatchesPlatform);

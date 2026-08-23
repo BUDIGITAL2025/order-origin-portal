@@ -59,7 +59,7 @@ export const createBundle = createServerFn({ method: "POST" })
       .limit(1)
       .maybeSingle();
     if (storeError) throw new Error(storeError.message);
-    if (!store) throw new Error("No store registered for this account.");
+    if (!store) throw new Error("No workspace registered for this account.");
     const { data: product, error } = await context.supabase.rpc("create_bundle", {
       p_store_id: store.id,
       p_name: data.name,

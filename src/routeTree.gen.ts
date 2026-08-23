@@ -43,7 +43,7 @@ import { Route as AuthenticatedClientOrdersNewRouteImport } from './routes/_auth
 import { Route as AuthenticatedClientQuotesIndexRouteImport } from './routes/_authenticated/_client/quotes/index'
 import { Route as AuthenticatedClientQuotesIdRouteImport } from './routes/_authenticated/_client/quotes/$id'
 import { Route as AuthenticatedClientQuotesNewRouteImport } from './routes/_authenticated/_client/quotes/new'
-import { Route as AuthenticatedClientStoresNewRouteImport } from './routes/_authenticated/_client/stores/new'
+import { Route as AuthenticatedClientWorkspacesNewRouteImport } from './routes/_authenticated/_client/workspaces/new'
 import { Route as AuthenticatedAdminDisputesIdRouteImport } from './routes/_authenticated/admin/disputes.$id'
 import { Route as AuthenticatedAdminQuotesIndexRouteImport } from './routes/_authenticated/admin/quotes/index'
 import { Route as AuthenticatedAdminQuotesIdRouteImport } from './routes/_authenticated/admin/quotes/$id'
@@ -245,11 +245,11 @@ const AuthenticatedClientQuotesNewRoute =
     path: '/quotes/new',
     getParentRoute: () => AuthenticatedClientRoute,
   } as any)
-const AuthenticatedClientStoresNewRoute =
-  AuthenticatedClientStoresNewRouteImport.update({
-    id: '/stores/new',
-    path: '/stores/new',
-    getParentRoute: () => AuthenticatedClientRoute,
+const AuthenticatedClientWorkspacesNewRoute =
+  AuthenticatedClientWorkspacesNewRouteImport.update({
+    id: '/new',
+    path: '/new',
+    getParentRoute: () => AuthenticatedClientWorkspacesRoute,
   } as any)
 const AuthenticatedAdminDisputesIdRoute =
   AuthenticatedAdminDisputesIdRouteImport.update({
@@ -308,7 +308,7 @@ export interface FileRoutesByFullPath {
   '/products': typeof AuthenticatedClientProductsRoute
   '/spymarket': typeof AuthenticatedClientSpymarketRoute
   '/wallet': typeof AuthenticatedClientWalletRoute
-  '/workspaces': typeof AuthenticatedClientWorkspacesRoute
+  '/workspaces': typeof AuthenticatedClientWorkspacesRouteWithChildren
   '/admin/clients': typeof AuthenticatedAdminClientsRoute
   '/admin/disputes': typeof AuthenticatedAdminDisputesRouteWithChildren
   '/admin/documents': typeof AuthenticatedAdminDocumentsRoute
@@ -324,7 +324,7 @@ export interface FileRoutesByFullPath {
   '/orders/new': typeof AuthenticatedClientOrdersNewRoute
   '/quotes/$id': typeof AuthenticatedClientQuotesIdRoute
   '/quotes/new': typeof AuthenticatedClientQuotesNewRoute
-  '/stores/new': typeof AuthenticatedClientStoresNewRoute
+  '/workspaces/new': typeof AuthenticatedClientWorkspacesNewRoute
   '/admin/disputes/$id': typeof AuthenticatedAdminDisputesIdRoute
   '/admin/quotes/$id': typeof AuthenticatedAdminQuotesIdRoute
   '/api/public/cron/auto-topup': typeof ApiPublicCronAutoTopupRoute
@@ -350,7 +350,7 @@ export interface FileRoutesByTo {
   '/products': typeof AuthenticatedClientProductsRoute
   '/spymarket': typeof AuthenticatedClientSpymarketRoute
   '/wallet': typeof AuthenticatedClientWalletRoute
-  '/workspaces': typeof AuthenticatedClientWorkspacesRoute
+  '/workspaces': typeof AuthenticatedClientWorkspacesRouteWithChildren
   '/admin/clients': typeof AuthenticatedAdminClientsRoute
   '/admin/disputes': typeof AuthenticatedAdminDisputesRouteWithChildren
   '/admin/documents': typeof AuthenticatedAdminDocumentsRoute
@@ -366,7 +366,7 @@ export interface FileRoutesByTo {
   '/orders/new': typeof AuthenticatedClientOrdersNewRoute
   '/quotes/$id': typeof AuthenticatedClientQuotesIdRoute
   '/quotes/new': typeof AuthenticatedClientQuotesNewRoute
-  '/stores/new': typeof AuthenticatedClientStoresNewRoute
+  '/workspaces/new': typeof AuthenticatedClientWorkspacesNewRoute
   '/admin/disputes/$id': typeof AuthenticatedAdminDisputesIdRoute
   '/admin/quotes/$id': typeof AuthenticatedAdminQuotesIdRoute
   '/api/public/cron/auto-topup': typeof ApiPublicCronAutoTopupRoute
@@ -395,7 +395,7 @@ export interface FileRoutesById {
   '/_authenticated/_client/products': typeof AuthenticatedClientProductsRoute
   '/_authenticated/_client/spymarket': typeof AuthenticatedClientSpymarketRoute
   '/_authenticated/_client/wallet': typeof AuthenticatedClientWalletRoute
-  '/_authenticated/_client/workspaces': typeof AuthenticatedClientWorkspacesRoute
+  '/_authenticated/_client/workspaces': typeof AuthenticatedClientWorkspacesRouteWithChildren
   '/_authenticated/admin/clients': typeof AuthenticatedAdminClientsRoute
   '/_authenticated/admin/disputes': typeof AuthenticatedAdminDisputesRouteWithChildren
   '/_authenticated/admin/documents': typeof AuthenticatedAdminDocumentsRoute
@@ -411,7 +411,7 @@ export interface FileRoutesById {
   '/_authenticated/_client/orders/new': typeof AuthenticatedClientOrdersNewRoute
   '/_authenticated/_client/quotes/$id': typeof AuthenticatedClientQuotesIdRoute
   '/_authenticated/_client/quotes/new': typeof AuthenticatedClientQuotesNewRoute
-  '/_authenticated/_client/stores/new': typeof AuthenticatedClientStoresNewRoute
+  '/_authenticated/_client/workspaces/new': typeof AuthenticatedClientWorkspacesNewRoute
   '/_authenticated/admin/disputes/$id': typeof AuthenticatedAdminDisputesIdRoute
   '/_authenticated/admin/quotes/$id': typeof AuthenticatedAdminQuotesIdRoute
   '/api/public/cron/auto-topup': typeof ApiPublicCronAutoTopupRoute
@@ -455,7 +455,7 @@ export interface FileRouteTypes {
     | '/orders/new'
     | '/quotes/$id'
     | '/quotes/new'
-    | '/stores/new'
+    | '/workspaces/new'
     | '/admin/disputes/$id'
     | '/admin/quotes/$id'
     | '/api/public/cron/auto-topup'
@@ -497,7 +497,7 @@ export interface FileRouteTypes {
     | '/orders/new'
     | '/quotes/$id'
     | '/quotes/new'
-    | '/stores/new'
+    | '/workspaces/new'
     | '/admin/disputes/$id'
     | '/admin/quotes/$id'
     | '/api/public/cron/auto-topup'
@@ -541,7 +541,7 @@ export interface FileRouteTypes {
     | '/_authenticated/_client/orders/new'
     | '/_authenticated/_client/quotes/$id'
     | '/_authenticated/_client/quotes/new'
-    | '/_authenticated/_client/stores/new'
+    | '/_authenticated/_client/workspaces/new'
     | '/_authenticated/admin/disputes/$id'
     | '/_authenticated/admin/quotes/$id'
     | '/api/public/cron/auto-topup'
@@ -806,12 +806,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedClientQuotesNewRouteImport
       parentRoute: typeof AuthenticatedClientRoute
     }
-    '/_authenticated/_client/stores/new': {
-      id: '/_authenticated/_client/stores/new'
-      path: '/stores/new'
-      fullPath: '/stores/new'
-      preLoaderRoute: typeof AuthenticatedClientStoresNewRouteImport
-      parentRoute: typeof AuthenticatedClientRoute
+    '/_authenticated/_client/workspaces/new': {
+      id: '/_authenticated/_client/workspaces/new'
+      path: '/new'
+      fullPath: '/workspaces/new'
+      preLoaderRoute: typeof AuthenticatedClientWorkspacesNewRouteImport
+      parentRoute: typeof AuthenticatedClientWorkspacesRoute
     }
     '/_authenticated/admin/disputes/$id': {
       id: '/_authenticated/admin/disputes/$id'
@@ -879,6 +879,21 @@ const AuthenticatedClientDisputesRouteWithChildren =
     AuthenticatedClientDisputesRouteChildren,
   )
 
+interface AuthenticatedClientWorkspacesRouteChildren {
+  AuthenticatedClientWorkspacesNewRoute: typeof AuthenticatedClientWorkspacesNewRoute
+}
+
+const AuthenticatedClientWorkspacesRouteChildren: AuthenticatedClientWorkspacesRouteChildren =
+  {
+    AuthenticatedClientWorkspacesNewRoute:
+      AuthenticatedClientWorkspacesNewRoute,
+  }
+
+const AuthenticatedClientWorkspacesRouteWithChildren =
+  AuthenticatedClientWorkspacesRoute._addFileChildren(
+    AuthenticatedClientWorkspacesRouteChildren,
+  )
+
 interface AuthenticatedClientRouteChildren {
   AuthenticatedClientBillingRoute: typeof AuthenticatedClientBillingRoute
   AuthenticatedClientDashboardRoute: typeof AuthenticatedClientDashboardRoute
@@ -887,13 +902,12 @@ interface AuthenticatedClientRouteChildren {
   AuthenticatedClientProductsRoute: typeof AuthenticatedClientProductsRoute
   AuthenticatedClientSpymarketRoute: typeof AuthenticatedClientSpymarketRoute
   AuthenticatedClientWalletRoute: typeof AuthenticatedClientWalletRoute
-  AuthenticatedClientWorkspacesRoute: typeof AuthenticatedClientWorkspacesRoute
+  AuthenticatedClientWorkspacesRoute: typeof AuthenticatedClientWorkspacesRouteWithChildren
   AuthenticatedClientOrdersIdRoute: typeof AuthenticatedClientOrdersIdRoute
   AuthenticatedClientOrdersImportRoute: typeof AuthenticatedClientOrdersImportRoute
   AuthenticatedClientOrdersNewRoute: typeof AuthenticatedClientOrdersNewRoute
   AuthenticatedClientQuotesIdRoute: typeof AuthenticatedClientQuotesIdRoute
   AuthenticatedClientQuotesNewRoute: typeof AuthenticatedClientQuotesNewRoute
-  AuthenticatedClientStoresNewRoute: typeof AuthenticatedClientStoresNewRoute
   AuthenticatedClientOrdersIndexRoute: typeof AuthenticatedClientOrdersIndexRoute
   AuthenticatedClientQuotesIndexRoute: typeof AuthenticatedClientQuotesIndexRoute
 }
@@ -907,13 +921,13 @@ const AuthenticatedClientRouteChildren: AuthenticatedClientRouteChildren = {
   AuthenticatedClientProductsRoute: AuthenticatedClientProductsRoute,
   AuthenticatedClientSpymarketRoute: AuthenticatedClientSpymarketRoute,
   AuthenticatedClientWalletRoute: AuthenticatedClientWalletRoute,
-  AuthenticatedClientWorkspacesRoute: AuthenticatedClientWorkspacesRoute,
+  AuthenticatedClientWorkspacesRoute:
+    AuthenticatedClientWorkspacesRouteWithChildren,
   AuthenticatedClientOrdersIdRoute: AuthenticatedClientOrdersIdRoute,
   AuthenticatedClientOrdersImportRoute: AuthenticatedClientOrdersImportRoute,
   AuthenticatedClientOrdersNewRoute: AuthenticatedClientOrdersNewRoute,
   AuthenticatedClientQuotesIdRoute: AuthenticatedClientQuotesIdRoute,
   AuthenticatedClientQuotesNewRoute: AuthenticatedClientQuotesNewRoute,
-  AuthenticatedClientStoresNewRoute: AuthenticatedClientStoresNewRoute,
   AuthenticatedClientOrdersIndexRoute: AuthenticatedClientOrdersIndexRoute,
   AuthenticatedClientQuotesIndexRoute: AuthenticatedClientQuotesIndexRoute,
 }

@@ -43,6 +43,7 @@ import {
   listMyProducts,
   updateBundle,
 } from "@/lib/products.functions";
+import { friendlyError } from "@/lib/errors";
 
 export const Route = createFileRoute("/_authenticated/_client/products")({
   head: () => ({
@@ -196,7 +197,7 @@ function BundleDialog({
       void queryClient.invalidateQueries({ queryKey: ["my-products"] });
       onClose();
     },
-    onError: (err) => toast.error(err.message),
+    onError: (err) => toast.error(friendlyError(err)),
   });
 
   return (
@@ -331,7 +332,7 @@ function MyProductsPageInner() {
       toast.success("Bundle discontinued.");
       void queryClient.invalidateQueries({ queryKey: ["my-products"] });
     },
-    onError: (err) => toast.error(err.message),
+    onError: (err) => toast.error(friendlyError(err)),
   });
 
   const toggle = (id: string) => {

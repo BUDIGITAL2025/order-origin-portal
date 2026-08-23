@@ -34,7 +34,14 @@ export function getAppBaseUrl(): string {
   return "";
 }
 
-/** Public marketing site. The header logo links here. */
-export const MARKETING_URL: string = stripTrailingSlash(
-  (import.meta.env["VITE_MARKETING_URL"] as string | undefined) || APP_BASE_URL || "/",
-);
+/**
+ * Public marketing site. The header logo links here.
+ * Note: stripTrailingSlash("/") is "" — an empty href resolves to the current
+ * page and (worse) differs between the SSR string and the client-resolved
+ * URL, which is what tripped the auth-page logo hydration warning. Resolve
+ * empties to "/" instead so SSR and client markup are always identical.
+ */
+export const MARKETING_URL: string =
+  stripTrailingSlash((import.meta.env["VITE_MARKETING_URL"] as string | undefined) || "") ||
+  APP_BASE_URL ||
+  "/";

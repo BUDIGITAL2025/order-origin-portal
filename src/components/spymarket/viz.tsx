@@ -35,8 +35,8 @@ export function formatPeriod(label: string): string {
   const d = new Date(label);
   if (Number.isNaN(d.getTime())) return label;
   return d.getDate() <= 2
-    ? d.toLocaleDateString("en", { month: "short", year: "numeric" })
-    : d.toLocaleDateString("en", { day: "numeric", month: "short", year: "2-digit" });
+    ? d.toLocaleDateString("en-GB", { month: "short", year: "numeric" })
+    : d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "2-digit" });
 }
 
 export const fmtAxis = (v: number): string =>

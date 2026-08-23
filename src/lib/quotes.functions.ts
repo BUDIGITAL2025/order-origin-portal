@@ -327,7 +327,7 @@ export const adminRequote = createServerFn({ method: "POST" })
     const accountId = (
       quote.stores as { entities?: { account_id?: string | null } | null } | null
     )?.entities?.account_id;
-    if (!accountId) throw new Error("Quote store has no owning account");
+    if (!accountId) throw new Error("Quote workspace has no owning account");
 
     const { data: created, error } = await context.supabase.rpc("submit_quote_request", {
       p_supersedes_quote_id: data.quote_id,

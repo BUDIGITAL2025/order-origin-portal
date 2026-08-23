@@ -42,6 +42,7 @@ import { countryName } from "@/lib/countries";
 import { formatDate, formatUSD } from "@/lib/format";
 import { getMyQuote, respondToQuoteLines } from "@/lib/quotes.functions";
 import { supabase } from "@/integrations/supabase/client";
+import { friendlyError } from "@/lib/errors";
 
 export const Route = createFileRoute("/_authenticated/_client/quotes/$id")({
   head: () => ({
@@ -118,7 +119,7 @@ function MyQuoteDetailPage() {
       void queryClient.invalidateQueries({ queryKey: ["my-quotes"] });
       void queryClient.invalidateQueries({ queryKey: ["my-products"] });
     },
-    onError: (err) => toast.error(err.message),
+    onError: (err) => toast.error(friendlyError(err)),
   });
 
   if (isPending) return <p className="text-sm text-muted-foreground">Loading…</p>;

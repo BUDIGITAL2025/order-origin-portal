@@ -279,7 +279,7 @@ function AuthPage() {
               <CardContent className="space-y-3">
                 <CardTitle className="text-lg">Create your account</CardTitle>
                 <CardDescription>
-                  Just the basics — you'll add your store and company details from the dashboard.
+                  Just the basics — you'll add your workspace and company details from the dashboard.
                 </CardDescription>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="col-span-2 space-y-1.5">

@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { formatDateTime, formatUSD } from "@/lib/format";
 import { postDisputeMessage } from "@/lib/disputes.functions";
 import { cn } from "@/lib/utils";
+import { friendlyError } from "@/lib/errors";
 
 export type DisputeStatus =
   | "open"
@@ -87,7 +88,7 @@ export function DisputeThread({
       setBody("");
       onPosted();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Message failed");
+      toast.error(friendlyError(e, "Message failed"));
     } finally {
       setBusy(false);
     }

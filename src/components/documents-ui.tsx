@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { getDocumentDownloadUrl } from "@/lib/documents.functions";
+import { friendlyError } from "@/lib/errors";
 
 // ---------- Badges ----------
 
@@ -85,7 +86,7 @@ export function useDocumentDownload() {
         const { url } = await getUrl({ data: { id } });
         window.open(url, "_blank", "noopener");
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : "Could not download the receipt");
+        toast.error(friendlyError(e, "Could not download the receipt"));
       } finally {
         setDownloadingId(null);
       }

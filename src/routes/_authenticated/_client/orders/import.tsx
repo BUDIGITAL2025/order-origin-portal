@@ -29,6 +29,7 @@ import { importMyManualOrders, listMyCatalogue } from "@/lib/orders.functions";
 import { manualOrderGroupSchema } from "@/lib/schemas";
 import { getMyWallet } from "@/lib/wallet.functions";
 import { useMyContext } from "../../_client";
+import { friendlyError } from "@/lib/errors";
 
 export const Route = createFileRoute("/_authenticated/_client/orders/import")({
   head: () => ({
@@ -299,7 +300,7 @@ function ImportOrdersPage() {
       await navigate({ to: "/orders" });
     } catch (err) {
       // All-or-nothing: the DB rolled the whole import back.
-      toast.error(err instanceof Error ? err.message : "Import failed — nothing was imported");
+      toast.error(friendlyError(err, "Import failed — nothing was imported"));
     } finally {
       setBusy(false);
     }
