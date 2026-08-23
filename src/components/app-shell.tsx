@@ -15,6 +15,7 @@ import {
   LayoutDashboard,
   LogOut,
   Package,
+  ShieldAlert,
   ShoppingCart,
   Store,
   Users,
@@ -52,6 +53,7 @@ const CLIENT_NAV: NavItem[] = [
   { to: "/quotes", label: "My quotes", icon: ClipboardList },
   { to: "/products", label: "My products", icon: Package },
   { to: "/orders", label: "Orders", icon: ShoppingCart },
+  { to: "/disputes", label: "Disputes", icon: ShieldAlert },
   { to: "/wallet", label: "Wallet", icon: Wallet },
   { to: "/billing", label: "Billing", icon: CreditCard },
   { to: "/documents", label: "Receipts", icon: FileText },
@@ -92,6 +94,7 @@ function PastDueBanner() {
 const ADMIN_NAV: NavItem[] = [
   { to: "/admin/quotes", label: "Quote queue", icon: ClipboardList },
   { to: "/admin/products", label: "Products", icon: Package },
+  { to: "/admin/disputes", label: "Disputes", icon: ShieldAlert },
   { to: "/admin/clients", label: "Clients", icon: Users },
   { to: "/admin/entities", label: "Entities & stores", icon: Building2 },
   { to: "/admin/wallet", label: "Wallet adjustments", icon: Wallet },

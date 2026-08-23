@@ -121,9 +121,10 @@ function OrdersPage() {
           environment: getStripeEnvironment(),
         },
       });
-      if ("error" in result && result.error) throw new Error(result.error);
-      if (!("url" in result) || !result.url) throw new Error("Stripe did not return a checkout URL");
-      window.location.href = result.url;
+      if ("error" in result && result.error) throw new Error(String(result.error));
+      const url = "url" in result ? result.url : null;
+      if (!url) throw new Error("Stripe did not return a checkout URL");
+      window.location.href = url;
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not start checkout");
       setBusy(null);
