@@ -310,6 +310,10 @@ function useMeteredCall(fn: ServerFnLike) {
       } catch (err) {
         if (err instanceof Error && err.message === "TRENDTRACK_NOT_CONFIGURED") {
           setState({ kind: "error", message: "TRENDTRACK_API_KEY is not configured." });
+        } else if (err instanceof Error && err.message === "TRENDTRACK_TIMEOUT") {
+          // Slow upstream — the friendly message + retry button live in
+          // CallFeedback; the last input is kept in lastInputRef.
+          setState({ kind: "timeout" });
         } else {
           setState({
             kind: "error",
