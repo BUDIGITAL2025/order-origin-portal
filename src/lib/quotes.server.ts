@@ -2,6 +2,7 @@
  * Server-side helpers for the quotes admin stack.
  * Keeps quotes.functions.ts a thin createServerFn wrapper.
  */
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 
 type QuoteRequestRow = Database["public"]["Tables"]["quote_requests"]["Row"];
@@ -85,9 +86,7 @@ export function mapQuoteForAdmin(row: unknown, internal?: QuoteInternal | null):
  * the notifications admin policy). Idempotent — already-stamped rows skip.
  */
 export async function flagBreachedQuotes(
-  admin: {
-    from: (table: string) => any;
-  },
+  admin: SupabaseClient<Database>,
 ): Promise<number> {
   const nowIso = new Date().toISOString();
   const { data: breached, error } = await admin
@@ -98,13 +97,7 @@ export async function flagBreachedQuotes(
     .is("quote_breach_notified_at", null);
   if (error || !breached?.length) return 0;
 
-  const now = new Date().toISOString();
-  for (const q of breached as Array<{
-    id: string;
-    store_id: string;
-    product_name: string | null;
-    product_url: string;
-  }>) {
+  for (const q of breached) {
     await admin.from("notifications").insert({
       kind: "quote_sla_breach",
       store_id: q.store_id,
@@ -113,7 +106,7 @@ export async function flagBreachedQuotes(
     });
     await admin
       .from("quote_requests")
-      .update({ quote_breach_notified_at: now })
+      .update({ quote_breach_notified_at: nowIso })
       .eq("id", q.id);
   }
   return breached.length;

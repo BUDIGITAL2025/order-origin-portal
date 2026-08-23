@@ -9,7 +9,7 @@ import {
   requoteSchema,
   signedUrlsSchema,
 } from "./schemas";
-import { mapQuoteForAdmin } from "./quotes.server";
+import { flagBreachedQuotes, mapQuoteForAdmin } from "./quotes.server";
 
 export class QuotaExceededError extends Error {
   constructor(message: string) {
@@ -132,6 +132,10 @@ export const adminListQuotes = createServerFn({ method: "GET" })
     const { requireAdmin, getAdminClient } = await import("./admin.server");
     await requireAdmin(context.supabase, context.userId);
     const admin = await getAdminClient();
+
+    // Lazily flag requests that breached their 48h target so the admin is
+    // notified even if the cron sweep hasn't run yet.
+    await flagBreachedQuotes(admin);
 
     // Hierarchy: quote_requests.store_id → stores → entities → profiles.
     // The rows are mapped back to the flat `profiles` shape the admin pages
