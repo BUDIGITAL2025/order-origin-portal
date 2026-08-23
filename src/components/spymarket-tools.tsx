@@ -2815,64 +2815,10 @@ function AdsTab({
       {searching && pages.length === 0 && <LoadingRows rows={6} />}
 
       {allRows.length > 0 && (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-          {allRows.map((ad, i) => {
-            const media = asRec(ad["media"]);
-            const content = asRec(ad["content"]);
-            const metrics = asRec(ad["metrics"]);
-            const advertiser = asRec(ad["advertiser"]);
-            const thumb = asStr(media["thumbnailUrl"]) ?? asStr(media["mediaUrl"]);
-            const title = asStr(content["title"]) ?? asStr(advertiser["name"]);
-            const body = asStr(content["body"]);
-            const days = asNum(ad["daysRunning"]);
-            const reach = asNum(metrics["reach"]);
-            const delta7 = asNum(metrics["reachDelta7d"]);
-            const adId = asStr(ad["id"]);
-            return (
-              <Card
-                key={adId ?? i}
-                className={cn(
-                  "overflow-hidden rounded-2xl",
-                  adId && "cursor-pointer transition-colors hover:bg-muted/40",
-                )}
-                onClick={() => adId && setAdDetailId(adId)}
-              >
-                {thumb ? (
-                  <img src={thumb} alt={title ?? "Ad creative"} className="aspect-square w-full object-cover" loading="lazy" />
-                ) : (
-                  <div className="flex aspect-square items-center justify-center bg-muted">
-                    <Megaphone className="h-6 w-6 text-muted-foreground" />
-                  </div>
-                )}
-                <CardContent className="space-y-1.5 p-3">
-                  {title && <p className="truncate text-sm font-medium">{title}</p>}
-                  {body && <p className="line-clamp-2 text-xs text-muted-foreground">{body}</p>}
-                  <div className="flex flex-wrap gap-1.5 pt-1">
-                    {days != null && (
-                      <Badge variant="secondary" className="rounded-full text-[10px]">
-                        {days}d running
-                      </Badge>
-                    )}
-                    {reach != null && (
-                      <Badge variant="outline" className="rounded-full text-[10px]">
-                        {fmtCompact(reach)} reach
-                      </Badge>
-                    )}
-                    {delta7 != null && (
-                      <Badge variant="outline" className="rounded-full text-[10px]">
-                        Δ7d {fmtCompact(delta7)}
-                      </Badge>
-                    )}
-                    {asRec(ad["flags"])["isEuAd"] === true && (
-                      <Badge variant="outline" className="rounded-full text-[10px]">
-                        EU
-                      </Badge>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {allRows.map((ad, i) => (
+            <AdCard key={asStr(ad["id"]) ?? i} ad={ad} onOpen={setAdDetailId} />
+          ))}
         </div>
       )}
 
