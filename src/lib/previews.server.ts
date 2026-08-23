@@ -199,8 +199,10 @@ async function scrapeWithFetch(url: string): Promise<PreviewData | null> {
         metaContent(html, "product:price:currency", "og:price:currency"),
       ) ?? jsonLdPrice(jsonLd) ?? findPriceInText(html.replace(/<[^>]+>/g, " ").slice(0, 50_000));
 
+    const variants = jsonLdVariants(jsonLd);
+
     if (!title && imageUrls.length === 0) return null;
-    return { title, description, imageUrls, priceHint, source: "fetch" };
+    return { title, description, imageUrls, priceHint, variants, source: "fetch" };
   } catch {
     return null;
   }
@@ -224,7 +226,7 @@ async function scrapeWithPerplexity(url: string, apiKey: string): Promise<Previe
           {
             role: "system",
             content:
-              'You extract product information from shopping URLs. Reply with ONLY a raw JSON object, no markdown fences: {"title": string|null, "description": string|null, "price": string|null, "images": string[]}. description is one sentence; price includes the currency symbol; images are absolute URLs of product photos (empty array if unknown).',
+              'You extract product information from shopping URLs. Reply with ONLY a raw JSON object, no markdown fences: {"title": string|null, "description": string|null, "price": string|null, "images": string[], "variants": string[]}. description is one sentence; price includes the currency symbol; images are absolute URLs of product photos (empty array if unknown); variants are the purchasable option labels offered on the page (sizes, colors, pack sizes — empty array if it is a single fixed product).',
           },
           { role: "user", content: `Product page: ${url}` },
         ],
