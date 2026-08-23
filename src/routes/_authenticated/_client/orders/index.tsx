@@ -29,7 +29,7 @@ import {
 } from "@/lib/billing.functions";
 import { getStripeEnvironment } from "@/lib/stripe";
 
-export const Route = createFileRoute("/_authenticated/_client/orders")({
+export const Route = createFileRoute("/_authenticated/_client/orders/")({
   head: () => ({
     meta: [
       { title: "Orders — FlySales" },
