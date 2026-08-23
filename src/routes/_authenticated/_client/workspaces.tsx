@@ -19,7 +19,7 @@ import { Label } from "@/components/ui/label";
 import { planLabel } from "@/lib/plans";
 import { connectMyStore } from "@/lib/profiles.functions";
 import { connectDraftStoreSchema } from "@/lib/schemas";
-import { useMyContext } from "../../_client";
+import { useMyContext } from "../_client";
 
 export const Route = createFileRoute("/_authenticated/_client/workspaces")({
   head: () => ({

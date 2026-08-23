@@ -22,8 +22,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { z } from "zod";
 import { validateAddressFields } from "@/lib/address";
-import { formatUSD } from "@/lib/format";
 import { importMyManualOrders } from "@/lib/orders.functions";
 import { manualOrderGroupSchema } from "@/lib/schemas";
 import { useMyContext } from "../../_client";
@@ -120,19 +120,7 @@ interface PreviewOrder {
   customer: string;
   country: string;
   lines: { sku: string; quantity: number }[];
-  group: {
-    client_reference: string;
-    customer: { name: string; email: string; phone: string };
-    address: {
-      address1: string;
-      address2: string;
-      city: string;
-      postal_code: string;
-      state: string;
-      country: string;
-    };
-    lines: { sku: string; quantity: number }[];
-  } | null;
+  group: z.infer<typeof manualOrderGroupSchema> | null;
   errors: string[];
 }
 
