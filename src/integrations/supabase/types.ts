@@ -735,13 +735,9 @@ export type Database = {
       }
       profiles: {
         Row: {
-          auto_topup_amount: number | null
-          auto_topup_enabled: boolean
-          auto_topup_threshold: number | null
           cancel_notice_sent_at: string | null
           contact_name: string
           created_at: string
-          default_payment_method_id: string | null
           id: string
           phone: string
           status: Database["public"]["Enums"]["profile_status"]
@@ -749,13 +745,9 @@ export type Database = {
           terms_version: string | null
         }
         Insert: {
-          auto_topup_amount?: number | null
-          auto_topup_enabled?: boolean
-          auto_topup_threshold?: number | null
           cancel_notice_sent_at?: string | null
           contact_name: string
           created_at?: string
-          default_payment_method_id?: string | null
           id: string
           phone: string
           status?: Database["public"]["Enums"]["profile_status"]
@@ -763,13 +755,9 @@ export type Database = {
           terms_version?: string | null
         }
         Update: {
-          auto_topup_amount?: number | null
-          auto_topup_enabled?: boolean
-          auto_topup_threshold?: number | null
           cancel_notice_sent_at?: string | null
           contact_name?: string
           created_at?: string
-          default_payment_method_id?: string | null
           id?: string
           phone?: string
           status?: Database["public"]["Enums"]["profile_status"]
