@@ -482,6 +482,7 @@ export async function getUsageDashboard(userId: string): Promise<{
     credits_cost: number;
     credits_remaining: number | null;
     cache_hit: boolean;
+    error: string | null;
     created_at: string;
     called_by_name: string;
   }>;
