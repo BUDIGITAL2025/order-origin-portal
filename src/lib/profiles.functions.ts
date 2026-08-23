@@ -196,7 +196,7 @@ export const connectMyStore = createServerFn({ method: "POST" })
     const { error } = await context.supabase.rpc("connect_draft_store", {
       p_store_id: data.store_id,
       p_store_url: data.store_url,
-      p_store_name: data.store_name || undefined,
+      ...(data.store_name ? { p_store_name: data.store_name } : {}),
     });
     if (error) throw new Error(error.message);
     return { ok: true };
