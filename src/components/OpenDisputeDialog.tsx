@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { openDispute } from "@/lib/disputes.functions";
+import { friendlyError } from "@/lib/errors";
 
 type DisputeReason = "not_delivered" | "damaged" | "wrong_product";
 
@@ -121,7 +122,7 @@ export function OpenDisputeDialog({
       onOpened();
       window.location.href = `/disputes/${result.dispute_id}`;
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not open dispute");
+      toast.error(friendlyError(e, "Could not open dispute"));
     } finally {
       setBusy(false);
     }

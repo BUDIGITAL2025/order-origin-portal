@@ -28,6 +28,7 @@ import {
   payOrdersFromWallet,
 } from "@/lib/billing.functions";
 import { getStripeEnvironment } from "@/lib/stripe";
+import { friendlyError } from "@/lib/errors";
 
 export const Route = createFileRoute("/_authenticated/_client/orders/")({
   head: () => ({
@@ -106,7 +107,7 @@ function OrdersPage() {
       setSelected(new Set());
       await queryClient.invalidateQueries();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Payment failed");
+      toast.error(friendlyError(e, "Payment failed"));
     } finally {
       setBusy(null);
     }
@@ -127,7 +128,7 @@ function OrdersPage() {
       if (!url) throw new Error("Stripe did not return a checkout URL");
       window.location.href = url;
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not start checkout");
+      toast.error(friendlyError(e, "Could not start checkout"));
       setBusy(null);
     }
   }

@@ -23,7 +23,7 @@ import {
 import { addMyStore } from "@/lib/profiles.functions";
 import { addStoreSchema } from "@/lib/schemas";
 
-export const Route = createFileRoute("/_authenticated/_client/stores/new")({
+export const Route = createFileRoute("/_authenticated/_client/workspaces/new")({
   component: NewStorePage,
 });
 

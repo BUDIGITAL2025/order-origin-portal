@@ -200,10 +200,12 @@ export const addMyStore = createServerFn({ method: "POST" })
     if (storeError) {
       // enforce_entity_max_stores trigger raises when the entity is full.
       if (storeError.message.includes("max_stores") || storeError.code === "P0001") {
-        throw new Error("This entity has reached its store limit — contact support to raise it.");
+        throw new Error(
+          "This entity has reached its workspace limit — contact support to raise it.",
+        );
       }
       if (storeError.code === "23505") {
-        throw new Error("A store with this URL already exists.");
+        throw new Error("A workspace with this URL already exists.");
       }
       throw new Error(storeError.message);
     }
@@ -390,16 +392,16 @@ export const provisionStore = createServerFn({ method: "POST" })
       .select("*, entities(account_id, legal_name)")
       .eq("id", data.store_id)
       .single();
-    if (error || !store) throw new Error("Store not found");
+    if (error || !store) throw new Error("Workspace not found");
 
     // Preconditions
     const isPending = store.status === "pending";
     const isRetry = store.provisioning_status === "failed";
     if (!isPending && !isRetry) {
-      throw new Error("Store is not pending approval (or awaiting provisioning retry)");
+      throw new Error("Workspace is not pending approval (or awaiting provisioning retry)");
     }
     if (!store.store_url) {
-      throw new Error("Store has no URL on file");
+      throw new Error("Workspace has no shop URL on file");
     }
 
     const accountId = (store.entities as { account_id: string; legal_name: string } | null)

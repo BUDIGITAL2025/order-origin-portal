@@ -64,7 +64,7 @@ async function resolveStoreAndEntity(
     .eq("entities.account_id", accountId)
     .maybeSingle();
   if (error) throw new Error(error.message);
-  if (!store) throw new Error("Store not found for your account");
+  if (!store) throw new Error("Workspace not found for your account");
   const { entities: entity, ...storeRow } = store;
   return { store: storeRow, entity };
 }

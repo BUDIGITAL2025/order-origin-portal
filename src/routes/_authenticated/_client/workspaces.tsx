@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { friendlyError } from "@/lib/errors";
 import { planLabel } from "@/lib/plans";
 import { connectMyStore } from "@/lib/profiles.functions";
 import { connectDraftStoreSchema } from "@/lib/schemas";
@@ -48,7 +49,7 @@ function WorkspacesPage() {
         description="Each workspace has its own catalogue, quotes, orders and subscription. Your wallet is shared across all of them."
         actions={
           <Button asChild size="sm">
-            <Link to="/stores/new">Add workspace</Link>
+            <Link to="/workspaces/new">Add workspace</Link>
           </Button>
         }
       />
@@ -70,7 +71,7 @@ function WorkspacesPage() {
                   <CardContent className="flex items-center justify-between gap-3 p-5 text-sm text-muted-foreground">
                     <span>No workspaces yet.</span>
                     <Button asChild size="sm" variant="outline">
-                      <Link to="/stores/new">Add workspace</Link>
+                      <Link to="/workspaces/new">Add workspace</Link>
                     </Button>
                   </CardContent>
                 </Card>
@@ -180,7 +181,7 @@ function ConnectShopifyForm({ storeId }: { storeId: string }) {
       toast.success("Shopify connected — this workspace is now active.");
       await queryClient.invalidateQueries({ queryKey: ["my-context"] });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not connect");
+      toast.error(friendlyError(err, "Could not connect"));
     } finally {
       setBusy(false);
     }

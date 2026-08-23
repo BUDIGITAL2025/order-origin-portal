@@ -103,7 +103,7 @@ const ADMIN_NAV: NavItem[] = [
   { to: "/admin/products", label: "Products", icon: Package },
   { to: "/admin/disputes", label: "Disputes", icon: ShieldAlert },
   { to: "/admin/clients", label: "Clients", icon: Users },
-  { to: "/admin/entities", label: "Entities & stores", icon: Building2 },
+  { to: "/admin/entities", label: "Entities & workspaces", icon: Building2 },
   { to: "/admin/wallet", label: "Wallet adjustments", icon: Wallet },
   { to: "/admin/documents", label: "Receipts", icon: FileText },
   { to: "/admin/spymarket", label: "SpyMarket waitlist", icon: Telescope },

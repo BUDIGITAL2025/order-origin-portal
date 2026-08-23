@@ -31,6 +31,7 @@ import { COUNTRIES } from "@/lib/countries";
 import { formatUSD } from "@/lib/format";
 import { createMyManualOrder, listMyCatalogue } from "@/lib/orders.functions";
 import { useMyContext } from "../../_client";
+import { friendlyError } from "@/lib/errors";
 
 export const Route = createFileRoute("/_authenticated/_client/orders/new")({
   head: () => ({
@@ -163,7 +164,7 @@ function NewOrderPage() {
       await queryClient.invalidateQueries({ queryKey: ["my-wallet"] });
       await navigate({ to: "/orders/$id", params: { id: result.order.id } });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not create the order");
+      toast.error(friendlyError(err, "Could not create the order"));
     } finally {
       setBusy(false);
     }
@@ -362,7 +363,7 @@ function EmptyWorkspace() {
       <PageHeader title="Create order" />
       <Card>
         <CardContent className="p-8 text-sm text-muted-foreground">
-          You need a workspace first. <Link to="/stores/new" className="text-primary underline">Add one</Link>{" "}
+          You need a workspace first. <Link to="/workspaces/new" className="text-primary underline">Add one</Link>{" "}
           — or subscribe on the <Link to="/billing" className="text-primary underline">Billing page</Link>{" "}
           and a workspace is created for you.
         </CardContent>

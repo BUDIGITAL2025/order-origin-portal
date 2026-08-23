@@ -356,7 +356,7 @@ function BillingPage() {
                 Add a workspace to choose its plan. Wallet top-ups work without one.
               </p>
               <Button asChild size="sm">
-                <Link to="/stores/new">Add workspace</Link>
+                <Link to="/workspaces/new">Add workspace</Link>
               </Button>
             </CardContent>
           </Card>

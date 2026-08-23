@@ -21,6 +21,7 @@ import { getUrlPreview } from "@/lib/previews.functions";
 import { createSubscriptionCheckout } from "@/lib/billing.functions";
 import { getStripeEnvironment } from "@/lib/stripe";
 import { useMyContext } from "../../_client";
+import { friendlyError } from "@/lib/errors";
 
 export const Route = createFileRoute("/_authenticated/_client/quotes/new")({
   // Stripe substitutes {CHECKOUT_SESSION_ID} server-side; sub=success/cancel
@@ -309,9 +310,9 @@ function NewQuotePageInner() {
           const r = await callCreate({ data: parsed.data });
           if (r.quote_id) createdIds.push(r.quote_id);
         } catch (err) {
-          const message = err instanceof Error ? err.message : "Submission failed";
-          if (message.includes("used all")) setQuotaBlocked(true);
-          failures.push(message);
+          const raw = err instanceof Error ? err.message : "";
+          if (raw.includes("used all")) setQuotaBlocked(true);
+          failures.push(friendlyError(err, "Submission failed"));
         }
       }
       return { createdIds, failures };
@@ -337,7 +338,7 @@ function NewQuotePageInner() {
       if (err.message.includes("used all")) {
         setQuotaBlocked(true);
       }
-      toast.error(err.message);
+      toast.error(friendlyError(err));
     },
   });
 
