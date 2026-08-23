@@ -67,6 +67,42 @@ export type Database = {
           },
         ]
       }
+      dispute_internal_notes: {
+        Row: {
+          admin_notes: string | null
+          dispute_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          admin_notes?: string | null
+          dispute_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          admin_notes?: string | null
+          dispute_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dispute_internal_notes_dispute_id_fkey"
+            columns: ["dispute_id"]
+            isOneToOne: true
+            referencedRelation: "disputes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dispute_internal_notes_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dispute_messages: {
         Row: {
           author_id: string
@@ -111,7 +147,6 @@ export type Database = {
       }
       disputes: {
         Row: {
-          admin_notes: string | null
           created_at: string
           credit_amount: number | null
           description: string
@@ -126,7 +161,6 @@ export type Database = {
           store_id: string
         }
         Insert: {
-          admin_notes?: string | null
           created_at?: string
           credit_amount?: number | null
           description: string
@@ -141,7 +175,6 @@ export type Database = {
           store_id: string
         }
         Update: {
-          admin_notes?: string | null
           created_at?: string
           credit_amount?: number | null
           description?: string
@@ -692,13 +725,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "products_quote_line_id_fkey"
-            columns: ["quote_line_id"]
-            isOneToOne: true
-            referencedRelation: "quote_lines_client"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "products_store_id_fkey"
             columns: ["store_id"]
             isOneToOne: false
@@ -811,13 +837,40 @@ export type Database = {
           },
         ]
       }
-      quote_requests: {
+      quote_request_internal: {
         Row: {
           admin_notes: string | null
+          internal_reference: string | null
+          quote_request_id: string
+          updated_at: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          internal_reference?: string | null
+          quote_request_id: string
+          updated_at?: string
+        }
+        Update: {
+          admin_notes?: string | null
+          internal_reference?: string | null
+          quote_request_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_request_internal_quote_request_id_fkey"
+            columns: ["quote_request_id"]
+            isOneToOne: true
+            referencedRelation: "quote_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quote_requests: {
+        Row: {
           created_at: string
           id: string
           image_urls: string[] | null
-          internal_reference: string | null
           notes: string | null
           product_name: string | null
           product_url: string
@@ -832,11 +885,9 @@ export type Database = {
           target_monthly_volume: number | null
         }
         Insert: {
-          admin_notes?: string | null
           created_at?: string
           id?: string
           image_urls?: string[] | null
-          internal_reference?: string | null
           notes?: string | null
           product_name?: string | null
           product_url: string
@@ -851,11 +902,9 @@ export type Database = {
           target_monthly_volume?: number | null
         }
         Update: {
-          admin_notes?: string | null
           created_at?: string
           id?: string
           image_urls?: string[] | null
-          internal_reference?: string | null
           notes?: string | null
           product_name?: string | null
           product_url?: string
@@ -1102,30 +1151,6 @@ export type Database = {
           max_lead_time_days: number | null
         }
         Relationships: []
-      }
-      quote_lines_client: {
-        Row: {
-          country_code: string | null
-          created_at: string | null
-          id: string | null
-          lead_time_days: number | null
-          moq: number | null
-          quote_request_id: string | null
-          responded_at: string | null
-          sku: string | null
-          status: Database["public"]["Enums"]["quote_line_status"] | null
-          unit_price: number | null
-          variant_label: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "quote_lines_quote_request_id_fkey"
-            columns: ["quote_request_id"]
-            isOneToOne: false
-            referencedRelation: "quote_requests"
-            referencedColumns: ["id"]
-          },
-        ]
       }
     }
     Functions: {
@@ -1376,6 +1401,22 @@ export type Database = {
       }
       generate_document_number: { Args: never; Returns: string }
       generate_sku: { Args: { p_prefix: string }; Returns: string }
+      get_client_quote_lines: {
+        Args: { p_quote_request_id: string }
+        Returns: {
+          country_code: string
+          created_at: string
+          id: string
+          lead_time_days: number
+          moq: number
+          quote_request_id: string
+          responded_at: string
+          sku: string
+          status: Database["public"]["Enums"]["quote_line_status"]
+          unit_price: number
+          variant_label: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1442,7 +1483,6 @@ export type Database = {
           p_reason: Database["public"]["Enums"]["dispute_reason"]
         }
         Returns: {
-          admin_notes: string | null
           created_at: string
           credit_amount: number | null
           description: string
@@ -1507,7 +1547,6 @@ export type Database = {
           p_resolution: Database["public"]["Enums"]["dispute_resolution"]
         }
         Returns: {
-          admin_notes: string | null
           created_at: string
           credit_amount: number | null
           description: string
@@ -1545,11 +1584,9 @@ export type Database = {
           p_target_monthly_volume?: number
         }
         Returns: {
-          admin_notes: string | null
           created_at: string
           id: string
           image_urls: string[] | null
-          internal_reference: string | null
           notes: string | null
           product_name: string | null
           product_url: string
