@@ -1,12 +1,14 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { BellRing, Building2, CreditCard, RefreshCcw, Wallet } from "lucide-react";
+import { BellRing, Building2, CreditCard, FileText, RefreshCcw, Wallet } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/app-shell";
 import { TopUpCheckoutDialog } from "@/components/TopUpCheckoutDialog";
 import { TxnTypeBadge } from "@/components/status-badges";
+import { DocumentDownloadButton, DocumentTypeBadge } from "@/components/documents-ui";
+import { listMyDocuments } from "@/lib/documents.functions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {

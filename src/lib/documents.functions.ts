@@ -48,6 +48,60 @@ export const getDocumentDownloadUrl = createServerFn({ method: "POST" })
     return { url: signed.signedUrl };
   });
 
+/**
+ * Admin utility: issue any missing receipts — wallet credits (top-ups and
+ * dispute credits) and paid orders that have no document yet. Idempotent:
+ * issuance is keyed on unique indexes, so re-runs are no-ops. Used to
+ * backfill receipts that failed silently at webhook time (e.g. storeless
+ * entities before documents.store_id became nullable).
+ */
+export const adminBackfillReceipts = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { requireAdmin, getAdminClient } = await import("./admin.server");
+    await requireAdmin(context.supabase, context.userId);
+    const admin = await getAdminClient();
+    const { issueWalletTopupReceipt, issueOrderReceipt } = await import("./documents.server");
+
+    const [{ data: credits, error: cErr }, { data: walletDocs, error: wdErr }] =
+      await Promise.all([
+        admin.from("wallet_transactions").select("id").eq("type", "credit"),
+        admin.from("documents").select("wallet_transaction_id").not("wallet_transaction_id", "is", null),
+      ]);
+    if (cErr) throw new Error(cErr.message);
+    if (wdErr) throw new Error(wdErr.message);
+    const haveWalletDoc = new Set((walletDocs ?? []).map((d) => d.wallet_transaction_id));
+    const missingCredits = (credits ?? []).filter((t) => !haveWalletDoc.has(t.id));
+
+    const [{ data: paidOrders, error: oErr }, { data: orderDocs, error: odErr }] =
+      await Promise.all([
+        admin.from("orders").select("id").not("paid_at", "is", null),
+        admin.from("documents").select("order_id").not("order_id", "is", null),
+      ]);
+    if (oErr) throw new Error(oErr.message);
+    if (odErr) throw new Error(odErr.message);
+    const haveOrderDoc = new Set((orderDocs ?? []).map((d) => d.order_id));
+    const missingOrders = (paidOrders ?? []).filter((o) => !haveOrderDoc.has(o.id));
+
+    const walletResults: Array<{ id: string; result: string }> = [];
+    for (const t of missingCredits) {
+      try {
+        walletResults.push({ id: t.id, result: await issueWalletTopupReceipt(admin, t.id) });
+      } catch (e) {
+        walletResults.push({ id: t.id, result: `error: ${e instanceof Error ? e.message : e}` });
+      }
+    }
+    const orderResults: Array<{ id: string; result: string }> = [];
+    for (const o of missingOrders) {
+      try {
+        orderResults.push({ id: o.id, result: await issueOrderReceipt(admin, o.id) });
+      } catch (e) {
+        orderResults.push({ id: o.id, result: `error: ${e instanceof Error ? e.message : e}` });
+      }
+    }
+    return { walletResults, orderResults };
+  });
+
 /** Admin: receipts across all clients, filterable by type and client. */
 export const adminListDocuments = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
