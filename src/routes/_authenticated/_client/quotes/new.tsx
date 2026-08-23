@@ -131,6 +131,30 @@ function NewQuotePageInner() {
   const quotesUsed = currentStore?.quotes_used_this_month ?? 0;
   const limitReached = quota != null && quotesUsed >= quota;
 
+  // Subscribe straight from the paywall: opens Stripe checkout for the chosen
+  // plan without leaving the form. No workspace yet → the server creates the
+  // draft workspace itself. Return URL points back here (?sub=success) so the
+  // client lands unblocked where they started.
+  const callSubscribe = useServerFn(createSubscriptionCheckout);
+  const subscribe = useMutation({
+    mutationFn: async (planKey: "basic" | "unlimited") => {
+      const result = await callSubscribe({
+        data: {
+          plan: planKey,
+          storeId: currentStore?.id,
+          returnUrl: `${window.location.origin}/quotes/new`,
+          environment: getStripeEnvironment(),
+        },
+      });
+      if ("error" in result) throw new Error(result.error);
+      if (!result.url) throw new Error("Stripe did not return a checkout URL");
+      return result.url;
+    },
+    onSuccess: (url) => window.location.assign(url),
+    onError: (err) =>
+      setSubscribeError(err instanceof Error ? err.message : "Could not start checkout"),
+  });
+
   // Paywall: submitting needs an active subscription on this workspace (or a
   // fee waiver). The form stays visible and fillable; the plan options only
   // appear when an unsubscribed client tries to submit. A storeless account
