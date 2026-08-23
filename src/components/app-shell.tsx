@@ -17,6 +17,7 @@ import {
   ShieldAlert,
   ShoppingCart,
   Store,
+  Telescope,
   Users,
   Wallet,
 } from "lucide-react";
@@ -45,6 +46,7 @@ interface NavItem {
   to: string;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
+  badge?: string;
 }
 
 const CLIENT_NAV: NavItem[] = [

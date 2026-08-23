@@ -21,6 +21,7 @@ import { Route as AuthenticatedClientDashboardRouteImport } from './routes/_auth
 import { Route as AuthenticatedClientDisputesRouteImport } from './routes/_authenticated/_client/disputes'
 import { Route as AuthenticatedClientDocumentsRouteImport } from './routes/_authenticated/_client/documents'
 import { Route as AuthenticatedClientProductsRouteImport } from './routes/_authenticated/_client/products'
+import { Route as AuthenticatedClientSpymarketRouteImport } from './routes/_authenticated/_client/spymarket'
 import { Route as AuthenticatedClientWalletRouteImport } from './routes/_authenticated/_client/wallet'
 import { Route as AuthenticatedClientWorkspacesRouteImport } from './routes/_authenticated/_client/workspaces'
 import { Route as AuthenticatedAdminClientsRouteImport } from './routes/_authenticated/admin/clients'
@@ -29,6 +30,7 @@ import { Route as AuthenticatedAdminDocumentsRouteImport } from './routes/_authe
 import { Route as AuthenticatedAdminEntitiesRouteImport } from './routes/_authenticated/admin/entities'
 import { Route as AuthenticatedAdminOrdersRouteImport } from './routes/_authenticated/admin/orders'
 import { Route as AuthenticatedAdminProductsRouteImport } from './routes/_authenticated/admin/products'
+import { Route as AuthenticatedAdminSpymarketRouteImport } from './routes/_authenticated/admin/spymarket'
 import { Route as AuthenticatedAdminWalletRouteImport } from './routes/_authenticated/admin/wallet'
 import { Route as AuthenticatedClientDisputesIdRouteImport } from './routes/_authenticated/_client/disputes.$id'
 import { Route as AuthenticatedClientOrdersIndexRouteImport } from './routes/_authenticated/_client/orders/index'
@@ -110,6 +112,12 @@ const AuthenticatedClientProductsRoute =
     path: '/products',
     getParentRoute: () => AuthenticatedClientRoute,
   } as any)
+const AuthenticatedClientSpymarketRoute =
+  AuthenticatedClientSpymarketRouteImport.update({
+    id: '/spymarket',
+    path: '/spymarket',
+    getParentRoute: () => AuthenticatedClientRoute,
+  } as any)
 const AuthenticatedClientWalletRoute =
   AuthenticatedClientWalletRouteImport.update({
     id: '/wallet',
@@ -156,6 +164,12 @@ const AuthenticatedAdminProductsRoute =
   AuthenticatedAdminProductsRouteImport.update({
     id: '/products',
     path: '/products',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminSpymarketRoute =
+  AuthenticatedAdminSpymarketRouteImport.update({
+    id: '/spymarket',
+    path: '/spymarket',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 const AuthenticatedAdminWalletRoute =
@@ -271,6 +285,7 @@ export interface FileRoutesByFullPath {
   '/disputes': typeof AuthenticatedClientDisputesRouteWithChildren
   '/documents': typeof AuthenticatedClientDocumentsRoute
   '/products': typeof AuthenticatedClientProductsRoute
+  '/spymarket': typeof AuthenticatedClientSpymarketRoute
   '/wallet': typeof AuthenticatedClientWalletRoute
   '/workspaces': typeof AuthenticatedClientWorkspacesRoute
   '/admin/clients': typeof AuthenticatedAdminClientsRoute
@@ -279,6 +294,7 @@ export interface FileRoutesByFullPath {
   '/admin/entities': typeof AuthenticatedAdminEntitiesRoute
   '/admin/orders': typeof AuthenticatedAdminOrdersRoute
   '/admin/products': typeof AuthenticatedAdminProductsRoute
+  '/admin/spymarket': typeof AuthenticatedAdminSpymarketRoute
   '/admin/wallet': typeof AuthenticatedAdminWalletRoute
   '/disputes/$id': typeof AuthenticatedClientDisputesIdRoute
   '/orders/$id': typeof AuthenticatedClientOrdersIdRoute
@@ -308,6 +324,7 @@ export interface FileRoutesByTo {
   '/disputes': typeof AuthenticatedClientDisputesRouteWithChildren
   '/documents': typeof AuthenticatedClientDocumentsRoute
   '/products': typeof AuthenticatedClientProductsRoute
+  '/spymarket': typeof AuthenticatedClientSpymarketRoute
   '/wallet': typeof AuthenticatedClientWalletRoute
   '/workspaces': typeof AuthenticatedClientWorkspacesRoute
   '/admin/clients': typeof AuthenticatedAdminClientsRoute
@@ -316,6 +333,7 @@ export interface FileRoutesByTo {
   '/admin/entities': typeof AuthenticatedAdminEntitiesRoute
   '/admin/orders': typeof AuthenticatedAdminOrdersRoute
   '/admin/products': typeof AuthenticatedAdminProductsRoute
+  '/admin/spymarket': typeof AuthenticatedAdminSpymarketRoute
   '/admin/wallet': typeof AuthenticatedAdminWalletRoute
   '/disputes/$id': typeof AuthenticatedClientDisputesIdRoute
   '/orders/$id': typeof AuthenticatedClientOrdersIdRoute
@@ -348,6 +366,7 @@ export interface FileRoutesById {
   '/_authenticated/_client/disputes': typeof AuthenticatedClientDisputesRouteWithChildren
   '/_authenticated/_client/documents': typeof AuthenticatedClientDocumentsRoute
   '/_authenticated/_client/products': typeof AuthenticatedClientProductsRoute
+  '/_authenticated/_client/spymarket': typeof AuthenticatedClientSpymarketRoute
   '/_authenticated/_client/wallet': typeof AuthenticatedClientWalletRoute
   '/_authenticated/_client/workspaces': typeof AuthenticatedClientWorkspacesRoute
   '/_authenticated/admin/clients': typeof AuthenticatedAdminClientsRoute
@@ -356,6 +375,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/entities': typeof AuthenticatedAdminEntitiesRoute
   '/_authenticated/admin/orders': typeof AuthenticatedAdminOrdersRoute
   '/_authenticated/admin/products': typeof AuthenticatedAdminProductsRoute
+  '/_authenticated/admin/spymarket': typeof AuthenticatedAdminSpymarketRoute
   '/_authenticated/admin/wallet': typeof AuthenticatedAdminWalletRoute
   '/_authenticated/_client/disputes/$id': typeof AuthenticatedClientDisputesIdRoute
   '/_authenticated/_client/orders/$id': typeof AuthenticatedClientOrdersIdRoute
@@ -387,6 +407,7 @@ export interface FileRouteTypes {
     | '/disputes'
     | '/documents'
     | '/products'
+    | '/spymarket'
     | '/wallet'
     | '/workspaces'
     | '/admin/clients'
@@ -395,6 +416,7 @@ export interface FileRouteTypes {
     | '/admin/entities'
     | '/admin/orders'
     | '/admin/products'
+    | '/admin/spymarket'
     | '/admin/wallet'
     | '/disputes/$id'
     | '/orders/$id'
@@ -424,6 +446,7 @@ export interface FileRouteTypes {
     | '/disputes'
     | '/documents'
     | '/products'
+    | '/spymarket'
     | '/wallet'
     | '/workspaces'
     | '/admin/clients'
@@ -432,6 +455,7 @@ export interface FileRouteTypes {
     | '/admin/entities'
     | '/admin/orders'
     | '/admin/products'
+    | '/admin/spymarket'
     | '/admin/wallet'
     | '/disputes/$id'
     | '/orders/$id'
@@ -463,6 +487,7 @@ export interface FileRouteTypes {
     | '/_authenticated/_client/disputes'
     | '/_authenticated/_client/documents'
     | '/_authenticated/_client/products'
+    | '/_authenticated/_client/spymarket'
     | '/_authenticated/_client/wallet'
     | '/_authenticated/_client/workspaces'
     | '/_authenticated/admin/clients'
@@ -471,6 +496,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/entities'
     | '/_authenticated/admin/orders'
     | '/_authenticated/admin/products'
+    | '/_authenticated/admin/spymarket'
     | '/_authenticated/admin/wallet'
     | '/_authenticated/_client/disputes/$id'
     | '/_authenticated/_client/orders/$id'
@@ -587,6 +613,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedClientProductsRouteImport
       parentRoute: typeof AuthenticatedClientRoute
     }
+    '/_authenticated/_client/spymarket': {
+      id: '/_authenticated/_client/spymarket'
+      path: '/spymarket'
+      fullPath: '/spymarket'
+      preLoaderRoute: typeof AuthenticatedClientSpymarketRouteImport
+      parentRoute: typeof AuthenticatedClientRoute
+    }
     '/_authenticated/_client/wallet': {
       id: '/_authenticated/_client/wallet'
       path: '/wallet'
@@ -641,6 +674,13 @@ declare module '@tanstack/react-router' {
       path: '/products'
       fullPath: '/admin/products'
       preLoaderRoute: typeof AuthenticatedAdminProductsRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/spymarket': {
+      id: '/_authenticated/admin/spymarket'
+      path: '/spymarket'
+      fullPath: '/admin/spymarket'
+      preLoaderRoute: typeof AuthenticatedAdminSpymarketRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/admin/wallet': {
@@ -785,6 +825,7 @@ interface AuthenticatedClientRouteChildren {
   AuthenticatedClientDisputesRoute: typeof AuthenticatedClientDisputesRouteWithChildren
   AuthenticatedClientDocumentsRoute: typeof AuthenticatedClientDocumentsRoute
   AuthenticatedClientProductsRoute: typeof AuthenticatedClientProductsRoute
+  AuthenticatedClientSpymarketRoute: typeof AuthenticatedClientSpymarketRoute
   AuthenticatedClientWalletRoute: typeof AuthenticatedClientWalletRoute
   AuthenticatedClientWorkspacesRoute: typeof AuthenticatedClientWorkspacesRoute
   AuthenticatedClientOrdersIdRoute: typeof AuthenticatedClientOrdersIdRoute
@@ -804,6 +845,7 @@ const AuthenticatedClientRouteChildren: AuthenticatedClientRouteChildren = {
     AuthenticatedClientDisputesRouteWithChildren,
   AuthenticatedClientDocumentsRoute: AuthenticatedClientDocumentsRoute,
   AuthenticatedClientProductsRoute: AuthenticatedClientProductsRoute,
+  AuthenticatedClientSpymarketRoute: AuthenticatedClientSpymarketRoute,
   AuthenticatedClientWalletRoute: AuthenticatedClientWalletRoute,
   AuthenticatedClientWorkspacesRoute: AuthenticatedClientWorkspacesRoute,
   AuthenticatedClientOrdersIdRoute: AuthenticatedClientOrdersIdRoute,
@@ -840,6 +882,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminEntitiesRoute: typeof AuthenticatedAdminEntitiesRoute
   AuthenticatedAdminOrdersRoute: typeof AuthenticatedAdminOrdersRoute
   AuthenticatedAdminProductsRoute: typeof AuthenticatedAdminProductsRoute
+  AuthenticatedAdminSpymarketRoute: typeof AuthenticatedAdminSpymarketRoute
   AuthenticatedAdminWalletRoute: typeof AuthenticatedAdminWalletRoute
   AuthenticatedAdminQuotesIdRoute: typeof AuthenticatedAdminQuotesIdRoute
   AuthenticatedAdminQuotesIndexRoute: typeof AuthenticatedAdminQuotesIndexRoute
@@ -852,6 +895,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminEntitiesRoute: AuthenticatedAdminEntitiesRoute,
   AuthenticatedAdminOrdersRoute: AuthenticatedAdminOrdersRoute,
   AuthenticatedAdminProductsRoute: AuthenticatedAdminProductsRoute,
+  AuthenticatedAdminSpymarketRoute: AuthenticatedAdminSpymarketRoute,
   AuthenticatedAdminWalletRoute: AuthenticatedAdminWalletRoute,
   AuthenticatedAdminQuotesIdRoute: AuthenticatedAdminQuotesIdRoute,
   AuthenticatedAdminQuotesIndexRoute: AuthenticatedAdminQuotesIndexRoute,
