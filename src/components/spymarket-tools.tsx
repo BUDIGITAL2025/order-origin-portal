@@ -7,7 +7,7 @@
  */
 import * as React from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowRight,
   Database,
@@ -97,6 +97,23 @@ const fmtPrice = (price: number | null, currency: string | null): string =>
       }).format(price);
 
 // ---------------------------------------------------------------------------
+// Learned per-endpoint pricing (spymarket_endpoint_costs via the server)
+// ---------------------------------------------------------------------------
+
+type EndpointCosts = Array<{ endpoint: string; creditsPerRow: number; sampleCount: number }>;
+
+/**
+ * Button label for a metered action. Never assumes 1 credit/row: uses the
+ * learned per-row rate, and refuses to guess when an endpoint was never
+ * measured (sampleCount 0 = provisional seed).
+ */
+function costLabel(costs: EndpointCosts | undefined, endpoint: string, rows: number): string {
+  const c = costs?.find((x) => x.endpoint === endpoint);
+  if (!c || c.sampleCount === 0) return "cost unknown — measured on 1st call";
+  return `up to ~${fmtInt(Math.ceil(rows * c.creditsPerRow))} credits (est.)`;
+}
+
+// ---------------------------------------------------------------------------
 // Metered-call state machine + feedback UI
 // ---------------------------------------------------------------------------
 
@@ -113,6 +130,7 @@ type ServerFnLike = (opts: { data: Record<string, unknown> }) => Promise<ToolRes
 function useMeteredCall(fn: ServerFnLike) {
   const [state, setState] = React.useState<CallState>({ kind: "idle" });
   const pendingRef = React.useRef<(() => void) | null>(null);
+  const queryClient = useQueryClient();
 
   const execute = React.useCallback(
     async (input: Record<string, unknown>, confirmOverage?: boolean) => {
@@ -121,6 +139,12 @@ function useMeteredCall(fn: ServerFnLike) {
         const result = await fn({
           data: confirmOverage ? { ...input, confirmOverage: true } : input,
         });
+        // Every settled call changes the day total / balance / learned prices —
+        // refresh the header badge and usage dashboard immediately.
+        if (result.status !== "confirm") {
+          void queryClient.invalidateQueries({ queryKey: ["spymarket-tools-status"] });
+          void queryClient.invalidateQueries({ queryKey: ["spymarket-usage-dashboard"] });
+        }
         if (result.status === "ok") {
           setState({ kind: "ok", result: result as ToolOk<unknown> });
         } else if (result.status === "confirm") {
