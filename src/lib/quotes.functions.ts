@@ -73,6 +73,52 @@ export const listMyQuotes = createServerFn({ method: "GET" })
     return { quotes: data ?? [] };
   });
 
+/**
+ * Client: my open quote requests (submitted/sourcing/quoted) for the dashboard
+ * widget. Prices come exclusively from the ownership-checked safe RPC, so no
+ * supplier costing can leak. Sorted quoted-first, then by least time remaining.
+ */
+export const listMyOpenQuotes = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data, error } = await context.supabase
+      .from("quote_requests")
+      .select("id, product_url, product_name, status, created_at, quote_due_at")
+      .in("status", ["submitted", "sourcing", "quoted"]);
+    if (error) throw new Error(error.message);
+    const quotes = data ?? [];
+
+    // Lowest client-facing unit price per quoted request (safe RPC only).
+    const priceByQuote = new Map<string, number>();
+    await Promise.all(
+      quotes
+        .filter((q) => q.status === "quoted")
+        .map(async (q) => {
+          const { data: lines } = await context.supabase.rpc("get_client_quote_lines", {
+            p_quote_request_id: q.id,
+          });
+          const prices = (lines ?? [])
+            .map((l) => l.unit_price)
+            .filter((p): p is number => typeof p === "number" && p > 0);
+          if (prices.length > 0) priceByQuote.set(q.id, Math.min(...prices));
+        }),
+    );
+
+    const rows = quotes.map((q) => ({
+      ...q,
+      from_price: priceByQuote.get(q.id) ?? null,
+    }));
+    rows.sort((a, b) => {
+      const aq = a.status === "quoted" ? 0 : 1;
+      const bq = b.status === "quoted" ? 0 : 1;
+      if (aq !== bq) return aq - bq;
+      const ad = a.quote_due_at ? new Date(a.quote_due_at).getTime() : Number.POSITIVE_INFINITY;
+      const bd = b.quote_due_at ? new Date(b.quote_due_at).getTime() : Number.POSITIVE_INFINITY;
+      return ad - bd;
+    });
+    return { quotes: rows };
+  });
+
 /** Client: one of my requests with its variant lines (safe columns only, via the restricted view). */
 export const getMyQuote = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
