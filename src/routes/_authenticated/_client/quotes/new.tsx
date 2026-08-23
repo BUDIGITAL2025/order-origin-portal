@@ -114,6 +114,7 @@ function NewQuotePageInner() {
       toast.info("Checkout canceled — nothing was charged.");
       void navigate({ to: "/quotes/new", replace: true, search: {} });
     }
+    return undefined;
   }, [sub, navigate, queryClient]);
 
   // Quota and plan live on the current workspace (localStorage selection,
