@@ -213,7 +213,7 @@ export async function getWalletBalance(admin: Admin, entityId: string): Promise<
     .select("balance_after")
     .eq("entity_id", entityId)
     .order("created_at", { ascending: false })
-    .order("id", { ascending: false })
+    .order("seq", { ascending: false })
     .limit(1)
     .maybeSingle();
   return data ? Number(data.balance_after) : 0;
