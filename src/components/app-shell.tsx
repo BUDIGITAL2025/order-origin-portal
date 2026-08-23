@@ -302,7 +302,7 @@ export function AppShell({
   role,
   email,
   companyName,
-  onboardingStore,
+  onboardingStores,
   children,
 }: {
   role: "client" | "admin";
@@ -368,7 +368,7 @@ export function AppShell({
             </Link>
           ))}
         </nav>
-        {role === "client" && onboardingStore && <ResourcesSection store={onboardingStore} />}
+        {role === "client" && <GetStartedSection stores={onboardingStores ?? []} />}
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
