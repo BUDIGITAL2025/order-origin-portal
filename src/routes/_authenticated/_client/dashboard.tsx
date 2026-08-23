@@ -242,6 +242,10 @@ function DashboardPage() {
         </Card>
       )}
 
+      <div className="mt-6">
+        <OpenQuotesWidget quotes={openQuotes} subscribed={subscribed} />
+      </div>
+
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader className="flex-row items-center justify-between pb-3">
