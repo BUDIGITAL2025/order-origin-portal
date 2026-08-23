@@ -18,9 +18,17 @@ import { PLANS, planQuota, quotaResetDate } from "@/lib/plans";
 import { quoteRequestSchema } from "@/lib/schemas";
 import { createQuoteRequest } from "@/lib/quotes.functions";
 import { getUrlPreview } from "@/lib/previews.functions";
+import { createSubscriptionCheckout } from "@/lib/billing.functions";
+import { getStripeEnvironment } from "@/lib/stripe";
 import { useMyContext } from "../../_client";
 
 export const Route = createFileRoute("/_authenticated/_client/quotes/new")({
+  // Stripe substitutes {CHECKOUT_SESSION_ID} server-side; sub=success/cancel
+  // is a display hint only — activation comes from the webhook.
+  validateSearch: (search: Record<string, unknown>): { sub?: string } => {
+    const sub = search["sub"];
+    return typeof sub === "string" ? { sub } : {};
+  },
   head: () => ({
     meta: [
       { title: "Request a quote — FlySales" },
