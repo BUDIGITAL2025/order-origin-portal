@@ -349,10 +349,12 @@ function CallFeedback({
   state,
   onConfirm,
   onCancel,
+  onRetry,
 }: {
   state: CallState;
   onConfirm: () => void;
   onCancel: () => void;
+  onRetry?: (() => void) | undefined;
 }) {
   return (
     <>
