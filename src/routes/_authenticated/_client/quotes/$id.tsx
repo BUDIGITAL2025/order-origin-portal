@@ -67,6 +67,29 @@ function MyQuoteDetailPage() {
   const [namingLineId, setNamingLineId] = useState<string | null>(null);
   const [productName, setProductName] = useState("");
 
+  // Reference images live in a private bucket under the caller's own folder —
+  // the storage policy lets the owner mint short-lived signed URLs.
+  const imageKey = (data?.quote?.image_urls ?? []).join("|");
+  const [imageUrls, setImageUrls] = useState<string[]>([]);
+  useEffect(() => {
+    const paths = imageKey ? imageKey.split("|") : [];
+    if (paths.length === 0) {
+      setImageUrls([]);
+      return;
+    }
+    let cancelled = false;
+    void supabase.storage
+      .from("quote-images")
+      .createSignedUrls(paths, 300)
+      .then(({ data: signed }) => {
+        if (cancelled) return;
+        setImageUrls((signed ?? []).map((s) => s.signedUrl).filter((u): u is string => !!u));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [imageKey]);
+
   const respond = useMutation({
     mutationFn: (vars: { lineId: string; accept: boolean; name: string }) =>
       callRespond({
@@ -136,6 +159,20 @@ function MyQuoteDetailPage() {
           </Button>
         }
       />
+
+      <Card className="mb-4">
+        <CardContent className="p-4">
+          <QuoteTimeline status={quote.status} />
+        </CardContent>
+      </Card>
+
+      {quote.quote_due_at && (
+        <QuoteSlaCountdown
+          dueAt={quote.quote_due_at}
+          status={quote.status}
+          className="mb-6"
+        />
+      )}
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
