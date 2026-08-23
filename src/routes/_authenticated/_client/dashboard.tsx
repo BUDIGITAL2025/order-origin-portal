@@ -185,7 +185,7 @@ function DashboardPage() {
               </div>
             )}
             {quota != null && quotesUsed >= quota && (
-              <p className="text-xs font-medium text-warning-foreground">
+              <p className="text-xs font-medium text-warning">
                 Monthly allowance reached — upgrade to Unlimited ($
                 {PLANS.unlimited.priceUsd}/month) for uncapped quote requests from the{" "}
                 <Link to="/quotes/new" className="underline">

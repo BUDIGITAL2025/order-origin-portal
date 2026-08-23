@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Link, useNavigate, useRouter } from "@tanstack/react-router";
+import { Link, useNavigate, useRouter, useRouterState } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -285,7 +285,17 @@ export function AppShell({
   const navigate = useNavigate();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const pathname = useRouterState({ select: (r) => r.location.pathname });
   const nav = role === "admin" ? ADMIN_NAV : CLIENT_NAV;
+
+  // Manual active matching so "/quotes/new" doesn't light up "My quotes".
+  const isActive = (to: string) => {
+    if (to === "/dashboard" || to === "/admin/quotes") return pathname === to;
+    if (to === "/quotes/new") return pathname === "/quotes/new";
+    if (to === "/quotes")
+      return pathname === "/quotes" || (pathname.startsWith("/quotes/") && pathname !== "/quotes/new");
+    return pathname === to || pathname.startsWith(to + "/");
+  };
 
   const handleSignOut = async () => {
     // Sign-out hygiene: tear down queries first so none refetch against a
@@ -317,12 +327,11 @@ export function AppShell({
             <Link
               key={item.to}
               to={item.to}
-              activeOptions={{ exact: item.to === "/dashboard" || item.to === "/admin/quotes" }}
-              activeProps={{
-                className:
+              className={cn(
+                "flex items-center gap-2.5 rounded-md border-l-[3px] border-transparent px-3 py-2 text-sm text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                isActive(item.to) &&
                   "border-primary bg-sidebar-accent text-sidebar-accent-foreground font-medium",
-              }}
-              className="flex items-center gap-2.5 rounded-md border-l-[3px] border-transparent px-3 py-2 text-sm text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+              )}
             >
               <item.icon className="h-4 w-4" />
               {item.label}
