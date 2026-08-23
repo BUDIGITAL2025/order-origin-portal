@@ -60,6 +60,7 @@ const CLIENT_NAV: NavItem[] = [
   { to: "/wallet", label: "Wallet", icon: Wallet },
   { to: "/billing", label: "Billing", icon: CreditCard },
   { to: "/documents", label: "Receipts", icon: FileText },
+  { to: "/spymarket", label: "SpyMarket", icon: Telescope, badge: "New" },
 ];
 
 /**
@@ -103,6 +104,7 @@ const ADMIN_NAV: NavItem[] = [
   { to: "/admin/entities", label: "Entities & stores", icon: Building2 },
   { to: "/admin/wallet", label: "Wallet adjustments", icon: Wallet },
   { to: "/admin/documents", label: "Receipts", icon: FileText },
+  { to: "/admin/spymarket", label: "SpyMarket waitlist", icon: Telescope },
 ];
 
 interface OnboardingStore {
@@ -367,6 +369,11 @@ export function AppShell({
             >
               <item.icon className="h-4 w-4" />
               {item.label}
+              {item.badge && (
+                <Badge className="ml-auto bg-primary/15 px-1.5 py-0 text-[9px] font-medium text-primary hover:bg-primary/15">
+                  {item.badge}
+                </Badge>
+              )}
             </Link>
           ))}
         </nav>
