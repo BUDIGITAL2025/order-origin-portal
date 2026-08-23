@@ -380,6 +380,11 @@ export async function trendtrackCall<T = Json>(opts: CallOptions): Promise<ToolR
     cacheHit: false,
   });
 
+  // Learn the real per-row price from the provider's own usage header.
+  if (metered && usage.cost != null && rows > 0) {
+    await learnEndpointCost(opts.endpoint, usage.cost / rows);
+  }
+
   return {
     status: "ok",
     data: payload,
@@ -390,12 +395,13 @@ export async function trendtrackCall<T = Json>(opts: CallOptions): Promise<ToolR
   };
 }
 
-/** Section status: is the key configured, my day total, last known balance. */
+/** Section status: key configured, my day total, last balance, learned prices. */
 export async function getToolsStatus(userId: string): Promise<{
   configured: boolean;
   dayTotal: number;
   dailySoftLimit: number;
   creditsRemaining: number | null;
+  endpointCosts: EndpointCost[];
 }> {
   const admin = await getAdmin();
   const { data: last } = await admin
