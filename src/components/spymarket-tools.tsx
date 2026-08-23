@@ -2919,41 +2919,45 @@ function AdDetailDialog({
         {ad && (
           <div className="space-y-4">
             {/* Media */}
-            {mediaUrl ? (
-              <video src={mediaUrl} controls className="w-full rounded-xl border" />
-            ) : asStr(media["mediaUrl"]) && asStr(media["mediaType"]) === "video" ? (
-              <video src={asStr(media["mediaUrl"]) ?? ""} controls className="w-full rounded-xl border" />
-            ) : asStr(media["thumbnailUrl"]) ? (
+            {isVideo ? (
+              (playableUrl ?? fetchedMediaUrl) ? (
+                <video
+                  src={playableUrl ?? fetchedMediaUrl ?? ""}
+                  poster={posterUrl ?? undefined}
+                  controls
+                  className="w-full rounded-xl border"
+                />
+              ) : (
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="rounded-full"
+                    disabled={mediaCall.state.kind === "loading"}
+                    onClick={() => adId && void mediaCall.execute({ adId })}
+                  >
+                    {mediaCall.state.kind === "loading" ? (
+                      <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Play className="mr-2 h-3.5 w-3.5" />
+                    )}
+                    Load video — {costLabel(costs, "ads/media-url", 1)}
+                  </Button>
+                  <CallFeedback
+                    state={mediaCall.state}
+                    onConfirm={mediaCall.confirm}
+                    onCancel={mediaCall.cancelConfirm}
+                    onRetry={mediaCall.retry}
+                  />
+                </div>
+              )
+            ) : (posterUrl ?? playableUrl) ? (
               <img
-                src={asStr(media["thumbnailUrl"]) ?? ""}
+                src={posterUrl ?? playableUrl ?? ""}
                 alt="Ad creative"
                 className="max-h-72 w-full rounded-xl border object-contain"
               />
             ) : null}
-            {asStr(media["mediaType"]) === "video" && !mediaUrl && !asStr(media["mediaUrl"]) && (
-              <div className="flex items-center gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="rounded-full"
-                  disabled={mediaCall.state.kind === "loading"}
-                  onClick={() => adId && void mediaCall.execute({ adId })}
-                >
-                  {mediaCall.state.kind === "loading" ? (
-                    <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <Play className="mr-2 h-3.5 w-3.5" />
-                  )}
-                  Load video — {costLabel(costs, "ads/media-url", 1)}
-                </Button>
-                <CallFeedback
-                  state={mediaCall.state}
-                  onConfirm={mediaCall.confirm}
-                  onCancel={mediaCall.cancelConfirm}
-                  onRetry={mediaCall.retry}
-                />
-              </div>
-            )}
 
             {/* Copy */}
             <div className="space-y-1.5">
