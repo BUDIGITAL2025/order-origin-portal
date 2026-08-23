@@ -203,7 +203,7 @@ export const getMyOrder = createServerFn({ method: "GET" })
     const { data: order, error } = await context.supabase
       .from("orders")
       .select(
-        "id, external_order_number, status, payment_method, total_amount, destination_country, shipping_address, paid_at, shipped_at, delivered_at, created_at, store_id, order_items(id, sku, product_id, quantity, unit_price, line_total)",
+        "id, external_order_number, status, payment_method, total_amount, destination_country, shipping_address, paid_at, shipped_at, delivered_at, tracking_number, tracking_carrier, created_at, store_id, order_items(id, sku, product_id, quantity, unit_price, line_total)",
       )
       .eq("id", data.order_id)
       .maybeSingle();
