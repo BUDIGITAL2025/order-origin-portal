@@ -1287,6 +1287,7 @@ export type Database = {
           entity_id: string
           id: string
           reference: string | null
+          seq: number
           type: Database["public"]["Enums"]["wallet_txn_type"]
         }
         Insert: {
@@ -1298,6 +1299,7 @@ export type Database = {
           entity_id: string
           id?: string
           reference?: string | null
+          seq?: never
           type: Database["public"]["Enums"]["wallet_txn_type"]
         }
         Update: {
@@ -1309,6 +1311,7 @@ export type Database = {
           entity_id?: string
           id?: string
           reference?: string | null
+          seq?: never
           type?: Database["public"]["Enums"]["wallet_txn_type"]
         }
         Relationships: [
@@ -1428,6 +1431,7 @@ export type Database = {
           entity_id: string
           id: string
           reference: string | null
+          seq: number
           type: Database["public"]["Enums"]["wallet_txn_type"]
         }
         SetofOptions: {
