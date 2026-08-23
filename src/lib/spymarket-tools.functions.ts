@@ -192,7 +192,7 @@ export const spymarketGetShopTab = createServerFn({ method: "POST" })
         query: { limit: data.limit },
       },
     };
-    const target = paths[data.tab];
+    const target = paths[data.tab]!;
     return mod.trendtrackCall({
       userId: context.userId,
       endpoint: `shops/${data.tab}`,
