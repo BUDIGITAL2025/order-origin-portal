@@ -2533,6 +2533,15 @@ function AdsTab({
                 disabled={searching}
                 onClick={() => {
                   setPages([]);
+                  setPages([]);
+                  go({
+                    tab: "ads",
+                    aq: search.trim() || undefined,
+                    atyp: searchType !== "adCopy" ? searchType : undefined,
+                    astat: status !== "active" ? status : undefined,
+                    amed: mediaType || undefined,
+                    asort: sortBy !== "longestRunning" ? sortBy : undefined,
+                  });
                   void call.execute(buildInput(1));
                 }}
               >
