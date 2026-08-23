@@ -61,12 +61,14 @@ function NewQuotePageInner() {
 
   // Paywall: submitting needs an active subscription on this workspace (or a
   // fee waiver). The form stays visible and fillable; the plan options only
-  // appear when an unsubscribed client tries to submit.
+  // appear when an unsubscribed client tries to submit. A storeless account
+  // can't be subscribed (plans live on workspaces), so it counts as needing
+  // one — the subscribe flow creates the draft workspace.
   const needsSubscription =
-    currentStore != null &&
-    currentStore.subscription_status !== "active" &&
-    currentStore.subscription_status !== "past_due" &&
-    !currentStore.fee_waived;
+    currentStore == null ||
+    (currentStore.subscription_status !== "active" &&
+      currentStore.subscription_status !== "past_due" &&
+      !currentStore.fee_waived);
 
   const submit = useMutation({
     mutationFn: async () => {
@@ -80,6 +82,7 @@ function NewQuotePageInner() {
         notes,
         target_monthly_volume: volume ? Number(volume) : null,
         target_countries: countries,
+        store_id: currentStore?.id ?? undefined,
       });
       if (!parsed.success) {
         throw new Error(parsed.error.issues[0]?.message ?? "Check your input");
@@ -106,13 +109,18 @@ function NewQuotePageInner() {
         }
       }
 
-      await callCreate({ data: { ...parsed.data, image_urls: imageUrls } });
+      return await callCreate({ data: { ...parsed.data, image_urls: imageUrls } });
     },
-    onSuccess: async () => {
+    onSuccess: async (r) => {
       toast.success("Quote request submitted");
       await queryClient.invalidateQueries({ queryKey: ["my-quotes"] });
       await queryClient.invalidateQueries({ queryKey: ["my-context"] });
-      await navigate({ to: "/quotes" });
+      // Land on the request detail page, which tracks the 48h sourcing target.
+      if (r.quote_id) {
+        await navigate({ to: "/quotes/$id", params: { id: r.quote_id } });
+      } else {
+        await navigate({ to: "/quotes" });
+      }
     },
     onError: (err) => {
       if (err.message.includes("used all quote requests")) {
