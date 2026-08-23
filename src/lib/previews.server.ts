@@ -15,8 +15,8 @@ export interface PreviewData {
 }
 
 export interface ScrapeKeys {
-  firecrawlKey?: string;
-  perplexityKey?: string;
+  firecrawlKey?: string | undefined;
+  perplexityKey?: string | undefined;
 }
 
 const TRACKING_PARAMS = new Set([
@@ -118,31 +118,31 @@ async function scrapeWithFirecrawl(url: string, apiKey: string): Promise<Preview
     });
     if (!res.ok) return null;
     const body = (await res.json()) as Record<string, unknown>;
-    if (body.success !== true) return null;
+    if (body["success"] !== true) return null;
 
-    const doc = (body.data ?? body) as Record<string, unknown>;
-    const meta = (doc.metadata ?? {}) as Record<string, unknown>;
-    const json = (doc.json ?? {}) as Record<string, unknown>;
-    const markdown = asString(doc.markdown);
+    const doc = (body["data"] ?? body) as Record<string, unknown>;
+    const meta = (doc["metadata"] ?? {}) as Record<string, unknown>;
+    const json = (doc["json"] ?? {}) as Record<string, unknown>;
+    const markdown = asString(doc["markdown"]);
 
     const title =
-      asString(json.title) ?? asString(meta.title) ?? asString(meta.ogTitle) ?? null;
+      asString(json["title"]) ?? asString(meta["title"]) ?? asString(meta["ogTitle"]) ?? null;
     const description =
-      asString(json.description) ??
-      asString(meta.description) ??
-      asString(meta.ogDescription) ??
+      asString(json["description"]) ??
+      asString(meta["description"]) ??
+      asString(meta["ogDescription"]) ??
       null;
     const imageUrls = unique(
       [
-        ...asStringArray(json.images),
-        asString(meta.ogImage),
+        ...asStringArray(json["images"]),
+        asString(meta["ogImage"]),
         ...markdownImages(markdown),
       ].filter((v): v is string => typeof v === "string"),
     )
       .map((src) => absolutize(src, url))
       .filter((v): v is string => v != null)
       .slice(0, 6);
-    const priceHint = asString(json.price) ?? findPriceInText(markdown);
+    const priceHint = asString(json["price"]) ?? findPriceInText(markdown);
 
     if (!title && imageUrls.length === 0) return null;
     return { title, description, imageUrls, priceHint, source: "firecrawl" };
@@ -236,17 +236,17 @@ async function scrapeWithPerplexity(url: string, apiKey: string): Promise<Previe
     const json = parseJsonObject(content);
     if (!json) return null;
 
-    const title = asString(json.title);
-    const imageUrls = asStringArray(json.images)
+    const title = asString(json["title"]);
+    const imageUrls = asStringArray(json["images"])
       .map((src) => absolutize(src, url))
       .filter((v): v is string => v != null)
       .slice(0, 6);
     if (!title && imageUrls.length === 0) return null;
     return {
       title,
-      description: asString(json.description),
+      description: asString(json["description"]),
       imageUrls,
-      priceHint: asString(json.price),
+      priceHint: asString(json["price"]),
       source: "perplexity",
     };
   } catch {
@@ -378,11 +378,11 @@ function jsonLdPrice(product: JsonLdProduct | null): string | null {
   for (const offer of offers) {
     if (!offer || typeof offer !== "object") continue;
     const o = offer as Record<string, unknown>;
-    const price = o.price ?? o.lowPrice;
+    const price = o["price"] ?? o["lowPrice"];
     if (price == null) continue;
     const amount = typeof price === "number" ? String(price) : asString(price);
     if (!amount) continue;
-    const currency = asString(o.priceCurrency) ?? "";
+    const currency = asString(o["priceCurrency"]) ?? "";
     return formatPrice(amount, currency);
   }
   return null;
