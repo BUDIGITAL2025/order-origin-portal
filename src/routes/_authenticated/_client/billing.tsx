@@ -115,6 +115,7 @@ function BillingPage() {
   const callSaveAuto = useServerFn(saveAutoTopupSettings);
   const callMarkRead = useServerFn(markNotificationsRead);
   const fetchWallet = useServerFn(getMyWallet);
+  const fetchDocuments = useServerFn(listMyDocuments);
 
   // Billing is per store: the subscription lives on the store selected in
   // the switcher; the wallet/auto top-up resolve to that store's entity.
@@ -146,6 +147,7 @@ function BillingPage() {
     enabled: environment != null && storeId != null,
   });
   const { data: wallet } = useQuery({ queryKey: ["my-wallet"], queryFn: fetchWallet });
+  const { data: myDocuments } = useQuery({ queryKey: ["my-documents"], queryFn: fetchDocuments });
 
   const { sub, topup } = Route.useSearch();
   useEffect(() => {
@@ -295,6 +297,7 @@ function BillingPage() {
   const hasActiveSub = subStatus === "active" || subStatus === "past_due";
   const feeWaived = store?.fee_waived ?? false;
   const transactions = wallet?.transactions ?? [];
+  const documents = myDocuments ?? [];
 
   return (
     <div>
