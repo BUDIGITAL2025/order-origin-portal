@@ -17,8 +17,7 @@ export function LegalLayout({
       <header className="border-b border-border">
         <div className="mx-auto flex h-14 max-w-3xl items-center px-6">
           <a href={MARKETING_URL} className="flex items-center gap-2">
-            <img src={logoLightAsset.url} alt="FlySales" className="h-6 w-auto dark:hidden" />
-            <img src={logoLightAsset.url} alt="FlySales" className="hidden h-6 w-auto dark:block" />
+            <img src={logoLightAsset.url} alt="FlySales" className="h-6 w-auto" />
           </a>
         </div>
       </header>
