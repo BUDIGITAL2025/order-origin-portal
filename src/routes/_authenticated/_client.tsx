@@ -97,9 +97,9 @@ function CompleteProfile() {
     void supabase.auth.getUser().then(({ data }) => {
       const meta = (data.user?.user_metadata ?? {}) as Record<string, unknown>;
       const fromMeta = {
-        contact_name: typeof meta.contact_name === "string" ? meta.contact_name : "",
-        phone: typeof meta.phone === "string" ? meta.phone : "",
-        country: typeof meta.country === "string" ? meta.country : "",
+        contact_name: typeof meta["contact_name"] === "string" ? (meta["contact_name"] as string) : "",
+        phone: typeof meta["phone"] === "string" ? (meta["phone"] as string) : "",
+        country: typeof meta["country"] === "string" ? (meta["country"] as string) : "",
       };
       setForm(fromMeta);
       const parsed = completeSignupSchema.safeParse(fromMeta);
