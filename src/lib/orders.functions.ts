@@ -154,22 +154,29 @@ export const adminSetOrderTracking = createServerFn({ method: "POST" })
     const { error } = await admin.from("orders").update(update).eq("id", order.id);
     if (error) throw new Error(error.message);
 
-    // Email the client exactly once — the first time tracking appears.
+    // Email the client at most once — the first time tracking appears.
+    // Claim the notification atomically BEFORE sending: only the request that
+    // flips tracking_notified_at (guarded by IS NULL) sends the email, so
+    // concurrent or repeated calls can never double-send.
     if (firstTracking && !order.tracking_notified_at) {
       const accountId = (
         order.stores as { entities?: { account_id?: string | null } | null } | null
       )?.entities?.account_id;
       if (accountId) {
-        const { sendClientEmail } = await import("./email.server");
-        await sendClientEmail(admin, {
-          clientId: accountId,
-          subject: `Your order ${order.external_order_number ?? ""} has shipped`,
-          text: `Order ${order.external_order_number ?? order.id} is on its way.\nCarrier: ${data.tracking_carrier}\nTracking: ${data.tracking_number}`,
-        });
-        await admin
+        const { data: claimed } = await admin
           .from("orders")
           .update({ tracking_notified_at: new Date().toISOString() })
-          .eq("id", order.id);
+          .eq("id", order.id)
+          .is("tracking_notified_at", null)
+          .select("id");
+        if (claimed && claimed.length > 0) {
+          const { sendClientEmail } = await import("./email.server");
+          await sendClientEmail(admin, {
+            clientId: accountId,
+            subject: `Your order ${order.external_order_number ?? ""} has shipped`,
+            text: `Order ${order.external_order_number ?? order.id} is on its way.\nCarrier: ${data.tracking_carrier}\nTracking: ${data.tracking_number}`,
+          });
+        }
       }
     }
     return { ok: true };
