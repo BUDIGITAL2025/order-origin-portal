@@ -964,6 +964,27 @@ export type Database = {
           },
         ]
       }
+      spymarket_cache: {
+        Row: {
+          cache_key: string
+          endpoint: string
+          fetched_at: string
+          payload: Json
+        }
+        Insert: {
+          cache_key: string
+          endpoint: string
+          fetched_at?: string
+          payload: Json
+        }
+        Update: {
+          cache_key?: string
+          endpoint?: string
+          fetched_at?: string
+          payload?: Json
+        }
+        Relationships: []
+      }
       spymarket_interest: {
         Row: {
           account_id: string
@@ -999,6 +1020,50 @@ export type Database = {
             columns: ["entity_id"]
             isOneToOne: false
             referencedRelation: "entities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      spymarket_usage_log: {
+        Row: {
+          cache_hit: boolean
+          called_by: string | null
+          created_at: string
+          credits_cost: number
+          credits_remaining: number | null
+          endpoint: string
+          id: string
+          query_summary: Json
+          rows_returned: number
+        }
+        Insert: {
+          cache_hit?: boolean
+          called_by?: string | null
+          created_at?: string
+          credits_cost?: number
+          credits_remaining?: number | null
+          endpoint: string
+          id?: string
+          query_summary?: Json
+          rows_returned?: number
+        }
+        Update: {
+          cache_hit?: boolean
+          called_by?: string | null
+          created_at?: string
+          credits_cost?: number
+          credits_remaining?: number | null
+          endpoint?: string
+          id?: string
+          query_summary?: Json
+          rows_returned?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "spymarket_usage_log_called_by_fkey"
+            columns: ["called_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
