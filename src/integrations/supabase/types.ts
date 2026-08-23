@@ -907,7 +907,7 @@ export type Database = {
           quotes_used_this_month: number
           status: Database["public"]["Enums"]["profile_status"]
           store_name: string | null
-          store_url: string
+          store_url: string | null
           stripe_subscription_id: string | null
           subscription_plan: Database["public"]["Enums"]["subscription_plan"]
           subscription_status: Database["public"]["Enums"]["subscription_status"]
@@ -935,7 +935,7 @@ export type Database = {
           quotes_used_this_month?: number
           status?: Database["public"]["Enums"]["profile_status"]
           store_name?: string | null
-          store_url: string
+          store_url?: string | null
           stripe_subscription_id?: string | null
           subscription_plan?: Database["public"]["Enums"]["subscription_plan"]
           subscription_status?: Database["public"]["Enums"]["subscription_status"]
@@ -963,7 +963,7 @@ export type Database = {
           quotes_used_this_month?: number
           status?: Database["public"]["Enums"]["profile_status"]
           store_name?: string | null
-          store_url?: string
+          store_url?: string | null
           stripe_subscription_id?: string | null
           subscription_plan?: Database["public"]["Enums"]["subscription_plan"]
           subscription_status?: Database["public"]["Enums"]["subscription_status"]
@@ -1207,6 +1207,43 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "wallet_transactions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      connect_draft_store: {
+        Args: { p_store_id: string; p_store_name?: string; p_store_url: string }
+        Returns: {
+          approved_at: string | null
+          avg_daily_units_30d: number
+          created_at: string
+          entity_id: string
+          fee_waived: boolean
+          id: string
+          integration_mode: Database["public"]["Enums"]["integration_mode"]
+          middleware_tenant_id: string | null
+          pending_plan_change:
+            | Database["public"]["Enums"]["subscription_plan"]
+            | null
+          pending_plan_change_date: string | null
+          platform: Database["public"]["Enums"]["store_platform"]
+          pricing_tier: Database["public"]["Enums"]["pricing_tier"]
+          provisioning_error: string | null
+          provisioning_status: Database["public"]["Enums"]["provisioning_status"]
+          provisioning_step: string | null
+          quotes_period_start: string
+          quotes_used_this_month: number
+          status: Database["public"]["Enums"]["profile_status"]
+          store_name: string | null
+          store_url: string | null
+          stripe_subscription_id: string | null
+          subscription_plan: Database["public"]["Enums"]["subscription_plan"]
+          subscription_status: Database["public"]["Enums"]["subscription_status"]
+          tier_override: Database["public"]["Enums"]["pricing_tier"] | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "stores"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -1479,7 +1516,7 @@ export type Database = {
       pricing_tier: "starter" | "growth" | "scale"
       product_status: "active" | "discontinued" | "needs_review"
       product_type: "simple" | "bundle"
-      profile_status: "pending" | "active" | "suspended"
+      profile_status: "pending" | "active" | "suspended" | "draft"
       provisioning_status: "not_started" | "in_progress" | "complete" | "failed"
       push_status: "pending" | "pushed" | "failed"
       quote_line_status: "pending" | "accepted" | "rejected"
@@ -1642,7 +1679,7 @@ export const Constants = {
       pricing_tier: ["starter", "growth", "scale"],
       product_status: ["active", "discontinued", "needs_review"],
       product_type: ["simple", "bundle"],
-      profile_status: ["pending", "active", "suspended"],
+      profile_status: ["pending", "active", "suspended", "draft"],
       provisioning_status: ["not_started", "in_progress", "complete", "failed"],
       push_status: ["pending", "pushed", "failed"],
       quote_line_status: ["pending", "accepted", "rejected"],
