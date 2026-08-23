@@ -103,7 +103,7 @@ const ADMIN_NAV: NavItem[] = [
 
 interface OnboardingStore {
   platform: string;
-  store_url: string;
+  store_url: string | null;
   integration_mode: string;
 }
 
@@ -123,7 +123,7 @@ function ResourcesSection({ store }: { store: OnboardingStore }) {
   });
 
   const isShopify = store.platform === "shopify";
-  const hasStore = store.store_url.trim().length > 0;
+  const hasStore = (store.store_url ?? "").trim().length > 0;
   const isAutomatic = store.integration_mode === "automatic";
 
   const showCreateStore = !isShopify || !hasStore;

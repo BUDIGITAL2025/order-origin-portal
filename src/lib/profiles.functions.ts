@@ -4,6 +4,7 @@ import {
   addStoreSchema,
   clientStatusSchema,
   completeSignupSchema,
+  connectDraftStoreSchema,
   entityDetailsSchema,
   feeWaivedSchema,
   integrationModeSchema,
@@ -181,6 +182,24 @@ export const addMyStore = createServerFn({ method: "POST" })
       throw new Error(storeError.message);
     }
     return { ok: true, store_id: store.id, status: store.status };
+  });
+
+/**
+ * Connect Shopify to a DRAFT workspace: fills the store URL, provisions the
+ * tenant and activates — quota, subscription, quotes and catalogue all stay.
+ * The DB function re-verifies ownership and the *.myshopify.com pattern.
+ */
+export const connectMyStore = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => connectDraftStoreSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase.rpc("connect_draft_store", {
+      p_store_id: data.store_id,
+      p_store_url: data.store_url,
+      ...(data.store_name ? { p_store_name: data.store_name } : {}),
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
   });
 
 /** Client completes their entity's fiscal details (legal name, VAT, address). */
