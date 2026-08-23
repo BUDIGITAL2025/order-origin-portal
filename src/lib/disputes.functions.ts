@@ -168,9 +168,9 @@ export const adminResolveDispute = createServerFn({ method: "POST" })
     const { error } = await context.supabase.rpc("resolve_dispute", {
       p_dispute_id: data.dispute_id,
       p_resolution: data.resolution,
-      p_credit_amount: data.credit_amount ?? undefined,
-      p_admin_notes: data.admin_notes || undefined,
-      p_client_message: data.client_message || undefined,
+      ...(data.credit_amount != null ? { p_credit_amount: data.credit_amount } : {}),
+      ...(data.admin_notes ? { p_admin_notes: data.admin_notes } : {}),
+      ...(data.client_message ? { p_client_message: data.client_message } : {}),
     });
     if (error) throw new Error(error.message);
 
