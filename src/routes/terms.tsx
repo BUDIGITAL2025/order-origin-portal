@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { LegalLayout } from "@/components/legal";
+import { LEGAL_ENTITY_NAME } from "@/lib/legal-entity";
 import { TERMS_INTRO, TERMS_LAST_UPDATED, TERMS_SECTIONS } from "@/lib/terms";
 
 export const Route = createFileRoute("/terms")({
@@ -8,14 +9,12 @@ export const Route = createFileRoute("/terms")({
       { title: "Terms of Service — FlySales" },
       {
         name: "description",
-        content:
-          "The terms that govern your use of FlySales, the B2B sourcing and fulfilment platform operated by BUDIGITAL SCALE MANAGEMENT - FZCO.",
+        content: `The terms that govern your use of FlySales, the B2B sourcing and fulfilment platform operated by ${LEGAL_ENTITY_NAME}.`,
       },
       { property: "og:title", content: "Terms of Service — FlySales" },
       {
         property: "og:description",
-        content:
-          "The terms that govern your use of FlySales, the B2B sourcing and fulfilment platform operated by BUDIGITAL SCALE MANAGEMENT - FZCO.",
+        content: `The terms that govern your use of FlySales, the B2B sourcing and fulfilment platform operated by ${LEGAL_ENTITY_NAME}.`,
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },

@@ -4,6 +4,8 @@
  * every profile whose terms_version differs sees the one-time acceptance
  * banner on their next login.
  */
+import { LEGAL_ENTITY_NAME } from "./legal-entity";
+
 export const TERMS_VERSION = "2026-08-23";
 export const TERMS_LAST_UPDATED = "August 23, 2026";
 

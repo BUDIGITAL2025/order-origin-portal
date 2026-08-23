@@ -1408,6 +1408,7 @@ export type Database = {
       apply_wallet_transaction: {
         Args: {
           p_amount: number
+          p_created_by?: string
           p_description: string
           p_entity_id: string
           p_reference?: string
