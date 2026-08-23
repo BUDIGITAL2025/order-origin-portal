@@ -2551,8 +2551,10 @@ function AdCard({ ad, onOpen }: { ad: Rec; onOpen: (id: string) => void }) {
       {(body ?? thumb ?? domain) && (
         <div className="space-y-2 px-3 pt-2">
           {body && (
-            <p className={cn("text-xs text-muted-foreground", !expanded && "line-clamp-2")}>
-              {body}
+            <div>
+              <p className={cn("text-xs text-muted-foreground", !expanded && "line-clamp-2")}>
+                {body}
+              </p>
               {body.length > 90 && (
                 <button
                   type="button"
@@ -2560,12 +2562,12 @@ function AdCard({ ad, onOpen }: { ad: Rec; onOpen: (id: string) => void }) {
                     e.stopPropagation();
                     setExpanded((v) => !v);
                   }}
-                  className="ml-1 font-medium text-foreground hover:underline"
+                  className="mt-0.5 text-[11px] font-medium text-foreground hover:underline"
                 >
                   {expanded ? "See less" : "See more"}
                 </button>
               )}
-            </p>
+            </div>
           )}
           {thumb && (
             <div
