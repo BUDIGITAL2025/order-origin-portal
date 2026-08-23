@@ -238,6 +238,49 @@ export const documentIdSchema = z.object({
   id: z.string().uuid(),
 });
 
+// ============= Batch order payment =============
+
+export const batchOrderIdsSchema = z.object({
+  orderIds: z.array(z.string().uuid()).min(1, "Select at least one order").max(100),
+});
+
+export const batchOrderCheckoutSchema = batchOrderIdsSchema.extend({
+  returnUrl: z.string().trim().url("Invalid return URL").max(500),
+  environment: stripeEnvSchema,
+});
+
+// ============= Disputes =============
+
+export const disputeReasonSchema = z.enum(["not_delivered", "damaged", "wrong_product"]);
+
+export const openDisputeSchema = z.object({
+  order_id: z.string().uuid(),
+  reason: disputeReasonSchema,
+  description: z.string().trim().min(10, "Describe what happened").max(2000),
+  evidence_urls: z.array(z.string().min(1).max(500)).max(10).optional(),
+});
+
+export const disputeMessageSchema = z.object({
+  dispute_id: z.string().uuid(),
+  body: z.string().trim().min(1, "Message is required").max(2000),
+});
+
+export const disputeIdSchema = z.object({
+  dispute_id: z.string().uuid(),
+});
+
+export const resolveDisputeSchema = z.object({
+  dispute_id: z.string().uuid(),
+  resolution: z.enum(["wallet_credit", "reshipped", "rejected"]),
+  credit_amount: z.number().positive().max(1_000_000).nullable().optional(),
+  admin_notes: z.string().trim().max(2000).optional(),
+  client_message: z.string().trim().max(2000).optional(),
+});
+
+export const adminDisputeFilterSchema = z.object({
+  status: z.enum(["open", "investigating", "approved", "rejected", "closed"]).optional(),
+});
+
 export const adminDocumentsFilterSchema = z.object({
   type: documentTypeSchema.optional(),
   clientId: z.string().uuid().optional(),

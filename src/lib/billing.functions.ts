@@ -3,6 +3,8 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
   autoTopupSettingsSchema,
+  batchOrderCheckoutSchema,
+  batchOrderIdsSchema,
   changePlanSchema,
   notificationIdsSchema,
   stripeEnvSchema,
@@ -242,6 +244,115 @@ export const createSubscriptionCheckout = createServerFn({ method: "POST" })
     } catch (error) {
       return { error: await stripeErrorText(error) };
     }
+  });
+
+/**
+ * Client: settle selected awaiting_payment orders from the wallet in one go.
+ * The Postgres function re-checks ownership, recomputes totals, debits with
+ * order-id idempotency and credits back any order that was settled by another
+ * route in the meantime.
+ */
+export const payOrdersFromWallet = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => batchOrderIdsSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const { data: settled, error } = await context.supabase.rpc("pay_orders_from_wallet", {
+      p_order_ids: data.orderIds,
+    });
+    if (error) throw new Error(error.message);
+    const rows = (settled ?? []) as Array<{ order_id: string; amount: number }>;
+    // Payment Receipt for each order the wallet just paid (best-effort;
+    // issueOrderReceipt is idempotent and the cron sweep is the backstop).
+    if (rows.length > 0) {
+      const { getAdminClient } = await import("./admin.server");
+      const { issueOrderReceipt } = await import("./documents.server");
+      const admin = await getAdminClient();
+      for (const row of rows) {
+        try {
+          await issueOrderReceipt(admin, row.order_id);
+        } catch (e) {
+          console.error("order receipt failed:", row.order_id, e);
+        }
+      }
+    }
+    return { settled: rows };
+  });
+
+/**
+ * Client: one Stripe Checkout covering the summed total of the selected
+ * awaiting_payment orders. The selection is persisted in
+ * order_batch_payments (keyed on the session id) so the webhook settles
+ * exactly these orders — never oldest-first.
+ */
+export const createBatchOrderCheckout = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => batchOrderCheckoutSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const { createStripeClient } = await import("./stripe.server");
+    // RLS scopes this read to the caller's own stores.
+    const { data: rows, error } = await context.supabase
+      .from("orders")
+      .select("id, total_amount, stores!inner(entity_id)")
+      .in("id", data.orderIds)
+      .eq("status", "awaiting_payment");
+    if (error) throw new Error(error.message);
+    const orders = (rows ?? []) as Array<{
+      id: string;
+      total_amount: number | string | null;
+      stores: { entity_id: string };
+    }>;
+    if (orders.length === 0) {
+      throw new Error("None of the selected orders are awaiting payment anymore.");
+    }
+    const entityIds = new Set(orders.map((o) => o.stores.entity_id));
+    if (entityIds.size !== 1) throw new Error("Orders must belong to the same entity.");
+    const entityId = orders[0]!.stores.entity_id;
+    const total = orders.reduce((acc, o) => acc + Number(o.total_amount ?? 0), 0);
+    if (!(total > 0)) throw new Error("Selected orders have no payable total.");
+
+    const stripe = createStripeClient(data.environment);
+    const session = await stripe.checkout.sessions.create({
+      mode: "payment",
+      line_items: [
+        {
+          quantity: 1,
+          price_data: {
+            currency: "usd",
+            unit_amount: Math.round(total * 100),
+            product_data: {
+              name: `FlySales order payment — ${orders.length} order${orders.length === 1 ? "" : "s"}`,
+            },
+          },
+        },
+      ],
+      success_url: `${data.returnUrl}?batch=success&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${data.returnUrl}?batch=cancel`,
+      metadata: { flysales_entity_id: entityId, kind: "order_batch" },
+    });
+    if (!session.url) throw new Error("Stripe did not return a checkout URL");
+    // The batch reference is the session id — only known after creation, so
+    // stamp it onto the session AND its payment intent now.
+    const batchMeta = { batch_reference: session.id };
+    await stripe.checkout.sessions.update(session.id, { metadata: batchMeta });
+    const piId =
+      typeof session.payment_intent === "string" ? session.payment_intent : null;
+    if (piId) {
+      await stripe.paymentIntents.update(piId, {
+        metadata: { flysales_entity_id: entityId, kind: "order_batch", ...batchMeta },
+      });
+    }
+    const { getAdminClient } = await import("./admin.server");
+    const admin = await getAdminClient();
+    const { error: insertError } = await admin.from("order_batch_payments").insert({
+      entity_id: entityId,
+      order_ids: orders.map((o) => o.id),
+      amount: Math.round(total * 100) / 100,
+      status: "pending",
+      stripe_session_id: session.id,
+      stripe_payment_intent_id: piId,
+    });
+    if (insertError) throw new Error(insertError.message);
+    return { url: session.url };
   });
 
 /**
