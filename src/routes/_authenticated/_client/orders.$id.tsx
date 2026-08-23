@@ -134,7 +134,7 @@ function OrderDetailPage() {
             </dl>
             {Object.keys(address).length > 0 && (
               <p className="mt-3 border-t border-border pt-3 text-xs text-muted-foreground">
-                {[address.name, address.address1, address.city, address.country]
+                {[address["name"], address["address1"], address["city"], address["country"]]
                   .filter(Boolean)
                   .join(", ")}
               </p>
