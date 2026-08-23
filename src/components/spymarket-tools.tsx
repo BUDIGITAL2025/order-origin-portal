@@ -1194,16 +1194,16 @@ function ShopOnDemand({
   const [sectionData, setSectionData] = React.useState<Record<string, ToolOk<unknown>>>({});
 
   const sections = [
-    { id: "products", label: "Products", cost: 20, icon: Package },
-    { id: "advertisers", label: "Advertisers", cost: 1, icon: Megaphone },
-    { id: "tiktok", label: "TikTok library", cost: 20, icon: Eye },
-    { id: "similar", label: "Similar shops", cost: 10, icon: Store },
+    { id: "products", label: "Products", limit: 20, endpoint: "shops/products", icon: Package },
+    { id: "advertisers", label: "Advertisers", limit: 1, endpoint: "shops/advertisers", icon: Megaphone },
+    { id: "tiktok", label: "TikTok library", limit: 20, endpoint: "shops/tiktok", icon: Eye },
+    { id: "similar", label: "Similar shops", limit: 10, endpoint: "shops/similar", icon: Store },
   ] as const;
 
-  const open = async (sectionId: string, cost: number) => {
+  const open = async (sectionId: string, limit: number) => {
     setActiveSection(sectionId);
     if (sectionData[sectionId]) return; // already loaded this session
-    await call.execute({ shopId, tab: sectionId, limit: cost });
+    await call.execute({ shopId, tab: sectionId, limit });
   };
 
   React.useEffect(() => {
@@ -1234,10 +1234,10 @@ function ShopOnDemand({
                 size="sm"
                 className="rounded-full"
                 disabled={call.state.kind === "loading"}
-                onClick={() => void open(s.id, s.cost)}
+                onClick={() => void open(s.id, s.limit)}
               >
                 <Icon className="mr-1.5 h-3.5 w-3.5" />
-                {sectionData[s.id] ? s.label : `${s.label} — up to ${s.cost} credits`}
+                {sectionData[s.id] ? s.label : `${s.label} — ${costLabel(costs, s.endpoint, s.limit)}`}
               </Button>
             );
           })}
@@ -1370,7 +1370,7 @@ function ShopOnDemand({
 // 4. AD LIBRARY
 // ---------------------------------------------------------------------------
 
-function AdsTab() {
+function AdsTab({ costs }: { costs?: EndpointCosts | undefined }) {
   const searchAds = useServerFn(spymarketSearchAds);
   const call = useMeteredCall(searchAds as ServerFnLike);
 
