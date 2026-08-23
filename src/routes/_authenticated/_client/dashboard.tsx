@@ -208,6 +208,7 @@ function DashboardPage() {
           </div>
         </CardContent>
       </Card>
+      )}
 
       {showAutoTopupPrompt && (
         <Card className="mt-4 border-primary/40 bg-primary/5">
