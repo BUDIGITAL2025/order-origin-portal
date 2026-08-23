@@ -87,11 +87,11 @@ export const getMyQuote = createServerFn({ method: "GET" })
     if (error) throw new Error(error.message);
     if (!quote) throw new Error("Quote request not found");
 
-    const { data: lines, error: linesError } = await context.supabase
-      .from("quote_lines_client")
-      .select("*")
-      .eq("quote_request_id", data.quote_id)
-      .order("created_at", { ascending: true });
+    // Safe columns only, via an ownership-checked function (replaces the old view).
+    const { data: lines, error: linesError } = await context.supabase.rpc(
+      "get_client_quote_lines",
+      { p_quote_request_id: data.quote_id },
+    );
     if (linesError) throw new Error(linesError.message);
 
     return { quote, lines: lines ?? [] };
@@ -146,7 +146,19 @@ export const adminListQuotes = createServerFn({ method: "GET" })
 
     const { data: quotes, error } = await query;
     if (error) throw new Error(error.message);
-    return { quotes: (quotes ?? []).map(mapQuoteForAdmin) };
+
+    // Internal fields live in the admin-only table now; merge them back in.
+    const ids = (quotes ?? []).map((q) => q.id as string);
+    const { data: internals } = ids.length
+      ? await admin
+          .from("quote_request_internal")
+          .select("quote_request_id, admin_notes, internal_reference")
+          .in("quote_request_id", ids)
+      : { data: [] as Array<{ quote_request_id: string; admin_notes: string | null; internal_reference: string | null }> };
+    const internalByQuote = new Map((internals ?? []).map((r) => [r.quote_request_id, r]));
+    return {
+      quotes: (quotes ?? []).map((q) => mapQuoteForAdmin(q, internalByQuote.get(q.id as string))),
+    };
   });
 
 /** Admin: single quote with client profile and all variant lines (full costing). */
@@ -167,7 +179,14 @@ export const adminGetQuote = createServerFn({ method: "GET" })
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!quote) throw new Error("Quote request not found");
-    const mappedQuote = mapQuoteForAdmin(quote);
+
+    const { data: internal, error: internalError } = await admin
+      .from("quote_request_internal")
+      .select("admin_notes, internal_reference")
+      .eq("quote_request_id", data.quote_id)
+      .maybeSingle();
+    if (internalError) throw new Error(internalError.message);
+    const mappedQuote = mapQuoteForAdmin(quote, internal);
 
     const { data: lines, error: linesError } = await admin
       .from("quote_lines")

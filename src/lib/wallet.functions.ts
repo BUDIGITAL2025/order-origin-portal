@@ -34,9 +34,12 @@ export const adminAdjustWallet = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => walletAdjustmentSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const { requireAdmin } = await import("./admin.server");
+    const { requireAdmin, getAdminClient } = await import("./admin.server");
     await requireAdmin(context.supabase, context.userId);
-    const { data: result, error } = await context.supabase.rpc(
+    // The wallet ledger function is no longer executable by signed-in users;
+    // admin adjustments go through the service role, which the function allows.
+    const admin = await getAdminClient();
+    const { data: result, error } = await admin.rpc(
       "apply_wallet_transaction",
       {
         p_entity_id: data.client_id,

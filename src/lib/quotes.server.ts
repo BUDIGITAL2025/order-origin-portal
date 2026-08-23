@@ -20,7 +20,17 @@ export type AdminQuoteProfile = {
   subscription_plan: string | null;
 };
 
-export type AdminQuote = QuoteRequestRow & { profiles: AdminQuoteProfile };
+/** Internal-only fields, stored in the admin-only quote_request_internal table. */
+export type QuoteInternal = {
+  admin_notes: string | null;
+  internal_reference: string | null;
+};
+
+export type AdminQuote = QuoteRequestRow & {
+  profiles: AdminQuoteProfile;
+  admin_notes: string | null;
+  internal_reference: string | null;
+};
 
 type QuoteChainStore = {
   store_name: string | null;
@@ -43,7 +53,7 @@ type QuoteChainStore = {
  * chain back to the flat shape admin pages consume (`quote.profiles.*`),
  * with company_name carrying the entity's legal name.
  */
-export function mapQuoteForAdmin(row: unknown): AdminQuote {
+export function mapQuoteForAdmin(row: unknown, internal?: QuoteInternal | null): AdminQuote {
   const { stores, ...rest } = row as QuoteRequestRow & {
     stores?: QuoteChainStore | null;
   };
