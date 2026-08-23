@@ -254,8 +254,9 @@ function NewQuotePageInner() {
 
   const submit = useMutation({
     mutationFn: async () => {
+      // Unreachable in practice — the paywall replaces the form — but the
+      // server enforces the same gate, so keep the guard as a backstop.
       if (needsSubscription) {
-        setPlansBlocked(true);
         throw new Error("Pick a plan to send quote requests — your request has not been submitted.");
       }
       const filled = entries.filter((e) => e.url.trim() !== "");
@@ -379,6 +380,65 @@ function NewQuotePageInner() {
     );
   }
 
+  // Plan paywall replaces the form entirely when the current workspace has
+  // no active subscription (or there is no workspace yet). Picking a plan
+  // opens Stripe checkout directly; the webhook lifts the paywall.
+  if (needsSubscription) {
+    return (
+      <div className="max-w-2xl">
+        <PageHeader
+          title="Request a quote"
+          description="Send us a product link and we'll come back with a price, MOQ and lead time."
+        />
+        <Card className="border-primary/40">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <ArrowUpCircle className="h-5 w-5 text-primary" />
+              Pick a plan to request quotes
+            </CardTitle>
+            <CardDescription>
+              Quote requests are part of a workspace subscription — no shop connection needed.
+              Subscribe and you'll land back here, ready to send your first request.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-3 sm:grid-cols-2">
+            {(["basic", "unlimited"] as const).map((key) => (
+              <div key={key} className="rounded-xl border border-border p-4">
+                <p className="text-sm font-semibold">{PLANS[key].label}</p>
+                <p className="tnum text-xl font-semibold">
+                  ${PLANS[key].priceUsd}
+                  <span className="text-xs font-normal text-muted-foreground">/month</span>
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {key === "basic"
+                    ? `${PLANS.basic.quoteQuota} quote requests per month`
+                    : "Unlimited quote requests"}
+                </p>
+                <Button
+                  size="sm"
+                  className="mt-3 w-full"
+                  disabled={subscribe.isPending}
+                  onClick={() => {
+                    setSubscribeError(null);
+                    subscribe.mutate(key);
+                  }}
+                >
+                  {subscribe.isPending ? "Opening checkout…" : `Subscribe to ${PLANS[key].label}`}
+                </Button>
+              </div>
+            ))}
+            {subscribeError && (
+              <p className="text-sm text-destructive sm:col-span-2">
+                Could not start checkout: {subscribeError}. If this keeps happening, contact
+                support.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   const previewed = entries.filter((e) => e.preview.kind !== "idle");
 
   return (
@@ -389,53 +449,6 @@ function NewQuotePageInner() {
       />
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,360px)]">
         <div>
-          {plansBlocked && needsSubscription && (
-            <Card className="mb-4 border-primary/40">
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <ArrowUpCircle className="h-5 w-5 text-primary" />
-                  Pick a plan to send this request
-                </CardTitle>
-                <CardDescription>
-                  Your request above is safe — nothing was submitted. Quote requests are part of a
-                  workspace subscription; no shop connection needed.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="grid gap-3 sm:grid-cols-2">
-                {(["basic", "unlimited"] as const).map((key) => (
-                  <div key={key} className="rounded-xl border border-border p-4">
-                    <p className="text-sm font-semibold">{PLANS[key].label}</p>
-                    <p className="tnum text-xl font-semibold">
-                      ${PLANS[key].priceUsd}
-                      <span className="text-xs font-normal text-muted-foreground">/month</span>
-                    </p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {key === "basic"
-                        ? `${PLANS.basic.quoteQuota} quote requests per month`
-                        : "Unlimited quote requests"}
-                    </p>
-                    <Button
-                      size="sm"
-                      className="mt-3 w-full"
-                      disabled={subscribe.isPending}
-                      onClick={() => {
-                        setSubscribeError(null);
-                        subscribe.mutate(key);
-                      }}
-                    >
-                      {subscribe.isPending ? "Opening checkout…" : `Subscribe to ${PLANS[key].label}`}
-                    </Button>
-                  </div>
-                ))}
-                {subscribeError && (
-                  <p className="text-sm text-destructive sm:col-span-2">
-                    Could not start checkout: {subscribeError}. If this keeps happening, contact
-                    support.
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          )}
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Product details</CardTitle>
