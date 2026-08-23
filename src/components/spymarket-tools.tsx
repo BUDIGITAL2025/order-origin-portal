@@ -1499,7 +1499,7 @@ function AdsTab({ costs }: { costs?: EndpointCosts | undefined }) {
                 ) : (
                   <Search className="mr-2 h-4 w-4" />
                 )}
-                Search — up to {limit} credits
+                Search — {costLabel(costs, search.trim() ? "ads" : "ads/query", limit)}
               </Button>
             </div>
           </div>
@@ -1572,7 +1572,7 @@ function AdsTab({ costs }: { costs?: EndpointCosts | undefined }) {
             onClick={() => void call.execute(buildInput(pages.length + 1))}
           >
             {searching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-            Load more — up to {limit} credits
+            Load more — {costLabel(costs, search.trim() ? "ads" : "ads/query", limit)}
           </Button>
         </div>
       )}
