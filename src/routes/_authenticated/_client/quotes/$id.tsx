@@ -2,9 +2,10 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Check, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/app-shell";
+import { QuoteSlaCountdown, QuoteTimeline } from "@/components/quote-sla";
 import { LineStatusBadge, QuoteStatusBadge } from "@/components/status-badges";
 import {
   AlertDialog,
@@ -40,6 +41,7 @@ import {
 import { countryName } from "@/lib/countries";
 import { formatDate, formatUSD } from "@/lib/format";
 import { getMyQuote, respondToQuoteLines } from "@/lib/quotes.functions";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated/_client/quotes/$id")({
   head: () => ({
@@ -64,6 +66,29 @@ function MyQuoteDetailPage() {
 
   const [namingLineId, setNamingLineId] = useState<string | null>(null);
   const [productName, setProductName] = useState("");
+
+  // Reference images live in a private bucket under the caller's own folder —
+  // the storage policy lets the owner mint short-lived signed URLs.
+  const imageKey = (data?.quote?.image_urls ?? []).join("|");
+  const [imageUrls, setImageUrls] = useState<string[]>([]);
+  useEffect(() => {
+    const paths = imageKey ? imageKey.split("|") : [];
+    if (paths.length === 0) {
+      setImageUrls([]);
+      return;
+    }
+    let cancelled = false;
+    void supabase.storage
+      .from("quote-images")
+      .createSignedUrls(paths, 300)
+      .then(({ data: signed }) => {
+        if (cancelled) return;
+        setImageUrls((signed ?? []).map((s) => s.signedUrl).filter((u): u is string => !!u));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [imageKey]);
 
   const respond = useMutation({
     mutationFn: (vars: { lineId: string; accept: boolean; name: string }) =>
@@ -135,6 +160,20 @@ function MyQuoteDetailPage() {
         }
       />
 
+      <Card className="mb-4">
+        <CardContent className="p-4">
+          <QuoteTimeline status={quote.status} />
+        </CardContent>
+      </Card>
+
+      {quote.quote_due_at && (
+        <QuoteSlaCountdown
+          dueAt={quote.quote_due_at}
+          status={quote.status}
+          className="mb-6"
+        />
+      )}
+
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader className="pb-3">
@@ -163,6 +202,28 @@ function MyQuoteDetailPage() {
               <div className="text-xs uppercase tracking-wide text-muted-foreground">Volume / month</div>
               <div className="tnum">{quote.target_monthly_volume ?? "—"}</div>
             </div>
+            <div>
+              <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                Target countries
+              </div>
+              <p>{quote.target_countries.map((c) => countryName(c)).join(", ") || "—"}</p>
+            </div>
+            {imageUrls.length > 0 && (
+              <div>
+                <div className="text-xs uppercase tracking-wide text-muted-foreground">Images</div>
+                <div className="mt-1 flex flex-wrap gap-2">
+                  {imageUrls.map((u, i) => (
+                    <a key={i} href={u} target="_blank" rel="noreferrer">
+                      <img
+                        src={u}
+                        alt={`Reference ${i + 1}`}
+                        className="h-16 w-16 rounded-lg border border-border object-cover"
+                      />
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 

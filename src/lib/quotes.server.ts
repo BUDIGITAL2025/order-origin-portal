@@ -2,6 +2,7 @@
  * Server-side helpers for the quotes admin stack.
  * Keeps quotes.functions.ts a thin createServerFn wrapper.
  */
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 
 type QuoteRequestRow = Database["public"]["Tables"]["quote_requests"]["Row"];
@@ -77,4 +78,36 @@ export function mapQuoteForAdmin(row: unknown, internal?: QuoteInternal | null):
     admin_notes: internal?.admin_notes ?? null,
     internal_reference: internal?.internal_reference ?? null,
   };
+}
+
+/**
+ * Flags open quote requests that breached their 48h sourcing target: stamps
+ * quote_breach_notified_at and records a notification (visible to admins via
+ * the notifications admin policy). Idempotent — already-stamped rows skip.
+ */
+export async function flagBreachedQuotes(
+  admin: SupabaseClient<Database>,
+): Promise<number> {
+  const nowIso = new Date().toISOString();
+  const { data: breached, error } = await admin
+    .from("quote_requests")
+    .select("id, store_id, product_name, product_url")
+    .in("status", ["submitted", "sourcing"])
+    .lt("quote_due_at", nowIso)
+    .is("quote_breach_notified_at", null);
+  if (error || !breached?.length) return 0;
+
+  for (const q of breached) {
+    await admin.from("notifications").insert({
+      kind: "quote_sla_breach",
+      store_id: q.store_id,
+      title: "Quote request past its 48h target",
+      body: `A quote request (${q.product_name ?? q.product_url}) is still awaiting a quote past its 48-hour sourcing target.`,
+    });
+    await admin
+      .from("quote_requests")
+      .update({ quote_breach_notified_at: nowIso })
+      .eq("id", q.id);
+  }
+  return breached.length;
 }

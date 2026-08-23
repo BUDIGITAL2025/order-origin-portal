@@ -874,6 +874,8 @@ export type Database = {
           notes: string | null
           product_name: string | null
           product_url: string
+          quote_breach_notified_at: string | null
+          quote_due_at: string
           quote_valid_until: string | null
           quoted_at: string | null
           quoted_by: string | null
@@ -891,6 +893,8 @@ export type Database = {
           notes?: string | null
           product_name?: string | null
           product_url: string
+          quote_breach_notified_at?: string | null
+          quote_due_at?: string
           quote_valid_until?: string | null
           quoted_at?: string | null
           quoted_by?: string | null
@@ -908,6 +912,8 @@ export type Database = {
           notes?: string | null
           product_name?: string | null
           product_url?: string
+          quote_breach_notified_at?: string | null
+          quote_due_at?: string
           quote_valid_until?: string | null
           quoted_at?: string | null
           quoted_by?: string | null
@@ -1629,6 +1635,8 @@ export type Database = {
           notes: string | null
           product_name: string | null
           product_url: string
+          quote_breach_notified_at: string | null
+          quote_due_at: string
           quote_valid_until: string | null
           quoted_at: string | null
           quoted_by: string | null

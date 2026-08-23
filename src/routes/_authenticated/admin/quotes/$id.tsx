@@ -22,8 +22,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { countryName } from "@/lib/countries";
+import { countryName, isEuCountry } from "@/lib/countries";
 import { formatDate, formatUSD } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import { effectiveTier, TIER_LABELS } from "@/lib/plans";
 import {
   adminGetQuote,
@@ -58,10 +59,10 @@ type GridField =
   | "markup_product"
   | "markup_shipping";
 
-const GRID_FIELDS: { key: GridField; label: string }[] = [
+const GRID_FIELDS: { key: GridField; label: string; short?: string }[] = [
   { key: "supplier_cogs", label: "COGS" },
   { key: "supplier_shipping", label: "Ship" },
-  { key: "supplier_tax", label: "Tax" },
+  { key: "supplier_tax", label: "IOSS / import tax", short: "IOSS" },
   { key: "markup_product", label: "Mk prod" },
   { key: "markup_shipping", label: "Mk ship" },
 ];
@@ -625,7 +626,7 @@ function AdminQuoteDetailPage() {
                                       onClick={() => copyAcross(row.key, f.key)}
                                       className="rounded border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground hover:border-primary/50 hover:text-foreground"
                                     >
-                                      {f.label}
+                                      {f.short ?? f.label}
                                     </button>
                                   ))}
                                 </div>
@@ -655,22 +656,36 @@ function AdminQuoteDetailPage() {
                                 className="space-y-1 border-b border-l border-border p-2"
                               >
                                 {GRID_FIELDS.map((f) => (
-                                  <div key={f.key} className="flex items-center gap-1">
-                                    <span className="w-12 shrink-0 text-[10px] text-muted-foreground">
-                                      {f.label}
-                                    </span>
-                                    <Input
-                                      type="number"
-                                      step="0.01"
-                                      min="0"
-                                      value={cell[f.key]}
-                                      onChange={(e) =>
-                                        updateCell(row.key, country, { [f.key]: e.target.value })
-                                      }
-                                      disabled={!cellEditable}
-                                      aria-label={`${f.label} (${country})`}
-                                      className="h-7 tnum text-xs"
-                                    />
+                                  <div key={f.key}>
+                                    <div className="flex items-center gap-1">
+                                      <span
+                                        className={cn(
+                                          "shrink-0 text-[10px] leading-tight text-muted-foreground",
+                                          f.key === "supplier_tax" ? "w-16" : "w-12",
+                                        )}
+                                      >
+                                        {f.label}
+                                      </span>
+                                      <Input
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        value={cell[f.key]}
+                                        onChange={(e) =>
+                                          updateCell(row.key, country, { [f.key]: e.target.value })
+                                        }
+                                        disabled={!cellEditable}
+                                        aria-label={`${f.label} (${country})`}
+                                        className="h-7 tnum text-xs"
+                                      />
+                                    </div>
+                                    {f.key === "supplier_tax" && (
+                                      <p className="mt-0.5 pl-[4.25rem] text-[9px] leading-tight text-muted-foreground/80">
+                                        {isEuCountry(country)
+                                          ? "EU destination — include IOSS"
+                                          : "usually 0"}
+                                      </p>
+                                    )}
                                   </div>
                                 ))}
                                 <div className="flex items-center justify-between pt-1">
