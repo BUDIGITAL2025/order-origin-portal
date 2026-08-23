@@ -1930,6 +1930,7 @@ function AdsTab({ costs }: { costs?: EndpointCosts | undefined }) {
   const [sortBy, setSortBy] = React.useState("longestRunning");
   const [limit, setLimit] = React.useState(24);
   const [pages, setPages] = React.useState<Rec[][]>([]);
+  const [adDetailId, setAdDetailId] = React.useState<string | null>(null);
 
   const buildInput = (page: number): Record<string, unknown> => ({
     ...(search.trim() ? { search: search.trim(), searchType } : {}),
