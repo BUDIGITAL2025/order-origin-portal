@@ -30,8 +30,10 @@ const billingOverviewInputSchema = z.object({
   storeId: z.string().uuid(),
   environment: stripeEnvSchema,
 });
+// storeId is optional: subscribing without a workspace yet creates a draft
+// workspace and attaches the subscription (and its quota) to it.
 const storeSubscriptionCheckoutSchema = subscriptionCheckoutSchema.extend({
-  storeId: z.string().uuid(),
+  storeId: z.string().uuid().optional(),
 });
 const storeChangePlanSchema = changePlanSchema.extend({ storeId: z.string().uuid() });
 const storeStripeEnvSchema = z.object({ storeId: z.string().uuid(), environment: stripeEnvSchema });
@@ -187,8 +189,53 @@ export const createSubscriptionCheckout = createServerFn({ method: "POST" })
       const stripe = createStripeClient(data.environment);
       const admin = await getAdminClient();
 
-      const { store, entity } = await resolveStoreAndEntity(admin, data.storeId, context.userId);
-      if (store.status !== "active") throw new Error("Your store is not active yet");
+      let store: Awaited<ReturnType<typeof resolveStoreAndEntity>>["store"];
+      let entity: Awaited<ReturnType<typeof resolveStoreAndEntity>>["entity"];
+      if (data.storeId) {
+        ({ store, entity } = await resolveStoreAndEntity(admin, data.storeId, context.userId));
+      } else {
+        // Storeless subscribe: resolve the caller's first entity and reuse an
+        // unsubscribed workspace, or create a draft one. The subscription and
+        // quota attach to it; Shopify connects later, nothing is recreated.
+        const { data: entityRow, error: entityError } = await admin
+          .from("entities")
+          .select("*")
+          .eq("account_id", context.userId)
+          .order("created_at", { ascending: true })
+          .limit(1)
+          .maybeSingle();
+        if (entityError) throw new Error(entityError.message);
+        if (!entityRow) throw new Error("Complete your account profile first");
+        entity = entityRow;
+        const { data: existing } = await admin
+          .from("stores")
+          .select("*")
+          .eq("entity_id", entity.id)
+          .in("subscription_status", ["none", "canceled"])
+          .order("created_at", { ascending: true })
+          .limit(1)
+          .maybeSingle();
+        if (existing) {
+          store = existing;
+        } else {
+          const { data: created, error: storeError } = await admin
+            .from("stores")
+            .insert({
+              entity_id: entity.id,
+              platform: "other",
+              store_url: null,
+              store_name: `Workspace — ${entity.legal_name}`,
+              integration_mode: "manual",
+              status: "draft",
+              provisioning_status: "not_started",
+            })
+            .select("*")
+            .single();
+          if (storeError) throw new Error(storeError.message);
+          store = created;
+        }
+      }
+      if (store.status === "suspended") throw new Error("This workspace is suspended — contact support.");
       if (store.fee_waived) {
         throw new Error("Your plan is managed by FlySales — no payment needed.");
       }
