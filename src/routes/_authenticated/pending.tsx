@@ -1,7 +1,8 @@
 import { createFileRoute, Navigate, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { Boxes, Clock } from "lucide-react";
+import { Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import logoLightAsset from "@/assets/flysales-logo-light.png.asset.json";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { MARKETING_URL } from "@/lib/config";
@@ -45,9 +46,12 @@ function PendingPage() {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4">
-      <a href={MARKETING_URL} className="mb-6 flex items-center gap-2">
-        <Boxes className="h-5 w-5 text-primary" />
-        <span className="text-sm font-semibold tracking-tight">FlySales</span>
+      <a href={MARKETING_URL} className="mb-6">
+        <img
+          src={logoLightAsset.url}
+          alt="FlySales"
+          className="h-7 w-auto"
+        />
       </a>
       <Card className="w-full max-w-md text-center">
         <CardHeader>
