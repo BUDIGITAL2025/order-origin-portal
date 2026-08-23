@@ -53,6 +53,7 @@ function MyQuotesPageInner() {
         <EmptyState
           title="No quote requests yet"
           hint="Send us a product link and we'll come back with per-variant pricing."
+          action={{ label: "Request a quote", to: "/quotes/new" }}
         />
       ) : (
         <div className="rounded-lg border border-border bg-card">

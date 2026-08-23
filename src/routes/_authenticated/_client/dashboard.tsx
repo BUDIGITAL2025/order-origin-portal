@@ -89,7 +89,13 @@ function DashboardPage() {
 
   // Storeless accounts get the onboarding checklist instead of store metrics.
   if (context && allStores.length === 0) {
-    return <OnboardingCard entity={entities[0] ?? null} hasQuote={quotes.length > 0} />;
+    return <OnboardingCard entity={entities[0] ?? null} hasQuote={quotes.length > 0} hasStore={false} />;
+  }
+
+  // No real activity yet — show the checklist instead of a row of zeroed
+  // metric cards. Only once both queries have resolved, to avoid a flash.
+  if (context && quotesData && walletData && quotes.length === 0 && transactions.length === 0) {
+    return <OnboardingCard entity={entity} hasQuote={false} hasStore />;
   }
 
   return (
@@ -336,9 +342,11 @@ function DashboardPage() {
 function OnboardingCard({
   entity,
   hasQuote,
+  hasStore,
 }: {
   entity: { id: string; legal_name: string; vat_number: string | null } | null;
   hasQuote: boolean;
+  hasStore: boolean;
 }) {
   const steps = [
     {
@@ -351,7 +359,7 @@ function OnboardingCard({
     {
       title: "Add your first store",
       description: "Connect a Shopify store or add any store URL — each store gets its own catalogue and quotes.",
-      done: false,
+      done: hasStore,
       to: "/stores/new",
       cta: "Add store",
     },

@@ -380,7 +380,8 @@ function MyProductsPageInner() {
       ) : products.length === 0 ? (
         <EmptyState
           title="No products yet"
-          hint="Accept quote lines and they'll appear here as catalogue products."
+          hint="Accept a quote to add your first product."
+          action={{ label: "View quotes", to: "/quotes" }}
         />
       ) : (
         <div className="rounded-lg border border-border bg-card">
