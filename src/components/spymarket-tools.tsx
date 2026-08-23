@@ -2403,6 +2403,255 @@ function ShopOnDemand({
 // 4. AD LIBRARY
 // ---------------------------------------------------------------------------
 
+const SAVED_ADS_KEY = "spymarket:saved-ads";
+
+function readSavedAds(): string[] {
+  try {
+    const raw = window.localStorage.getItem(SAVED_ADS_KEY);
+    const arr: unknown = raw ? JSON.parse(raw) : [];
+    return Array.isArray(arr) ? arr.filter((x): x is string => typeof x === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * 5-zone ad card. Zones render only when their data exists:
+ *  Z1 data strip — EU/UK reach & spend with target flags, or a muted
+ *     "Global — no targeting data" fallback (reach/spend is EU/UK-only).
+ *  Z2 badges — days-running pill (green dot while active) + duplicates chip.
+ *  Z3 FB-style header — page avatar, name, live ads count, main-country flag.
+ *  Z4 body — copy clamped to 2 lines with See more, creative (9:16 video /
+ *     1:1 image) with a centered play button, and a link box
+ *     (domain / headline / CTA).
+ *  Z5 footer — outline Save (local) + solid View details.
+ */
+function AdCard({ ad, onOpen }: { ad: Rec; onOpen: (id: string) => void }) {
+  const media = asRec(ad["media"]);
+  const content = asRec(ad["content"]);
+  const metrics = asRec(ad["metrics"]);
+  const advertiser = asRec(ad["advertiser"]);
+  const audience = asRec(ad["audience"]);
+  const flags = asRec(ad["flags"]);
+
+  const adId = asStr(ad["id"]);
+  const status = asStr(ad["status"]);
+  const isVideo = asStr(media["type"]) === "video" || asStr(media["mediaType"]) === "video";
+  const thumb = asStr(media["thumbnailUrl"]) ?? asStr(media["mediaUrl"]);
+  const body = asStr(content["body"]);
+  const headline = asStr(content["title"]) ?? asStr(content["ctaDescription"]);
+  const domain = asStr(content["landingPageDomain"]);
+  const landingUrl = asStr(content["landingPageUrl"]) ?? asStr(asRec(ad["links"])["landingPageUrl"]);
+  const cta = asStr(content["callToAction"]);
+
+  const reach = asNum(metrics["reach"]) ?? asNum(metrics["aggregatedReach"]);
+  const spend = asNum(metrics["estimatedSpend"]);
+  const duplicates = asNum(metrics["duplicates"]);
+  const days = asNum(ad["daysRunning"]);
+  const targeted = asArr(audience["targetedCountries"])
+    .map(asStr)
+    .filter((c): c is string => c != null);
+  const mainCountry = asStr(audience["mainCountry"]);
+  const hasTargeting = flags["isEuAd"] === true || reach != null || spend != null;
+
+  const name = asStr(advertiser["name"]);
+  const logo = asStr(advertiser["logoUrl"]);
+  const liveAds = asNum(advertiser["liveAdsCount"]) ?? asNum(advertiser["activeAds"]);
+
+  const [expanded, setExpanded] = React.useState(false);
+  const [saved, setSaved] = React.useState(false);
+  React.useEffect(() => {
+    if (adId) setSaved(readSavedAds().includes(adId));
+  }, [adId]);
+
+  const toggleSave = () => {
+    if (!adId) return;
+    const ids = readSavedAds();
+    const next = ids.includes(adId) ? ids.filter((x) => x !== adId) : [...ids, adId];
+    try {
+      window.localStorage.setItem(SAVED_ADS_KEY, JSON.stringify(next));
+    } catch {
+      /* storage full/blocked — state toggle still applies */
+    }
+    setSaved((v) => !v);
+  };
+
+  return (
+    <Card
+      className={cn(
+        "flex flex-col overflow-hidden rounded-2xl",
+        adId && "cursor-pointer transition-colors hover:bg-muted/40",
+      )}
+      onClick={() => adId && onOpen(adId)}
+    >
+      {/* Z1 — data strip */}
+      <div className="flex min-h-8 items-center gap-2 border-b px-3 py-1.5 text-[11px]">
+        {hasTargeting ? (
+          <>
+            <FlagStack codes={targeted.length > 0 ? targeted : [mainCountry]} size={12} max={4} />
+            {reach != null && <span className="font-semibold">{fmtCompact(reach)} reach</span>}
+            {spend != null && (
+              <span className="text-muted-foreground">{fmtCompact(spend)} spend</span>
+            )}
+            <span className="ml-auto shrink-0 text-[10px] text-muted-foreground">EU/UK</span>
+          </>
+        ) : (
+          <span className="text-muted-foreground">Global — no targeting data</span>
+        )}
+      </div>
+
+      {/* Z2 — badges */}
+      {(days != null || (duplicates != null && duplicates > 0)) && (
+        <div className="flex flex-wrap items-center gap-1.5 px-3 pt-2">
+          {days != null && (
+            <Badge variant="secondary" className="gap-1.5 rounded-full text-[10px]">
+              <span
+                className={cn(
+                  "h-1.5 w-1.5 rounded-full",
+                  status === "active" ? "bg-primary" : "bg-muted-foreground/50",
+                )}
+              />
+              {fmtInt(days)}d {status === "active" ? "active" : "running"}
+            </Badge>
+          )}
+          {duplicates != null && duplicates > 0 && (
+            <Badge variant="outline" className="rounded-full text-[10px]">
+              {fmtInt(duplicates)} duplicates
+            </Badge>
+          )}
+        </div>
+      )}
+
+      {/* Z3 — FB-style page header */}
+      {name && (
+        <div className="flex items-center gap-2 px-3 pt-2">
+          {logo ? (
+            <img
+              src={logo}
+              alt={name}
+              loading="lazy"
+              className="h-8 w-8 shrink-0 rounded-full border object-cover"
+            />
+          ) : (
+            <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-muted text-xs font-bold">
+              {name.charAt(0).toUpperCase()}
+            </div>
+          )}
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-xs font-semibold">{name}</p>
+            {liveAds != null && (
+              <p className="text-[10px] text-muted-foreground">{fmtInt(liveAds)} active ads</p>
+            )}
+          </div>
+          <Flag code={mainCountry} size={14} />
+        </div>
+      )}
+
+      {/* Z4 — body */}
+      {(body ?? thumb ?? domain) && (
+        <div className="space-y-2 px-3 pt-2">
+          {body && (
+            <p className={cn("text-xs text-muted-foreground", !expanded && "line-clamp-2")}>
+              {body}
+              {body.length > 90 && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setExpanded((v) => !v);
+                  }}
+                  className="ml-1 font-medium text-foreground hover:underline"
+                >
+                  {expanded ? "See less" : "See more"}
+                </button>
+              )}
+            </p>
+          )}
+          {thumb && (
+            <div
+              className={cn(
+                "relative mx-auto w-full overflow-hidden rounded-xl bg-muted",
+                isVideo ? "aspect-[9/16] max-h-80" : "aspect-square",
+              )}
+            >
+              <img
+                src={thumb}
+                alt={headline ?? "Ad creative"}
+                loading="lazy"
+                className="h-full w-full object-cover"
+              />
+              {isVideo && (
+                <div className="pointer-events-none absolute inset-0 grid place-items-center">
+                  <div className="grid h-11 w-11 place-items-center rounded-full bg-background/85 shadow-md">
+                    <Play className="ml-0.5 h-4 w-4 fill-foreground text-foreground" />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          {(domain ?? headline ?? cta) && (
+            <a
+              href={landingUrl ?? "#"}
+              target="_blank"
+              rel="noreferrer"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (!landingUrl) e.preventDefault();
+              }}
+              className="flex items-center gap-2 rounded-xl border bg-muted/40 px-2.5 py-2 transition-colors hover:bg-muted"
+            >
+              <div className="min-w-0 flex-1">
+                {domain && (
+                  <p className="truncate text-[10px] uppercase tracking-wide text-muted-foreground">
+                    {domain}
+                  </p>
+                )}
+                {headline && <p className="truncate text-xs font-medium">{headline}</p>}
+              </div>
+              {cta && (
+                <Badge className="shrink-0 rounded-full text-[10px] capitalize">
+                  {cta.toLowerCase().replace(/_/g, " ")}
+                </Badge>
+              )}
+            </a>
+          )}
+        </div>
+      )}
+
+      {/* Z5 — footer */}
+      <div className="mt-auto flex items-center gap-2 p-3">
+        <Button
+          variant="outline"
+          size="sm"
+          className="rounded-full"
+          onClick={(e) => {
+            e.stopPropagation();
+            toggleSave();
+          }}
+        >
+          {saved ? (
+            <BookmarkCheck className="mr-1.5 h-3.5 w-3.5 text-primary" />
+          ) : (
+            <Bookmark className="mr-1.5 h-3.5 w-3.5" />
+          )}
+          {saved ? "Saved" : "Save"}
+        </Button>
+        <Button
+          size="sm"
+          className="ml-auto rounded-full"
+          disabled={!adId}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (adId) onOpen(adId);
+          }}
+        >
+          View details
+        </Button>
+      </div>
+    </Card>
+  );
+}
+
 function AdsTab({
   costs,
   url,
@@ -2566,64 +2815,10 @@ function AdsTab({
       {searching && pages.length === 0 && <LoadingRows rows={6} />}
 
       {allRows.length > 0 && (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-          {allRows.map((ad, i) => {
-            const media = asRec(ad["media"]);
-            const content = asRec(ad["content"]);
-            const metrics = asRec(ad["metrics"]);
-            const advertiser = asRec(ad["advertiser"]);
-            const thumb = asStr(media["thumbnailUrl"]) ?? asStr(media["mediaUrl"]);
-            const title = asStr(content["title"]) ?? asStr(advertiser["name"]);
-            const body = asStr(content["body"]);
-            const days = asNum(ad["daysRunning"]);
-            const reach = asNum(metrics["reach"]);
-            const delta7 = asNum(metrics["reachDelta7d"]);
-            const adId = asStr(ad["id"]);
-            return (
-              <Card
-                key={adId ?? i}
-                className={cn(
-                  "overflow-hidden rounded-2xl",
-                  adId && "cursor-pointer transition-colors hover:bg-muted/40",
-                )}
-                onClick={() => adId && setAdDetailId(adId)}
-              >
-                {thumb ? (
-                  <img src={thumb} alt={title ?? "Ad creative"} className="aspect-square w-full object-cover" loading="lazy" />
-                ) : (
-                  <div className="flex aspect-square items-center justify-center bg-muted">
-                    <Megaphone className="h-6 w-6 text-muted-foreground" />
-                  </div>
-                )}
-                <CardContent className="space-y-1.5 p-3">
-                  {title && <p className="truncate text-sm font-medium">{title}</p>}
-                  {body && <p className="line-clamp-2 text-xs text-muted-foreground">{body}</p>}
-                  <div className="flex flex-wrap gap-1.5 pt-1">
-                    {days != null && (
-                      <Badge variant="secondary" className="rounded-full text-[10px]">
-                        {days}d running
-                      </Badge>
-                    )}
-                    {reach != null && (
-                      <Badge variant="outline" className="rounded-full text-[10px]">
-                        {fmtCompact(reach)} reach
-                      </Badge>
-                    )}
-                    {delta7 != null && (
-                      <Badge variant="outline" className="rounded-full text-[10px]">
-                        Δ7d {fmtCompact(delta7)}
-                      </Badge>
-                    )}
-                    {asRec(ad["flags"])["isEuAd"] === true && (
-                      <Badge variant="outline" className="rounded-full text-[10px]">
-                        EU
-                      </Badge>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {allRows.map((ad, i) => (
+            <AdCard key={asStr(ad["id"]) ?? i} ad={ad} onOpen={setAdDetailId} />
+          ))}
         </div>
       )}
 
