@@ -2939,6 +2939,15 @@ function UsageTab() {
                           cache
                         </Badge>
                       )}
+                      {r.error && (
+                        <Badge
+                          variant="destructive"
+                          className="rounded-full"
+                          title={r.error}
+                        >
+                          {r.error.startsWith("timeout") ? "timeout" : "failed"}
+                        </Badge>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}
