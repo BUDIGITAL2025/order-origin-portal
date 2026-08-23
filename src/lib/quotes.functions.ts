@@ -54,6 +54,7 @@ export const createQuoteRequest = createServerFn({ method: "POST" })
       p_image_urls: data.image_urls ?? [],
       p_target_countries: data.target_countries,
       ...(data.store_id ? { p_store_id: data.store_id } : {}),
+      ...(data.preview_id ? { p_preview_id: data.preview_id } : {}),
     });
     if (error) throw toSubmitError(error.message);
     return { ok: true, quote_id: created?.id ?? null };
@@ -239,6 +240,27 @@ export const adminGetQuote = createServerFn({ method: "GET" })
     if (internalError) throw new Error(internalError.message);
     const mappedQuote = mapQuoteForAdmin(quote, internal);
 
+    // The preview card the client saw when submitting (shared cache row), so
+    // the admin sourcing this request sees the product, not just a raw link.
+    const previewId = (quote as { preview_id?: string | null }).preview_id;
+    let preview: {
+      id: string;
+      url_normalized: string;
+      title: string | null;
+      description: string | null;
+      image_urls: string[];
+      price_hint: string | null;
+      source: "firecrawl" | "fetch" | "perplexity";
+    } | null = null;
+    if (previewId) {
+      const { data: p } = await admin
+        .from("url_previews")
+        .select("id, url_normalized, title, description, image_urls, price_hint, source")
+        .eq("id", previewId)
+        .maybeSingle();
+      preview = p ?? null;
+    }
+
     const { data: lines, error: linesError } = await admin
       .from("quote_lines")
       .select("*")
@@ -246,7 +268,7 @@ export const adminGetQuote = createServerFn({ method: "GET" })
       .order("created_at", { ascending: true });
     if (linesError) throw new Error(linesError.message);
 
-    return { quote: mappedQuote, lines: lines ?? [] };
+    return { quote: mappedQuote, lines: lines ?? [], preview };
   });
 
 /** Admin: save variant lines (SKUs generated server-side), move the request to 'quoted'. */

@@ -1,11 +1,12 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowUpCircle } from "lucide-react";
-import { useEffect, useState } from "react";
+import { ArrowUpCircle, Plus, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/app-shell";
 import { getCurrentStoreId } from "@/components/store-switcher";
+import { UrlPreviewCard, type UrlPreviewData } from "@/components/url-preview-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -16,6 +17,7 @@ import { COUNTRIES } from "@/lib/countries";
 import { PLANS, planQuota, quotaResetDate } from "@/lib/plans";
 import { quoteRequestSchema } from "@/lib/schemas";
 import { createQuoteRequest } from "@/lib/quotes.functions";
+import { getUrlPreview } from "@/lib/previews.functions";
 import { useMyContext } from "../../_client";
 
 export const Route = createFileRoute("/_authenticated/_client/quotes/new")({
@@ -29,14 +31,50 @@ export const Route = createFileRoute("/_authenticated/_client/quotes/new")({
   component: NewQuotePageInner,
 });
 
+const MAX_PRODUCTS = 5;
+
+type EntryPreview = { kind: "idle" } | { kind: "loading" } | ({ kind: "ok"; id: string } & UrlPreviewData) | { kind: "unavailable" };
+
+interface Entry {
+  key: string;
+  url: string;
+  name: string;
+  /** Once the client edits the name, scraped titles no longer overwrite it. */
+  nameTouched: boolean;
+  preview: EntryPreview;
+  /** Scraped images still attached to this request (removable in the card). */
+  attachedImages: string[];
+}
+
+let entryCounter = 0;
+function emptyEntry(): Entry {
+  return {
+    key: `entry-${++entryCounter}`,
+    url: "",
+    name: "",
+    nameTouched: false,
+    preview: { kind: "idle" },
+    attachedImages: [],
+  };
+}
+
+function isValidHttpUrl(raw: string): boolean {
+  try {
+    const u = new URL(raw.trim());
+    return u.protocol === "http:" || u.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 function NewQuotePageInner() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const callCreate = useServerFn(createQuoteRequest);
+  const callPreview = useServerFn(getUrlPreview);
   const { data: ctx } = useMyContext();
 
-  const [productUrl, setProductUrl] = useState("");
-  const [productName, setProductName] = useState("");
+  const [entries, setEntries] = useState<Entry[]>([emptyEntry()]);
   const [notes, setNotes] = useState("");
   const [volume, setVolume] = useState("");
   const [countries, setCountries] = useState<string[]>([]);
@@ -70,31 +108,110 @@ function NewQuotePageInner() {
       currentStore.subscription_status !== "past_due" &&
       !currentStore.fee_waived);
 
+  // ------------------------------------------------------------------
+  // Live URL previews: one debounced scrape per product entry, only when
+  // the text parses as a valid http(s) URL, 800ms after the last change.
+  // A failed/limited preview never blocks submission.
+  // ------------------------------------------------------------------
+  const previewTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  useEffect(() => {
+    const timers = previewTimers.current;
+    return () => {
+      for (const t of timers.values()) clearTimeout(t);
+      timers.clear();
+    };
+  }, []);
+
+  const patchEntry = (key: string, patch: Partial<Entry>) => {
+    setEntries((prev) => prev.map((e) => (e.key === key ? { ...e, ...patch } : e)));
+  };
+
+  const runPreview = async (key: string, url: string) => {
+    setEntries((prev) =>
+      prev.map((e) => (e.key === key ? { ...e, preview: { kind: "loading" } } : e)),
+    );
+    try {
+      const res = await callPreview({ data: { url } });
+      setEntries((prev) =>
+        prev.map((e) => {
+          if (e.key !== key || e.url !== url) return e; // stale response
+          if (res.status === "ok") {
+            return {
+              ...e,
+              preview: {
+                kind: "ok",
+                id: res.preview.id,
+                title: res.preview.title,
+                description: res.preview.description,
+                imageUrls: res.preview.imageUrls,
+                priceHint: res.preview.priceHint,
+              },
+              attachedImages: res.preview.imageUrls.slice(0, 5),
+              name: e.nameTouched ? e.name : (res.preview.title ?? e.name),
+            };
+          }
+          // Rate-limited or invalid: skip the preview silently.
+          if (res.status === "rate_limited" || res.status === "invalid") {
+            return { ...e, preview: { kind: "idle" } };
+          }
+          return { ...e, preview: { kind: "unavailable" } };
+        }),
+      );
+    } catch {
+      setEntries((prev) =>
+        prev.map((e) =>
+          e.key === key && e.url === url ? { ...e, preview: { kind: "unavailable" } } : e,
+        ),
+      );
+    }
+  };
+
+  const handleUrlChange = (key: string, url: string) => {
+    patchEntry(key, { url });
+    const existing = previewTimers.current.get(key);
+    if (existing) clearTimeout(existing);
+    if (!isValidHttpUrl(url)) {
+      patchEntry(key, { preview: { kind: "idle" }, attachedImages: [] });
+      return;
+    }
+    previewTimers.current.set(
+      key,
+      setTimeout(() => {
+        void runPreview(key, url);
+      }, 800),
+    );
+  };
+
+  const addEntry = () => {
+    setEntries((prev) => (prev.length >= MAX_PRODUCTS ? prev : [...prev, emptyEntry()]));
+  };
+
+  const removeEntry = (key: string) => {
+    const timer = previewTimers.current.get(key);
+    if (timer) clearTimeout(timer);
+    previewTimers.current.delete(key);
+    setEntries((prev) => (prev.length > 1 ? prev.filter((e) => e.key !== key) : prev));
+  };
+
+  // ------------------------------------------------------------------
+
   const submit = useMutation({
     mutationFn: async () => {
       if (needsSubscription) {
         setPlansBlocked(true);
         throw new Error("Pick a plan to send quote requests — your request has not been submitted.");
       }
-      const parsed = quoteRequestSchema.safeParse({
-        product_url: productUrl,
-        product_name: productName,
-        notes,
-        target_monthly_volume: volume ? Number(volume) : null,
-        target_countries: countries,
-        store_id: currentStore?.id ?? undefined,
-      });
-      if (!parsed.success) {
-        throw new Error(parsed.error.issues[0]?.message ?? "Check your input");
-      }
+      const filled = entries.filter((e) => e.url.trim() !== "");
+      if (filled.length === 0) throw new Error("Add at least one product URL");
 
-      // Upload images to the private bucket under the caller's own folder.
-      let imageUrls: string[] = [];
+      // Upload shared reference images once to the private bucket under the
+      // caller's own folder; the paths attach to every request in this batch.
+      let uploadedPaths: string[] = [];
       if (files.length > 0) {
         if (!ctx?.userId) throw new Error("Session not ready");
         setUploading(true);
         try {
-          const uploads = await Promise.all(
+          uploadedPaths = await Promise.all(
             files.map(async (file) => {
               const safeName = file.name.replaceAll(/[^a-zA-Z0-9._-]/g, "_");
               const path = `${ctx.userId}/${crypto.randomUUID()}-${safeName}`;
@@ -103,27 +220,60 @@ function NewQuotePageInner() {
               return path;
             }),
           );
-          imageUrls = uploads;
         } finally {
           setUploading(false);
         }
       }
 
-      return await callCreate({ data: { ...parsed.data, image_urls: imageUrls } });
+      // One quote request per product URL — sequential so quota errors surface
+      // per product instead of racing.
+      const createdIds: string[] = [];
+      const failures: string[] = [];
+      for (const entry of filled) {
+        const parsed = quoteRequestSchema.safeParse({
+          product_url: entry.url.trim(),
+          product_name: entry.name,
+          notes,
+          target_monthly_volume: volume ? Number(volume) : null,
+          target_countries: countries,
+          store_id: currentStore?.id ?? undefined,
+          image_urls: [...uploadedPaths, ...entry.attachedImages].slice(0, 10),
+          preview_id: entry.preview.kind === "ok" ? entry.preview.id : undefined,
+        });
+        if (!parsed.success) {
+          failures.push(parsed.error.issues[0]?.message ?? "Check your input");
+          continue;
+        }
+        try {
+          const r = await callCreate({ data: parsed.data });
+          if (r.quote_id) createdIds.push(r.quote_id);
+        } catch (err) {
+          const message = err instanceof Error ? err.message : "Submission failed";
+          if (message.includes("used all")) setQuotaBlocked(true);
+          failures.push(message);
+        }
+      }
+      return { createdIds, failures };
     },
-    onSuccess: async (r) => {
-      toast.success("Quote request submitted");
+    onSuccess: async ({ createdIds, failures }) => {
+      for (const f of failures.slice(0, 2)) toast.error(f);
+      if (createdIds.length === 0) return;
+      toast.success(
+        createdIds.length === 1
+          ? "Quote request submitted"
+          : `${createdIds.length} quote requests submitted`,
+      );
       await queryClient.invalidateQueries({ queryKey: ["my-quotes"] });
       await queryClient.invalidateQueries({ queryKey: ["my-context"] });
       // Land on the request detail page, which tracks the 48h sourcing target.
-      if (r.quote_id) {
-        await navigate({ to: "/quotes/$id", params: { id: r.quote_id } });
+      if (createdIds.length === 1 && createdIds[0]) {
+        await navigate({ to: "/quotes/$id", params: { id: createdIds[0] } });
       } else {
         await navigate({ to: "/quotes" });
       }
     },
     onError: (err) => {
-      if (err.message.includes("used all quote requests")) {
+      if (err.message.includes("used all")) {
         setQuotaBlocked(true);
       }
       toast.error(err.message);
@@ -169,155 +319,256 @@ function NewQuotePageInner() {
     );
   }
 
+  const previewed = entries.filter((e) => e.preview.kind !== "idle");
+
   return (
-    <div className="max-w-2xl">
+    <div>
       <PageHeader
         title="Request a quote"
         description="Send us a product link and we'll come back with a price, MOQ and lead time."
       />
-      {plansBlocked && needsSubscription && (
-        <Card className="mb-4 border-primary/40">
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <ArrowUpCircle className="h-5 w-5 text-primary" />
-              Pick a plan to send this request
-            </CardTitle>
-            <CardDescription>
-              Your request above is safe — nothing was submitted. Quote requests are part of a
-              workspace subscription; no shop connection needed.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-3 sm:grid-cols-2">
-            {(["basic", "unlimited"] as const).map((key) => (
-              <div key={key} className="rounded-xl border border-border p-4">
-                <p className="text-sm font-semibold">{PLANS[key].label}</p>
-                <p className="tnum text-xl font-semibold">
-                  ${PLANS[key].priceUsd}
-                  <span className="text-xs font-normal text-muted-foreground">/month</span>
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {key === "basic"
-                    ? `${PLANS.basic.quoteQuota} quote requests per month`
-                    : "Unlimited quote requests"}
-                </p>
-                <Button asChild size="sm" className="mt-3 w-full">
-                  <Link to="/billing">Subscribe to {PLANS[key].label}</Link>
-                </Button>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      )}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Product details</CardTitle>
-          <CardDescription>All sourcing communication happens on this request.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              submit.mutate();
-            }}
-            className="space-y-4"
-          >
-            <div className="space-y-1.5">
-              <Label htmlFor="q-url">Product URL *</Label>
-              <Input
-                id="q-url"
-                type="url"
-                required
-                placeholder="https://…"
-                value={productUrl}
-                onChange={(e) => setProductUrl(e.target.value)}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Destination countries *</Label>
-              <div className="flex flex-wrap gap-1.5">
-                {COUNTRIES.map((c) => {
-                  const selected = countries.includes(c.code);
-                  return (
-                    <button
-                      key={c.code}
-                      type="button"
-                      aria-pressed={selected}
-                      onClick={() =>
-                        setCountries((prev) =>
-                          selected ? prev.filter((v) => v !== c.code) : [...prev, c.code],
-                        )
-                      }
-                      className={`rounded-full border px-2.5 py-1 text-xs transition-colors ${
-                        selected
-                          ? "border-primary bg-primary/10 font-medium text-primary"
-                          : "border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
-                      }`}
-                    >
-                      {c.name}
-                    </button>
-                  );
-                })}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {countries.length === 0
-                  ? "Pick every country you sell into."
-                  : `${countries.length} ${countries.length === 1 ? "country" : "countries"} selected — each country adds its own priced line per variant.`}
-              </p>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="q-name">Product name</Label>
-              <Input
-                id="q-name"
-                placeholder="e.g. Stainless steel thermos 750ml"
-                value={productName}
-                onChange={(e) => setProductName(e.target.value)}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="q-volume">Expected monthly volume (units)</Label>
-              <Input
-                id="q-volume"
-                type="number"
-                min={1}
-                placeholder="e.g. 300"
-                value={volume}
-                onChange={(e) => setVolume(e.target.value)}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="q-notes">Notes</Label>
-              <Textarea
-                id="q-notes"
-                rows={4}
-                placeholder="Variants, target price, packaging requirements…"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="q-images">Images (optional, max 5)</Label>
-              <Input
-                id="q-images"
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={(e) => {
-                  const list = Array.from(e.target.files ?? []).slice(0, 5);
-                  setFiles(list);
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,360px)]">
+        <div>
+          {plansBlocked && needsSubscription && (
+            <Card className="mb-4 border-primary/40">
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <ArrowUpCircle className="h-5 w-5 text-primary" />
+                  Pick a plan to send this request
+                </CardTitle>
+                <CardDescription>
+                  Your request above is safe — nothing was submitted. Quote requests are part of a
+                  workspace subscription; no shop connection needed.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="grid gap-3 sm:grid-cols-2">
+                {(["basic", "unlimited"] as const).map((key) => (
+                  <div key={key} className="rounded-xl border border-border p-4">
+                    <p className="text-sm font-semibold">{PLANS[key].label}</p>
+                    <p className="tnum text-xl font-semibold">
+                      ${PLANS[key].priceUsd}
+                      <span className="text-xs font-normal text-muted-foreground">/month</span>
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {key === "basic"
+                        ? `${PLANS.basic.quoteQuota} quote requests per month`
+                        : "Unlimited quote requests"}
+                    </p>
+                    <Button asChild size="sm" className="mt-3 w-full">
+                      <Link to="/billing">Subscribe to {PLANS[key].label}</Link>
+                    </Button>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Product details</CardTitle>
+              <CardDescription>All sourcing communication happens on this request.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  submit.mutate();
                 }}
+                className="space-y-4"
+              >
+                {entries.map((entry, idx) => (
+                  <div
+                    key={entry.key}
+                    className={
+                      entries.length > 1
+                        ? "space-y-3 rounded-xl border border-border p-3"
+                        : "space-y-4"
+                    }
+                  >
+                    {entries.length > 1 && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                          Product {idx + 1}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => removeEntry(entry.key)}
+                          aria-label={`Remove product ${idx + 1}`}
+                          className="rounded-full p-1 text-muted-foreground transition-colors hover:text-foreground"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    )}
+                    <div className="space-y-1.5">
+                      <Label htmlFor={`q-url-${entry.key}`}>Product URL *</Label>
+                      <Input
+                        id={`q-url-${entry.key}`}
+                        type="url"
+                        required={entries.length === 1}
+                        placeholder="https://…"
+                        value={entry.url}
+                        onChange={(e) => handleUrlChange(entry.key, e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor={`q-name-${entry.key}`}>Product name</Label>
+                      <Input
+                        id={`q-name-${entry.key}`}
+                        placeholder="e.g. Stainless steel thermos 750ml"
+                        value={entry.name}
+                        onChange={(e) =>
+                          setEntries((prev) =>
+                            prev.map((en) =>
+                              en.key === entry.key
+                                ? { ...en, name: e.target.value, nameTouched: true }
+                                : en,
+                            ),
+                          )
+                        }
+                      />
+                    </div>
+                  </div>
+                ))}
+                {entries.length < MAX_PRODUCTS && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5"
+                    onClick={addEntry}
+                  >
+                    <Plus className="h-3.5 w-3.5" /> Add another product
+                  </Button>
+                )}
+                <div className="space-y-1.5">
+                  <Label>Destination countries *</Label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {COUNTRIES.map((c) => {
+                      const selected = countries.includes(c.code);
+                      return (
+                        <button
+                          key={c.code}
+                          type="button"
+                          aria-pressed={selected}
+                          onClick={() =>
+                            setCountries((prev) =>
+                              selected ? prev.filter((v) => v !== c.code) : [...prev, c.code],
+                            )
+                          }
+                          className={`rounded-full border px-2.5 py-1 text-xs transition-colors ${
+                            selected
+                              ? "border-primary bg-primary/10 font-medium text-primary"
+                              : "border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                          }`}
+                        >
+                          {c.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {countries.length === 0
+                      ? "Pick every country you sell into."
+                      : `${countries.length} ${countries.length === 1 ? "country" : "countries"} selected — each country adds its own priced line per variant.`}
+                  </p>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="q-volume">Expected monthly volume (units)</Label>
+                  <Input
+                    id="q-volume"
+                    type="number"
+                    min={1}
+                    placeholder="e.g. 300"
+                    value={volume}
+                    onChange={(e) => setVolume(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="q-notes">Notes</Label>
+                  <Textarea
+                    id="q-notes"
+                    rows={4}
+                    placeholder="Variants, target price, packaging requirements…"
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="q-images">Images (optional, max 5)</Label>
+                  <Input
+                    id="q-images"
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={(e) => {
+                      const list = Array.from(e.target.files ?? []).slice(0, 5);
+                      setFiles(list);
+                    }}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {files.length > 0
+                      ? `${files.length} file${files.length > 1 ? "s" : ""} selected. `
+                      : ""}
+                    Images found in the preview are attached automatically — remove any directly on
+                    the preview card.
+                  </p>
+                </div>
+                <Button type="submit" disabled={submit.isPending || uploading}>
+                  {submit.isPending
+                    ? uploading
+                      ? "Uploading images…"
+                      : "Submitting…"
+                    : entries.filter((e) => e.url.trim() !== "").length > 1
+                      ? "Submit requests"
+                      : "Submit request"}
+                </Button>
+                {entries.filter((e) => e.url.trim() !== "").length > 1 && (
+                  <p className="text-xs text-muted-foreground">
+                    Each product creates its own quote request and counts toward your monthly
+                    allowance.
+                  </p>
+                )}
+              </form>
+            </CardContent>
+          </Card>
+        </div>
+
+        {previewed.length > 0 && (
+          <div className="space-y-4">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Live preview
+            </p>
+            {previewed.map((entry) => (
+              <UrlPreviewCard
+                key={entry.key}
+                url={entry.url}
+                preview={
+                  entry.preview.kind === "loading"
+                    ? { status: "loading" }
+                    : entry.preview.kind === "ok"
+                      ? {
+                          status: "ok",
+                          title: entry.preview.title,
+                          description: entry.preview.description,
+                          imageUrls: entry.attachedImages,
+                          priceHint: entry.preview.priceHint,
+                        }
+                      : { status: "unavailable" }
+                }
+                onRemoveImage={(img) =>
+                  setEntries((prev) =>
+                    prev.map((e) =>
+                      e.key === entry.key
+                        ? { ...e, attachedImages: e.attachedImages.filter((i) => i !== img) }
+                        : e,
+                    ),
+                  )
+                }
               />
-              {files.length > 0 && (
-                <p className="text-xs text-muted-foreground">
-                  {files.length} file{files.length > 1 ? "s" : ""} selected
-                </p>
-              )}
-            </div>
-            <Button type="submit" disabled={submit.isPending || uploading}>
-              {submit.isPending ? (uploading ? "Uploading images…" : "Submitting…") : "Submit request"}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
