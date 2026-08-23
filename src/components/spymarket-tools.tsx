@@ -7,7 +7,7 @@
  */
 import * as React from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowRight,
   Database,
@@ -97,6 +97,23 @@ const fmtPrice = (price: number | null, currency: string | null): string =>
       }).format(price);
 
 // ---------------------------------------------------------------------------
+// Learned per-endpoint pricing (spymarket_endpoint_costs via the server)
+// ---------------------------------------------------------------------------
+
+type EndpointCosts = Array<{ endpoint: string; creditsPerRow: number; sampleCount: number }>;
+
+/**
+ * Button label for a metered action. Never assumes 1 credit/row: uses the
+ * learned per-row rate, and refuses to guess when an endpoint was never
+ * measured (sampleCount 0 = provisional seed).
+ */
+function costLabel(costs: EndpointCosts | undefined, endpoint: string, rows: number): string {
+  const c = costs?.find((x) => x.endpoint === endpoint);
+  if (!c || c.sampleCount === 0) return "cost unknown — measured on 1st call";
+  return `up to ~${fmtInt(Math.ceil(rows * c.creditsPerRow))} credits (est.)`;
+}
+
+// ---------------------------------------------------------------------------
 // Metered-call state machine + feedback UI
 // ---------------------------------------------------------------------------
 
@@ -113,6 +130,7 @@ type ServerFnLike = (opts: { data: Record<string, unknown> }) => Promise<ToolRes
 function useMeteredCall(fn: ServerFnLike) {
   const [state, setState] = React.useState<CallState>({ kind: "idle" });
   const pendingRef = React.useRef<(() => void) | null>(null);
+  const queryClient = useQueryClient();
 
   const execute = React.useCallback(
     async (input: Record<string, unknown>, confirmOverage?: boolean) => {
@@ -121,6 +139,12 @@ function useMeteredCall(fn: ServerFnLike) {
         const result = await fn({
           data: confirmOverage ? { ...input, confirmOverage: true } : input,
         });
+        // Every settled call changes the day total / balance / learned prices —
+        // refresh the header badge and usage dashboard immediately.
+        if (result.status !== "confirm") {
+          void queryClient.invalidateQueries({ queryKey: ["spymarket-tools-status"] });
+          void queryClient.invalidateQueries({ queryKey: ["spymarket-usage-dashboard"] });
+        }
         if (result.status === "ok") {
           setState({ kind: "ok", result: result as ToolOk<unknown> });
         } else if (result.status === "confirm") {
@@ -144,7 +168,7 @@ function useMeteredCall(fn: ServerFnLike) {
         }
       }
     },
-    [fn],
+    [fn, queryClient],
   );
 
   const confirm = React.useCallback(() => {
@@ -219,23 +243,36 @@ function CallFeedback({
         </Alert>
       )}
       {state.kind === "ok" && (
-        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-          <Badge variant="secondary" className="rounded-full">
-            Cost: {fmtInt(state.result.creditsCost)} credits
-          </Badge>
-          <Badge variant="outline" className="rounded-full">
-            {fmtInt(state.result.rowsReturned)} rows
-          </Badge>
-          {state.result.creditsRemaining != null && (
+        <div className="space-y-1">
+          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            <Badge variant="secondary" className="rounded-full">
+              Cost: {fmtInt(state.result.creditsCost)} credits
+            </Badge>
             <Badge variant="outline" className="rounded-full">
-              {fmtInt(state.result.creditsRemaining)} credits left
+              {fmtInt(state.result.rowsReturned)} rows
             </Badge>
-          )}
-          {state.result.cacheHit && (
-            <Badge className="rounded-full bg-primary/15 text-primary hover:bg-primary/15">
-              cache hit — free
-            </Badge>
-          )}
+            {state.result.creditsRemaining != null && (
+              <Badge variant="outline" className="rounded-full">
+                {fmtInt(state.result.creditsRemaining)} credits left
+              </Badge>
+            )}
+            {state.result.cacheHit && (
+              <Badge className="rounded-full bg-primary/15 text-primary hover:bg-primary/15">
+                cache hit — free
+              </Badge>
+            )}
+          </div>
+          {!state.result.cacheHit &&
+            state.result.creditsCost > 0 &&
+            state.result.rowsReturned > 0 && (
+              <p className="text-xs font-medium text-foreground">
+                This call cost {fmtInt(state.result.creditsCost)} credits —{" "}
+                {(state.result.creditsCost / state.result.rowsReturned)
+                  .toFixed(2)
+                  .replace(/\.?0+$/, "")}{" "}
+                per row.
+              </p>
+            )}
         </div>
       )}
     </>
@@ -343,9 +380,9 @@ export function SpyMarketTools({ tab, shopId, domain, go }: SpyMarketToolsProps)
       </div>
 
       {tab === "lookup" && <LookupTab go={go} />}
-      {tab === "shops" && <ShopsTab go={go} initialDomain={domain} />}
-      {tab === "shop" && <ShopDetailTab shopId={shopId} go={go} />}
-      {tab === "ads" && <AdsTab />}
+      {tab === "shops" && <ShopsTab go={go} initialDomain={domain} costs={status.endpointCosts} />}
+      {tab === "shop" && <ShopDetailTab shopId={shopId} go={go} costs={status.endpointCosts} />}
+      {tab === "ads" && <AdsTab costs={status.endpointCosts} />}
       {tab === "usage" && <UsageTab />}
     </div>
   );
@@ -357,8 +394,8 @@ function Header({ status }: { status: { creditsRemaining: number | null; dayTota
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">SpyMarket research</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Internal Trendtrack workspace — admin only. Metered calls cost 1 credit per returned row
-          and are cached for 24h.
+          Internal Trendtrack workspace — admin only. Calls are cached 24h and per-endpoint prices
+          are learned from real usage, never assumed.
         </p>
       </div>
       {status && (
@@ -512,9 +549,11 @@ const LANGUAGES = [
 function ShopsTab({
   go,
   initialDomain,
+  costs,
 }: {
   go: SpyMarketToolsProps["go"];
   initialDomain?: string | undefined;
+  costs?: EndpointCosts | undefined;
 }) {
   const queryShops = useServerFn(spymarketQueryShops);
   const call = useMeteredCall(queryShops as ServerFnLike);
@@ -772,7 +811,7 @@ function ShopsTab({
               ) : (
                 <Search className="mr-2 h-4 w-4" />
               )}
-              Search — up to {limit} credits
+              Search — {costLabel(costs, "shops/query", limit)}
             </Button>
           </div>
         </CardContent>
@@ -851,7 +890,7 @@ function ShopsTab({
             onClick={() => void loadMore()}
           >
             {searching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-            Load more — up to {limit} credits
+            Load more — {costLabel(costs, "shops/query", limit)}
           </Button>
         </div>
       )}
@@ -866,9 +905,11 @@ function ShopsTab({
 function ShopDetailTab({
   shopId,
   go,
+  costs,
 }: {
   shopId?: string | undefined;
   go: SpyMarketToolsProps["go"];
+  costs?: EndpointCosts | undefined;
 }) {
   const getShop = useServerFn(spymarketGetShop);
   const call = useMeteredCall(getShop as ServerFnLike);
@@ -908,7 +949,7 @@ function ShopDetailTab({
             </p>
             <Button className="rounded-full" onClick={() => void call.execute({ shopId })}>
               <Play className="mr-2 h-4 w-4" />
-              Load profile — 1 credit
+              Load profile — {costLabel(costs, "shops/detail", 1)}
             </Button>
           </CardContent>
         </Card>
@@ -1130,7 +1171,7 @@ function ShopDetailTab({
             </Card>
           )}
 
-          <ShopOnDemand shopId={shopId} go={go} />
+          <ShopOnDemand shopId={shopId} go={go} costs={costs} />
         </>
       )}
     </div>
@@ -1141,9 +1182,11 @@ function ShopDetailTab({
 function ShopOnDemand({
   shopId,
   go,
+  costs,
 }: {
   shopId: string;
   go: SpyMarketToolsProps["go"];
+  costs?: EndpointCosts | undefined;
 }) {
   const getTab = useServerFn(spymarketGetShopTab);
   const call = useMeteredCall(getTab as ServerFnLike);
@@ -1151,16 +1194,16 @@ function ShopOnDemand({
   const [sectionData, setSectionData] = React.useState<Record<string, ToolOk<unknown>>>({});
 
   const sections = [
-    { id: "products", label: "Products", cost: 20, icon: Package },
-    { id: "advertisers", label: "Advertisers", cost: 1, icon: Megaphone },
-    { id: "tiktok", label: "TikTok library", cost: 20, icon: Eye },
-    { id: "similar", label: "Similar shops", cost: 10, icon: Store },
+    { id: "products", label: "Products", limit: 20, endpoint: "shops/products", icon: Package },
+    { id: "advertisers", label: "Advertisers", limit: 1, endpoint: "shops/advertisers", icon: Megaphone },
+    { id: "tiktok", label: "TikTok library", limit: 20, endpoint: "shops/tiktok", icon: Eye },
+    { id: "similar", label: "Similar shops", limit: 10, endpoint: "shops/similar", icon: Store },
   ] as const;
 
-  const open = async (sectionId: string, cost: number) => {
+  const open = async (sectionId: string, limit: number) => {
     setActiveSection(sectionId);
     if (sectionData[sectionId]) return; // already loaded this session
-    await call.execute({ shopId, tab: sectionId, limit: cost });
+    await call.execute({ shopId, tab: sectionId, limit });
   };
 
   React.useEffect(() => {
@@ -1191,10 +1234,10 @@ function ShopOnDemand({
                 size="sm"
                 className="rounded-full"
                 disabled={call.state.kind === "loading"}
-                onClick={() => void open(s.id, s.cost)}
+                onClick={() => void open(s.id, s.limit)}
               >
                 <Icon className="mr-1.5 h-3.5 w-3.5" />
-                {sectionData[s.id] ? s.label : `${s.label} — up to ${s.cost} credits`}
+                {sectionData[s.id] ? s.label : `${s.label} — ${costLabel(costs, s.endpoint, s.limit)}`}
               </Button>
             );
           })}
@@ -1327,7 +1370,7 @@ function ShopOnDemand({
 // 4. AD LIBRARY
 // ---------------------------------------------------------------------------
 
-function AdsTab() {
+function AdsTab({ costs }: { costs?: EndpointCosts | undefined }) {
   const searchAds = useServerFn(spymarketSearchAds);
   const call = useMeteredCall(searchAds as ServerFnLike);
 
@@ -1456,7 +1499,7 @@ function AdsTab() {
                 ) : (
                   <Search className="mr-2 h-4 w-4" />
                 )}
-                Search — up to {limit} credits
+                Search — {costLabel(costs, search.trim() ? "ads" : "ads/query", limit)}
               </Button>
             </div>
           </div>
@@ -1529,7 +1572,7 @@ function AdsTab() {
             onClick={() => void call.execute(buildInput(pages.length + 1))}
           >
             {searching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-            Load more — up to {limit} credits
+            Load more — {costLabel(costs, search.trim() ? "ads" : "ads/query", limit)}
           </Button>
         </div>
       )}
@@ -1636,6 +1679,55 @@ function UsageTab() {
           </CardContent>
         </Card>
       </div>
+
+      <Card className="rounded-2xl">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium">Observed pricing (credits per row)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {data.observedPricing.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No pricing learned yet.</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Endpoint</TableHead>
+                  <TableHead className="text-right">Credits/row</TableHead>
+                  <TableHead className="text-right">Samples</TableHead>
+                  <TableHead className="text-right">Last observed</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {data.observedPricing.map((p) => (
+                  <TableRow key={p.endpoint}>
+                    <TableCell className="font-mono text-xs">{p.endpoint}</TableCell>
+                    <TableCell className="text-right">
+                      {p.sampleCount === 0 ? (
+                        <Badge variant="outline" className="rounded-full">
+                          provisional — not measured
+                        </Badge>
+                      ) : (
+                        p.creditsPerRow
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">{p.sampleCount}</TableCell>
+                    <TableCell className="text-right text-xs text-muted-foreground">
+                      {p.lastObservedAt
+                        ? new Date(p.lastObservedAt).toLocaleString("en-GB", {
+                            day: "2-digit",
+                            month: "short",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })
+                        : "—"}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
 
       <Card className="rounded-2xl">
         <CardHeader className="pb-2">

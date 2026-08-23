@@ -5,9 +5,11 @@
  * cache, full usage logging, 402/429 handling and the per-user daily soft
  * limit. The browser never talks to Trendtrack directly.
  *
- * Cost model: metered endpoints charge 1 credit per returned row, so the
- * worst-case cost of any call is its row limit — that number is shown on the
- * action button before executing, and the real cost after.
+ * Cost model: per-row pricing is LEARNED, never assumed. After every metered
+ * call the observed credits-per-row is upserted into spymarket_endpoint_costs
+ * (running average), and all estimates multiply the row limit by the learned
+ * rate for that endpoint. Endpoints with no observation yet are reported as
+ * "cost unknown" instead of guessing 1 credit/row.
  */
 import type { Json } from "@/integrations/supabase/types";
 
@@ -48,7 +50,7 @@ export interface CallOptions {
   body?: Record<string, unknown> | undefined;
   /** Compact description of the call, stored in the usage log. */
   summary?: Record<string, unknown> | undefined;
-  /** Worst-case credits (1 per returned row). */
+  /** Max rows this call can return — multiplied by the learned per-row rate. */
   estimatedCost: number;
   /** Default true. Lookup/facets/usage are zero-credit. */
   metered?: boolean | undefined;
@@ -102,6 +104,82 @@ async function getAdmin() {
   return supabaseAdmin;
 }
 
+// ---------------------------------------------------------------------------
+// Learned per-endpoint pricing (spymarket_endpoint_costs)
+// ---------------------------------------------------------------------------
+
+export interface EndpointCost {
+  endpoint: string;
+  creditsPerRow: number;
+  sampleCount: number;
+  lastObservedAt: string | null;
+}
+
+/** Learned per-row rate for an endpoint; null when never observed. */
+async function getEndpointRate(endpoint: string): Promise<number | null> {
+  const admin = await getAdmin();
+  const { data, error } = await admin
+    .from("spymarket_endpoint_costs")
+    .select("credits_per_row, sample_count")
+    .eq("endpoint", endpoint)
+    .maybeSingle();
+  if (error) {
+    console.error("[spymarket] endpoint cost read failed:", error.message);
+    return null;
+  }
+  if (!data || data.sample_count === 0) return null;
+  return Number(data.credits_per_row);
+}
+
+/** Running-average upsert of the observed credits-per-row for an endpoint. */
+async function learnEndpointCost(endpoint: string, observedPerRow: number): Promise<void> {
+  const admin = await getAdmin();
+  const { data: existing, error } = await admin
+    .from("spymarket_endpoint_costs")
+    .select("credits_per_row, sample_count")
+    .eq("endpoint", endpoint)
+    .maybeSingle();
+  if (error) {
+    console.error("[spymarket] endpoint cost read failed:", error.message);
+    return;
+  }
+  const count = existing?.sample_count ?? 0;
+  const prev = existing ? Number(existing.credits_per_row) : observedPerRow;
+  const next = Math.round(((prev * count + observedPerRow) / (count + 1)) * 1000) / 1000;
+  const { error: upError } = await admin.from("spymarket_endpoint_costs").upsert({
+    endpoint,
+    credits_per_row: next,
+    last_observed_at: new Date().toISOString(),
+    sample_count: count + 1,
+  });
+  if (upError) {
+    console.error("[spymarket] endpoint cost upsert failed:", upError.message);
+  } else if (existing && Number(existing.credits_per_row) !== next) {
+    console.warn(
+      `[spymarket] endpoint ${endpoint} price updated: ${existing.credits_per_row} → ${next} credits/row (${count + 1} samples)`,
+    );
+  }
+}
+
+/** All learned endpoint prices — feeds UI estimates and the usage dashboard. */
+export async function getEndpointCosts(): Promise<EndpointCost[]> {
+  const admin = await getAdmin();
+  const { data, error } = await admin
+    .from("spymarket_endpoint_costs")
+    .select("endpoint, credits_per_row, sample_count, last_observed_at")
+    .order("endpoint");
+  if (error) {
+    console.error("[spymarket] endpoint costs read failed:", error.message);
+    return [];
+  }
+  return (data ?? []).map((r) => ({
+    endpoint: r.endpoint,
+    creditsPerRow: Number(r.credits_per_row),
+    sampleCount: r.sample_count,
+    lastObservedAt: r.last_observed_at,
+  }));
+}
+
 /** Credits spent today (UTC) by this user, excluding zero-cost cache hits. */
 export async function getUserDayTotal(userId: string): Promise<number> {
   const admin = await getAdmin();
@@ -140,6 +218,10 @@ async function logCall(entry: {
     // Callers without a profiles row (e.g. minted test users) must still be
     // logged — this log is the negotiation record. Retry with called_by null.
     if (error.code === "23503") {
+      console.warn(
+        "[spymarket] called_by has no profiles row — logging with called_by=null:",
+        entry.userId,
+      );
       const { error: retryError } = await admin
         .from("spymarket_usage_log")
         .insert({ ...row, called_by: null });
@@ -164,11 +246,16 @@ export async function trendtrackCall<T = Json>(opts: CallOptions): Promise<ToolR
   const cacheable = opts.cacheable ?? metered;
   const summary = opts.summary ?? {};
 
+  // Estimate = max rows × the LEARNED per-row rate for this endpoint (1× only
+  // when never observed). The daily total itself sums real observed costs.
+  const rate = metered ? await getEndpointRate(opts.endpoint) : null;
+  const estimated = Math.ceil(opts.estimatedCost * (rate ?? 1));
+
   // Per-user daily soft limit — metered calls only.
   if (metered && !opts.confirmOverage) {
     const dayTotal = await getUserDayTotal(opts.userId);
     if (dayTotal >= DAILY_SOFT_LIMIT_CREDITS) {
-      return { status: "confirm", dayTotal, estimatedCost: opts.estimatedCost };
+      return { status: "confirm", dayTotal, estimatedCost: estimated };
     }
   }
 
@@ -269,7 +356,8 @@ export async function trendtrackCall<T = Json>(opts: CallOptions): Promise<ToolR
 
   const payload = (await res.json()) as T;
   const rows = rowsReturnedOf(payload);
-  const cost = usage.cost ?? (metered ? rows : 0);
+  // Prefer the provider's usage header; fall back to the learned rate.
+  const cost = usage.cost ?? (metered ? Math.ceil(rows * (rate ?? 1)) : 0);
 
   if (cacheable) {
     const admin = await getAdmin();
@@ -292,6 +380,11 @@ export async function trendtrackCall<T = Json>(opts: CallOptions): Promise<ToolR
     cacheHit: false,
   });
 
+  // Learn the real per-row price from the provider's own usage header.
+  if (metered && usage.cost != null && rows > 0) {
+    await learnEndpointCost(opts.endpoint, usage.cost / rows);
+  }
+
   return {
     status: "ok",
     data: payload,
@@ -302,12 +395,13 @@ export async function trendtrackCall<T = Json>(opts: CallOptions): Promise<ToolR
   };
 }
 
-/** Section status: is the key configured, my day total, last known balance. */
+/** Section status: key configured, my day total, last balance, learned prices. */
 export async function getToolsStatus(userId: string): Promise<{
   configured: boolean;
   dayTotal: number;
   dailySoftLimit: number;
   creditsRemaining: number | null;
+  endpointCosts: EndpointCost[];
 }> {
   const admin = await getAdmin();
   const { data: last } = await admin
@@ -322,6 +416,7 @@ export async function getToolsStatus(userId: string): Promise<{
     dayTotal: await getUserDayTotal(userId),
     dailySoftLimit: DAILY_SOFT_LIMIT_CREDITS,
     creditsRemaining: last?.credits_remaining ?? null,
+    endpointCosts: await getEndpointCosts(),
   };
 }
 
@@ -334,6 +429,7 @@ export async function getUsageDashboard(userId: string): Promise<{
   totalCalls: number;
   byMember: Array<{ name: string; credits: number; calls: number }>;
   byEndpoint: Array<{ endpoint: string; credits: number; calls: number }>;
+  observedPricing: EndpointCost[];
   creditsRemaining: number | null;
   liveBalance: number | null;
   recent: Array<{
@@ -427,6 +523,7 @@ export async function getUsageDashboard(userId: string): Promise<{
     totalCalls: all.length,
     byMember: [...byMemberMap.values()].sort((a, b) => b.credits - a.credits),
     byEndpoint: [...byEndpointMap.values()].sort((a, b) => b.credits - a.credits),
+    observedPricing: await getEndpointCosts(),
     creditsRemaining: lastWithBalance?.credits_remaining ?? null,
     liveBalance,
     recent: all.slice(0, 25).map((r) => ({
