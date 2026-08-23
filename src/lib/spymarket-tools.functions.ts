@@ -76,6 +76,7 @@ export const spymarketQueryShops = createServerFn({ method: "POST" })
         minProductsCount: z.number().int().min(0).optional(),
         maxProductsCount: z.number().int().min(0).optional(),
         isShopifyPlus: z.boolean().optional(),
+        dtcOnly: z.boolean().optional(),
         categoryId: z.number().int().optional(),
         country: z.string().length(2).optional(),
         countries: z.array(z.string().length(2)).max(20).optional(),
@@ -112,7 +113,17 @@ export const spymarketQueryShops = createServerFn({ method: "POST" })
       if (data.maxActiveAds != null) body["maxActiveAds"] = data.maxActiveAds;
       body["adsTimePeriod"] = data.adsTimePeriod ?? "last30d";
     }
-    if (data.minProductsCount != null) body["minProductsCount"] = data.minProductsCount;
+    // DTC-only: native upstream preset (dtcRegion) — marketplaces, SaaS and
+    // institutional/non-store sites never enter the result set, so they never
+    // cost credits. Explicit domain searches bypass it (intentional
+    // single-shop lookup). Also requires a catalogue of at least 1 product.
+    const isDomainLookup = Boolean(data.search) && (data.searchType ?? "domain") === "domain";
+    if (data.dtcOnly && !isDomainLookup) {
+      body["dtcRegion"] = "all";
+      body["minProductsCount"] = Math.max(1, data.minProductsCount ?? 0);
+    } else if (data.minProductsCount != null) {
+      body["minProductsCount"] = data.minProductsCount;
+    }
     if (data.maxProductsCount != null) body["maxProductsCount"] = data.maxProductsCount;
     if (data.isShopifyPlus != null) body["isShopifyPlus"] = data.isShopifyPlus;
     if (data.categoryId != null) body["categoryIds"] = [data.categoryId];
@@ -139,6 +150,7 @@ export const spymarketQueryShops = createServerFn({ method: "POST" })
           minActiveAds: data.minActiveAds ?? null,
           maxActiveAds: data.maxActiveAds ?? null,
           isShopifyPlus: data.isShopifyPlus ?? null,
+          dtcOnly: data.dtcOnly ?? null,
           categoryId: data.categoryId ?? null,
           countries: includeCountries,
           language: data.language ?? null,

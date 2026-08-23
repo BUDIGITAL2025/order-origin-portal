@@ -97,8 +97,9 @@ function AdminWalletPage() {
           <CardHeader className="pb-3">
             <CardTitle className="text-base">New adjustment</CardTitle>
             <CardDescription>
-              Debits are rejected if they would take the balance below zero. A duplicate
-              reference is ignored (idempotent).
+              Ledger-only — never touches Stripe or moves real money. Credits are recorded as
+              “Adjustment”, distinct from Stripe top-ups. Debits are rejected if they would take
+              the balance below zero. A duplicate reference is ignored (idempotent).
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -175,7 +176,7 @@ function AdminWalletPage() {
                 </div>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="aw-desc">Description</Label>
+                <Label htmlFor="aw-desc">Reason (shown in the ledger)</Label>
                 <Input
                   id="aw-desc"
                   required

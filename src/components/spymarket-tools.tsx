@@ -727,6 +727,7 @@ interface ShopsFilters {
   minProducts: string;
   maxProducts: string;
   plusOnly: boolean;
+  dtcOnly: boolean;
   categoryId: string;
   countriesInc: string[];
   countriesExc: string[];
@@ -750,6 +751,8 @@ function shopsFiltersFromUrl(
     minProducts: url["pmin"] ?? "",
     maxProducts: url["pmax"] ?? "",
     plusOnly: url["plus"] === "1",
+    // DTC-only defaults ON; only an explicit dtc=0 in the URL disables it.
+    dtcOnly: url["dtc"] !== "0",
     categoryId: url["cat"] ?? "",
     countriesInc: url["cinc"]?.split(",").filter(Boolean) ?? [],
     countriesExc: url["cexc"]?.split(",").filter(Boolean) ?? [],
@@ -774,6 +777,7 @@ function shopsUrlPatch(f: ShopsFilters): Record<string, string | undefined> {
     pmin: f.minProducts || undefined,
     pmax: f.maxProducts || undefined,
     plus: f.plusOnly ? "1" : undefined,
+    dtc: f.dtcOnly ? undefined : "0",
     cat: f.categoryId || undefined,
     cinc: f.countriesInc.length > 0 ? f.countriesInc.join(",") : undefined,
     cexc: f.countriesExc.length > 0 ? f.countriesExc.join(",") : undefined,
@@ -834,24 +838,43 @@ function ShopsTab({
     });
   };
 
-  const buildInput = (offset: number): Record<string, unknown> => {
-    const input: Record<string, unknown> = { limit, offset, sortBy: f.sortBy, order: "desc" };
-    if (f.search.trim()) {
-      input["search"] = f.search.trim();
-      input["searchType"] = f.searchType;
+  /** DTC toggle: commit to state + URL, re-run live when results are shown. */
+  const toggleDtcOnly = () => {
+    const next = { ...f, dtcOnly: !f.dtcOnly };
+    setF(next);
+    go(shopsUrlPatch(next));
+    if (pages.length > 0) {
+      setPages([]);
+      void call.execute(buildInput(0, next));
     }
-    if (f.minVisits) input["minMonthlyVisits"] = Number(f.minVisits);
-    if (f.maxVisits) input["maxMonthlyVisits"] = Number(f.maxVisits);
-    if (f.minAds) input["minActiveAds"] = Number(f.minAds);
-    if (f.maxAds) input["maxActiveAds"] = Number(f.maxAds);
-    if (f.minAds || f.maxAds) input["adsTimePeriod"] = f.adsWindow;
-    if (f.minProducts) input["minProductsCount"] = Number(f.minProducts);
-    if (f.maxProducts) input["maxProductsCount"] = Number(f.maxProducts);
-    if (f.plusOnly) input["isShopifyPlus"] = true;
-    if (f.categoryId) input["categoryId"] = Number(f.categoryId);
-    if (f.countriesInc.length > 0) input["countries"] = f.countriesInc;
-    if (f.language) input["language"] = f.language;
-    if (f.trustpilot) input["minTrustpilotRating"] = Number(f.trustpilot);
+  };
+
+  const buildInput = (offset: number, filters: ShopsFilters = f): Record<string, unknown> => {
+    const input: Record<string, unknown> = {
+      limit,
+      offset,
+      sortBy: filters.sortBy,
+      order: "desc",
+    };
+    // Applied upstream via the API's DTC preset — filtered-out rows never
+    // count toward credits. Explicit domain searches bypass it server-side.
+    input["dtcOnly"] = filters.dtcOnly;
+    if (filters.search.trim()) {
+      input["search"] = filters.search.trim();
+      input["searchType"] = filters.searchType;
+    }
+    if (filters.minVisits) input["minMonthlyVisits"] = Number(filters.minVisits);
+    if (filters.maxVisits) input["maxMonthlyVisits"] = Number(filters.maxVisits);
+    if (filters.minAds) input["minActiveAds"] = Number(filters.minAds);
+    if (filters.maxAds) input["maxActiveAds"] = Number(filters.maxAds);
+    if (filters.minAds || filters.maxAds) input["adsTimePeriod"] = filters.adsWindow;
+    if (filters.minProducts) input["minProductsCount"] = Number(filters.minProducts);
+    if (filters.maxProducts) input["maxProductsCount"] = Number(filters.maxProducts);
+    if (filters.plusOnly) input["isShopifyPlus"] = true;
+    if (filters.categoryId) input["categoryId"] = Number(filters.categoryId);
+    if (filters.countriesInc.length > 0) input["countries"] = filters.countriesInc;
+    if (filters.language) input["language"] = filters.language;
+    if (filters.trustpilot) input["minTrustpilotRating"] = Number(filters.trustpilot);
     return input;
   };
 
@@ -1141,6 +1164,21 @@ function ShopsTab({
               Shopify Plus
             </button>
 
+            <button
+              type="button"
+              title="Upstream Trendtrack filter — marketplaces, SaaS and non-store sites are excluded before results (and credits) are counted"
+              onClick={toggleDtcOnly}
+              aria-pressed={f.dtcOnly}
+              className={cn(
+                "inline-flex h-8 items-center rounded-full border px-3 text-xs font-medium transition-colors",
+                f.dtcOnly
+                  ? "border-primary/40 bg-primary/15 text-primary"
+                  : "border-border bg-card text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {f.dtcOnly ? "DTC only" : "Show all"}
+            </button>
+
             <div className="ml-auto flex items-center gap-2">
               <Label className="text-xs text-muted-foreground">Page size</Label>
               <Input
@@ -1160,6 +1198,13 @@ function ShopsTab({
       <CallFeedback state={call.state} onConfirm={call.confirm} onCancel={call.cancelConfirm} onRetry={call.retry} />
 
       {searching && pages.length === 0 && <LoadingRows rows={6} />}
+
+      {f.dtcOnly && call.state.kind === "ok" && (
+        <p className="text-xs text-muted-foreground">
+          DTC-only filter applied upstream — marketplaces and non-store sites are excluded before
+          results (and credits) are counted.
+        </p>
+      )}
 
       {allRows.length > 0 && (
         <Card className="overflow-hidden rounded-2xl">
@@ -1377,7 +1422,9 @@ function ShopsTab({
       {call.state.kind === "ok" && allRows.length === 0 && !searching && (
         <Card className="rounded-2xl">
           <CardContent className="p-8 text-center text-sm text-muted-foreground">
-            No shops matched. Loosen the filters or try another search.
+            {f.dtcOnly
+              ? "No DTC shops matched. Switch to “Show all” to include marketplaces and non-store sites, or loosen the filters."
+              : "No shops matched. Loosen the filters or try another search."}
           </CardContent>
         </Card>
       )}
