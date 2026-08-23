@@ -575,19 +575,26 @@ function NewQuotePageInner() {
                       : `${countries.length} ${countries.length === 1 ? "country" : "countries"} selected — each country adds its own priced line per variant.`}
                   </p>
                 </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="q-volume">Expected monthly volume (units)</Label>
+                <div className="space-y-2 rounded-xl border border-primary/30 bg-primary/5 p-4">
+                  <Label htmlFor="q-volume" className="text-sm font-semibold">
+                    Expected monthly volume (optional)
+                  </Label>
                   <Input
                     id="q-volume"
                     type="number"
                     min={1}
-                    placeholder="e.g. 300"
+                    placeholder="e.g. 300 units / month"
                     value={volume}
                     onChange={(e) => setVolume(e.target.value)}
+                    className="bg-background"
                   />
+                  <p className="text-xs text-muted-foreground">
+                    Even a rough estimate sharpens your quote — volume drives the price breaks we
+                    can negotiate with suppliers.
+                  </p>
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="q-notes">Notes</Label>
+                  <Label htmlFor="q-notes">Notes (optional)</Label>
                   <Textarea
                     id="q-notes"
                     rows={4}
