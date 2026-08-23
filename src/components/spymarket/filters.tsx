@@ -220,7 +220,7 @@ export function CountryDualContent({
   };
 
   const col = (
-    title: string,
+    title: React.ReactNode,
     arr: string[],
     setArr: (c: string[]) => void,
     other: string[],
