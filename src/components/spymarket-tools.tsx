@@ -22,6 +22,7 @@ import {
   Megaphone,
   Package,
   Play,
+  RefreshCw,
   Search,
   Store,
   Users,
@@ -269,6 +270,7 @@ type CallState =
   | { kind: "ok"; result: ToolOk<unknown> }
   | { kind: "confirm"; dayTotal: number; estimatedCost: number }
   | { kind: "insufficient"; balance: number | null; message: string }
+  | { kind: "timeout" }
   | { kind: "error"; message: string };
 
 type ServerFnLike = (opts: { data: Record<string, unknown> }) => Promise<ToolResult<unknown>>;
