@@ -54,7 +54,18 @@ export async function resolveOrCreateCustomer(
   stripe: Stripe,
   options: { email?: string; userId: string; existingCustomerId?: string | null },
 ): Promise<string> {
-  if (options.existingCustomerId) return options.existingCustomerId;
+  // Trust the stored id only if the customer still exists in THIS Stripe
+  // environment — a sandbox reset or env switch leaves stale ids that Stripe
+  // rejects with "No such customer" at session creation.
+  if (options.existingCustomerId) {
+    try {
+      const existing = await stripe.customers.retrieve(options.existingCustomerId);
+      if (!("deleted" in existing && existing.deleted)) return existing.id;
+    } catch (e) {
+      const code = (e as { code?: string })?.code;
+      if (code !== "resource_missing") throw e;
+    }
+  }
   if (!/^[a-zA-Z0-9_-]+$/.test(options.userId)) throw new Error("Invalid userId");
 
   const found = await stripe.customers.search({
