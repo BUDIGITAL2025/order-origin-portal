@@ -2146,7 +2146,568 @@ function AdsTab({ costs }: { costs?: EndpointCosts | undefined }) {
 }
 
 // ---------------------------------------------------------------------------
-// 5. USAGE — free dashboard over our own log
+// 4b. AD DETAIL DIALOG — metered /ads/{id} + on-demand reach history & media
+// ---------------------------------------------------------------------------
+
+function AdDetailDialog({
+  adId,
+  costs,
+  onClose,
+}: {
+  adId: string | null;
+  costs?: EndpointCosts | undefined;
+  onClose: () => void;
+}) {
+  const getAd = useServerFn(spymarketGetAd);
+  const getReach = useServerFn(spymarketGetAdReachHistory);
+  const getMedia = useServerFn(spymarketGetAdMediaUrl);
+  const call = useMeteredCall(getAd as ServerFnLike);
+  const reachCall = useMeteredCall(getReach as ServerFnLike);
+  const mediaCall = useMeteredCall(getMedia as ServerFnLike);
+  const loadedForRef = React.useRef<string | null>(null);
+
+  React.useEffect(() => {
+    if (adId && loadedForRef.current !== adId) {
+      loadedForRef.current = adId;
+      void call.execute({ adId });
+    }
+    if (!adId) loadedForRef.current = null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adId]);
+
+  const ad =
+    call.state.kind === "ok" && adId ? asRec(asRec(call.state.result.data)["data"]) : null;
+  const content = asRec(ad?.["content"]);
+  const metrics = asRec(ad?.["metrics"]);
+  const advertiser = asRec(ad?.["advertiser"]);
+  const audience = asRec(ad?.["audience"]);
+  const flags = asRec(ad?.["flags"]);
+  const media = asRec(ad?.["media"]);
+
+  const reachPoints =
+    reachCall.state.kind === "ok"
+      ? asArr(asRec(reachCall.state.result.data)["data"]).map(asRec)
+      : null;
+  const mediaUrl =
+    mediaCall.state.kind === "ok"
+      ? asStr(asRec(asRec(mediaCall.state.result.data)["data"])["mediaUrl"]) ??
+        asStr(asRec(asRec(mediaCall.state.result.data)["data"])["url"])
+      : null;
+
+  return (
+    <Dialog open={adId != null} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto rounded-2xl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-base">
+            <Megaphone className="h-4 w-4 text-primary" />
+            {asStr(content["title"]) ?? "Ad detail"}
+          </DialogTitle>
+        </DialogHeader>
+
+        {call.state.kind === "loading" && <LoadingRows rows={4} />}
+        {call.state.kind !== "ok" && (
+          <CallFeedback state={call.state} onConfirm={call.confirm} onCancel={call.cancelConfirm} />
+        )}
+
+        {ad && (
+          <div className="space-y-4">
+            {/* Media */}
+            {mediaUrl ? (
+              <video src={mediaUrl} controls className="w-full rounded-xl border" />
+            ) : asStr(media["mediaUrl"]) && asStr(media["mediaType"]) === "video" ? (
+              <video src={asStr(media["mediaUrl"]) ?? ""} controls className="w-full rounded-xl border" />
+            ) : asStr(media["thumbnailUrl"]) ? (
+              <img
+                src={asStr(media["thumbnailUrl"]) ?? ""}
+                alt="Ad creative"
+                className="max-h-72 w-full rounded-xl border object-contain"
+              />
+            ) : null}
+            {asStr(media["mediaType"]) === "video" && !mediaUrl && !asStr(media["mediaUrl"]) && (
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="rounded-full"
+                  disabled={mediaCall.state.kind === "loading"}
+                  onClick={() => adId && void mediaCall.execute({ adId })}
+                >
+                  {mediaCall.state.kind === "loading" ? (
+                    <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Play className="mr-2 h-3.5 w-3.5" />
+                  )}
+                  Load video — {costLabel(costs, "ads/media-url", 1)}
+                </Button>
+                <CallFeedback
+                  state={mediaCall.state}
+                  onConfirm={mediaCall.confirm}
+                  onCancel={mediaCall.cancelConfirm}
+                />
+              </div>
+            )}
+
+            {/* Copy */}
+            <div className="space-y-1.5">
+              {asStr(content["body"]) && (
+                <p className="whitespace-pre-wrap text-sm">{asStr(content["body"])}</p>
+              )}
+              {asStr(content["transcript"]) && (
+                <p className="rounded-xl bg-muted/60 p-3 text-xs text-muted-foreground">
+                  <span className="font-medium text-foreground">Transcript: </span>
+                  {asStr(content["transcript"])}
+                </p>
+              )}
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                {asStr(content["callToAction"]) && (
+                  <Badge className="rounded-full">{asStr(content["callToAction"])}</Badge>
+                )}
+                {asStr(content["landingPageUrl"]) && (
+                  <a
+                    href={asStr(content["landingPageUrl"]) ?? "#"}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                  >
+                    Landing page <ExternalLink className="h-3 w-3" />
+                  </a>
+                )}
+              </div>
+            </div>
+
+            {/* Metrics */}
+            <div className="grid grid-cols-3 gap-2 text-center">
+              {(
+                [
+                  ["Reach", fmtCompact(asNum(metrics["reach"]))],
+                  ["Aggregated", fmtCompact(asNum(metrics["aggregatedReach"]))],
+                  ["Est. spend", fmtCompact(asNum(metrics["estimatedSpend"]))],
+                  ["Δ 24h", fmtCompact(asNum(metrics["reachDelta1d"]))],
+                  ["Δ 7d", fmtCompact(asNum(metrics["reachDelta7d"]))],
+                  ["Δ 30d", fmtCompact(asNum(metrics["reachDelta30d"]))],
+                ] as const
+              ).map(([label, v]) => (
+                <div key={label} className="rounded-xl bg-muted/60 p-2">
+                  <p className="text-sm font-semibold">{v}</p>
+                  <p className="text-[10px] text-muted-foreground">{label}</p>
+                </div>
+              ))}
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Reach/spend covers EU &amp; UK only.
+              {flags["isEuAd"] === true && " This ad ran in the EU."}
+            </p>
+
+            {/* Reach history — on demand */}
+            <div className="space-y-2">
+              {reachPoints ? (
+                <div className="rounded-xl border p-3">
+                  <p className="mb-1 text-xs font-medium text-muted-foreground">
+                    Reach over time
+                    {reachCall.state.kind === "ok" && (
+                      <span className="ml-2">
+                        · cost {fmtInt(reachCall.state.result.creditsCost)} credits
+                        {reachCall.state.result.cacheHit && " (cache)"}
+                      </span>
+                    )}
+                  </p>
+                  <Sparkline points={reachPoints} height={64} />
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="rounded-full"
+                    disabled={reachCall.state.kind === "loading"}
+                    onClick={() => adId && void reachCall.execute({ adId })}
+                  >
+                    {reachCall.state.kind === "loading" ? (
+                      <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <LineChart className="mr-2 h-3.5 w-3.5" />
+                    )}
+                    Reach history — {costLabel(costs, "ads/reach-history", 30)}
+                  </Button>
+                </div>
+              )}
+              {reachCall.state.kind !== "ok" && reachCall.state.kind !== "idle" && (
+                <CallFeedback
+                  state={reachCall.state}
+                  onConfirm={reachCall.confirm}
+                  onCancel={reachCall.cancelConfirm}
+                />
+              )}
+            </div>
+
+            {/* Advertiser + audience */}
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-xl border p-3 text-sm">
+                <p className="mb-1 text-xs font-medium text-muted-foreground">Advertiser</p>
+                <p className="font-medium">{asStr(advertiser["name"]) ?? "—"}</p>
+                <p className="text-xs text-muted-foreground">
+                  {asStr(advertiser["platform"]) && (
+                    <span className="capitalize">{asStr(advertiser["platform"])}</span>
+                  )}
+                  {asNum(advertiser["activeAds"]) != null &&
+                    ` · ${fmtInt(asNum(advertiser["activeAds"]))} active ads`}
+                </p>
+              </div>
+              <div className="rounded-xl border p-3 text-sm">
+                <p className="mb-1 text-xs font-medium text-muted-foreground">Audience</p>
+                <CountryChips list={audience["countries"]} max={6} />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {asStr(audience["gender"]) && <span className="capitalize">{asStr(audience["gender"])}</span>}
+                  {asStr(audience["ageRange"]) && ` · ${asStr(audience["ageRange"])}`}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+              {asNum(ad["daysRunning"]) != null && <span>{asNum(ad["daysRunning"])}d running</span>}
+              {asStr(ad["firstSeenAt"]) && <span>first seen {asStr(ad["firstSeenAt"])?.slice(0, 10)}</span>}
+              {asStr(ad["lastSeenAt"]) && <span>last seen {asStr(ad["lastSeenAt"])?.slice(0, 10)}</span>}
+              {asNum(metrics["duplicates"]) != null && asNum(metrics["duplicates"])! > 0 && (
+                <span>{fmtInt(asNum(metrics["duplicates"]))} duplicates</span>
+              )}
+            </div>
+
+            <RawJson data={ad} />
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// 5. EMAILS — search across brands + detail dialog
+// ---------------------------------------------------------------------------
+
+function EmailDetailDialog({
+  emailId,
+  costs: _costs,
+  onClose,
+}: {
+  emailId: string | number | null;
+  costs?: EndpointCosts | undefined;
+  onClose: () => void;
+}) {
+  const getEmail = useServerFn(spymarketGetEmail);
+  const call = useMeteredCall(getEmail as ServerFnLike);
+  const loadedForRef = React.useRef<string | number | null>(null);
+
+  React.useEffect(() => {
+    if (emailId != null && loadedForRef.current !== emailId) {
+      loadedForRef.current = emailId;
+      void call.execute({ emailId });
+    }
+    if (emailId == null) loadedForRef.current = null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [emailId]);
+
+  const email =
+    call.state.kind === "ok" && emailId != null
+      ? asRec(asRec(call.state.result.data)["data"])
+      : null;
+  const shop = asRec(email?.["shop"]);
+  const classification = asRec(email?.["classification"]);
+
+  return (
+    <Dialog open={emailId != null} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto rounded-2xl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-base">
+            <Mail className="h-4 w-4 text-primary" />
+            {asStr(email?.["subject"]) ?? "Email detail"}
+          </DialogTitle>
+        </DialogHeader>
+
+        {call.state.kind === "loading" && <LoadingRows rows={4} />}
+        {call.state.kind !== "ok" && (
+          <CallFeedback state={call.state} onConfirm={call.confirm} onCancel={call.cancelConfirm} />
+        )}
+
+        {email && (
+          <div className="space-y-4">
+            <div className="flex flex-wrap gap-1.5">
+              {asStr(email["campaignType"]) && (
+                <Badge className="rounded-full">{asStr(email["campaignType"])}</Badge>
+              )}
+              {asStr(classification["promotionType"]) && (
+                <Badge variant="secondary" className="rounded-full">
+                  {asStr(classification["promotionType"])}
+                </Badge>
+              )}
+              {asStr(classification["category"]) && (
+                <Badge variant="secondary" className="rounded-full">
+                  {asStr(classification["category"])}
+                </Badge>
+              )}
+              {asStr(classification["event"]) && (
+                <Badge variant="outline" className="rounded-full">
+                  {asStr(classification["event"])}
+                </Badge>
+              )}
+              {asStr(email["sentAt"]) && (
+                <Badge variant="outline" className="rounded-full">
+                  {asStr(email["sentAt"])?.slice(0, 10)}
+                </Badge>
+              )}
+            </div>
+
+            {asStr(email["preheader"]) && (
+              <p className="text-sm text-muted-foreground">{asStr(email["preheader"])}</p>
+            )}
+
+            {asStr(email["screenshotUrl"]) && (
+              <img
+                src={asStr(email["screenshotUrl"]) ?? ""}
+                alt="Email screenshot"
+                loading="lazy"
+                className="max-h-96 w-full rounded-xl border object-contain"
+              />
+            )}
+
+            {(asStr(email["bodyPreview"]) ?? asStr(email["body"])) && (
+              <div className="rounded-xl bg-muted/60 p-3">
+                <p className="whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground">
+                  {asStr(email["bodyPreview"]) ?? asStr(email["body"])}
+                </p>
+              </div>
+            )}
+
+            {(asStr(shop["domain"]) ?? asStr(shop["name"])) && (
+              <div className="rounded-xl border p-3 text-sm">
+                <p className="mb-1 text-xs font-medium text-muted-foreground">Shop</p>
+                <p className="font-medium">{asStr(shop["name"]) ?? asStr(shop["domain"])}</p>
+                {asStr(shop["domain"]) && (
+                  <a
+                    href={`https://${asStr(shop["domain"])}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                  >
+                    {asStr(shop["domain"])} <ExternalLink className="h-3 w-3" />
+                  </a>
+                )}
+              </div>
+            )}
+
+            <RawJson data={email} />
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function EmailsTab({ costs }: { costs?: EndpointCosts | undefined }) {
+  const queryEmails = useServerFn(spymarketQueryEmails);
+  const call = useMeteredCall(queryEmails as ServerFnLike);
+
+  const [search, setSearch] = React.useState("");
+  const [searchType, setSearchType] = React.useState("domain");
+  const [sortBy, setSortBy] = React.useState("newest");
+  const [campaignType, setCampaignType] = React.useState("");
+  const [limit, setLimit] = React.useState(24);
+  const [pages, setPages] = React.useState<Rec[][]>([]);
+  const [emailDetailId, setEmailDetailId] = React.useState<string | number | null>(null);
+
+  const buildInput = (page: number): Record<string, unknown> => ({
+    ...(search.trim() ? { search: search.trim() } : {}),
+    searchType,
+    sortBy,
+    ...(campaignType.trim() ? { campaignType: campaignType.trim() } : {}),
+    limit,
+    page,
+  });
+
+  const lastResultRef = React.useRef<ToolOk<unknown> | null>(null);
+  React.useEffect(() => {
+    if (call.state.kind === "ok" && call.state.result !== lastResultRef.current) {
+      lastResultRef.current = call.state.result;
+      const rows = dataRows(call.state.result.data);
+      setPages((prev) => [...prev, rows]);
+    }
+  }, [call.state]);
+
+  const searching = call.state.kind === "loading";
+  const allRows = pages.flat();
+
+  return (
+    <div className="space-y-4">
+      <Card className="rounded-2xl">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Mail className="h-4 w-4 text-primary" />
+            Email search
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="space-y-1.5 sm:col-span-2">
+            <Label>Search</Label>
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="domain, sender email or keywords…"
+              className="rounded-full"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Search type</Label>
+            <Select value={searchType} onValueChange={setSearchType}>
+              <SelectTrigger className="rounded-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="domain">Domain</SelectItem>
+                <SelectItem value="email">Sender email</SelectItem>
+                <SelectItem value="shopKeywords">Shop keywords</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Sort</Label>
+            <Select value={sortBy} onValueChange={setSortBy}>
+              <SelectTrigger className="rounded-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="newest">Newest</SelectItem>
+                <SelectItem value="oldest">Oldest</SelectItem>
+                <SelectItem value="relevance">Relevance</SelectItem>
+                <SelectItem value="monthlyVisits">Shop traffic</SelectItem>
+                <SelectItem value="bodyLength">Body length</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Campaign type (optional)</Label>
+            <Input
+              value={campaignType}
+              onChange={(e) => setCampaignType(e.target.value)}
+              placeholder="e.g. promotion, newsletter"
+              className="rounded-full"
+            />
+          </div>
+          <div className="flex items-end gap-2">
+            <div className="space-y-1.5">
+              <Label>Page size</Label>
+              <Input
+                value={String(limit)}
+                onChange={(e) => {
+                  const n = Number(e.target.value.replace(/\D/g, ""));
+                  setLimit(Number.isFinite(n) ? Math.min(Math.max(n, 1), 100) : 24);
+                }}
+                inputMode="numeric"
+                className="w-24 rounded-full"
+              />
+            </div>
+            <Button
+              className="rounded-full"
+              disabled={searching}
+              onClick={() => {
+                setPages([]);
+                void call.execute(buildInput(1));
+              }}
+            >
+              {searching ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Search className="mr-2 h-4 w-4" />
+              )}
+              Search — {costLabel(costs, "emails/query", limit)}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <CallFeedback state={call.state} onConfirm={call.confirm} onCancel={call.cancelConfirm} />
+
+      {searching && pages.length === 0 && <LoadingRows rows={4} />}
+
+      {allRows.length > 0 && (
+        <div className="grid gap-2 sm:grid-cols-2">
+          {allRows.map((e, i) => {
+            const id = asNum(e["id"]) ?? asStr(e["id"]);
+            const classification = asRec(e["classification"]);
+            const shop = asRec(e["shop"]);
+            return (
+              <button
+                key={String(id ?? i)}
+                type="button"
+                disabled={id == null}
+                onClick={() => id != null && setEmailDetailId(id)}
+                className="flex items-center gap-3 rounded-xl border p-3 text-left transition-colors hover:bg-muted/50"
+              >
+                {asStr(e["screenshotUrl"]) ? (
+                  <img
+                    src={asStr(e["screenshotUrl"]) ?? ""}
+                    alt=""
+                    loading="lazy"
+                    className="h-14 w-11 shrink-0 rounded-md border object-cover"
+                  />
+                ) : (
+                  <Mail className="h-4 w-4 shrink-0 text-muted-foreground" />
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium">
+                    {asStr(e["subject"]) ?? "(no subject)"}
+                  </p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {asStr(shop["domain"]) ?? asStr(e["fromEmail"]) ?? ""}
+                  </p>
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {asStr(e["sentAt"]) && (
+                      <Badge variant="outline" className="rounded-full text-[10px]">
+                        {asStr(e["sentAt"])?.slice(0, 10)}
+                      </Badge>
+                    )}
+                    {asStr(e["campaignType"]) && (
+                      <Badge variant="secondary" className="rounded-full text-[10px]">
+                        {asStr(e["campaignType"])}
+                      </Badge>
+                    )}
+                    {asStr(classification["promotionType"]) && (
+                      <Badge variant="secondary" className="rounded-full text-[10px]">
+                        {asStr(classification["promotionType"])}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+                <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {pages.length > 0 && (pages[pages.length - 1]?.length ?? 0) >= limit && (
+        <div className="flex justify-center">
+          <Button
+            variant="outline"
+            className="rounded-full"
+            disabled={searching}
+            onClick={() => void call.execute(buildInput(pages.length + 1))}
+          >
+            {searching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            Load more — {costLabel(costs, "emails/query", limit)}
+          </Button>
+        </div>
+      )}
+
+      <EmailDetailDialog
+        emailId={emailDetailId}
+        costs={costs}
+        onClose={() => setEmailDetailId(null)}
+      />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// 6. USAGE — free dashboard over our own log
 // ---------------------------------------------------------------------------
 
 function UsageTab() {
