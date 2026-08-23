@@ -526,6 +526,9 @@ export type Database = {
           status: Database["public"]["Enums"]["order_status"]
           store_id: string
           total_amount: number | null
+          tracking_carrier: string | null
+          tracking_notified_at: string | null
+          tracking_number: string | null
         }
         Insert: {
           cancelled_at?: string | null
@@ -549,6 +552,9 @@ export type Database = {
           status?: Database["public"]["Enums"]["order_status"]
           store_id: string
           total_amount?: number | null
+          tracking_carrier?: string | null
+          tracking_notified_at?: string | null
+          tracking_number?: string | null
         }
         Update: {
           cancelled_at?: string | null
@@ -572,6 +578,9 @@ export type Database = {
           status?: Database["public"]["Enums"]["order_status"]
           store_id?: string
           total_amount?: number | null
+          tracking_carrier?: string | null
+          tracking_notified_at?: string | null
+          tracking_number?: string | null
         }
         Relationships: [
           {
@@ -1144,6 +1153,9 @@ export type Database = {
           status: Database["public"]["Enums"]["order_status"]
           store_id: string
           total_amount: number | null
+          tracking_carrier: string | null
+          tracking_notified_at: string | null
+          tracking_number: string | null
         }
         SetofOptions: {
           from: "*"
@@ -1273,6 +1285,88 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      create_manual_order: {
+        Args: {
+          p_client_reference?: string
+          p_customer: Json
+          p_lines?: Json
+          p_shipping: Json
+          p_store_id: string
+        }
+        Returns: {
+          cancelled_at: string | null
+          created_at: string
+          delivered_at: string | null
+          destination_country: string | null
+          external_order_id: string | null
+          external_order_number: string | null
+          id: string
+          middleware_order_id: string | null
+          needs_review_reason: string | null
+          paid_at: string | null
+          payment_method:
+            | Database["public"]["Enums"]["order_payment_method"]
+            | null
+          reminder_24_sent_at: string | null
+          reminder_48_sent_at: string | null
+          reminder_72_sent_at: string | null
+          shipped_at: string | null
+          shipping_address: Json | null
+          status: Database["public"]["Enums"]["order_status"]
+          store_id: string
+          total_amount: number | null
+          tracking_carrier: string | null
+          tracking_notified_at: string | null
+          tracking_number: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "orders"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      create_manual_order_internal: {
+        Args: {
+          p_client_reference: string
+          p_customer: Json
+          p_lines: Json
+          p_shipping: Json
+          p_store_id: string
+        }
+        Returns: {
+          cancelled_at: string | null
+          created_at: string
+          delivered_at: string | null
+          destination_country: string | null
+          external_order_id: string | null
+          external_order_number: string | null
+          id: string
+          middleware_order_id: string | null
+          needs_review_reason: string | null
+          paid_at: string | null
+          payment_method:
+            | Database["public"]["Enums"]["order_payment_method"]
+            | null
+          reminder_24_sent_at: string | null
+          reminder_48_sent_at: string | null
+          reminder_72_sent_at: string | null
+          shipped_at: string | null
+          shipping_address: Json | null
+          status: Database["public"]["Enums"]["order_status"]
+          store_id: string
+          total_amount: number | null
+          tracking_carrier: string | null
+          tracking_notified_at: string | null
+          tracking_number: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "orders"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       explode_product: {
         Args: { p_product_id: string; p_quantity: number }
         Returns: {
@@ -1288,6 +1382,15 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      import_manual_orders: {
+        Args: { p_orders: Json; p_store_id: string }
+        Returns: {
+          order_id: string
+          order_number: string
+          status: string
+          total: number
+        }[]
       }
       ingest_order: {
         Args: {
@@ -1320,6 +1423,9 @@ export type Database = {
           status: Database["public"]["Enums"]["order_status"]
           store_id: string
           total_amount: number | null
+          tracking_carrier: string | null
+          tracking_notified_at: string | null
+          tracking_number: string | null
         }
         SetofOptions: {
           from: "*"
