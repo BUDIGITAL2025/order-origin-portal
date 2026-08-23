@@ -53,3 +53,17 @@ export function countryName(code: string | null | undefined): string {
   if (!code) return "—";
   return COUNTRIES.find((c) => c.code === code)?.name ?? code;
 }
+
+/**
+ * EU member states (ISO alpha-2). Used for IOSS / import-tax guidance when
+ * quoting — EU destinations go through IOSS, non-EU usually don't.
+ */
+export const EU_COUNTRY_CODES: ReadonlySet<string> = new Set([
+  "AT", "BE", "BG", "HR", "CY", "CZ", "DK", "EE", "FI", "FR",
+  "DE", "GR", "HU", "IE", "IT", "LV", "LT", "LU", "MT", "NL",
+  "PL", "PT", "RO", "SK", "SI", "ES", "SE",
+]);
+
+export function isEuCountry(code: string | null | undefined): boolean {
+  return !!code && EU_COUNTRY_CODES.has(code.toUpperCase());
+}

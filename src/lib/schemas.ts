@@ -93,6 +93,10 @@ export const quoteRequestSchema = z.object({
   target_monthly_volume: z.number().int().min(1).max(1_000_000).nullable().optional(),
   image_urls: z.array(z.string().max(500)).max(10).optional(),
   target_countries: z.array(countryCodeSchema).min(1, "Pick at least one target country").max(30),
+  // The workspace the quote attaches to (from the store switcher). Optional:
+  // the RPC resolves the account's subscribed workspace when omitted, and
+  // creates a draft one for storeless accounts.
+  store_id: z.string().uuid().optional(),
 });
 
 export const quoteLineInputSchema = z.object({
