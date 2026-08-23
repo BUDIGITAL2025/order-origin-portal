@@ -22,7 +22,7 @@ import { formatDate } from "@/lib/format";
 export const Route = createFileRoute("/_authenticated/admin/entities")({
   head: () => ({
     meta: [
-      { title: "Entities & Stores — FlySales Admin" },
+      { title: "Entities & Workspaces — FlySales Admin" },
       { name: "robots", content: "noindex" },
     ],
   }),
@@ -58,8 +58,8 @@ function AdminEntitiesPage() {
   return (
     <div>
       <PageHeader
-        title="Entities & stores"
-        description="Legal entities and the shops attached to them. Wallet lives on the entity; subscriptions, quotas and catalogues live on each store."
+        title="Entities & workspaces"
+        description="Legal entities and the shops attached to them. Wallet lives on the entity; subscriptions, quotas and catalogues live on each workspace."
       />
       {isPending ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
@@ -82,7 +82,7 @@ function AdminEntitiesPage() {
                     </span>
                   )}
                   <span className="ml-auto text-xs text-muted-foreground">
-                    {entity.stores.length}/{entity.max_stores} stores · since{" "}
+                    {entity.stores.length}/{entity.max_stores} workspaces · since{" "}
                     {formatDate(entity.created_at)}
                   </span>
                 </div>
@@ -94,12 +94,12 @@ function AdminEntitiesPage() {
               </CardHeader>
               <CardContent>
                 {entity.stores.length === 0 ? (
-                  <p className="text-xs text-muted-foreground">No stores under this entity.</p>
+                  <p className="text-xs text-muted-foreground">No workspaces under this entity.</p>
                 ) : (
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Store</TableHead>
+                        <TableHead>Workspace</TableHead>
                         <TableHead>Platform</TableHead>
                         <TableHead>Plan</TableHead>
                         <TableHead>Subscription</TableHead>

@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Copy } from "lucide-react";
 import { toast } from "sonner";
 import { EmptyState, PageHeader } from "@/components/app-shell";
 import {
@@ -143,7 +144,8 @@ function OrdersPage() {
               size="sm"
               disabled={rows.length === 0}
               onClick={() => {
-                const header = "order,date,status,country,total,tracking\n";
+                const esc = (v: string) => (/[",\n]/.test(v) ? `"${v.replaceAll('"', '""')}"` : v);
+                const header = "order,date,status,country,total,tracking_carrier,tracking_number\n";
                 const body = rows
                   .map((o) =>
                     [
@@ -152,20 +154,23 @@ function OrdersPage() {
                       o.status,
                       o.destination_country ?? "",
                       o.total_amount ?? "",
-                      "",
-                    ].join(","),
+                      o.tracking_carrier ?? "",
+                      o.tracking_number ?? "",
+                    ]
+                      .map((v) => esc(String(v)))
+                      .join(","),
                   )
                   .join("\n");
                 const blob = new Blob([header + body], { type: "text/csv" });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement("a");
                 a.href = url;
-                a.download = "flysales-orders.csv";
+                a.download = "flysales-tracking.csv";
                 a.click();
                 URL.revokeObjectURL(url);
               }}
             >
-              Export CSV
+              Export tracking
             </Button>
             <Button asChild variant="outline" size="sm">
               <Link to="/orders/import">Import CSV</Link>
@@ -182,7 +187,7 @@ function OrdersPage() {
       ) : rows.length === 0 ? (
         <EmptyState
           title="No orders yet"
-          hint="Orders from your store will appear here once your integration is live."
+          hint="Orders appear here — synced from Shopify or created manually."
         />
       ) : (
         <div className="rounded-lg border border-border bg-card">
@@ -207,6 +212,7 @@ function OrdersPage() {
                 <TableHead>Destination</TableHead>
                 <TableHead className="text-right">Items</TableHead>
                 <TableHead className="text-right">Total</TableHead>
+                <TableHead>Tracking</TableHead>
                 <TableHead className="text-right">Receipt</TableHead>
               </TableRow>
             </TableHeader>
@@ -255,6 +261,29 @@ function OrdersPage() {
                     </TableCell>
                     <TableCell className="text-right tnum text-sm">
                       {order.total_amount != null ? formatUSD(order.total_amount) : "—"}
+                    </TableCell>
+                    <TableCell>
+                      {order.tracking_number ? (
+                        <span className="inline-flex items-center gap-1">
+                          <span className="tnum text-xs text-muted-foreground">
+                            {order.tracking_carrier}
+                          </span>
+                          <button
+                            type="button"
+                            aria-label={`Copy tracking number ${order.tracking_number}`}
+                            title={order.tracking_number}
+                            className="text-muted-foreground hover:text-foreground"
+                            onClick={() => {
+                              void navigator.clipboard.writeText(order.tracking_number!);
+                              toast.success("Tracking number copied");
+                            }}
+                          >
+                            <Copy className="h-3.5 w-3.5" />
+                          </button>
+                        </span>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
                     </TableCell>
                     <TableCell className="text-right">
                       {receiptId ? (

@@ -62,7 +62,7 @@ function AdminClientsPage() {
   const provision = useMutation({
     mutationFn: (store_id: string) => callProvision({ data: { store_id } }),
     onSuccess: () => {
-      toast.success("Store approved and provisioned");
+      toast.success("Workspace approved and provisioned");
       void invalidate();
     },
     onError: (err) => {
@@ -180,13 +180,13 @@ function AdminClientsPage() {
                         </span>
                       </div>
                       {entity.stores.length === 0 ? (
-                        <p className="text-xs text-muted-foreground">No stores under this entity.</p>
+                        <p className="text-xs text-muted-foreground">No workspaces under this entity.</p>
                       ) : (
                         <div className="overflow-x-auto rounded-lg border border-border bg-card">
                           <Table>
                             <TableHeader>
                               <TableRow>
-                                <TableHead>Store</TableHead>
+                                <TableHead>Workspace</TableHead>
                                 <TableHead>Platform</TableHead>
                                 <TableHead>Integration</TableHead>
                                 <TableHead>Plan</TableHead>

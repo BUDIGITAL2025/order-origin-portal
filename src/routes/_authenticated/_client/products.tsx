@@ -1,4 +1,3 @@
-import { StoreGate } from "@/components/store-gate";
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -52,7 +51,7 @@ export const Route = createFileRoute("/_authenticated/_client/products")({
       { name: "robots", content: "noindex" },
     ],
   }),
-  component: MyProductsPageGated,
+  component: MyProductsPageInner,
 });
 
 type Product = {
@@ -99,7 +98,7 @@ function CopySku({ sku }: { sku: string }) {
         variant="ghost"
         size="icon"
         className="h-6 w-6"
-        title="Copy SKU — your store must use this exact SKU for order matching"
+        title="Copy SKU — your shop must use this exact SKU for order matching"
         onClick={async () => {
           await navigator.clipboard.writeText(sku);
           setCopied(true);
@@ -348,7 +347,7 @@ function MyProductsPageInner() {
     <div>
       <PageHeader
         title="My products"
-        description="Your sellable catalogue, priced per country. Orders match on the FlySales SKU — use these exact SKUs in your store."
+        description="Your sellable catalogue, priced per country. Orders match on the FlySales SKU — use these exact SKUs in your Shopify store or manual orders."
         actions={
           <Dialog open={dialog != null} onOpenChange={(open) => !open && setDialog(null)}>
             <Button
@@ -539,10 +538,3 @@ function MyProductsPageInner() {
   );
 }
 
-function MyProductsPageGated() {
-  return (
-    <StoreGate feature="Your catalogue">
-      <MyProductsPageInner />
-    </StoreGate>
-  );
-}
