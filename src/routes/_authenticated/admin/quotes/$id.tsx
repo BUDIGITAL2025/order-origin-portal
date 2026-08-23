@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/app-shell";
 import { LineStatusBadge, QuoteStatusBadge, TierBadge } from "@/components/status-badges";
+import { UrlPreviewCard } from "@/components/url-preview-card";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -516,6 +517,18 @@ function AdminQuoteDetailPage() {
               )}
             </CardContent>
           </Card>
+          {data?.preview && (
+            <UrlPreviewCard
+              url={data.preview.url_normalized}
+              preview={{
+                status: "ok",
+                title: data.preview.title,
+                description: data.preview.description,
+                imageUrls: data.preview.image_urls ?? [],
+                priceHint: data.preview.price_hint,
+              }}
+            />
+          )}
         </div>
 
         <Card>
