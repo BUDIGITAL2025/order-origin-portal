@@ -626,7 +626,7 @@ function AdminQuoteDetailPage() {
                                       onClick={() => copyAcross(row.key, f.key)}
                                       className="rounded border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground hover:border-primary/50 hover:text-foreground"
                                     >
-                                      {f.label}
+                                      {f.short ?? f.label}
                                     </button>
                                   ))}
                                 </div>
