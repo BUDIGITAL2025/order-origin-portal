@@ -23,14 +23,18 @@ import { Route as AuthenticatedClientDocumentsRouteImport } from './routes/_auth
 import { Route as AuthenticatedClientOrdersRouteImport } from './routes/_authenticated/_client/orders'
 import { Route as AuthenticatedClientProductsRouteImport } from './routes/_authenticated/_client/products'
 import { Route as AuthenticatedClientWalletRouteImport } from './routes/_authenticated/_client/wallet'
+import { Route as AuthenticatedClientWorkspacesRouteImport } from './routes/_authenticated/_client/workspaces'
 import { Route as AuthenticatedAdminClientsRouteImport } from './routes/_authenticated/admin/clients'
 import { Route as AuthenticatedAdminDisputesRouteImport } from './routes/_authenticated/admin/disputes'
 import { Route as AuthenticatedAdminDocumentsRouteImport } from './routes/_authenticated/admin/documents'
 import { Route as AuthenticatedAdminEntitiesRouteImport } from './routes/_authenticated/admin/entities'
+import { Route as AuthenticatedAdminOrdersRouteImport } from './routes/_authenticated/admin/orders'
 import { Route as AuthenticatedAdminProductsRouteImport } from './routes/_authenticated/admin/products'
 import { Route as AuthenticatedAdminWalletRouteImport } from './routes/_authenticated/admin/wallet'
 import { Route as AuthenticatedClientDisputesIdRouteImport } from './routes/_authenticated/_client/disputes.$id'
 import { Route as AuthenticatedClientOrdersIdRouteImport } from './routes/_authenticated/_client/orders.$id'
+import { Route as AuthenticatedClientOrdersImportRouteImport } from './routes/_authenticated/_client/orders/import'
+import { Route as AuthenticatedClientOrdersNewRouteImport } from './routes/_authenticated/_client/orders/new'
 import { Route as AuthenticatedClientQuotesIndexRouteImport } from './routes/_authenticated/_client/quotes/index'
 import { Route as AuthenticatedClientQuotesIdRouteImport } from './routes/_authenticated/_client/quotes/$id'
 import { Route as AuthenticatedClientQuotesNewRouteImport } from './routes/_authenticated/_client/quotes/new'
@@ -118,6 +122,12 @@ const AuthenticatedClientWalletRoute =
     path: '/wallet',
     getParentRoute: () => AuthenticatedClientRoute,
   } as any)
+const AuthenticatedClientWorkspacesRoute =
+  AuthenticatedClientWorkspacesRouteImport.update({
+    id: '/workspaces',
+    path: '/workspaces',
+    getParentRoute: () => AuthenticatedClientRoute,
+  } as any)
 const AuthenticatedAdminClientsRoute =
   AuthenticatedAdminClientsRouteImport.update({
     id: '/clients',
@@ -142,6 +152,12 @@ const AuthenticatedAdminEntitiesRoute =
     path: '/entities',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminOrdersRoute =
+  AuthenticatedAdminOrdersRouteImport.update({
+    id: '/orders',
+    path: '/orders',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminProductsRoute =
   AuthenticatedAdminProductsRouteImport.update({
     id: '/products',
@@ -164,6 +180,18 @@ const AuthenticatedClientOrdersIdRoute =
   AuthenticatedClientOrdersIdRouteImport.update({
     id: '/$id',
     path: '/$id',
+    getParentRoute: () => AuthenticatedClientOrdersRoute,
+  } as any)
+const AuthenticatedClientOrdersImportRoute =
+  AuthenticatedClientOrdersImportRouteImport.update({
+    id: '/import',
+    path: '/import',
+    getParentRoute: () => AuthenticatedClientOrdersRoute,
+  } as any)
+const AuthenticatedClientOrdersNewRoute =
+  AuthenticatedClientOrdersNewRouteImport.update({
+    id: '/new',
+    path: '/new',
     getParentRoute: () => AuthenticatedClientOrdersRoute,
   } as any)
 const AuthenticatedClientQuotesIndexRoute =
@@ -245,14 +273,18 @@ export interface FileRoutesByFullPath {
   '/orders': typeof AuthenticatedClientOrdersRouteWithChildren
   '/products': typeof AuthenticatedClientProductsRoute
   '/wallet': typeof AuthenticatedClientWalletRoute
+  '/workspaces': typeof AuthenticatedClientWorkspacesRoute
   '/admin/clients': typeof AuthenticatedAdminClientsRoute
   '/admin/disputes': typeof AuthenticatedAdminDisputesRouteWithChildren
   '/admin/documents': typeof AuthenticatedAdminDocumentsRoute
   '/admin/entities': typeof AuthenticatedAdminEntitiesRoute
+  '/admin/orders': typeof AuthenticatedAdminOrdersRoute
   '/admin/products': typeof AuthenticatedAdminProductsRoute
   '/admin/wallet': typeof AuthenticatedAdminWalletRoute
   '/disputes/$id': typeof AuthenticatedClientDisputesIdRoute
   '/orders/$id': typeof AuthenticatedClientOrdersIdRoute
+  '/orders/import': typeof AuthenticatedClientOrdersImportRoute
+  '/orders/new': typeof AuthenticatedClientOrdersNewRoute
   '/quotes/$id': typeof AuthenticatedClientQuotesIdRoute
   '/quotes/new': typeof AuthenticatedClientQuotesNewRoute
   '/stores/new': typeof AuthenticatedClientStoresNewRoute
@@ -278,14 +310,18 @@ export interface FileRoutesByTo {
   '/orders': typeof AuthenticatedClientOrdersRouteWithChildren
   '/products': typeof AuthenticatedClientProductsRoute
   '/wallet': typeof AuthenticatedClientWalletRoute
+  '/workspaces': typeof AuthenticatedClientWorkspacesRoute
   '/admin/clients': typeof AuthenticatedAdminClientsRoute
   '/admin/disputes': typeof AuthenticatedAdminDisputesRouteWithChildren
   '/admin/documents': typeof AuthenticatedAdminDocumentsRoute
   '/admin/entities': typeof AuthenticatedAdminEntitiesRoute
+  '/admin/orders': typeof AuthenticatedAdminOrdersRoute
   '/admin/products': typeof AuthenticatedAdminProductsRoute
   '/admin/wallet': typeof AuthenticatedAdminWalletRoute
   '/disputes/$id': typeof AuthenticatedClientDisputesIdRoute
   '/orders/$id': typeof AuthenticatedClientOrdersIdRoute
+  '/orders/import': typeof AuthenticatedClientOrdersImportRoute
+  '/orders/new': typeof AuthenticatedClientOrdersNewRoute
   '/quotes/$id': typeof AuthenticatedClientQuotesIdRoute
   '/quotes/new': typeof AuthenticatedClientQuotesNewRoute
   '/stores/new': typeof AuthenticatedClientStoresNewRoute
@@ -314,14 +350,18 @@ export interface FileRoutesById {
   '/_authenticated/_client/orders': typeof AuthenticatedClientOrdersRouteWithChildren
   '/_authenticated/_client/products': typeof AuthenticatedClientProductsRoute
   '/_authenticated/_client/wallet': typeof AuthenticatedClientWalletRoute
+  '/_authenticated/_client/workspaces': typeof AuthenticatedClientWorkspacesRoute
   '/_authenticated/admin/clients': typeof AuthenticatedAdminClientsRoute
   '/_authenticated/admin/disputes': typeof AuthenticatedAdminDisputesRouteWithChildren
   '/_authenticated/admin/documents': typeof AuthenticatedAdminDocumentsRoute
   '/_authenticated/admin/entities': typeof AuthenticatedAdminEntitiesRoute
+  '/_authenticated/admin/orders': typeof AuthenticatedAdminOrdersRoute
   '/_authenticated/admin/products': typeof AuthenticatedAdminProductsRoute
   '/_authenticated/admin/wallet': typeof AuthenticatedAdminWalletRoute
   '/_authenticated/_client/disputes/$id': typeof AuthenticatedClientDisputesIdRoute
   '/_authenticated/_client/orders/$id': typeof AuthenticatedClientOrdersIdRoute
+  '/_authenticated/_client/orders/import': typeof AuthenticatedClientOrdersImportRoute
+  '/_authenticated/_client/orders/new': typeof AuthenticatedClientOrdersNewRoute
   '/_authenticated/_client/quotes/$id': typeof AuthenticatedClientQuotesIdRoute
   '/_authenticated/_client/quotes/new': typeof AuthenticatedClientQuotesNewRoute
   '/_authenticated/_client/stores/new': typeof AuthenticatedClientStoresNewRoute
@@ -349,14 +389,18 @@ export interface FileRouteTypes {
     | '/orders'
     | '/products'
     | '/wallet'
+    | '/workspaces'
     | '/admin/clients'
     | '/admin/disputes'
     | '/admin/documents'
     | '/admin/entities'
+    | '/admin/orders'
     | '/admin/products'
     | '/admin/wallet'
     | '/disputes/$id'
     | '/orders/$id'
+    | '/orders/import'
+    | '/orders/new'
     | '/quotes/$id'
     | '/quotes/new'
     | '/stores/new'
@@ -382,14 +426,18 @@ export interface FileRouteTypes {
     | '/orders'
     | '/products'
     | '/wallet'
+    | '/workspaces'
     | '/admin/clients'
     | '/admin/disputes'
     | '/admin/documents'
     | '/admin/entities'
+    | '/admin/orders'
     | '/admin/products'
     | '/admin/wallet'
     | '/disputes/$id'
     | '/orders/$id'
+    | '/orders/import'
+    | '/orders/new'
     | '/quotes/$id'
     | '/quotes/new'
     | '/stores/new'
@@ -417,14 +465,18 @@ export interface FileRouteTypes {
     | '/_authenticated/_client/orders'
     | '/_authenticated/_client/products'
     | '/_authenticated/_client/wallet'
+    | '/_authenticated/_client/workspaces'
     | '/_authenticated/admin/clients'
     | '/_authenticated/admin/disputes'
     | '/_authenticated/admin/documents'
     | '/_authenticated/admin/entities'
+    | '/_authenticated/admin/orders'
     | '/_authenticated/admin/products'
     | '/_authenticated/admin/wallet'
     | '/_authenticated/_client/disputes/$id'
     | '/_authenticated/_client/orders/$id'
+    | '/_authenticated/_client/orders/import'
+    | '/_authenticated/_client/orders/new'
     | '/_authenticated/_client/quotes/$id'
     | '/_authenticated/_client/quotes/new'
     | '/_authenticated/_client/stores/new'
@@ -549,6 +601,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedClientWalletRouteImport
       parentRoute: typeof AuthenticatedClientRoute
     }
+    '/_authenticated/_client/workspaces': {
+      id: '/_authenticated/_client/workspaces'
+      path: '/workspaces'
+      fullPath: '/workspaces'
+      preLoaderRoute: typeof AuthenticatedClientWorkspacesRouteImport
+      parentRoute: typeof AuthenticatedClientRoute
+    }
     '/_authenticated/admin/clients': {
       id: '/_authenticated/admin/clients'
       path: '/clients'
@@ -577,6 +636,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminEntitiesRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/orders': {
+      id: '/_authenticated/admin/orders'
+      path: '/orders'
+      fullPath: '/admin/orders'
+      preLoaderRoute: typeof AuthenticatedAdminOrdersRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/products': {
       id: '/_authenticated/admin/products'
       path: '/products'
@@ -603,6 +669,20 @@ declare module '@tanstack/react-router' {
       path: '/$id'
       fullPath: '/orders/$id'
       preLoaderRoute: typeof AuthenticatedClientOrdersIdRouteImport
+      parentRoute: typeof AuthenticatedClientOrdersRoute
+    }
+    '/_authenticated/_client/orders/import': {
+      id: '/_authenticated/_client/orders/import'
+      path: '/import'
+      fullPath: '/orders/import'
+      preLoaderRoute: typeof AuthenticatedClientOrdersImportRouteImport
+      parentRoute: typeof AuthenticatedClientOrdersRoute
+    }
+    '/_authenticated/_client/orders/new': {
+      id: '/_authenticated/_client/orders/new'
+      path: '/new'
+      fullPath: '/orders/new'
+      preLoaderRoute: typeof AuthenticatedClientOrdersNewRouteImport
       parentRoute: typeof AuthenticatedClientOrdersRoute
     }
     '/_authenticated/_client/quotes/': {
@@ -701,11 +781,15 @@ const AuthenticatedClientDisputesRouteWithChildren =
 
 interface AuthenticatedClientOrdersRouteChildren {
   AuthenticatedClientOrdersIdRoute: typeof AuthenticatedClientOrdersIdRoute
+  AuthenticatedClientOrdersImportRoute: typeof AuthenticatedClientOrdersImportRoute
+  AuthenticatedClientOrdersNewRoute: typeof AuthenticatedClientOrdersNewRoute
 }
 
 const AuthenticatedClientOrdersRouteChildren: AuthenticatedClientOrdersRouteChildren =
   {
     AuthenticatedClientOrdersIdRoute: AuthenticatedClientOrdersIdRoute,
+    AuthenticatedClientOrdersImportRoute: AuthenticatedClientOrdersImportRoute,
+    AuthenticatedClientOrdersNewRoute: AuthenticatedClientOrdersNewRoute,
   }
 
 const AuthenticatedClientOrdersRouteWithChildren =
@@ -721,6 +805,7 @@ interface AuthenticatedClientRouteChildren {
   AuthenticatedClientOrdersRoute: typeof AuthenticatedClientOrdersRouteWithChildren
   AuthenticatedClientProductsRoute: typeof AuthenticatedClientProductsRoute
   AuthenticatedClientWalletRoute: typeof AuthenticatedClientWalletRoute
+  AuthenticatedClientWorkspacesRoute: typeof AuthenticatedClientWorkspacesRoute
   AuthenticatedClientQuotesIdRoute: typeof AuthenticatedClientQuotesIdRoute
   AuthenticatedClientQuotesNewRoute: typeof AuthenticatedClientQuotesNewRoute
   AuthenticatedClientStoresNewRoute: typeof AuthenticatedClientStoresNewRoute
@@ -736,6 +821,7 @@ const AuthenticatedClientRouteChildren: AuthenticatedClientRouteChildren = {
   AuthenticatedClientOrdersRoute: AuthenticatedClientOrdersRouteWithChildren,
   AuthenticatedClientProductsRoute: AuthenticatedClientProductsRoute,
   AuthenticatedClientWalletRoute: AuthenticatedClientWalletRoute,
+  AuthenticatedClientWorkspacesRoute: AuthenticatedClientWorkspacesRoute,
   AuthenticatedClientQuotesIdRoute: AuthenticatedClientQuotesIdRoute,
   AuthenticatedClientQuotesNewRoute: AuthenticatedClientQuotesNewRoute,
   AuthenticatedClientStoresNewRoute: AuthenticatedClientStoresNewRoute,
@@ -764,6 +850,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminDisputesRoute: typeof AuthenticatedAdminDisputesRouteWithChildren
   AuthenticatedAdminDocumentsRoute: typeof AuthenticatedAdminDocumentsRoute
   AuthenticatedAdminEntitiesRoute: typeof AuthenticatedAdminEntitiesRoute
+  AuthenticatedAdminOrdersRoute: typeof AuthenticatedAdminOrdersRoute
   AuthenticatedAdminProductsRoute: typeof AuthenticatedAdminProductsRoute
   AuthenticatedAdminWalletRoute: typeof AuthenticatedAdminWalletRoute
   AuthenticatedAdminQuotesIdRoute: typeof AuthenticatedAdminQuotesIdRoute
@@ -775,6 +862,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminDisputesRoute: AuthenticatedAdminDisputesRouteWithChildren,
   AuthenticatedAdminDocumentsRoute: AuthenticatedAdminDocumentsRoute,
   AuthenticatedAdminEntitiesRoute: AuthenticatedAdminEntitiesRoute,
+  AuthenticatedAdminOrdersRoute: AuthenticatedAdminOrdersRoute,
   AuthenticatedAdminProductsRoute: AuthenticatedAdminProductsRoute,
   AuthenticatedAdminWalletRoute: AuthenticatedAdminWalletRoute,
   AuthenticatedAdminQuotesIdRoute: AuthenticatedAdminQuotesIdRoute,
