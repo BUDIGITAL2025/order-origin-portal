@@ -246,7 +246,9 @@ export async function trendtrackCall<T = Json>(opts: CallOptions): Promise<ToolR
   if (!apiKey) throw new Error("TRENDTRACK_NOT_CONFIGURED");
 
   const metered = opts.metered !== false;
-  const cacheable = opts.cacheable ?? metered;
+  // Everything is cached 24h by default — free endpoints too, so a retry
+  // after a timeout serves instantly when we already have the answer.
+  const cacheable = opts.cacheable ?? true;
   const summary = opts.summary ?? {};
 
   // Estimate = max rows × the LEARNED per-row rate for this endpoint (1× only
