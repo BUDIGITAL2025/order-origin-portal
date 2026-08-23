@@ -289,8 +289,12 @@ async function getEntityBlock(admin: Admin, entityId: string): Promise<ClientBlo
   };
 }
 
-/** Pick a store under the entity to attach the document to (documents.store_id is required). */
-async function resolveStoreIdForEntity(admin: Admin, entityId: string): Promise<string> {
+/**
+ * Pick a store under the entity to attach the document to. Storeless
+ * entities (manual mode, onboarding) get null — documents.store_id is
+ * nullable; the entity is the owner.
+ */
+async function resolveStoreIdForEntity(admin: Admin, entityId: string): Promise<string | null> {
   const { data, error } = await admin
     .from("stores")
     .select("id")
@@ -299,8 +303,7 @@ async function resolveStoreIdForEntity(admin: Admin, entityId: string): Promise<
     .limit(1)
     .maybeSingle();
   if (error) throw new Error(error.message);
-  if (!data) throw new Error("No store found for entity");
-  return data.id;
+  return data?.id ?? null;
 }
 
 /**
@@ -328,7 +331,9 @@ async function storeReceipt(
     .upload(path, pdf, { contentType: "application/pdf" });
   if (uploadError) throw new Error(uploadError.message);
 
-  const storeId = args.storeId ?? (await resolveStoreIdForEntity(admin, args.entityId));
+  const storeId = args.storeId !== undefined
+    ? args.storeId
+    : await resolveStoreIdForEntity(admin, args.entityId);
   const { error: insertError } = await admin.from("documents").insert({
     entity_id: args.entityId,
     store_id: storeId,
@@ -444,6 +449,10 @@ export async function issueWalletTopupReceipt(
   const amount = Number(txn.amount);
   const number = await nextDocumentNumber(admin);
 
+  // Dispute credits are wallet credits too, but no card was charged —
+  // the receipt must say where the money came from.
+  const isDisputeCredit = txn.description?.startsWith("Dispute credit") ?? false;
+
   return storeReceipt(admin, {
     entityId: txn.entity_id,
     documentType: "wallet_topup",
@@ -451,16 +460,16 @@ export async function issueWalletTopupReceipt(
     amount,
     receipt: {
       documentNumber: number,
-      documentKind: "Wallet top-up",
+      documentKind: isDisputeCredit ? "Dispute credit" : "Wallet top-up",
       issuedAt: new Date(),
       paymentDate: new Date(txn.created_at),
-      paymentMethod: "Card (Stripe)",
+      paymentMethod: isDisputeCredit ? "Wallet credit (dispute resolution)" : "Card (Stripe)",
       referenceLines: [],
       client,
       lines: [
         {
           description: txn.description || "Wallet top-up",
-          detail: "Prepaid wallet credit",
+          detail: isDisputeCredit ? "Goodwill credit" : "Prepaid wallet credit",
           quantity: null,
           unitPrice: null,
           total: amount,
@@ -612,4 +621,55 @@ export async function issueMissingOrderReceipts(
     }
   }
   return { issued, errors };
+}
+
+/**
+ * Full backfill: every wallet credit (top-up, dispute credit) and every
+ * paid order gets a receipt if it lacks one. Idempotent — the unique
+ * indexes on wallet_transaction_id / order_id make re-runs no-ops.
+ */
+export async function backfillMissingReceipts(admin: Admin): Promise<{
+  walletResults: Array<{ id: string; result: string }>;
+  orderResults: Array<{ id: string; result: string }>;
+}> {
+  const [{ data: credits, error: cErr }, { data: walletDocs, error: wdErr }] =
+    await Promise.all([
+      admin.from("wallet_transactions").select("id").eq("type", "credit"),
+      admin
+        .from("documents")
+        .select("wallet_transaction_id")
+        .not("wallet_transaction_id", "is", null),
+    ]);
+  if (cErr) throw new Error(cErr.message);
+  if (wdErr) throw new Error(wdErr.message);
+  const haveWalletDoc = new Set((walletDocs ?? []).map((d) => d.wallet_transaction_id));
+  const missingCredits = (credits ?? []).filter((t) => !haveWalletDoc.has(t.id));
+
+  const [{ data: paidOrders, error: oErr }, { data: orderDocs, error: odErr }] =
+    await Promise.all([
+      admin.from("orders").select("id").not("paid_at", "is", null),
+      admin.from("documents").select("order_id").not("order_id", "is", null),
+    ]);
+  if (oErr) throw new Error(oErr.message);
+  if (odErr) throw new Error(odErr.message);
+  const haveOrderDoc = new Set((orderDocs ?? []).map((d) => d.order_id));
+  const missingOrders = (paidOrders ?? []).filter((o) => !haveOrderDoc.has(o.id));
+
+  const walletResults: Array<{ id: string; result: string }> = [];
+  for (const t of missingCredits) {
+    try {
+      walletResults.push({ id: t.id, result: await issueWalletTopupReceipt(admin, t.id) });
+    } catch (e) {
+      walletResults.push({ id: t.id, result: `error: ${e instanceof Error ? e.message : e}` });
+    }
+  }
+  const orderResults: Array<{ id: string; result: string }> = [];
+  for (const o of missingOrders) {
+    try {
+      orderResults.push({ id: o.id, result: await issueOrderReceipt(admin, o.id) });
+    } catch (e) {
+      orderResults.push({ id: o.id, result: `error: ${e instanceof Error ? e.message : e}` });
+    }
+  }
+  return { walletResults, orderResults };
 }

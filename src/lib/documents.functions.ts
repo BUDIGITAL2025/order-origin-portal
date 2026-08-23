@@ -48,6 +48,23 @@ export const getDocumentDownloadUrl = createServerFn({ method: "POST" })
     return { url: signed.signedUrl };
   });
 
+/**
+ * Admin utility: issue any missing receipts — wallet credits (top-ups and
+ * dispute credits) and paid orders that have no document yet. Idempotent:
+ * issuance is keyed on unique indexes, so re-runs are no-ops. Used to
+ * backfill receipts that failed silently at webhook time (e.g. storeless
+ * entities before documents.store_id became nullable).
+ */
+export const adminBackfillReceipts = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { requireAdmin, getAdminClient } = await import("./admin.server");
+    await requireAdmin(context.supabase, context.userId);
+    const admin = await getAdminClient();
+    const { backfillMissingReceipts } = await import("./documents.server");
+    return backfillMissingReceipts(admin);
+  });
+
 /** Admin: receipts across all clients, filterable by type and client. */
 export const adminListDocuments = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])

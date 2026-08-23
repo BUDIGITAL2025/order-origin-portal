@@ -1,12 +1,14 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { BellRing, Building2, CreditCard, RefreshCcw, Wallet } from "lucide-react";
+import { BellRing, Building2, CreditCard, FileText, RefreshCcw, Wallet } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/app-shell";
 import { TopUpCheckoutDialog } from "@/components/TopUpCheckoutDialog";
 import { TxnTypeBadge } from "@/components/status-badges";
+import { DocumentDownloadButton, DocumentTypeBadge } from "@/components/documents-ui";
+import { listMyDocuments } from "@/lib/documents.functions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -113,6 +115,7 @@ function BillingPage() {
   const callSaveAuto = useServerFn(saveAutoTopupSettings);
   const callMarkRead = useServerFn(markNotificationsRead);
   const fetchWallet = useServerFn(getMyWallet);
+  const fetchDocuments = useServerFn(listMyDocuments);
 
   // Billing is per store: the subscription lives on the store selected in
   // the switcher; the wallet/auto top-up resolve to that store's entity.
@@ -144,6 +147,7 @@ function BillingPage() {
     enabled: environment != null && storeId != null,
   });
   const { data: wallet } = useQuery({ queryKey: ["my-wallet"], queryFn: fetchWallet });
+  const { data: myDocuments } = useQuery({ queryKey: ["my-documents"], queryFn: fetchDocuments });
 
   const { sub, topup } = Route.useSearch();
   useEffect(() => {
@@ -293,6 +297,7 @@ function BillingPage() {
   const hasActiveSub = subStatus === "active" || subStatus === "past_due";
   const feeWaived = store?.fee_waived ?? false;
   const transactions = wallet?.transactions ?? [];
+  const documents = myDocuments ?? [];
 
   return (
     <div>
@@ -579,6 +584,60 @@ function BillingPage() {
           <EntityDetailsCard entity={billingEntity} />
         </div>
       )}
+
+      {/* ============ Receipts & documents ============ */}
+      <div className="mt-8">
+        <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold">
+          <FileText className="h-4 w-4" /> Receipts & documents
+        </h2>
+        {documents.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No receipts yet — one is issued automatically for every top-up, order
+            payment and subscription charge.
+          </p>
+        ) : (
+          <div className="rounded-lg border border-border bg-card">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Number</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Reference</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead className="text-right">Download</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {documents.map((d) => (
+                  <TableRow key={d.id}>
+                    <TableCell className="tnum whitespace-nowrap text-sm font-medium">
+                      {d.document_number}
+                    </TableCell>
+                    <TableCell>
+                      <DocumentTypeBadge type={d.document_type} />
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
+                      {formatDateTime(d.issued_at)}
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      {d.orders?.external_order_number
+                        ? `Order ${d.orders.external_order_number}`
+                        : "—"}
+                    </TableCell>
+                    <TableCell className="text-right tnum text-sm">
+                      {formatUSD(Number(d.amount))}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <DocumentDownloadButton id={d.id} label="PDF" />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </div>
 
       {/* ============ Billing history ============ */}
       <div className="mt-8">

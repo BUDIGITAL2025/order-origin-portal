@@ -225,7 +225,7 @@ export type Database = {
           order_id: string | null
           payment_reference: string | null
           storage_path: string | null
-          store_id: string
+          store_id: string | null
           wallet_transaction_id: string | null
         }
         Insert: {
@@ -240,7 +240,7 @@ export type Database = {
           order_id?: string | null
           payment_reference?: string | null
           storage_path?: string | null
-          store_id: string
+          store_id?: string | null
           wallet_transaction_id?: string | null
         }
         Update: {
@@ -255,7 +255,7 @@ export type Database = {
           order_id?: string | null
           payment_reference?: string | null
           storage_path?: string | null
-          store_id?: string
+          store_id?: string | null
           wallet_transaction_id?: string | null
         }
         Relationships: [

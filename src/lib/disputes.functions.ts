@@ -201,6 +201,26 @@ export const adminResolveDispute = createServerFn({ method: "POST" })
       const { sendClientEmail } = await import("./email.server");
       const { getAdminClient } = await import("./admin.server");
       const admin = await getAdminClient();
+
+      // A wallet-credit resolution is a payment event — issue the receipt.
+      // Best-effort: the credit is the source of truth, documents never block it.
+      if (data.resolution === "wallet_credit") {
+        try {
+          const { data: creditTxn } = await admin
+            .from("wallet_transactions")
+            .select("id")
+            .eq("reference", data.dispute_id)
+            .eq("type", "credit")
+            .maybeSingle();
+          if (creditTxn) {
+            const { issueWalletTopupReceipt } = await import("./documents.server");
+            await issueWalletTopupReceipt(admin, creditTxn.id);
+          }
+        } catch (e) {
+          console.error("dispute credit receipt failed:", data.dispute_id, e);
+        }
+      }
+
       const label =
         data.resolution === "wallet_credit"
           ? `approved with a $${Number(data.credit_amount ?? 0).toFixed(2)} wallet credit`
