@@ -20,8 +20,9 @@ import { formatDate, formatDateTime, formatUSD } from "@/lib/format";
 import { PLANS, planLabel, planQuota, quotaResetDate } from "@/lib/plans";
 import { Badge } from "@/components/ui/badge";
 import { getMyContext } from "@/lib/profiles.functions";
-import { listMyQuotes } from "@/lib/quotes.functions";
+import { listMyOpenQuotes, listMyQuotes } from "@/lib/quotes.functions";
 import { getMyWallet } from "@/lib/wallet.functions";
+import { OpenQuotesWidget } from "@/components/open-quotes-widget";
 
 export const Route = createFileRoute("/_authenticated/_client/dashboard")({
   head: () => ({
@@ -37,6 +38,7 @@ export const Route = createFileRoute("/_authenticated/_client/dashboard")({
 function DashboardPage() {
   const fetchContext = useServerFn(getMyContext);
   const fetchQuotes = useServerFn(listMyQuotes);
+  const fetchOpenQuotes = useServerFn(listMyOpenQuotes);
   const fetchWallet = useServerFn(getMyWallet);
 
   const { data: context } = useQuery({
@@ -46,6 +48,10 @@ function DashboardPage() {
   const { data: quotesData } = useQuery({
     queryKey: ["my-quotes"],
     queryFn: fetchQuotes,
+  });
+  const { data: openQuotesData } = useQuery({
+    queryKey: ["my-open-quotes"],
+    queryFn: fetchOpenQuotes,
   });
   const { data: walletData } = useQuery({
     queryKey: ["my-wallet"],
@@ -87,9 +93,13 @@ function DashboardPage() {
   const usagePercent =
     quota == null ? 0 : Math.min(100, Math.round((quotesUsed / quota) * 100));
 
-  // Storeless accounts get the onboarding checklist instead of store metrics.
-  if (context && allStores.length === 0) {
-    return <OnboardingCard entity={entities[0] ?? null} hasQuote={quotes.length > 0} hasStore={false} />;
+  const openQuotes = openQuotesData?.quotes ?? [];
+  const subscribed = store?.subscription_status === "active";
+
+  // Storeless accounts get the onboarding checklist — unless they already
+  // have quote activity, in which case the real widgets take over.
+  if (context && quotesData && allStores.length === 0 && quotes.length === 0) {
+    return <OnboardingCard entity={entities[0] ?? null} hasQuote={false} hasStore={false} />;
   }
 
   // No real activity yet — show the checklist instead of a row of zeroed
@@ -137,6 +147,7 @@ function DashboardPage() {
         ))}
       </div>
 
+      {store != null && (
       <Card className="mt-4">
         <CardHeader className="flex-row items-center justify-between pb-2">
           <CardTitle className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -197,6 +208,7 @@ function DashboardPage() {
           </div>
         </CardContent>
       </Card>
+      )}
 
       {showAutoTopupPrompt && (
         <Card className="mt-4 border-primary/40 bg-primary/5">
@@ -229,6 +241,10 @@ function DashboardPage() {
           </CardContent>
         </Card>
       )}
+
+      <div className="mt-6">
+        <OpenQuotesWidget quotes={openQuotes} subscribed={subscribed} />
+      </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
         <Card>
