@@ -246,11 +246,16 @@ export async function trendtrackCall<T = Json>(opts: CallOptions): Promise<ToolR
   const cacheable = opts.cacheable ?? metered;
   const summary = opts.summary ?? {};
 
+  // Estimate = max rows × the LEARNED per-row rate for this endpoint (1× only
+  // when never observed). The daily total itself sums real observed costs.
+  const rate = metered ? await getEndpointRate(opts.endpoint) : null;
+  const estimated = Math.ceil(opts.estimatedCost * (rate ?? 1));
+
   // Per-user daily soft limit — metered calls only.
   if (metered && !opts.confirmOverage) {
     const dayTotal = await getUserDayTotal(opts.userId);
     if (dayTotal >= DAILY_SOFT_LIMIT_CREDITS) {
-      return { status: "confirm", dayTotal, estimatedCost: opts.estimatedCost };
+      return { status: "confirm", dayTotal, estimatedCost: estimated };
     }
   }
 
@@ -351,7 +356,8 @@ export async function trendtrackCall<T = Json>(opts: CallOptions): Promise<ToolR
 
   const payload = (await res.json()) as T;
   const rows = rowsReturnedOf(payload);
-  const cost = usage.cost ?? (metered ? rows : 0);
+  // Prefer the provider's usage header; fall back to the learned rate.
+  const cost = usage.cost ?? (metered ? Math.ceil(rows * (rate ?? 1)) : 0);
 
   if (cacheable) {
     const admin = await getAdmin();
