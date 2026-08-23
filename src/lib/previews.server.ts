@@ -253,6 +253,7 @@ async function scrapeWithPerplexity(url: string, apiKey: string): Promise<Previe
       description: asString(json["description"]),
       imageUrls,
       priceHint: asString(json["price"]),
+      variants: cleanVariants(asStringArray(json["variants"])),
       source: "perplexity",
     };
   } catch {
@@ -343,6 +344,28 @@ interface JsonLdProduct {
   description?: unknown;
   image?: unknown;
   offers?: unknown;
+  hasVariant?: unknown;
+}
+
+/** Normalizes raw variant labels: trimmed, de-duplicated, sane length, capped. */
+function cleanVariants(values: string[]): string[] {
+  return unique(
+    values
+      .map((v) => v.trim().replace(/\s+/g, " "))
+      .filter((v) => v.length > 0 && v.length <= 60),
+  ).slice(0, 12);
+}
+
+/** Variant labels from JSON-LD Product.hasVariant (array of nested Product nodes). */
+function jsonLdVariants(product: JsonLdProduct | null): string[] {
+  if (!product?.hasVariant) return [];
+  const nodes = Array.isArray(product.hasVariant) ? product.hasVariant : [product.hasVariant];
+  const names = nodes
+    .map((n) =>
+      n && typeof n === "object" ? asString((n as Record<string, unknown>)["name"]) : null,
+    )
+    .filter((v): v is string => v != null);
+  return cleanVariants(names);
 }
 
 /** First JSON-LD node typed Product (walks arrays and @graph). */
