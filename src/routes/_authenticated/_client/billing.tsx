@@ -347,10 +347,10 @@ function BillingPage() {
             </CardHeader>
             <CardContent className="space-y-3">
               <p className="text-sm text-muted-foreground">
-                Add a store to choose its plan. Wallet top-ups work without one.
+                Add a workspace to choose its plan. Wallet top-ups work without one.
               </p>
               <Button asChild size="sm">
-                <Link to="/stores/new">Add store</Link>
+                <Link to="/stores/new">Add workspace</Link>
               </Button>
             </CardContent>
           </Card>
