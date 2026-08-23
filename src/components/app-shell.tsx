@@ -11,6 +11,7 @@ import {
   ExternalLink,
   FilePlus2,
   FileText,
+  FlaskConical,
   LayoutDashboard,
   LogOut,
   Package,
@@ -106,6 +107,7 @@ const ADMIN_NAV: NavItem[] = [
   { to: "/admin/wallet", label: "Wallet adjustments", icon: Wallet },
   { to: "/admin/documents", label: "Receipts", icon: FileText },
   { to: "/admin/spymarket", label: "SpyMarket waitlist", icon: Telescope },
+  { to: "/admin/spymarket-tools", label: "SpyMarket tools", icon: FlaskConical, badge: "New" },
 ];
 
 interface OnboardingStore {
