@@ -4,6 +4,7 @@ import {
   addStoreSchema,
   clientStatusSchema,
   completeSignupSchema,
+  connectDraftStoreSchema,
   entityDetailsSchema,
   feeWaivedSchema,
   integrationModeSchema,

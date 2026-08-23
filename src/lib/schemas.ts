@@ -305,3 +305,57 @@ export const adminDocumentsFilterSchema = z.object({
   type: documentTypeSchema.optional(),
   clientId: z.string().uuid().optional(),
 });
+
+// ============= Manual orders (manual / OMS mode) =============
+// Format rules (per-country postal code, state requirements) live in
+// src/lib/address.ts on the client and in create_manual_order_internal in
+// the database; these schemas enforce shape and the strict formats.
+
+export const manualOrderCustomerSchema = z.object({
+  name: z.string().trim().min(2, "Full name is required").max(120),
+  email: z.string().trim().email("Enter a valid email address").max(255),
+  phone: z
+    .string()
+    .trim()
+    .regex(/^\+[1-9]\d{6,14}$/, "Phone must be in international format (e.g. +14155552671)"),
+});
+
+export const manualOrderAddressSchema = z.object({
+  address1: z.string().trim().min(3, "Address line 1 is required").max(200),
+  address2: z.string().trim().max(200).optional().or(z.literal("")),
+  city: z.string().trim().min(1, "City is required").max(120),
+  postal_code: z.string().trim().max(20).optional().or(z.literal("")),
+  state: z.string().trim().max(120).optional().or(z.literal("")),
+  country: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .regex(/^[A-Z]{2}$/, "Use a 2-letter country code (e.g. US)"),
+});
+
+export const manualOrderLineSchema = z.object({
+  sku: z.string().trim().min(1, "SKU is required").max(120),
+  quantity: z.number().int().min(1).max(100_000),
+});
+
+export const manualOrderGroupSchema = z.object({
+  client_reference: z.string().trim().max(120).optional().or(z.literal("")),
+  customer: manualOrderCustomerSchema,
+  address: manualOrderAddressSchema,
+  lines: z.array(manualOrderLineSchema).min(1, "Add at least one product").max(100),
+});
+
+export const createManualOrderSchema = manualOrderGroupSchema.extend({
+  store_id: z.string().uuid(),
+});
+
+export const importManualOrdersSchema = z.object({
+  store_id: z.string().uuid(),
+  orders: z.array(manualOrderGroupSchema).min(1, "No orders to import").max(200),
+});
+
+export const orderTrackingSchema = z.object({
+  order_id: z.string().uuid(),
+  tracking_number: z.string().trim().min(3, "Tracking number is required").max(120),
+  tracking_carrier: z.string().trim().min(2, "Carrier is required").max(120),
+});
