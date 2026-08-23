@@ -112,6 +112,44 @@ function NewQuotePageInner() {
   const quotesUsed = currentStore?.quotes_used_this_month ?? 0;
   const limitReached = quota != null && quotesUsed >= quota;
 
+  // Paywall: requesting quotes needs an active subscription on this
+  // workspace (or a fee waiver). Browsing stays open; only submission gates.
+  const needsSubscription =
+    currentStore != null &&
+    currentStore.subscription_status !== "active" &&
+    currentStore.subscription_status !== "past_due" &&
+    !currentStore.fee_waived;
+
+  if (needsSubscription) {
+    return (
+      <div className="max-w-2xl">
+        <PageHeader
+          title="Request a quote"
+          description="Send us a product link and we'll come back with a price, MOQ and lead time."
+        />
+        <Card>
+          <CardContent className="flex flex-col items-start gap-3 p-8">
+            <ArrowUpCircle className="h-8 w-8 text-primary" />
+            <h2 className="text-lg font-semibold">Subscribe to request quotes</h2>
+            <p className="text-sm text-muted-foreground">
+              Quote requests are part of a {PLANS.basic.label} or {PLANS.unlimited.label}{" "}
+              subscription. Subscribe first — no store connection needed — and come straight
+              back here.
+            </p>
+            <div className="flex gap-2">
+              <Button asChild size="sm">
+                <Link to="/billing">See plans</Link>
+              </Button>
+              <Button asChild size="sm" variant="outline">
+                <Link to="/dashboard">Back to dashboard</Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   if (quotaBlocked || limitReached) {
     return (
       <div className="max-w-2xl">

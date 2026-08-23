@@ -131,6 +131,14 @@ function OrderDetailPage() {
                 <dt className="text-muted-foreground">Delivered</dt>
                 <dd>{order.delivered_at ? formatDateTime(order.delivered_at) : "—"}</dd>
               </div>
+              {order.tracking_number && (
+                <div className="flex justify-between">
+                  <dt className="text-muted-foreground">Tracking</dt>
+                  <dd className="tnum text-xs">
+                    {order.tracking_carrier}: {order.tracking_number}
+                  </dd>
+                </div>
+              )}
             </dl>
             {Object.keys(address).length > 0 && (
               <p className="mt-3 border-t border-border pt-3 text-xs text-muted-foreground">

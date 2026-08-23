@@ -135,7 +135,46 @@ function OrdersPage() {
     <div className={selectedRows.length > 0 ? "pb-24" : undefined}>
       <PageHeader
         title="Orders"
-        description="Every order synced from your store, its payment status and its payment receipt."
+        description="Every order in this workspace, its payment status and its payment receipt."
+        actions={
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={rows.length === 0}
+              onClick={() => {
+                const header = "order,date,status,country,total,tracking\n";
+                const body = rows
+                  .map((o) =>
+                    [
+                      o.external_order_number ?? o.id.slice(0, 8),
+                      o.created_at,
+                      o.status,
+                      o.destination_country ?? "",
+                      o.total_amount ?? "",
+                      "",
+                    ].join(","),
+                  )
+                  .join("\n");
+                const blob = new Blob([header + body], { type: "text/csv" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = "flysales-orders.csv";
+                a.click();
+                URL.revokeObjectURL(url);
+              }}
+            >
+              Export CSV
+            </Button>
+            <Button asChild variant="outline" size="sm">
+              <Link to="/orders/import">Import CSV</Link>
+            </Button>
+            <Button asChild size="sm">
+              <Link to="/orders/new">Create order</Link>
+            </Button>
+          </>
+        }
       />
 
       {isPending ? (

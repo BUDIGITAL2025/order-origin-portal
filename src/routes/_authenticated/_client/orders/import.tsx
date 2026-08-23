@@ -375,6 +375,3 @@ function ImportOrdersPage() {
     </div>
   );
 }
-
-// Referenced so the bundler keeps formatUSD used in future totals row.
-void formatUSD;
