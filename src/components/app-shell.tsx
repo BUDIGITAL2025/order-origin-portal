@@ -3,7 +3,6 @@ import { Link, useNavigate, useRouter, useRouterState } from "@tanstack/react-ro
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  Boxes,
   Building2,
   ChevronDown,
   ClipboardList,
@@ -24,6 +23,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { MARKETING_URL } from "@/lib/config";
 import { formatUSD } from "@/lib/format";
+import logoAsset from "@/assets/flysales-logo-dark.png.asset.json";
 import { getOnboardingLinks } from "@/lib/onboarding.functions";
 import { getMyWallet } from "@/lib/wallet.functions";
 import { cn } from "@/lib/utils";
