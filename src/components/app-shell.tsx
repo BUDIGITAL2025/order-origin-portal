@@ -29,6 +29,7 @@ import { cn } from "@/lib/utils";
 import { PaymentTestModeBanner } from "@/components/PaymentTestModeBanner";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { StoreSwitcher, getCurrentStoreId } from "@/components/store-switcher";
+import { useMyContext } from "@/routes/_authenticated/_client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
