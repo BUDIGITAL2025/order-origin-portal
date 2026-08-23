@@ -168,7 +168,7 @@ function useMeteredCall(fn: ServerFnLike) {
         }
       }
     },
-    [fn],
+    [fn, queryClient],
   );
 
   const confirm = React.useCallback(() => {
@@ -243,23 +243,36 @@ function CallFeedback({
         </Alert>
       )}
       {state.kind === "ok" && (
-        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-          <Badge variant="secondary" className="rounded-full">
-            Cost: {fmtInt(state.result.creditsCost)} credits
-          </Badge>
-          <Badge variant="outline" className="rounded-full">
-            {fmtInt(state.result.rowsReturned)} rows
-          </Badge>
-          {state.result.creditsRemaining != null && (
+        <div className="space-y-1">
+          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            <Badge variant="secondary" className="rounded-full">
+              Cost: {fmtInt(state.result.creditsCost)} credits
+            </Badge>
             <Badge variant="outline" className="rounded-full">
-              {fmtInt(state.result.creditsRemaining)} credits left
+              {fmtInt(state.result.rowsReturned)} rows
             </Badge>
-          )}
-          {state.result.cacheHit && (
-            <Badge className="rounded-full bg-primary/15 text-primary hover:bg-primary/15">
-              cache hit — free
-            </Badge>
-          )}
+            {state.result.creditsRemaining != null && (
+              <Badge variant="outline" className="rounded-full">
+                {fmtInt(state.result.creditsRemaining)} credits left
+              </Badge>
+            )}
+            {state.result.cacheHit && (
+              <Badge className="rounded-full bg-primary/15 text-primary hover:bg-primary/15">
+                cache hit — free
+              </Badge>
+            )}
+          </div>
+          {!state.result.cacheHit &&
+            state.result.creditsCost > 0 &&
+            state.result.rowsReturned > 0 && (
+              <p className="text-xs font-medium text-foreground">
+                This call cost {fmtInt(state.result.creditsCost)} credits —{" "}
+                {(state.result.creditsCost / state.result.rowsReturned)
+                  .toFixed(2)
+                  .replace(/\.?0+$/, "")}{" "}
+                per row.
+              </p>
+            )}
         </div>
       )}
     </>
