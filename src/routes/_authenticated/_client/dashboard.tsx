@@ -147,6 +147,7 @@ function DashboardPage() {
         ))}
       </div>
 
+      {store != null && (
       <Card className="mt-4">
         <CardHeader className="flex-row items-center justify-between pb-2">
           <CardTitle className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
