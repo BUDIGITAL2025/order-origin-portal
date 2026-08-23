@@ -313,17 +313,45 @@ export async function trendtrackCall<T = Json>(opts: CallOptions): Promise<ToolR
       ...(opts.body ? { "Content-Type": "application/json" } : {}),
     },
     ...(opts.body ? { body: JSON.stringify(opts.body) } : {}),
-    signal: AbortSignal.timeout(30_000),
   };
 
-  let res = await fetch(url.toString(), init);
+  // Their API can be slow: 30s per attempt, and each attempt gets a FRESH
+  // signal (reusing one signal would let the 429 retry inherit a nearly-
+  // expired timer from the first attempt).
+  const doFetch = () =>
+    fetch(url.toString(), { ...init, signal: AbortSignal.timeout(30_000) });
 
-  // 429: respect Retry-After, single retry.
-  if (res.status === 429) {
-    const retryAfter = Number.parseInt(res.headers.get("retry-after") ?? "", 10);
-    const waitMs = Math.min((Number.isFinite(retryAfter) ? retryAfter : 2) * 1000, 10_000);
-    await new Promise((resolve) => setTimeout(resolve, waitMs));
-    res = await fetch(url.toString(), init);
+  let res: Response;
+  try {
+    res = await doFetch();
+
+    // 429: respect Retry-After, single retry.
+    if (res.status === 429) {
+      const retryAfter = Number.parseInt(res.headers.get("retry-after") ?? "", 10);
+      const waitMs = Math.min((Number.isFinite(retryAfter) ? retryAfter : 2) * 1000, 10_000);
+      await new Promise((resolve) => setTimeout(resolve, waitMs));
+      res = await doFetch();
+    }
+  } catch (err) {
+    // No response = no credits charged by them: log the failure at cost 0
+    // with cache_hit=false and the reason, for our own visibility.
+    const isTimeout =
+      (err instanceof DOMException && (err.name === "TimeoutError" || err.name === "AbortError")) ||
+      (err instanceof Error && err.name === "TimeoutError");
+    await logCall({
+      userId: opts.userId,
+      endpoint: opts.endpoint,
+      summary,
+      rowsReturned: 0,
+      creditsCost: 0,
+      creditsRemaining: null,
+      cacheHit: false,
+      error: isTimeout
+        ? "timeout after 30s"
+        : `network: ${err instanceof Error ? err.message : String(err)}`,
+    });
+    if (isTimeout) throw new Error("TRENDTRACK_TIMEOUT");
+    throw err instanceof Error ? err : new Error(String(err));
   }
 
   const usage = parseUsageHeaders(res);
