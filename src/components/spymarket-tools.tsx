@@ -2278,6 +2278,7 @@ function AdDetailDialog({
                   state={mediaCall.state}
                   onConfirm={mediaCall.confirm}
                   onCancel={mediaCall.cancelConfirm}
+                  onRetry={mediaCall.retry}
                 />
               </div>
             )}
@@ -2371,6 +2372,7 @@ function AdDetailDialog({
                   state={reachCall.state}
                   onConfirm={reachCall.confirm}
                   onCancel={reachCall.cancelConfirm}
+                  onRetry={reachCall.retry}
                 />
               )}
             </div>
