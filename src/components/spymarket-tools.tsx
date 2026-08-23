@@ -2067,17 +2067,25 @@ function AdsTab({ costs }: { costs?: EndpointCosts | undefined }) {
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {allRows.map((ad, i) => {
             const media = asRec(ad["media"]);
-            const thumb = asStr(media["thumbnailUrl"]) ?? asStr(media["url"]) ?? asStr(ad["thumbnailUrl"]);
-            const title = asStr(ad["title"]) ?? asStr(ad["advertiserName"]) ?? asStr(ad["pageName"]);
-            const body = asStr(ad["body"]) ?? asStr(ad["adCopy"]);
-            const start = asStr(ad["startDate"]) ?? asStr(ad["createdAt"]);
-            const days = start
-              ? Math.max(0, Math.round((Date.now() - new Date(start).getTime()) / 86_400_000))
-              : null;
-            const reach = asNum(ad["reach"]);
-            const delta7 = asNum(ad["reachDelta7d"]);
+            const content = asRec(ad["content"]);
+            const metrics = asRec(ad["metrics"]);
+            const advertiser = asRec(ad["advertiser"]);
+            const thumb = asStr(media["thumbnailUrl"]) ?? asStr(media["mediaUrl"]);
+            const title = asStr(content["title"]) ?? asStr(advertiser["name"]);
+            const body = asStr(content["body"]);
+            const days = asNum(ad["daysRunning"]);
+            const reach = asNum(metrics["reach"]);
+            const delta7 = asNum(metrics["reachDelta7d"]);
+            const adId = asStr(ad["id"]);
             return (
-              <Card key={asStr(ad["id"]) ?? i} className="overflow-hidden rounded-2xl">
+              <Card
+                key={adId ?? i}
+                className={cn(
+                  "overflow-hidden rounded-2xl",
+                  adId && "cursor-pointer transition-colors hover:bg-muted/40",
+                )}
+                onClick={() => adId && setAdDetailId(adId)}
+              >
                 {thumb ? (
                   <img src={thumb} alt={title ?? "Ad creative"} className="aspect-square w-full object-cover" loading="lazy" />
                 ) : (
@@ -2104,6 +2112,11 @@ function AdsTab({ costs }: { costs?: EndpointCosts | undefined }) {
                         Δ7d {fmtCompact(delta7)}
                       </Badge>
                     )}
+                    {asRec(ad["flags"])["isEuAd"] === true && (
+                      <Badge variant="outline" className="rounded-full text-[10px]">
+                        EU
+                      </Badge>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -2111,6 +2124,8 @@ function AdsTab({ costs }: { costs?: EndpointCosts | undefined }) {
           })}
         </div>
       )}
+
+      <AdDetailDialog adId={adDetailId} costs={costs} onClose={() => setAdDetailId(null)} />
 
       {pages.length > 0 && (pages[pages.length - 1]?.length ?? 0) >= limit && (
         <div className="flex justify-center">
