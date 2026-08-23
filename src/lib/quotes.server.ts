@@ -78,3 +78,43 @@ export function mapQuoteForAdmin(row: unknown, internal?: QuoteInternal | null):
     internal_reference: internal?.internal_reference ?? null,
   };
 }
+
+/**
+ * Flags open quote requests that breached their 48h sourcing target: stamps
+ * quote_breach_notified_at and records a notification (visible to admins via
+ * the notifications admin policy). Idempotent — already-stamped rows skip.
+ */
+export async function flagBreachedQuotes(
+  admin: {
+    from: (table: string) => any;
+  },
+): Promise<number> {
+  const nowIso = new Date().toISOString();
+  const { data: breached, error } = await admin
+    .from("quote_requests")
+    .select("id, store_id, product_name, product_url")
+    .in("status", ["submitted", "sourcing"])
+    .lt("quote_due_at", nowIso)
+    .is("quote_breach_notified_at", null);
+  if (error || !breached?.length) return 0;
+
+  const now = new Date().toISOString();
+  for (const q of breached as Array<{
+    id: string;
+    store_id: string;
+    product_name: string | null;
+    product_url: string;
+  }>) {
+    await admin.from("notifications").insert({
+      kind: "quote_sla_breach",
+      store_id: q.store_id,
+      title: "Quote request past its 48h target",
+      body: `A quote request (${q.product_name ?? q.product_url}) is still awaiting a quote past its 48-hour sourcing target.`,
+    });
+    await admin
+      .from("quote_requests")
+      .update({ quote_breach_notified_at: now })
+      .eq("id", q.id);
+  }
+  return breached.length;
+}

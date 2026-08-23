@@ -44,7 +44,7 @@ export const createQuoteRequest = createServerFn({ method: "POST" })
       throw new Error("Your account is not active yet");
     }
 
-    const { error } = await supabase.rpc("submit_quote_request", {
+    const { data: created, error } = await supabase.rpc("submit_quote_request", {
       p_product_url: data.product_url,
       ...(data.product_name ? { p_product_name: data.product_name } : {}),
       ...(data.notes ? { p_notes: data.notes } : {}),
@@ -53,9 +53,10 @@ export const createQuoteRequest = createServerFn({ method: "POST" })
         : {}),
       p_image_urls: data.image_urls ?? [],
       p_target_countries: data.target_countries,
+      ...(data.store_id ? { p_store_id: data.store_id } : {}),
     });
     if (error) throw toSubmitError(error.message);
-    return { ok: true };
+    return { ok: true, quote_id: created?.id ?? null };
   });
 
 /** Client: my quote requests. The base table no longer carries any pricing. */
@@ -80,7 +81,7 @@ export const getMyQuote = createServerFn({ method: "GET" })
     const { data: quote, error } = await context.supabase
       .from("quote_requests")
       .select(
-        "id, product_url, product_name, notes, target_monthly_volume, target_countries, image_urls, status, quote_valid_until, quoted_at, created_at, supersedes_quote_id",
+        "id, product_url, product_name, notes, target_monthly_volume, target_countries, image_urls, status, quote_valid_until, quoted_at, created_at, supersedes_quote_id, quote_due_at",
       )
       .eq("id", data.quote_id)
       .maybeSingle();
