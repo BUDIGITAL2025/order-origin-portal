@@ -46,10 +46,15 @@ export const adminAdjustWallet = createServerFn({ method: "POST" })
       "apply_wallet_transaction",
       {
         p_entity_id: data.client_id,
-        p_type: data.type,
+        // Manual admin credits are recorded as 'adjustment' so they read
+        // distinctly from Stripe top-up credits in the ledger. Ledger-only:
+        // this never touches Stripe or moves real money.
+        p_type: data.type === "credit" ? "adjustment" : "debit",
         p_amount: data.amount,
         p_description: data.description,
         ...(data.reference ? { p_reference: data.reference } : {}),
+        // auth.uid() is null under the service role — stamp the acting admin.
+        p_created_by: context.userId,
       },
     );
     if (error) throw new Error(error.message);

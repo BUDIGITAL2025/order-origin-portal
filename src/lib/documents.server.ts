@@ -25,6 +25,7 @@ import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import { round2 } from "./admin.server";
+import { LEGAL_ENTITY_NAME } from "./legal-entity";
 import { planLabel } from "./plans";
 
 type Admin = SupabaseClient<Database>;
@@ -42,7 +43,9 @@ interface SupplierConfig {
 
 function getSupplierConfig(): SupplierConfig {
   return {
-    name: process.env["SUPPLIER_LEGAL_NAME"]?.trim() || "FlySales",
+    // Shared fallback with the Terms page (src/lib/legal-entity.ts) — env
+    // override wins, otherwise both surfaces render the same entity name.
+    name: process.env["SUPPLIER_LEGAL_NAME"]?.trim() || LEGAL_ENTITY_NAME,
     addressLines: (process.env["SUPPLIER_ADDRESS"] ?? "")
       .split(/\r?\n/)
       .flatMap((line) => line.split(";"))
