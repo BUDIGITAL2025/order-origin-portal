@@ -10,11 +10,15 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowRight,
+  ChevronDown,
+  ChevronUp,
   Database,
   ExternalLink,
   Eye,
   FlaskConical,
+  LineChart,
   Loader2,
+  Mail,
   Megaphone,
   Package,
   Play,
@@ -26,10 +30,15 @@ import {
 import {
   getSpyMarketToolsStatus,
   spymarketCategories,
+  spymarketGetAd,
+  spymarketGetAdMediaUrl,
+  spymarketGetAdReachHistory,
+  spymarketGetEmail,
   spymarketGetShop,
   spymarketGetShopTab,
   spymarketGetUsageDashboard,
   spymarketLookup,
+  spymarketQueryEmails,
   spymarketQueryShops,
   spymarketSearchAds,
 } from "@/lib/spymarket-tools.functions";
@@ -50,6 +59,12 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -111,6 +126,134 @@ function costLabel(costs: EndpointCosts | undefined, endpoint: string, rows: num
   const c = costs?.find((x) => x.endpoint === endpoint);
   if (!c || c.sampleCount === 0) return "cost unknown — measured on 1st call";
   return `up to ~${fmtInt(Math.ceil(rows * c.creditsPerRow))} credits (est.)`;
+}
+
+/** Tiny inline SVG sparkline for time-series points ({period|date, value|reach}). */
+function Sparkline({
+  points,
+  className,
+  height = 36,
+}: {
+  points: Array<Record<string, unknown>> | undefined;
+  className?: string;
+  height?: number;
+}) {
+  if (!points || points.length < 2) return null;
+  const values = points
+    .map((p) => asNum(p["value"] ?? p["reach"]))
+    .filter((v): v is number => v !== null);
+  if (values.length < 2) return null;
+  const w = 240;
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const span = max - min || 1;
+  const step = w / (values.length - 1);
+  const coords = values
+    .map(
+      (v, i) =>
+        `${(i * step).toFixed(1)},${(height - 3 - ((v - min) / span) * (height - 6)).toFixed(1)}`,
+    )
+    .join(" ");
+  return (
+    <svg
+      viewBox={`0 0 ${w} ${height}`}
+      preserveAspectRatio="none"
+      className={cn("w-full text-primary", className)}
+      style={{ height }}
+      aria-hidden
+    >
+      <polyline
+        points={coords}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        vectorEffect="non-scaling-stroke"
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+/** Collapsible "View raw data" panel with the full API payload. */
+function RawJson({ data }: { data: unknown }) {
+  const [open, setOpen] = React.useState(false);
+  return (
+    <div className="overflow-hidden rounded-xl border">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between px-3 py-2.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+      >
+        <span className="flex items-center gap-1.5">
+          <Database className="h-3.5 w-3.5" />
+          View raw data
+        </span>
+        {open ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+      </button>
+      {open && (
+        <pre className="max-h-96 overflow-auto border-t bg-muted/40 p-3 text-[11px] leading-relaxed">
+          {JSON.stringify(data, null, 2)}
+        </pre>
+      )}
+    </div>
+  );
+}
+
+/** Collapsible detail section card. */
+function Section({
+  title,
+  icon,
+  right,
+  defaultOpen = true,
+  children,
+}: {
+  title: string;
+  icon?: React.ReactNode;
+  right?: React.ReactNode;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = React.useState(defaultOpen);
+  return (
+    <Card className="rounded-2xl">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between px-5 py-4 text-left"
+      >
+        <span className="flex items-center gap-2 text-sm font-semibold">
+          {icon}
+          {title}
+        </span>
+        <span className="flex items-center gap-2">
+          {right}
+          {open ? (
+            <ChevronUp className="h-4 w-4 text-muted-foreground" />
+          ) : (
+            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+          )}
+        </span>
+      </button>
+      {open && <CardContent className="space-y-3 pt-0">{children}</CardContent>}
+    </Card>
+  );
+}
+
+/** Country share chips: [{countryCode, share}] → "PT · 42%". */
+function CountryChips({ list, max = 8 }: { list: unknown; max?: number }) {
+  const rows = asArr(list).map(asRec);
+  if (rows.length === 0) return null;
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {rows.slice(0, max).map((c, i) => (
+        <Badge key={i} variant="secondary" className="rounded-full text-[11px]">
+          {asStr(c["countryCode"]) ?? asStr(c["country"]) ?? "?"} ·{" "}
+          {fmtPct(asNum(c["share"]))}
+        </Badge>
+      ))}
+    </div>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -305,6 +448,7 @@ const TOOL_TABS: ReadonlyArray<{ id: string; label: string; badge?: string }> = 
   { id: "shops", label: "Shop explorer" },
   { id: "shop", label: "Shop detail" },
   { id: "ads", label: "Ad library" },
+  { id: "emails", label: "Emails" },
   { id: "usage", label: "Usage", badge: "free" },
 ];
 
@@ -383,6 +527,7 @@ export function SpyMarketTools({ tab, shopId, domain, go }: SpyMarketToolsProps)
       {tab === "shops" && <ShopsTab go={go} initialDomain={domain} costs={status.endpointCosts} />}
       {tab === "shop" && <ShopDetailTab shopId={shopId} go={go} costs={status.endpointCosts} />}
       {tab === "ads" && <AdsTab costs={status.endpointCosts} />}
+      {tab === "emails" && <EmailsTab costs={status.endpointCosts} />}
       {tab === "usage" && <UsageTab />}
     </div>
   );
@@ -831,15 +976,21 @@ function ShopsTab({
                 <TableHead className="text-right">Visits/mo</TableHead>
                 <TableHead className="text-right">Active ads</TableHead>
                 <TableHead className="text-right">Products</TableHead>
-                <TableHead className="text-right">Trustpilot</TableHead>
+                <TableHead className="text-right">Google ads</TableHead>
                 <TableHead />
               </TableRow>
             </TableHeader>
             <TableBody>
               {allRows.map((row, i) => {
                 const id = asStr(row["id"]);
-                const name = asStr(row["name"]) ?? asStr(row["websiteUrl"]) ?? "Unknown shop";
-                const url = asStr(row["websiteUrl"]);
+                const domain = asStr(row["domain"]);
+                const profile = asRec(row["profile"]);
+                const traffic = asRec(row["traffic"]);
+                const advertising = asRec(row["advertising"]);
+                const catalog = asRec(row["catalog"]);
+                const googleAds = asRec(row["googleAds"]);
+                const screenshot = asStr(row["screenshotUrl"]);
+                const name = asStr(row["name"]) ?? domain ?? "Unknown shop";
                 return (
                   <TableRow
                     key={id ?? i}
@@ -847,28 +998,40 @@ function ShopsTab({
                     onClick={() => id && go({ tab: "shop", shopId: id })}
                   >
                     <TableCell>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-3">
+                        {screenshot ? (
+                          <img
+                            src={screenshot}
+                            alt=""
+                            loading="lazy"
+                            className="h-10 w-16 shrink-0 rounded-md border object-cover"
+                          />
+                        ) : null}
                         <div className="min-w-0">
                           <p className="truncate font-medium">{name}</p>
-                          {url && (
-                            <p className="truncate text-xs text-muted-foreground">
-                              {url.replace(/^https?:\/\//, "")}
-                            </p>
+                          {domain && (
+                            <p className="truncate text-xs text-muted-foreground">{domain}</p>
                           )}
                         </div>
-                        {row["isShopifyPlus"] === true && (
+                        {profile["isShopifyPlus"] === true && (
                           <Badge variant="secondary" className="rounded-full">
                             Plus
                           </Badge>
                         )}
                       </div>
                     </TableCell>
-                    <TableCell>{asStr(row["countryCode"]) ?? "—"}</TableCell>
-                    <TableCell className="text-right">{fmtCompact(asNum(row["monthlyVisits"]))}</TableCell>
-                    <TableCell className="text-right">{fmtInt(asNum(row["activeAds"]))}</TableCell>
-                    <TableCell className="text-right">{fmtInt(asNum(row["productsCount"]))}</TableCell>
+                    <TableCell>{asStr(profile["countryCode"]) ?? "—"}</TableCell>
                     <TableCell className="text-right">
-                      {asNum(row["trustpilotRating"])?.toFixed(1) ?? "—"}
+                      {fmtCompact(asNum(traffic["monthlyVisits"]))}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {fmtInt(asNum(advertising["activeAds"]))}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {fmtInt(asNum(catalog["productsCount"]))}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {fmtInt(asNum(googleAds["liveAds"]))}
                     </TableCell>
                     <TableCell className="text-right">
                       <ArrowRight className="ml-auto h-4 w-4 text-muted-foreground" />
@@ -934,9 +1097,24 @@ function ShopDetailTab({
   const advertising = asRec(shop?.["advertising"]);
   const adSummary = asRec(advertising["summary"]);
   const technology = asRec(shop?.["technology"]);
-  const socials = asArr(shop?.["socials"]).map(asRec);
+  const tiktok = asRec(shop?.["tiktok"]);
+  const tiktokActivity = asRec(tiktok["activity"]);
+  const socials = asRec(shop?.["socials"]);
   const bestSellers = asArr(catalog["bestSellers"]).map(asRec);
-  const markets = asArr(traffic["countries"]).map(asRec);
+  const latestAds = asArr(shop?.["latestAds"]).map(asRec);
+  const similarShops = asArr(shop?.["similarShops"]).map(asRec);
+  const domain = asStr(shop?.["domain"]);
+  const [adDetailId, setAdDetailId] = React.useState<string | null>(null);
+
+  const SOCIAL_PLATFORMS = [
+    "facebook",
+    "instagram",
+    "tiktok",
+    "youtube",
+    "pinterest",
+    "twitter",
+    "linkedin",
+  ] as const;
 
   return (
     <div className="space-y-4">
@@ -961,14 +1139,23 @@ function ShopDetailTab({
 
       {shop && (
         <>
+          {/* Header: identity + screenshot + trustpilot */}
           <Card className="rounded-2xl">
-            <CardContent className="flex flex-wrap items-center gap-4 p-5">
+            <CardContent className="flex flex-wrap items-center gap-5 p-5">
+              {asStr(shop["screenshotUrl"]) && (
+                <img
+                  src={asStr(shop["screenshotUrl"]) ?? ""}
+                  alt={`Screenshot of ${domain ?? "shop"}`}
+                  loading="lazy"
+                  className="h-24 w-40 shrink-0 rounded-xl border object-cover"
+                />
+              )}
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <h2 className="text-xl font-semibold">
-                    {asStr(profile["name"]) ?? "Unnamed shop"}
+                    {asStr(shop["name"]) ?? domain ?? "Unnamed shop"}
                   </h2>
-                  {profile["shopifyPlus"] === true && (
+                  {profile["isShopifyPlus"] === true && (
                     <Badge variant="secondary" className="rounded-full">
                       Shopify Plus
                     </Badge>
@@ -978,202 +1165,438 @@ function ShopDetailTab({
                       {asStr(profile["countryCode"])}
                     </Badge>
                   )}
+                  {asStr(profile["currency"]) && (
+                    <Badge variant="outline" className="rounded-full">
+                      {asStr(profile["currency"])}
+                    </Badge>
+                  )}
+                  {asStr(profile["defaultLanguage"]) && (
+                    <Badge variant="outline" className="rounded-full">
+                      {asStr(profile["defaultLanguage"])}
+                    </Badge>
+                  )}
                 </div>
-                {asStr(profile["websiteUrl"]) && (
+                {domain && (
                   <a
-                    href={asStr(profile["websiteUrl"]) ?? "#"}
+                    href={`https://${domain}`}
                     target="_blank"
                     rel="noreferrer"
                     className="mt-1 inline-flex items-center gap-1 text-sm text-primary hover:underline"
                   >
-                    {(asStr(profile["websiteUrl"]) ?? "").replace(/^https?:\/\//, "")}
+                    {domain}
                     <ExternalLink className="h-3 w-3" />
                   </a>
                 )}
+                {asStr(shop["createdAt"]) && (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    First seen {asStr(shop["createdAt"])?.slice(0, 10)}
+                  </p>
+                )}
               </div>
               {asNum(trustpilot["rating"]) != null && (
-                <div className="text-right">
+                <a
+                  href={asStr(trustpilot["url"]) ?? "#"}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-right"
+                >
                   <p className="text-lg font-semibold">{asNum(trustpilot["rating"])?.toFixed(1)}</p>
                   <p className="text-xs text-muted-foreground">
                     Trustpilot · {fmtInt(asNum(trustpilot["reviewCount"]))} reviews
                   </p>
-                </div>
+                </a>
               )}
             </CardContent>
           </Card>
 
           <div className="grid gap-4 lg:grid-cols-2">
-            <Card className="rounded-2xl">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Traffic</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <p className="text-2xl font-semibold">
-                  {fmtCompact(asNum(traffic["monthlyVisits"]))}
-                  <span className="ml-1 text-sm font-normal text-muted-foreground">visits/mo</span>
-                </p>
-                <div className="grid grid-cols-3 gap-2 text-center">
-                  {(
-                    [
-                      ["30d", asNum(traffic["growth30d"])],
-                      ["90d", asNum(traffic["growth90d"])],
-                      ["180d", asNum(traffic["growth180d"])],
-                    ] as const
-                  ).map(([label, v]) => (
-                    <div key={label} className="rounded-xl bg-muted/60 p-2">
-                      <p
-                        className={cn(
-                          "text-sm font-semibold",
-                          v != null && v > 0 && "text-primary",
-                          v != null && v < 0 && "text-destructive",
-                        )}
-                      >
-                        {fmtPct(v)}
-                      </p>
-                      <p className="text-xs text-muted-foreground">{label}</p>
-                    </div>
-                  ))}
-                </div>
-                {markets.length > 0 && (
-                  <div className="space-y-1 pt-1">
-                    <p className="text-xs font-medium text-muted-foreground">Top markets</p>
-                    {markets.slice(0, 5).map((m, i) => (
-                      <div key={i} className="flex items-center justify-between text-sm">
-                        <span>{asStr(m["countryCode"]) ?? "—"}</span>
-                        <span className="text-muted-foreground">
-                          {asNum(m["share"]) != null
-                            ? `${Math.round((asNum(m["share"]) ?? 0) * 100)}%`
-                            : "—"}
-                        </span>
-                      </div>
-                    ))}
+            {/* Traffic */}
+            <Section title="Traffic" icon={<LineChart className="h-4 w-4 text-primary" />}>
+              <p className="text-2xl font-semibold">
+                {fmtCompact(asNum(traffic["monthlyVisits"]))}
+                <span className="ml-1 text-sm font-normal text-muted-foreground">visits/mo</span>
+              </p>
+              <div className="grid grid-cols-3 gap-2 text-center">
+                {(
+                  [
+                    ["30d", asNum(traffic["growth30d"])],
+                    ["90d", asNum(traffic["growth90d"])],
+                    ["180d", asNum(traffic["growth180d"])],
+                  ] as const
+                ).map(([label, v]) => (
+                  <div key={label} className="rounded-xl bg-muted/60 p-2">
+                    <p
+                      className={cn(
+                        "text-sm font-semibold",
+                        v != null && v > 0 && "text-primary",
+                        v != null && v < 0 && "text-destructive",
+                      )}
+                    >
+                      {fmtPct(v)}
+                    </p>
+                    <p className="text-xs text-muted-foreground">{label}</p>
                   </div>
-                )}
-              </CardContent>
-            </Card>
+                ))}
+              </div>
+              <Sparkline points={asArr(traffic["history"]).map(asRec)} height={56} />
+              {asArr(traffic["topCountries"]).length > 0 && (
+                <div className="space-y-1.5 pt-1">
+                  <p className="text-xs font-medium text-muted-foreground">Top countries</p>
+                  <CountryChips list={traffic["topCountries"]} />
+                </div>
+              )}
+              {asArr(traffic["mainMarkets"]).length > 0 && (
+                <div className="space-y-1.5">
+                  <p className="text-xs font-medium text-muted-foreground">Main markets</p>
+                  <CountryChips list={traffic["mainMarkets"]} />
+                </div>
+              )}
+            </Section>
 
-            <Card className="rounded-2xl">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Advertising</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="grid grid-cols-2 gap-2 text-center">
-                  <div className="rounded-xl bg-muted/60 p-3">
-                    <p className="text-lg font-semibold">{fmtInt(asNum(adSummary["activeAds"]))}</p>
-                    <p className="text-xs text-muted-foreground">active ads</p>
-                  </div>
-                  <div className="rounded-xl bg-muted/60 p-3">
-                    <p className="text-lg font-semibold">{fmtCompact(asNum(adSummary["reach30d"]))}</p>
-                    <p className="text-xs text-muted-foreground">reach 30d (EU/UK)</p>
-                  </div>
-                </div>
-                {socials.length > 0 && (
-                  <div className="space-y-1 pt-1">
-                    <p className="text-xs font-medium text-muted-foreground">Socials</p>
-                    {socials.slice(0, 6).map((s, i) => (
-                      <div key={i} className="flex items-center justify-between text-sm">
-                        <span className="capitalize">
-                          {asStr(s["platform"]) ?? "—"}
-                          {asStr(s["handle"]) && (
-                            <span className="ml-1 text-muted-foreground">@{asStr(s["handle"])}</span>
-                          )}
-                        </span>
-                        <span className="text-muted-foreground">
-                          {fmtCompact(asNum(s["followers"]))}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            {/* Socials — object keyed by platform */}
+            <Section title="Socials" icon={<Users className="h-4 w-4 text-primary" />}>
+              <div className="space-y-1.5">
+                {SOCIAL_PLATFORMS.map((platform) => {
+                  const s = asRec(socials[platform]);
+                  const followers = asNum(s["followers"]);
+                  const handle = asStr(s["handle"]);
+                  if (followers == null && !handle) return null;
+                  const growth = asNum(s["growth30d"]);
+                  return (
+                    <div key={platform} className="flex items-center justify-between text-sm">
+                      <span className="capitalize">
+                        {platform}
+                        {handle && (
+                          <span className="ml-1 text-muted-foreground">@{handle}</span>
+                        )}
+                      </span>
+                      <span className="flex items-center gap-2 text-muted-foreground">
+                        {growth != null && (
+                          <span
+                            className={cn(
+                              "text-xs",
+                              growth > 0 && "text-primary",
+                              growth < 0 && "text-destructive",
+                            )}
+                          >
+                            {fmtPct(growth)}
+                          </span>
+                        )}
+                        {fmtCompact(followers)}
+                      </span>
+                    </div>
+                  );
+                })}
+                {SOCIAL_PLATFORMS.every((p) => {
+                  const s = asRec(socials[p]);
+                  return asNum(s["followers"]) == null && !asStr(s["handle"]);
+                }) && <p className="text-sm text-muted-foreground">No social profiles found.</p>}
+              </div>
+            </Section>
           </div>
 
-          {bestSellers.length > 0 && (
-            <Card className="rounded-2xl">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Best sellers · {fmtInt(asNum(catalog["productsCount"]))} products
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-                  {bestSellers.slice(0, 10).map((p, i) => {
-                    const img = asStr(p["imageUrl"]);
-                    return (
-                      <div key={i} className="overflow-hidden rounded-xl border bg-card">
-                        {img ? (
-                          <img src={img} alt={asStr(p["title"]) ?? "Product"} className="aspect-square w-full object-cover" loading="lazy" />
-                        ) : (
-                          <div className="flex aspect-square items-center justify-center bg-muted">
-                            <Package className="h-6 w-6 text-muted-foreground" />
-                          </div>
-                        )}
-                        <div className="p-2">
-                          <p className="truncate text-xs font-medium">{asStr(p["title"]) ?? "—"}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {fmtPrice(asNum(p["price"]), asStr(p["currency"]))}
-                          </p>
-                        </div>
-                      </div>
-                    );
-                  })}
+          {/* Advertising */}
+          <Section
+            title="Advertising"
+            icon={<Megaphone className="h-4 w-4 text-primary" />}
+            defaultOpen={false}
+          >
+            <div className="grid grid-cols-3 gap-2 text-center">
+              <div className="rounded-xl bg-muted/60 p-3">
+                <p className="text-lg font-semibold">{fmtInt(asNum(advertising["activeAds"]))}</p>
+                <p className="text-xs text-muted-foreground">active ads</p>
+              </div>
+              <div className="rounded-xl bg-muted/60 p-3">
+                <p className="text-lg font-semibold">
+                  {fmtInt(asNum(adSummary["avgActiveAds30d"]))}
+                </p>
+                <p className="text-xs text-muted-foreground">avg active 30d</p>
+              </div>
+              <div className="rounded-xl bg-muted/60 p-3">
+                <p className="text-lg font-semibold">{fmtCompact(asNum(adSummary["reach30d"]))}</p>
+                <p className="text-xs text-muted-foreground">reach 30d (EU/UK)</p>
+              </div>
+            </div>
+            <Sparkline points={asArr(advertising["history"]).map(asRec)} height={56} />
+            {asArr(advertising["countryDistribution"]).length > 0 && (
+              <div className="space-y-1.5">
+                <p className="text-xs font-medium text-muted-foreground">Country distribution</p>
+                <CountryChips list={advertising["countryDistribution"]} />
+              </div>
+            )}
+            {asArr(advertising["adsCountryStats"]).length > 0 && (
+              <div className="space-y-1">
+                <p className="text-xs font-medium text-muted-foreground">Ads by country</p>
+                {asArr(advertising["adsCountryStats"])
+                  .map(asRec)
+                  .slice(0, 8)
+                  .map((c, i) => (
+                    <div key={i} className="flex items-center justify-between text-sm">
+                      <span>{asStr(c["countryCode"]) ?? "—"}</span>
+                      <span className="text-muted-foreground">
+                        {fmtInt(asNum(c["activeAds"]))} active · {fmtCompact(asNum(c["reach30d"]))}{" "}
+                        reach
+                      </span>
+                    </div>
+                  ))}
+              </div>
+            )}
+            {asArr(advertising["linkedAdvertisers"]).length > 0 && (
+              <div className="space-y-1.5">
+                <p className="text-xs font-medium text-muted-foreground">Linked advertisers</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {asArr(advertising["linkedAdvertisers"])
+                    .map(asRec)
+                    .map((a, i) => (
+                      <Badge key={i} variant="secondary" className="rounded-full text-[11px]">
+                        {asStr(a["name"]) ?? "—"}
+                        {a["isPrimary"] === true && " · primary"}
+                      </Badge>
+                    ))}
                 </div>
-              </CardContent>
-            </Card>
-          )}
+              </div>
+            )}
+          </Section>
 
+          {/* Catalogue */}
+          <Section
+            title={`Catalogue · ${fmtInt(asNum(catalog["productsCount"]))} products`}
+            icon={<Package className="h-4 w-4 text-primary" />}
+            defaultOpen={false}
+          >
+            <div className="flex flex-wrap items-center gap-1.5">
+              {asStr(catalog["mainCategory"]) && (
+                <Badge className="rounded-full">{asStr(catalog["mainCategory"])}</Badge>
+              )}
+              {asArr(catalog["categories"])
+                .map((c) => asStr(c))
+                .filter((c): c is string => !!c)
+                .slice(0, 10)
+                .map((c) => (
+                  <Badge key={c} variant="secondary" className="rounded-full text-[11px]">
+                    {c}
+                  </Badge>
+                ))}
+            </div>
+            {asStr(catalog["myShopifyDomain"]) && (
+              <p className="text-xs text-muted-foreground">
+                myshopify: {asStr(catalog["myShopifyDomain"])}
+              </p>
+            )}
+            {bestSellers.length > 0 && (
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+                {bestSellers.slice(0, 10).map((p, i) => {
+                  const img = asStr(p["imageUrl"]);
+                  return (
+                    <div key={i} className="overflow-hidden rounded-xl border bg-card">
+                      {img ? (
+                        <img
+                          src={img}
+                          alt={asStr(p["title"]) ?? "Product"}
+                          className="aspect-square w-full object-cover"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className="flex aspect-square items-center justify-center bg-muted">
+                          <Package className="h-6 w-6 text-muted-foreground" />
+                        </div>
+                      )}
+                      <div className="p-2">
+                        <p className="truncate text-xs font-medium">{asStr(p["title"]) ?? "—"}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {fmtPrice(asNum(p["price"]), asStr(p["currency"]))}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </Section>
+
+          {/* Tech stack */}
           {(asStr(technology["theme"]) ||
             asArr(technology["apps"]).length > 0 ||
             asArr(technology["pixels"]).length > 0) && (
-            <Card className="rounded-2xl">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Tech stack</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {asStr(technology["theme"]) && (
-                  <p className="text-sm">
-                    <span className="text-muted-foreground">Theme:</span>{" "}
-                    <span className="font-medium">{asStr(technology["theme"])}</span>
-                  </p>
-                )}
-                {asArr(technology["apps"]).length > 0 && (
-                  <div>
-                    <p className="mb-1.5 text-xs font-medium text-muted-foreground">Apps</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {asArr(technology["apps"])
-                        .map(asRec)
-                        .slice(0, 20)
-                        .map((a, i) => (
-                          <Badge key={i} variant="secondary" className="rounded-full">
-                            {asStr(a["label"]) ?? "App"}
-                          </Badge>
-                        ))}
-                    </div>
+            <Section title="Tech stack" icon={<FlaskConical className="h-4 w-4 text-primary" />} defaultOpen={false}>
+              {asStr(technology["theme"]) && (
+                <p className="text-sm">
+                  <span className="text-muted-foreground">Theme:</span>{" "}
+                  <span className="font-medium">{asStr(technology["theme"])}</span>
+                </p>
+              )}
+              {asArr(technology["apps"]).length > 0 && (
+                <div>
+                  <p className="mb-1.5 text-xs font-medium text-muted-foreground">Apps</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {asArr(technology["apps"])
+                      .map(asRec)
+                      .slice(0, 24)
+                      .map((a, i) => (
+                        <Badge
+                          key={i}
+                          variant="secondary"
+                          className="gap-1.5 rounded-full text-[11px]"
+                        >
+                          {asStr(a["iconUrl"]) && (
+                            <img src={asStr(a["iconUrl"]) ?? ""} alt="" className="h-3.5 w-3.5 rounded" loading="lazy" />
+                          )}
+                          {asStr(a["label"]) ?? "App"}
+                        </Badge>
+                      ))}
                   </div>
-                )}
-                {asArr(technology["pixels"]).length > 0 && (
-                  <div>
-                    <p className="mb-1.5 text-xs font-medium text-muted-foreground">Pixels</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {asArr(technology["pixels"])
-                        .map(asRec)
-                        .slice(0, 20)
-                        .map((p, i) => (
-                          <Badge key={i} variant="outline" className="rounded-full">
-                            {asStr(p["name"]) ?? "Pixel"}
-                          </Badge>
-                        ))}
-                    </div>
+                </div>
+              )}
+              {asArr(technology["pixels"]).length > 0 && (
+                <div>
+                  <p className="mb-1.5 text-xs font-medium text-muted-foreground">Pixels</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {asArr(technology["pixels"])
+                      .map(asRec)
+                      .slice(0, 24)
+                      .map((p, i) => (
+                        <Badge key={i} variant="outline" className="gap-1.5 rounded-full text-[11px]">
+                          {asStr(p["iconUrl"]) && (
+                            <img src={asStr(p["iconUrl"]) ?? ""} alt="" className="h-3.5 w-3.5 rounded" loading="lazy" />
+                          )}
+                          {asStr(p["name"]) ?? "Pixel"}
+                          {asArr(p["categories"]).length > 0 && (
+                            <span className="text-muted-foreground">
+                              · {asArr(p["categories"]).map((c) => asStr(c)).filter(Boolean).join(", ")}
+                            </span>
+                          )}
+                        </Badge>
+                      ))}
                   </div>
+                </div>
+              )}
+            </Section>
+          )}
+
+          {/* TikTok presence */}
+          {(asStr(tiktok["handle"]) || asNum(tiktok["followers"]) != null) && (
+            <Section title="TikTok" icon={<Eye className="h-4 w-4 text-primary" />} defaultOpen={false}>
+              <div className="grid grid-cols-2 gap-2 text-center sm:grid-cols-4">
+                {(
+                  [
+                    ["Followers", fmtCompact(asNum(tiktok["followers"]))],
+                    ["Posts", fmtInt(asNum(tiktok["totalPosts"]))],
+                    ["Views", fmtCompact(asNum(tiktok["totalViews"]))],
+                    ["Likes", fmtCompact(asNum(tiktok["totalLikes"]))],
+                  ] as const
+                ).map(([label, v]) => (
+                  <div key={label} className="rounded-xl bg-muted/60 p-3">
+                    <p className="text-lg font-semibold">{v}</p>
+                    <p className="text-xs text-muted-foreground">{label}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                {asStr(tiktok["handle"]) && <span>@{asStr(tiktok["handle"])}</span>}
+                {asNum(tiktok["newPosts"]) != null && (
+                  <span>{fmtInt(asNum(tiktok["newPosts"]))} new posts</span>
                 )}
-              </CardContent>
-            </Card>
+                {asNum(tiktokActivity["activeAds"]) != null && (
+                  <span>{fmtInt(asNum(tiktokActivity["activeAds"]))} active ads</span>
+                )}
+                {asNum(tiktokActivity["totalAds"]) != null && (
+                  <span>{fmtInt(asNum(tiktokActivity["totalAds"]))} total ads</span>
+                )}
+                {asStr(tiktok["lastUpdatedAt"]) && (
+                  <span>updated {asStr(tiktok["lastUpdatedAt"])?.slice(0, 10)}</span>
+                )}
+              </div>
+            </Section>
+          )}
+
+          {/* Latest ads */}
+          {latestAds.length > 0 && (
+            <Section title="Latest ads" icon={<Megaphone className="h-4 w-4 text-primary" />} defaultOpen={false}>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
+                {latestAds.slice(0, 12).map((ad, i) => {
+                  const media = asRec(ad["media"]);
+                  const thumb = asStr(media["thumbnailUrl"]);
+                  const adId = asStr(ad["id"]);
+                  return (
+                    <button
+                      key={adId ?? i}
+                      type="button"
+                      disabled={!adId}
+                      onClick={() => adId && setAdDetailId(adId)}
+                      className="overflow-hidden rounded-xl border bg-card text-left transition-colors hover:bg-muted/50"
+                    >
+                      {thumb ? (
+                        <img
+                          src={thumb}
+                          alt="Ad creative"
+                          className="aspect-square w-full object-cover"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className="flex aspect-square items-center justify-center bg-muted">
+                          <Megaphone className="h-5 w-5 text-muted-foreground" />
+                        </div>
+                      )}
+                      <div className="p-2">
+                        <p className="truncate text-xs text-muted-foreground">
+                          {asStr(asRec(ad["content"])["title"]) ?? "View ad"}
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </Section>
+          )}
+
+          {/* Similar shops — already in the payload, free */}
+          {similarShops.length > 0 && (
+            <Section
+              title={`Similar shops · ${similarShops.length}`}
+              icon={<Store className="h-4 w-4 text-primary" />}
+              defaultOpen={false}
+            >
+              <div className="grid gap-2 sm:grid-cols-2">
+                {similarShops.slice(0, 10).map((entry, i) => {
+                  const s = asRec(entry["shop"]);
+                  const id = asStr(s["id"]);
+                  const score = asNum(entry["similarityScore"]);
+                  return (
+                    <button
+                      key={id ?? i}
+                      type="button"
+                      disabled={!id}
+                      onClick={() => id && go({ tab: "shop", shopId: id })}
+                      className="flex items-center justify-between gap-2 rounded-xl border p-3 text-left transition-colors hover:bg-muted/50"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium">
+                          {asStr(s["name"]) ?? asStr(s["domain"]) ?? "Unknown"}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {asStr(s["domain"]) ?? ""}
+                          {score != null && ` · ${Math.round(score * 100)}% match`}
+                        </p>
+                      </div>
+                      <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    </button>
+                  );
+                })}
+              </div>
+            </Section>
           )}
 
           <ShopOnDemand shopId={shopId} go={go} costs={costs} />
+
+          <RawJson data={shop} />
         </>
       )}
+
+      <AdDetailDialog
+        adId={adDetailId}
+        costs={costs}
+        onClose={() => setAdDetailId(null)}
+      />
     </div>
   );
 }
@@ -1192,12 +1615,15 @@ function ShopOnDemand({
   const call = useMeteredCall(getTab as ServerFnLike);
   const [activeSection, setActiveSection] = React.useState<string | null>(null);
   const [sectionData, setSectionData] = React.useState<Record<string, ToolOk<unknown>>>({});
+  const [emailDetailId, setEmailDetailId] = React.useState<string | number | null>(null);
 
   const sections = [
     { id: "products", label: "Products", limit: 20, endpoint: "shops/products", icon: Package },
     { id: "advertisers", label: "Advertisers", limit: 1, endpoint: "shops/advertisers", icon: Megaphone },
     { id: "tiktok", label: "TikTok library", limit: 20, endpoint: "shops/tiktok", icon: Eye },
     { id: "similar", label: "Similar shops", limit: 10, endpoint: "shops/similar", icon: Store },
+    { id: "socials", label: "Social history", limit: 1, endpoint: "shops/socials", icon: LineChart },
+    { id: "emails", label: "Emails", limit: 10, endpoint: "shops/emails", icon: Mail },
   ] as const;
 
   const open = async (sectionId: string, limit: number) => {
@@ -1264,7 +1690,10 @@ function ShopOnDemand({
             {active.id === "similar" && (
               <div className="grid gap-2 sm:grid-cols-2">
                 {rows.map((r, i) => {
-                  const id = asStr(r["id"]);
+                  const s = asRec(r["shop"]);
+                  const id = asStr(s["id"]);
+                  const score = asNum(r["similarityScore"]);
+                  const sTraffic = asRec(s["traffic"]);
                   return (
                     <button
                       key={id ?? i}
@@ -1274,10 +1703,13 @@ function ShopOnDemand({
                     >
                       <div className="min-w-0">
                         <p className="truncate text-sm font-medium">
-                          {asStr(r["name"]) ?? asStr(r["websiteUrl"]) ?? "Unknown"}
+                          {asStr(s["name"]) ?? asStr(s["domain"]) ?? "Unknown"}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {fmtCompact(asNum(r["monthlyVisits"]))} visits/mo
+                          {asStr(s["domain"]) ?? ""}
+                          {score != null && ` · ${Math.round(score * 100)}% match`}
+                          {asNum(sTraffic["monthlyVisits"]) != null &&
+                            ` · ${fmtCompact(asNum(sTraffic["monthlyVisits"]))} visits/mo`}
                         </p>
                       </div>
                       <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -1291,8 +1723,9 @@ function ShopOnDemand({
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
                 {rows.map((p, i) => {
                   const img = asStr(p["imageUrl"]);
-                  return (
-                    <div key={i} className="overflow-hidden rounded-xl border bg-card">
+                  const productUrl = asStr(p["productUrl"]);
+                  const inner = (
+                    <>
                       {img ? (
                         <img src={img} alt={asStr(p["title"]) ?? "Product"} className="aspect-square w-full object-cover" loading="lazy" />
                       ) : (
@@ -1304,8 +1737,24 @@ function ShopOnDemand({
                         <p className="truncate text-xs font-medium">{asStr(p["title"]) ?? "—"}</p>
                         <p className="text-xs text-muted-foreground">
                           {fmtPrice(asNum(p["price"]), asStr(p["currency"]))}
+                          {asStr(p["publishedAt"]) && ` · ${asStr(p["publishedAt"])?.slice(0, 10)}`}
                         </p>
                       </div>
+                    </>
+                  );
+                  return productUrl ? (
+                    <a
+                      key={i}
+                      href={productUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="overflow-hidden rounded-xl border bg-card transition-colors hover:bg-muted/50"
+                    >
+                      {inner}
+                    </a>
+                  ) : (
+                    <div key={i} className="overflow-hidden rounded-xl border bg-card">
+                      {inner}
                     </div>
                   );
                 })}
@@ -1315,18 +1764,113 @@ function ShopOnDemand({
             {active.id === "advertisers" && (
               <div className="grid gap-2">
                 {rows.map((a, i) => (
-                  <div key={i} className="flex items-center justify-between rounded-xl border p-3">
+                  <div key={i} className="flex items-center justify-between gap-3 rounded-xl border p-3">
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">{asStr(a["name"]) ?? "—"}</p>
+                      <p className="flex items-center gap-2 truncate text-sm font-medium">
+                        {asStr(a["name"]) ?? "—"}
+                        {a["isPrimary"] === true && (
+                          <Badge className="rounded-full text-[10px]">primary</Badge>
+                        )}
+                      </p>
                       <p className="text-xs text-muted-foreground">
-                        {fmtInt(asNum(a["activeAds"]))} active ads
-                        {asNum(a["reach30d"]) != null && ` · ${fmtCompact(asNum(a["reach30d"]))} reach 30d`}
+                        {asStr(a["platform"]) && <span className="capitalize">{asStr(a["platform"])}</span>}
+                        {asNum(a["activeAds"]) != null && ` · ${fmtInt(asNum(a["activeAds"]))} active ads`}
                       </p>
                     </div>
+                    {asStr(a["facebookPageId"]) && (
+                      <a
+                        href={`https://www.facebook.com/${asStr(a["facebookPageId"])}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="shrink-0 text-muted-foreground hover:text-foreground"
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                      </a>
+                    )}
                   </div>
                 ))}
                 {rows.length === 0 && (
                   <p className="text-sm text-muted-foreground">No advertisers linked.</p>
+                )}
+              </div>
+            )}
+
+            {active.id === "socials" && (
+              <div className="grid gap-3 sm:grid-cols-2">
+                {Object.entries(asRec(asRec(loaded.data)["data"])).map(([platform, points]) => {
+                  const series = asArr(points).map(asRec);
+                  if (series.length < 2) return null;
+                  const latest = asNum(series[series.length - 1]?.["value"]);
+                  const first = asNum(series[0]?.["value"]);
+                  const growth =
+                    latest != null && first != null && first > 0
+                      ? (latest - first) / first
+                      : null;
+                  return (
+                    <div key={platform} className="rounded-xl border p-3">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-medium capitalize">{platform}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {fmtCompact(latest)}
+                          {growth != null && (
+                            <span
+                              className={cn(
+                                "ml-1.5",
+                                growth > 0 && "text-primary",
+                                growth < 0 && "text-destructive",
+                              )}
+                            >
+                              {fmtPct(growth)}
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                      <Sparkline points={series} height={40} className="mt-2" />
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {active.id === "emails" && (
+              <div className="grid gap-2">
+                {rows.map((e, i) => {
+                  const emailId = asNum(e["id"]) ?? asStr(e["id"]);
+                  return (
+                    <button
+                      key={i}
+                      type="button"
+                      disabled={emailId == null}
+                      onClick={() => emailId != null && setEmailDetailId(emailId)}
+                      className="flex items-center gap-3 rounded-xl border p-3 text-left transition-colors hover:bg-muted/50"
+                    >
+                      {asStr(e["screenshotUrl"]) ? (
+                        <img
+                          src={asStr(e["screenshotUrl"]) ?? ""}
+                          alt=""
+                          loading="lazy"
+                          className="h-12 w-10 shrink-0 rounded-md border object-cover"
+                        />
+                      ) : (
+                        <Mail className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium">
+                          {asStr(e["subject"]) ?? "(no subject)"}
+                        </p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {asStr(e["sentAt"])?.slice(0, 10) ?? "—"}
+                          {asStr(e["campaignType"]) && ` · ${asStr(e["campaignType"])}`}
+                          {asStr(asRec(e["classification"])["promotionType"]) &&
+                            ` · ${asStr(asRec(e["classification"])["promotionType"])}`}
+                        </p>
+                      </div>
+                      <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    </button>
+                  );
+                })}
+                {rows.length === 0 && (
+                  <p className="text-sm text-muted-foreground">No emails found for this shop.</p>
                 )}
               </div>
             )}
@@ -1362,6 +1906,11 @@ function ShopOnDemand({
           </div>
         )}
       </CardContent>
+      <EmailDetailDialog
+        emailId={emailDetailId}
+        costs={costs}
+        onClose={() => setEmailDetailId(null)}
+      />
     </Card>
   );
 }

@@ -160,14 +160,14 @@ export const spymarketGetShop = createServerFn({ method: "POST" })
     });
   });
 
-/** Metered on-demand shop tabs: products / advertisers / tiktok library. */
+/** Metered on-demand shop tabs: products / advertisers / tiktok / similar / socials / emails. */
 export const spymarketGetShopTab = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
     z
       .object({
         shopId: z.string().min(1),
-        tab: z.enum(["products", "advertisers", "tiktok", "similar"]),
+        tab: z.enum(["products", "advertisers", "tiktok", "similar", "socials", "emails"]),
         limit: z.number().int().min(1).max(100).default(20),
         confirmOverage: z.boolean().optional(),
       })
@@ -177,20 +177,14 @@ export const spymarketGetShopTab = createServerFn({ method: "POST" })
     const { requireAdmin } = await import("./admin.server");
     await requireAdmin(context.supabase, context.userId);
     const mod = await import("./spymarket-tools.server");
+    const shop = encodeURIComponent(data.shopId);
     const paths: Record<string, { path: string; query?: Record<string, string | number> }> = {
-      products: {
-        path: `/shops/${encodeURIComponent(data.shopId)}/products`,
-        query: { sortBy: "popularity", limit: data.limit },
-      },
-      advertisers: { path: `/shops/${encodeURIComponent(data.shopId)}/advertisers` },
-      tiktok: {
-        path: `/shops/${encodeURIComponent(data.shopId)}/tiktok/library`,
-        query: { limit: data.limit },
-      },
-      similar: {
-        path: `/shops/${encodeURIComponent(data.shopId)}/similar`,
-        query: { limit: data.limit },
-      },
+      products: { path: `/shops/${shop}/products`, query: { sortBy: "popularity", limit: data.limit } },
+      advertisers: { path: `/shops/${shop}/advertisers` },
+      tiktok: { path: `/shops/${shop}/tiktok/library`, query: { limit: data.limit } },
+      similar: { path: `/shops/${shop}/similar`, query: { limit: data.limit } },
+      socials: { path: `/shops/${shop}/socials/history`, query: { period: "week", days: 180 } },
+      emails: { path: `/shops/${shop}/emails`, query: { sortBy: "newest", limit: data.limit } },
     };
     const target = paths[data.tab]!;
     return mod.trendtrackCall({
@@ -199,7 +193,150 @@ export const spymarketGetShopTab = createServerFn({ method: "POST" })
       path: target.path,
       query: target.query,
       summary: { shopId: data.shopId, tab: data.tab, limit: data.limit },
-      estimatedCost: data.tab === "advertisers" ? 1 : data.limit,
+      estimatedCost: data.tab === "advertisers" || data.tab === "socials" ? 1 : data.limit,
+      confirmOverage: data.confirmOverage,
+    });
+  });
+
+/** Metered: full ad detail (1 credit-class call). */
+export const spymarketGetAd = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({ adId: z.string().min(1), confirmOverage: z.boolean().optional() })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { requireAdmin } = await import("./admin.server");
+    await requireAdmin(context.supabase, context.userId);
+    const mod = await import("./spymarket-tools.server");
+    return mod.trendtrackCall({
+      userId: context.userId,
+      endpoint: "ads/detail",
+      path: `/ads/${encodeURIComponent(data.adId)}`,
+      summary: { adId: data.adId },
+      estimatedCost: 1,
+      confirmOverage: data.confirmOverage,
+    });
+  });
+
+/** Metered: ad reach time series for the sparkline. */
+export const spymarketGetAdReachHistory = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({ adId: z.string().min(1), confirmOverage: z.boolean().optional() })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { requireAdmin } = await import("./admin.server");
+    await requireAdmin(context.supabase, context.userId);
+    const mod = await import("./spymarket-tools.server");
+    return mod.trendtrackCall({
+      userId: context.userId,
+      endpoint: "ads/reach-history",
+      path: `/ads/${encodeURIComponent(data.adId)}/reach-history`,
+      summary: { adId: data.adId },
+      estimatedCost: 30,
+      confirmOverage: data.confirmOverage,
+    });
+  });
+
+/** Metered: fresh playable media URL for an ad (video). */
+export const spymarketGetAdMediaUrl = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({ adId: z.string().min(1), confirmOverage: z.boolean().optional() })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { requireAdmin } = await import("./admin.server");
+    await requireAdmin(context.supabase, context.userId);
+    const mod = await import("./spymarket-tools.server");
+    return mod.trendtrackCall({
+      userId: context.userId,
+      endpoint: "ads/media-url",
+      path: `/ads/${encodeURIComponent(data.adId)}/media-url`,
+      summary: { adId: data.adId },
+      estimatedCost: 1,
+      confirmOverage: data.confirmOverage,
+    });
+  });
+
+/** Metered: email search across brands (flows + campaigns). */
+export const spymarketQueryEmails = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        search: z.string().trim().max(200).optional(),
+        searchType: z.enum(["domain", "email", "shopKeywords"]).default("domain"),
+        keywordMode: z.enum(["any", "all"]).default("any"),
+        sortBy: z
+          .enum(["newest", "oldest", "relevance", "monthlyVisits", "bodyLength"])
+          .default("newest"),
+        campaignType: z.string().trim().max(60).optional(),
+        limit: z.number().int().min(1).max(100).default(24),
+        page: z.number().int().min(1).default(1),
+        confirmOverage: z.boolean().optional(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { requireAdmin } = await import("./admin.server");
+    await requireAdmin(context.supabase, context.userId);
+    const mod = await import("./spymarket-tools.server");
+    const body: Record<string, unknown> = {
+      searchType: data.searchType,
+      keywordMode: data.keywordMode,
+      sortBy: data.sortBy,
+      order: "desc",
+      page: data.page,
+      limit: data.limit,
+    };
+    if (data.search) body["search"] = [data.search];
+    if (data.campaignType) body["campaignTypes"] = [data.campaignType];
+    return mod.trendtrackCall({
+      userId: context.userId,
+      endpoint: "emails/query",
+      path: "/emails/query",
+      method: "POST",
+      body,
+      summary: {
+        search: data.search ?? null,
+        searchType: data.searchType,
+        sortBy: data.sortBy,
+        campaignType: data.campaignType ?? null,
+        limit: data.limit,
+        page: data.page,
+      },
+      estimatedCost: data.limit,
+      confirmOverage: data.confirmOverage,
+    });
+  });
+
+/** Metered: full email detail (subject, body, screenshot, shop identity). */
+export const spymarketGetEmail = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        emailId: z.union([z.string().min(1), z.number().int()]),
+        confirmOverage: z.boolean().optional(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { requireAdmin } = await import("./admin.server");
+    await requireAdmin(context.supabase, context.userId);
+    const mod = await import("./spymarket-tools.server");
+    return mod.trendtrackCall({
+      userId: context.userId,
+      endpoint: "emails/detail",
+      path: `/emails/${encodeURIComponent(String(data.emailId))}`,
+      summary: { emailId: data.emailId },
+      estimatedCost: 1,
       confirmOverage: data.confirmOverage,
     });
   });
