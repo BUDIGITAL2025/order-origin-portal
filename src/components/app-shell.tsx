@@ -327,12 +327,11 @@ export function AppShell({
             <Link
               key={item.to}
               to={item.to}
-              activeOptions={{ exact: item.to === "/dashboard" || item.to === "/admin/quotes" }}
-              activeProps={{
-                className:
+              className={cn(
+                "flex items-center gap-2.5 rounded-md border-l-[3px] border-transparent px-3 py-2 text-sm text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                isActive(item.to) &&
                   "border-primary bg-sidebar-accent text-sidebar-accent-foreground font-medium",
-              }}
-              className="flex items-center gap-2.5 rounded-md border-l-[3px] border-transparent px-3 py-2 text-sm text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+              )}
             >
               <item.icon className="h-4 w-4" />
               {item.label}
