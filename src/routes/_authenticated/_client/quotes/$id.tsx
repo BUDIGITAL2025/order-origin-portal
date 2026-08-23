@@ -202,6 +202,28 @@ function MyQuoteDetailPage() {
               <div className="text-xs uppercase tracking-wide text-muted-foreground">Volume / month</div>
               <div className="tnum">{quote.target_monthly_volume ?? "—"}</div>
             </div>
+            <div>
+              <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                Target countries
+              </div>
+              <p>{quote.target_countries.map((c) => countryName(c)).join(", ") || "—"}</p>
+            </div>
+            {imageUrls.length > 0 && (
+              <div>
+                <div className="text-xs uppercase tracking-wide text-muted-foreground">Images</div>
+                <div className="mt-1 flex flex-wrap gap-2">
+                  {imageUrls.map((u, i) => (
+                    <a key={i} href={u} target="_blank" rel="noreferrer">
+                      <img
+                        src={u}
+                        alt={`Reference ${i + 1}`}
+                        className="h-16 w-16 rounded-lg border border-border object-cover"
+                      />
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
