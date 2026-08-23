@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Link, useNavigate, useRouter } from "@tanstack/react-router";
+import { Link, useNavigate, useRouter, useRouterState } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -285,7 +285,17 @@ export function AppShell({
   const navigate = useNavigate();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const pathname = useRouterState({ select: (r) => r.location.pathname });
   const nav = role === "admin" ? ADMIN_NAV : CLIENT_NAV;
+
+  // Manual active matching so "/quotes/new" doesn't light up "My quotes".
+  const isActive = (to: string) => {
+    if (to === "/dashboard" || to === "/admin/quotes") return pathname === to;
+    if (to === "/quotes/new") return pathname === "/quotes/new";
+    if (to === "/quotes")
+      return pathname === "/quotes" || (pathname.startsWith("/quotes/") && pathname !== "/quotes/new");
+    return pathname === to || pathname.startsWith(to + "/");
+  };
 
   const handleSignOut = async () => {
     // Sign-out hygiene: tear down queries first so none refetch against a
