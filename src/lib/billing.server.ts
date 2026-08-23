@@ -479,7 +479,7 @@ export async function handleOrderBatchPayment(
   const { data: batch, error: batchError } = await admin
     .from("order_batch_payments")
     .select("id, order_ids, settled_at")
-    .eq("reference", reference)
+    .eq("stripe_session_id", reference)
     .maybeSingle();
   if (batchError) throw new Error(batchError.message);
   if (!batch) throw new Error(`batch payment not found for ${reference}`);
@@ -566,8 +566,10 @@ export async function handleOrderBatchPayment(
     .from("order_batch_payments")
     .update({
       settled_at: new Date().toISOString(),
-      settled_order_ids: settledIds,
-      credited_amount: leftover,
+      settled_count: settledIds.length,
+      leftover_credited: leftover,
+      status: "settled",
+      stripe_payment_intent_id: paymentIntentId,
     })
     .eq("id", batch.id)
     .is("settled_at", null);

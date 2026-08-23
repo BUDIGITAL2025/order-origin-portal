@@ -72,7 +72,9 @@ export const openDispute = createServerFn({ method: "POST" })
       p_evidence_urls: data.evidence_urls ?? [],
     });
     if (error) throw new Error(error.message);
-    return { dispute_id: disputeId as string };
+    const row = disputeId as unknown as { id: string } | null;
+    if (!row?.id) throw new Error("Dispute was not created");
+    return { dispute_id: row.id };
   });
 
 /** Client/admin: post a message on a dispute thread (access checked in the DB). */
@@ -166,9 +168,9 @@ export const adminResolveDispute = createServerFn({ method: "POST" })
     const { error } = await context.supabase.rpc("resolve_dispute", {
       p_dispute_id: data.dispute_id,
       p_resolution: data.resolution,
-      p_credit_amount: data.credit_amount ?? null,
-      p_admin_notes: data.admin_notes ?? null,
-      p_client_message: data.client_message ?? null,
+      p_credit_amount: data.credit_amount ?? undefined,
+      p_admin_notes: data.admin_notes || undefined,
+      p_client_message: data.client_message || undefined,
     });
     if (error) throw new Error(error.message);
 
@@ -184,7 +186,8 @@ export const adminResolveDispute = createServerFn({ method: "POST" })
       dispute?.order_id ??
       "";
     if (entityId) {
-      const { notify, sendClientEmail, accountIdForEntity } = await import("./billing.server");
+      const { notify } = await import("./billing.server");
+      const { sendClientEmail } = await import("./email.server");
       const { getAdminClient } = await import("./admin.server");
       const admin = await getAdminClient();
       const label =
@@ -197,16 +200,20 @@ export const adminResolveDispute = createServerFn({ method: "POST" })
         (data.client_message ? ` ${data.client_message}` : "");
       await notify(admin, {
         entityId,
-        storeId: dispute?.store_id,
+        storeId: dispute?.store_id ?? null,
         kind: "dispute_resolved",
         title: "Dispute resolved",
         body,
       });
-      const accountId = await accountIdForEntity(admin, entityId);
-      if (accountId) {
+      const { data: entity } = await admin
+        .from("entities")
+        .select("account_id")
+        .eq("id", entityId)
+        .maybeSingle();
+      if (entity?.account_id) {
         await sendClientEmail(admin, {
-          clientId: accountId,
-          subject: `Dispute ${label.split(" — ")[0]} — order ${orderNumber}`,
+          clientId: entity.account_id,
+          subject: `Dispute update — order ${orderNumber}`,
           text: body,
         });
       }
