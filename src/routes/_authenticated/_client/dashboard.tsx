@@ -93,9 +93,13 @@ function DashboardPage() {
   const usagePercent =
     quota == null ? 0 : Math.min(100, Math.round((quotesUsed / quota) * 100));
 
-  // Storeless accounts get the onboarding checklist instead of store metrics.
-  if (context && allStores.length === 0) {
-    return <OnboardingCard entity={entities[0] ?? null} hasQuote={quotes.length > 0} hasStore={false} />;
+  const openQuotes = openQuotesData?.quotes ?? [];
+  const subscribed = store?.subscription_status === "active";
+
+  // Storeless accounts get the onboarding checklist — unless they already
+  // have quote activity, in which case the real widgets take over.
+  if (context && quotesData && allStores.length === 0 && quotes.length === 0) {
+    return <OnboardingCard entity={entities[0] ?? null} hasQuote={false} hasStore={false} />;
   }
 
   // No real activity yet — show the checklist instead of a row of zeroed
