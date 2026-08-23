@@ -811,7 +811,7 @@ function ShopsTab({
               ) : (
                 <Search className="mr-2 h-4 w-4" />
               )}
-              Search — up to {limit} credits
+              Search — {costLabel(costs, "shops/query", limit)}
             </Button>
           </div>
         </CardContent>
@@ -890,7 +890,7 @@ function ShopsTab({
             onClick={() => void loadMore()}
           >
             {searching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-            Load more — up to {limit} credits
+            Load more — {costLabel(costs, "shops/query", limit)}
           </Button>
         </div>
       )}
@@ -905,9 +905,11 @@ function ShopsTab({
 function ShopDetailTab({
   shopId,
   go,
+  costs,
 }: {
   shopId?: string | undefined;
   go: SpyMarketToolsProps["go"];
+  costs?: EndpointCosts | undefined;
 }) {
   const getShop = useServerFn(spymarketGetShop);
   const call = useMeteredCall(getShop as ServerFnLike);
