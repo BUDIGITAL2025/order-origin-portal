@@ -380,9 +380,9 @@ export function SpyMarketTools({ tab, shopId, domain, go }: SpyMarketToolsProps)
       </div>
 
       {tab === "lookup" && <LookupTab go={go} />}
-      {tab === "shops" && <ShopsTab go={go} initialDomain={domain} />}
-      {tab === "shop" && <ShopDetailTab shopId={shopId} go={go} />}
-      {tab === "ads" && <AdsTab />}
+      {tab === "shops" && <ShopsTab go={go} initialDomain={domain} costs={status.endpointCosts} />}
+      {tab === "shop" && <ShopDetailTab shopId={shopId} go={go} costs={status.endpointCosts} />}
+      {tab === "ads" && <AdsTab costs={status.endpointCosts} />}
       {tab === "usage" && <UsageTab />}
     </div>
   );
@@ -394,8 +394,8 @@ function Header({ status }: { status: { creditsRemaining: number | null; dayTota
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">SpyMarket research</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Internal Trendtrack workspace — admin only. Metered calls cost 1 credit per returned row
-          and are cached for 24h.
+          Internal Trendtrack workspace — admin only. Calls are cached 24h and per-endpoint prices
+          are learned from real usage, never assumed.
         </p>
       </div>
       {status && (
@@ -549,9 +549,11 @@ const LANGUAGES = [
 function ShopsTab({
   go,
   initialDomain,
+  costs,
 }: {
   go: SpyMarketToolsProps["go"];
   initialDomain?: string | undefined;
+  costs?: EndpointCosts | undefined;
 }) {
   const queryShops = useServerFn(spymarketQueryShops);
   const call = useMeteredCall(queryShops as ServerFnLike);
