@@ -23,7 +23,6 @@ import {
   Users,
   Wallet,
 } from "lucide-react";
-import { toast } from "sonner";
 import {
   getSpyMarketToolsStatus,
   spymarketCategories,
@@ -264,13 +263,13 @@ export interface SpyMarketToolsProps {
   go: (patch: { tab?: string; shopId?: string; domain?: string }) => void;
 }
 
-const TOOL_TABS = [
+const TOOL_TABS: ReadonlyArray<{ id: string; label: string; badge?: string }> = [
   { id: "lookup", label: "Lookup", badge: "free" },
   { id: "shops", label: "Shop explorer" },
   { id: "shop", label: "Shop detail" },
   { id: "ads", label: "Ad library" },
   { id: "usage", label: "Usage", badge: "free" },
-] as const;
+];
 
 export function SpyMarketTools({ tab, shopId, domain, go }: SpyMarketToolsProps) {
   const statusFn = useServerFn(getSpyMarketToolsStatus);
@@ -1720,5 +1719,4 @@ function StatCard({
   );
 }
 
-// toast kept imported for future inline confirmations
-void toast;
+
