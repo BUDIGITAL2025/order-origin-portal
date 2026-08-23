@@ -162,12 +162,13 @@ export function IntegrationModeBadge({ mode }: { mode: IntegrationMode }) {
   );
 }
 
-type ProfileStatus = "pending" | "active" | "suspended";
+type ProfileStatus = "pending" | "active" | "suspended" | "draft";
 
 const PROFILE_STYLES: Record<ProfileStatus, string> = {
   pending: "bg-warning/10 text-warning border-warning/25",
   active: "bg-success/10 text-success border-success/25",
   suspended: "bg-destructive/10 text-destructive border-destructive/25",
+  draft: "bg-muted text-muted-foreground border-border",
 };
 
 export function ProfileStatusBadge({ status }: { status: ProfileStatus }) {

@@ -48,6 +48,17 @@ const addStoreBase = z.object({
 });
 export const addStoreSchema = addStoreBase.superRefine(storeUrlMatchesPlatform);
 
+// Connecting a draft store is Shopify-only: the *.myshopify.com rule applies.
+export const connectDraftStoreSchema = z.object({
+  store_id: z.string().uuid(),
+  store_url: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .regex(SHOPIFY_DOMAIN_RE, "Must be a valid *.myshopify.com domain (e.g. your-store.myshopify.com)"),
+  store_name: z.string().trim().max(120).optional().or(z.literal("")),
+});
+
 // Entity fiscal details — completed by the client after signup.
 export const entityDetailsSchema = z.object({
   entity_id: z.string().uuid(),

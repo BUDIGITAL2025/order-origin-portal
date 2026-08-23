@@ -17,7 +17,7 @@ export interface ContextStore {
   id: string;
   entity_id: string;
   store_name: string | null;
-  store_url: string;
+  store_url: string | null;
   platform: "shopify" | "woocommerce" | "other";
   integration_mode: "automatic" | "manual";
   subscription_plan: "basic" | "unlimited";
@@ -26,7 +26,7 @@ export interface ContextStore {
   quotes_period_start: string;
   fee_waived: boolean;
   pricing_tier: "starter" | "growth" | "scale";
-  status: "pending" | "active" | "suspended";
+  status: "pending" | "active" | "suspended" | "draft";
   created_at: string;
 }
 
@@ -51,7 +51,7 @@ export interface MyContext {
     id: string;
     contact_name: string;
     phone: string;
-    status: "pending" | "active" | "suspended";
+    status: "pending" | "active" | "suspended" | "draft";
     created_at: string;
   } | null;
   /** Legal entities owned by this account, each with their stores. */
