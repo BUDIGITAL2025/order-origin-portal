@@ -2,9 +2,10 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Check, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/app-shell";
+import { QuoteSlaCountdown, QuoteTimeline } from "@/components/quote-sla";
 import { LineStatusBadge, QuoteStatusBadge } from "@/components/status-badges";
 import {
   AlertDialog,
@@ -40,6 +41,7 @@ import {
 import { countryName } from "@/lib/countries";
 import { formatDate, formatUSD } from "@/lib/format";
 import { getMyQuote, respondToQuoteLines } from "@/lib/quotes.functions";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated/_client/quotes/$id")({
   head: () => ({
