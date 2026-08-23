@@ -67,6 +67,118 @@ export type Database = {
           },
         ]
       }
+      dispute_messages: {
+        Row: {
+          author_id: string
+          author_role: Database["public"]["Enums"]["dispute_author_role"]
+          body: string
+          created_at: string
+          dispute_id: string
+          id: string
+        }
+        Insert: {
+          author_id: string
+          author_role: Database["public"]["Enums"]["dispute_author_role"]
+          body: string
+          created_at?: string
+          dispute_id: string
+          id?: string
+        }
+        Update: {
+          author_id?: string
+          author_role?: Database["public"]["Enums"]["dispute_author_role"]
+          body?: string
+          created_at?: string
+          dispute_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dispute_messages_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dispute_messages_dispute_id_fkey"
+            columns: ["dispute_id"]
+            isOneToOne: false
+            referencedRelation: "disputes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      disputes: {
+        Row: {
+          admin_notes: string | null
+          created_at: string
+          credit_amount: number | null
+          description: string
+          evidence_urls: string[]
+          id: string
+          opened_by: string
+          order_id: string
+          reason: Database["public"]["Enums"]["dispute_reason"]
+          resolution: Database["public"]["Enums"]["dispute_resolution"] | null
+          resolved_at: string | null
+          status: Database["public"]["Enums"]["dispute_status"]
+          store_id: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          created_at?: string
+          credit_amount?: number | null
+          description: string
+          evidence_urls?: string[]
+          id?: string
+          opened_by: string
+          order_id: string
+          reason: Database["public"]["Enums"]["dispute_reason"]
+          resolution?: Database["public"]["Enums"]["dispute_resolution"] | null
+          resolved_at?: string | null
+          status?: Database["public"]["Enums"]["dispute_status"]
+          store_id: string
+        }
+        Update: {
+          admin_notes?: string | null
+          created_at?: string
+          credit_amount?: number | null
+          description?: string
+          evidence_urls?: string[]
+          id?: string
+          opened_by?: string
+          order_id?: string
+          reason?: Database["public"]["Enums"]["dispute_reason"]
+          resolution?: Database["public"]["Enums"]["dispute_resolution"] | null
+          resolved_at?: string | null
+          status?: Database["public"]["Enums"]["dispute_status"]
+          store_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "disputes_opened_by_fkey"
+            columns: ["opened_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "disputes_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "disputes_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       documents: {
         Row: {
           amount: number
@@ -254,6 +366,56 @@ export type Database = {
           },
         ]
       }
+      order_batch_payments: {
+        Row: {
+          amount: number
+          created_at: string
+          entity_id: string
+          id: string
+          leftover_credited: number | null
+          order_ids: string[]
+          settled_at: string | null
+          settled_count: number | null
+          status: string
+          stripe_payment_intent_id: string | null
+          stripe_session_id: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          entity_id: string
+          id?: string
+          leftover_credited?: number | null
+          order_ids: string[]
+          settled_at?: string | null
+          settled_count?: number | null
+          status?: string
+          stripe_payment_intent_id?: string | null
+          stripe_session_id?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          entity_id?: string
+          id?: string
+          leftover_credited?: number | null
+          order_ids?: string[]
+          settled_at?: string | null
+          settled_count?: number | null
+          status?: string
+          stripe_payment_intent_id?: string | null
+          stripe_session_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_batch_payments_entity_id_fkey"
+            columns: ["entity_id"]
+            isOneToOne: false
+            referencedRelation: "entities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order_fulfillment_items: {
         Row: {
           created_at: string
@@ -345,6 +507,7 @@ export type Database = {
         Row: {
           cancelled_at: string | null
           created_at: string
+          delivered_at: string | null
           destination_country: string | null
           external_order_id: string | null
           external_order_number: string | null
@@ -358,6 +521,7 @@ export type Database = {
           reminder_24_sent_at: string | null
           reminder_48_sent_at: string | null
           reminder_72_sent_at: string | null
+          shipped_at: string | null
           shipping_address: Json | null
           status: Database["public"]["Enums"]["order_status"]
           store_id: string
@@ -366,6 +530,7 @@ export type Database = {
         Insert: {
           cancelled_at?: string | null
           created_at?: string
+          delivered_at?: string | null
           destination_country?: string | null
           external_order_id?: string | null
           external_order_number?: string | null
@@ -379,6 +544,7 @@ export type Database = {
           reminder_24_sent_at?: string | null
           reminder_48_sent_at?: string | null
           reminder_72_sent_at?: string | null
+          shipped_at?: string | null
           shipping_address?: Json | null
           status?: Database["public"]["Enums"]["order_status"]
           store_id: string
@@ -387,6 +553,7 @@ export type Database = {
         Update: {
           cancelled_at?: string | null
           created_at?: string
+          delivered_at?: string | null
           destination_country?: string | null
           external_order_id?: string | null
           external_order_number?: string | null
@@ -400,6 +567,7 @@ export type Database = {
           reminder_24_sent_at?: string | null
           reminder_48_sent_at?: string | null
           reminder_72_sent_at?: string | null
+          shipped_at?: string | null
           shipping_address?: Json | null
           status?: Database["public"]["Enums"]["order_status"]
           store_id?: string
@@ -957,6 +1125,7 @@ export type Database = {
         Returns: {
           cancelled_at: string | null
           created_at: string
+          delivered_at: string | null
           destination_country: string | null
           external_order_id: string | null
           external_order_number: string | null
@@ -970,6 +1139,7 @@ export type Database = {
           reminder_24_sent_at: string | null
           reminder_48_sent_at: string | null
           reminder_72_sent_at: string | null
+          shipped_at: string | null
           shipping_address: Json | null
           status: Database["public"]["Enums"]["order_status"]
           store_id: string
@@ -1094,6 +1264,7 @@ export type Database = {
         Returns: {
           cancelled_at: string | null
           created_at: string
+          delivered_at: string | null
           destination_country: string | null
           external_order_id: string | null
           external_order_number: string | null
@@ -1107,6 +1278,7 @@ export type Database = {
           reminder_24_sent_at: string | null
           reminder_48_sent_at: string | null
           reminder_72_sent_at: string | null
+          shipped_at: string | null
           shipping_address: Json | null
           status: Database["public"]["Enums"]["order_status"]
           store_id: string
@@ -1115,6 +1287,59 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "orders"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      open_dispute: {
+        Args: {
+          p_description: string
+          p_evidence_urls?: string[]
+          p_order_id: string
+          p_reason: Database["public"]["Enums"]["dispute_reason"]
+        }
+        Returns: {
+          admin_notes: string | null
+          created_at: string
+          credit_amount: number | null
+          description: string
+          evidence_urls: string[]
+          id: string
+          opened_by: string
+          order_id: string
+          reason: Database["public"]["Enums"]["dispute_reason"]
+          resolution: Database["public"]["Enums"]["dispute_resolution"] | null
+          resolved_at: string | null
+          status: Database["public"]["Enums"]["dispute_status"]
+          store_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "disputes"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      pay_orders_from_wallet: {
+        Args: { p_order_ids: string[] }
+        Returns: {
+          amount: number
+          order_id: string
+        }[]
+      }
+      post_dispute_message: {
+        Args: { p_body: string; p_dispute_id: string }
+        Returns: {
+          author_id: string
+          author_role: Database["public"]["Enums"]["dispute_author_role"]
+          body: string
+          created_at: string
+          dispute_id: string
+          id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "dispute_messages"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -1129,6 +1354,36 @@ export type Database = {
       release_order_to_fulfilment: {
         Args: { p_order_id: string }
         Returns: undefined
+      }
+      resolve_dispute: {
+        Args: {
+          p_admin_notes?: string
+          p_client_message?: string
+          p_credit_amount?: number
+          p_dispute_id: string
+          p_resolution: Database["public"]["Enums"]["dispute_resolution"]
+        }
+        Returns: {
+          admin_notes: string | null
+          created_at: string
+          credit_amount: number | null
+          description: string
+          evidence_urls: string[]
+          id: string
+          opened_by: string
+          order_id: string
+          reason: Database["public"]["Enums"]["dispute_reason"]
+          resolution: Database["public"]["Enums"]["dispute_resolution"] | null
+          resolved_at: string | null
+          status: Database["public"]["Enums"]["dispute_status"]
+          store_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "disputes"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       respond_to_quote_lines: {
         Args: { p_decisions: Json; p_product_name: string; p_quote_id: string }
@@ -1200,6 +1455,15 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "client"
+      dispute_author_role: "client" | "admin"
+      dispute_reason: "not_delivered" | "damaged" | "wrong_product"
+      dispute_resolution: "wallet_credit" | "reshipped" | "rejected"
+      dispute_status:
+        | "open"
+        | "investigating"
+        | "approved"
+        | "rejected"
+        | "closed"
       document_type: "order_receipt" | "wallet_topup" | "subscription"
       entity_status: "active" | "suspended"
       integration_mode: "automatic" | "manual"
@@ -1352,6 +1616,16 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "client"],
+      dispute_author_role: ["client", "admin"],
+      dispute_reason: ["not_delivered", "damaged", "wrong_product"],
+      dispute_resolution: ["wallet_credit", "reshipped", "rejected"],
+      dispute_status: [
+        "open",
+        "investigating",
+        "approved",
+        "rejected",
+        "closed",
+      ],
       document_type: ["order_receipt", "wallet_topup", "subscription"],
       entity_status: ["active", "suspended"],
       integration_mode: ["automatic", "manual"],

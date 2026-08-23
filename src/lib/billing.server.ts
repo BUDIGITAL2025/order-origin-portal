@@ -454,6 +454,158 @@ export async function handleWalletTopup(
   }
 }
 
+/**
+ * Settle exactly the orders a client selected in a batch card payment. The
+ * batch row (keyed on the Checkout session reference) carries the chosen
+ * order ids — settlement is never oldest-first. Totals are recomputed from
+ * the orders table at settlement time; orders cancelled or paid since
+ * selection are skipped and their share is credited to the entity wallet as
+ * a top-up (never refunded). Every credit/debit is reference-idempotent and
+ * the batch row's settled_at is the replay guard.
+ */
+export async function handleOrderBatchPayment(
+  stripe: Stripe,
+  admin: Admin,
+  paymentIntentId: string,
+): Promise<void> {
+  const pi = await stripe.paymentIntents.retrieve(paymentIntentId);
+  if (pi.status !== "succeeded") return;
+  const reference = pi.metadata?.["batch_reference"];
+  const entityId = pi.metadata?.["flysales_entity_id"];
+  if (!reference || !entityId) {
+    throw new Error(`payment intent ${paymentIntentId} missing batch metadata`);
+  }
+
+  const { data: batch, error: batchError } = await admin
+    .from("order_batch_payments")
+    .select("id, order_ids, settled_at")
+    .eq("reference", reference)
+    .maybeSingle();
+  if (batchError) throw new Error(batchError.message);
+  if (!batch) throw new Error(`batch payment not found for ${reference}`);
+  if (batch.settled_at) return; // already settled — replay
+
+  const orderIds = (Array.isArray(batch.order_ids) ? batch.order_ids : []) as string[];
+  const { data: orders, error: ordersError } = await admin
+    .from("orders")
+    .select("id, status, total_amount, external_order_number, stores(entity_id)")
+    .in("id", orderIds);
+  if (ordersError) throw new Error(ordersError.message);
+  const mine = (orders ?? []).filter(
+    (o) => (o.stores as { entity_id?: string } | null)?.entity_id === entityId,
+  );
+  // Only orders still awaiting payment can settle; anything else is skipped.
+  const payable = mine.filter(
+    (o) => o.status === "awaiting_payment" && Number(o.total_amount ?? 0) > 0,
+  );
+  const skippedCount = orderIds.length - payable.length;
+
+  // Fund the wallet for the settleable share (reference = payment intent → once).
+  const settleSum = round2(payable.reduce((acc, o) => acc + Number(o.total_amount), 0));
+  if (settleSum > 0) {
+    await creditWalletOnce(admin, {
+      entityId,
+      amountUsd: settleSum,
+      reference: pi.id,
+      description: `Batch order payment — card (${payable.length} order${payable.length === 1 ? "" : "s"})`,
+    });
+  }
+
+  // Settle each selected order (reference = order id → never twice).
+  const settledIds: string[] = [];
+  for (const order of payable) {
+    const amount = Number(order.total_amount);
+    await debitWalletOnce(admin, {
+      entityId,
+      amountUsd: amount,
+      reference: order.id,
+      description: `Order payment ${order.external_order_number ?? order.id} (batch card payment)`,
+    });
+    const { data: updated, error: payError } = await admin
+      .from("orders")
+      .update({
+        status: "paid",
+        payment_method: "direct",
+        paid_at: new Date().toISOString(),
+      })
+      .eq("id", order.id)
+      .eq("status", "awaiting_payment")
+      .select("id");
+    if (payError) throw new Error(payError.message);
+    if ((updated ?? []).length > 0) {
+      settledIds.push(order.id);
+      await admin.rpc("release_order_to_fulfilment", { p_order_id: order.id });
+    }
+  }
+
+  // Leftover = paid minus what actually settled (authoritative: the ledger
+  // debits keyed on order ids), credited back to the wallet as a top-up.
+  const { data: debits } = await admin
+    .from("wallet_transactions")
+    .select("reference, amount")
+    .eq("entity_id", entityId)
+    .in("reference", orderIds);
+  const settledSum = round2(
+    (debits ?? []).reduce((acc, d) => acc + Number(d.amount), 0),
+  );
+  const paidUsd = round2(pi.amount_received / 100);
+  const leftover = round2(Math.max(0, paidUsd - settledSum));
+  if (leftover > 0) {
+    await creditWalletOnce(admin, {
+      entityId,
+      amountUsd: leftover,
+      reference: `${pi.id}:leftover`,
+      description:
+        settledIds.length === 0
+          ? "Batch payment credit — selected orders were no longer payable"
+          : "Batch payment leftover — some selected orders were no longer payable",
+    });
+  }
+
+  const { error: doneError } = await admin
+    .from("order_batch_payments")
+    .update({
+      settled_at: new Date().toISOString(),
+      settled_order_ids: settledIds,
+      credited_amount: leftover,
+    })
+    .eq("id", batch.id)
+    .is("settled_at", null);
+  if (doneError) throw new Error(doneError.message);
+
+  // Payment Receipt per settled order (best-effort; the ledger is truth).
+  const { issueOrderReceipt } = await import("./documents.server");
+  for (const id of settledIds) {
+    try {
+      await issueOrderReceipt(admin, id);
+    } catch (e) {
+      console.error("order receipt failed:", id, e);
+    }
+  }
+
+  const body =
+    settledIds.length === 0
+      ? `None of the selected orders were still awaiting payment, so $${leftover.toFixed(2)} was credited to your wallet instead.`
+      : `${settledIds.length} order${settledIds.length === 1 ? "" : "s"} paid — $${settledSum.toFixed(2)}.` +
+        (leftover > 0
+          ? ` $${leftover.toFixed(2)} was credited to your wallet because ${skippedCount} selected order${skippedCount === 1 ? " was" : "s were"} no longer payable.`
+          : "");
+  await notify(admin, {
+    entityId,
+    kind: "order_batch_settled",
+    title: "Batch payment processed",
+    body,
+  });
+  const accountId = await accountIdForEntity(admin, entityId);
+  if (accountId) {
+    await sendClientEmail(admin, {
+      clientId: accountId,
+      subject: "Your FlySales batch payment",
+      text: body,
+    });
+  }
+}
+
 /** The single entry point called by the webhook route after idempotency. */
 export async function processStripeEvent(
   event: StripeEvent,
@@ -538,6 +690,9 @@ export async function processStripeEvent(
       } else if (kind === "wallet_topup") {
         const piId = idOf(session["payment_intent"]);
         if (piId) await handleWalletTopup(stripe, admin, piId);
+      } else if (kind === "order_batch") {
+        const piId = idOf(session["payment_intent"]);
+        if (piId) await handleOrderBatchPayment(stripe, admin, piId);
       }
       return;
     }
@@ -635,6 +790,9 @@ export async function processStripeEvent(
       if (kind === "wallet_topup" || kind === "wallet_auto_topup") {
         const piId = String(event.data.object["id"] ?? "");
         if (piId) await handleWalletTopup(stripe, admin, piId);
+      } else if (kind === "order_batch") {
+        const piId = String(event.data.object["id"] ?? "");
+        if (piId) await handleOrderBatchPayment(stripe, admin, piId);
       }
       return;
     }
