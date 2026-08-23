@@ -400,6 +400,8 @@ export function AppShell({
           {role === "client" && <PastDueBanner />}
           <div className="mx-auto max-w-6xl px-6 py-6">{children}</div>
         </main>
+
+        <LegalFooter className="border-t border-border" />
       </div>
     </div>
   );

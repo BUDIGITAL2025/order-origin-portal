@@ -13,6 +13,7 @@ import {
   storeIdSchema,
   tierOverrideSchema,
 } from "./schemas";
+import { TERMS_VERSION } from "./terms";
 
 export interface ContextStore {
   id: string;

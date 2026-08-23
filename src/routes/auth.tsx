@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import logoLightAsset from "@/assets/flysales-logo-light.png.asset.json";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { LegalFooter } from "@/components/legal";
 import {
   Card,
   CardContent,
@@ -53,6 +55,7 @@ function AuthPage() {
     contact_name: "",
     phone: "",
     country: "",
+    terms: false,
   });
 
   const routeAfterSignIn = async () => {
@@ -159,6 +162,7 @@ function AuthPage() {
           contact_name: parsed.data.contact_name,
           phone: parsed.data.phone,
           country: parsed.data.country,
+          terms_accepted: true,
         },
       });
       toast.success("Account created — welcome to FlySales.");
@@ -315,7 +319,32 @@ function AuthPage() {
                     <Input id="su-country" required value={signup.country} onChange={setField("country")} />
                   </div>
                 </div>
-                <Button type="submit" className="w-full" disabled={busy}>
+                <div className="flex items-start gap-2.5 pt-1">
+                  <Checkbox
+                    id="su-terms"
+                    checked={signup.terms}
+                    onCheckedChange={(checked) =>
+                      setSignup((s) => ({ ...s, terms: checked === true }))
+                    }
+                    aria-describedby="su-terms-label"
+                  />
+                  <Label
+                    id="su-terms-label"
+                    htmlFor="su-terms"
+                    className="text-xs font-normal leading-snug text-muted-foreground"
+                  >
+                    I agree to the{" "}
+                    <a
+                      href="/terms"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-medium text-foreground underline underline-offset-4"
+                    >
+                      Terms of Service
+                    </a>
+                  </Label>
+                </div>
+                <Button type="submit" className="w-full" disabled={busy || !signup.terms}>
                   {busy ? "Creating account…" : "Create account"}
                 </Button>
               </CardContent>
@@ -327,6 +356,7 @@ function AuthPage() {
       <p className="mt-6 text-xs text-muted-foreground">
         Access is granted after manual approval. All prices are quoted in USD.
       </p>
+      <LegalFooter className="mt-2" />
     </div>
   );
 }
