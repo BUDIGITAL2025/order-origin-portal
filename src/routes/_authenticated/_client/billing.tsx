@@ -186,13 +186,14 @@ function BillingPage() {
   const subscribe = useMutation({
     mutationFn: async (plan: "basic" | "unlimited") => {
       if (!environment) throw new Error("Payments are not configured for this build");
-      if (!storeId) throw new Error("No workspace selected");
+      // No workspace yet → the server creates a draft workspace and attaches
+      // the subscription to it; nothing for the client to set up first.
       const result = await callSubscribe({
         data: {
           plan,
           returnUrl: `${window.location.origin}/billing`,
           environment,
-          storeId,
+          ...(storeId ? { storeId } : {}),
         },
       });
       if ("error" in result) throw new Error(result.error);

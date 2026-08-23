@@ -18,9 +18,17 @@ import { PLANS, planQuota, quotaResetDate } from "@/lib/plans";
 import { quoteRequestSchema } from "@/lib/schemas";
 import { createQuoteRequest } from "@/lib/quotes.functions";
 import { getUrlPreview } from "@/lib/previews.functions";
+import { createSubscriptionCheckout } from "@/lib/billing.functions";
+import { getStripeEnvironment } from "@/lib/stripe";
 import { useMyContext } from "../../_client";
 
 export const Route = createFileRoute("/_authenticated/_client/quotes/new")({
+  // Stripe substitutes {CHECKOUT_SESSION_ID} server-side; sub=success/cancel
+  // is a display hint only — activation comes from the webhook.
+  validateSearch: (search: Record<string, unknown>): { sub?: string } => {
+    const sub = search["sub"];
+    return typeof sub === "string" ? { sub } : {};
+  },
   head: () => ({
     meta: [
       { title: "Request a quote — FlySales" },
@@ -82,6 +90,32 @@ function NewQuotePageInner() {
   const [uploading, setUploading] = useState(false);
   const [quotaBlocked, setQuotaBlocked] = useState(false);
   const [plansBlocked, setPlansBlocked] = useState(false);
+  const [subscribeError, setSubscribeError] = useState<string | null>(null);
+
+  // Return from Stripe checkout: sub=success/cancel. Activation arrives via
+  // webhook — refresh the context so the paywall lifts as soon as it lands.
+  const { sub } = Route.useSearch();
+  useEffect(() => {
+    if (sub === "success") {
+      toast.success("Subscription received — it activates as soon as the payment confirms.");
+      void queryClient.invalidateQueries({ queryKey: ["my-context"] });
+      const poll = setInterval(
+        () => void queryClient.invalidateQueries({ queryKey: ["my-context"] }),
+        3000,
+      );
+      const stop = setTimeout(() => clearInterval(poll), 30000);
+      void navigate({ to: "/quotes/new", replace: true, search: {} });
+      return () => {
+        clearInterval(poll);
+        clearTimeout(stop);
+      };
+    }
+    if (sub === "cancel") {
+      toast.info("Checkout canceled — nothing was charged.");
+      void navigate({ to: "/quotes/new", replace: true, search: {} });
+    }
+    return undefined;
+  }, [sub, navigate, queryClient]);
 
   // Quota and plan live on the current workspace (localStorage selection,
   // resolved after hydration; falls back to the first workspace).
@@ -96,6 +130,30 @@ function NewQuotePageInner() {
   const quota = planQuota(plan);
   const quotesUsed = currentStore?.quotes_used_this_month ?? 0;
   const limitReached = quota != null && quotesUsed >= quota;
+
+  // Subscribe straight from the paywall: opens Stripe checkout for the chosen
+  // plan without leaving the form. No workspace yet → the server creates the
+  // draft workspace itself. Return URL points back here (?sub=success) so the
+  // client lands unblocked where they started.
+  const callSubscribe = useServerFn(createSubscriptionCheckout);
+  const subscribe = useMutation({
+    mutationFn: async (planKey: "basic" | "unlimited") => {
+      const result = await callSubscribe({
+        data: {
+          plan: planKey,
+          storeId: currentStore?.id,
+          returnUrl: `${window.location.origin}/quotes/new`,
+          environment: getStripeEnvironment(),
+        },
+      });
+      if ("error" in result) throw new Error(result.error);
+      if (!result.url) throw new Error("Stripe did not return a checkout URL");
+      return result.url;
+    },
+    onSuccess: (url) => window.location.assign(url),
+    onError: (err) =>
+      setSubscribeError(err instanceof Error ? err.message : "Could not start checkout"),
+  });
 
   // Paywall: submitting needs an active subscription on this workspace (or a
   // fee waiver). The form stays visible and fillable; the plan options only
@@ -354,11 +412,25 @@ function NewQuotePageInner() {
                         ? `${PLANS.basic.quoteQuota} quote requests per month`
                         : "Unlimited quote requests"}
                     </p>
-                    <Button asChild size="sm" className="mt-3 w-full">
-                      <Link to="/billing">Subscribe to {PLANS[key].label}</Link>
+                    <Button
+                      size="sm"
+                      className="mt-3 w-full"
+                      disabled={subscribe.isPending}
+                      onClick={() => {
+                        setSubscribeError(null);
+                        subscribe.mutate(key);
+                      }}
+                    >
+                      {subscribe.isPending ? "Opening checkout…" : `Subscribe to ${PLANS[key].label}`}
                     </Button>
                   </div>
                 ))}
+                {subscribeError && (
+                  <p className="text-sm text-destructive sm:col-span-2">
+                    Could not start checkout: {subscribeError}. If this keeps happening, contact
+                    support.
+                  </p>
+                )}
               </CardContent>
             </Card>
           )}
