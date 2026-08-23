@@ -260,15 +260,17 @@ export const adminGetQuote = createServerFn({ method: "GET" })
       description: string | null;
       image_urls: string[];
       price_hint: string | null;
+      variants: string[];
       source: "firecrawl" | "fetch" | "perplexity";
     } | null = null;
     if (previewId) {
       const { data: p } = await admin
         .from("url_previews")
-        .select("id, url_normalized, title, description, image_urls, price_hint, source")
+        .select("id, url_normalized, title, description, image_urls, price_hint, variants, source")
         .eq("id", previewId)
         .maybeSingle();
-      preview = p ?? null;
+      // `variants` exists in the DB but not yet in the generated types.
+      preview = p ? { ...(p as Omit<typeof p, "variants">), variants: ((p as { variants?: string[] | null }).variants ?? []) } : null;
     }
 
     const { data: lines, error: linesError } = await admin
