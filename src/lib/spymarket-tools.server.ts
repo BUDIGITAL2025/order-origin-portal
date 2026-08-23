@@ -523,6 +523,7 @@ export async function getUsageDashboard(userId: string): Promise<{
     totalCalls: all.length,
     byMember: [...byMemberMap.values()].sort((a, b) => b.credits - a.credits),
     byEndpoint: [...byEndpointMap.values()].sort((a, b) => b.credits - a.credits),
+    observedPricing: await getEndpointCosts(),
     creditsRemaining: lastWithBalance?.credits_remaining ?? null,
     liveBalance,
     recent: all.slice(0, 25).map((r) => ({
