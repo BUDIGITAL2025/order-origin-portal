@@ -354,6 +354,18 @@ export const createBatchOrderCheckout = createServerFn({ method: "POST" })
     const entityIds = new Set(orders.map((o) => o.stores.entity_id));
     if (entityIds.size !== 1) throw new Error("Orders must belong to the same entity.");
     const entityId = orders[0]!.stores.entity_id;
+
+    // Suspension gate: card payments of awaiting_payment orders are frozen
+    // while suspended. Wallet payments are blocked inside pay_orders_from_wallet.
+    const [{ data: entityRow }, { data: profileRow }] = await Promise.all([
+      context.supabase.from("entities").select("status").eq("id", entityId).maybeSingle(),
+      context.supabase.from("profiles").select("status").eq("id", context.userId).maybeSingle(),
+    ]);
+    if (entityRow?.status === "suspended" || profileRow?.status === "suspended") {
+      throw new Error(
+        "Payments are frozen while this account is suspended — contact your account manager.",
+      );
+    }
     const total = orders.reduce((acc, o) => acc + Number(o.total_amount ?? 0), 0);
     if (!(total > 0)) throw new Error("Selected orders have no payable total.");
 
@@ -433,6 +445,19 @@ export const createWalletTopupCheckout = createServerFn({ method: "POST" })
         if (error) throw new Error(error.message);
         if (!row) throw new Error("Entity not found for this account");
         entity = row;
+      }
+
+      // No top-ups while suspended — the wallet itself stays intact and
+      // refunds keep flowing; only NEW money-in is paused.
+      const { data: profileRow } = await context.supabase
+        .from("profiles")
+        .select("status")
+        .eq("id", context.userId)
+        .maybeSingle();
+      if (entity.status === "suspended" || profileRow?.status === "suspended") {
+        throw new Error(
+          "This account is suspended — wallet top-ups are disabled. Contact your account manager.",
+        );
       }
 
       const email = (context.claims?.email as string | undefined) ?? undefined;

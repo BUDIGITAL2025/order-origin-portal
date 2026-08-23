@@ -10,6 +10,11 @@ import {
 
 /** Map DB error codes from the manual-order RPCs to client-readable text. */
 function toManualOrderError(message: string): Error {
+  if (message.includes("ACCOUNT_SUSPENDED")) {
+    return new Error(
+      "Your account is suspended — new orders are disabled. Paid orders keep moving; contact your account manager.",
+    );
+  }
   if (message.includes("UNKNOWN_SKU")) {
     return new Error(message.replace("UNKNOWN_SKU:", "Unknown SKU:"));
   }
