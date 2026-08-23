@@ -300,7 +300,7 @@ function AdminClientsPage() {
                                       <div className="flex items-center gap-1.5">
                                         <TierBadge tier={effTier} />
                                         {s.tier_override && (
-                                          <span className="text-xs text-warning-foreground">override</span>
+                                          <span className="text-xs text-warning">override</span>
                                         )}
                                       </div>
                                       <Select

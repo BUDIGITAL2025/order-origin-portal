@@ -121,7 +121,7 @@ function NewQuotePageInner() {
         />
         <Card>
           <CardContent className="flex flex-col items-start gap-3 p-8">
-            <ArrowUpCircle className="h-8 w-8 text-warning-foreground" />
+            <ArrowUpCircle className="h-8 w-8 text-warning" />
             <h2 className="text-lg font-semibold">Monthly quote allowance reached</h2>
             <p className="text-sm text-muted-foreground">
               You've used all {quota ?? PLANS.basic.quoteQuota} quote requests included in your{" "}
