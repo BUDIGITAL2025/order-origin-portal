@@ -277,18 +277,29 @@ export const adminListClients = createServerFn({ method: "GET" })
     return { clients: data ?? [] };
   });
 
-/** Admin: suspend an account or reactivate a suspended one. */
+/**
+ * Admin: suspend an account or reactivate a suspended one. Suspension
+ * cascades to the account's entities — entity.status is what the auto-topup
+ * cron and the DB suspension gates read. In-flight PAID work (fulfilment,
+ * tracking, disputes, refunds) is untouched by design.
+ */
 export const adminSetClientStatus = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => clientStatusSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const { requireAdmin } = await import("./admin.server");
+    const { requireAdmin, getAdminClient } = await import("./admin.server");
     await requireAdmin(context.supabase, context.userId);
-    const { error } = await context.supabase
+    const admin = await getAdminClient();
+    const { error } = await admin
       .from("profiles")
       .update({ status: data.status })
       .eq("id", data.client_id);
     if (error) throw new Error(error.message);
+    const { error: entityError } = await admin
+      .from("entities")
+      .update({ status: data.status })
+      .eq("account_id", data.client_id);
+    if (entityError) throw new Error(entityError.message);
     return { ok: true };
   });
 

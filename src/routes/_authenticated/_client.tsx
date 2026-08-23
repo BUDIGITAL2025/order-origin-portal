@@ -46,8 +46,14 @@ function ClientLayout() {
   // Signed in but no profile row yet → complete company details first.
   if (ctx && !ctx.profile) return <CompleteProfile />;
 
-  if (ctx?.profile && ctx.profile.status !== "active") return <Navigate to="/pending" />;
+  // Only unapproved accounts are locked out. Suspended accounts KEEP portal
+  // access — their paid orders still deliver and disputes stay available —
+  // but every unpaid-work path is gated server-side and a banner explains it.
+  if (ctx?.profile && (ctx.profile.status === "pending" || ctx.profile.status === "draft")) {
+    return <Navigate to="/pending" />;
+  }
 
+  const isSuspended = ctx?.profile?.status === "suspended";
   const firstEntity = ctx?.entities?.[0] ?? null;
   const allStores = ctx?.entities?.flatMap((e) => e.stores) ?? [];
 
@@ -58,9 +64,30 @@ function ClientLayout() {
       companyName={firstEntity?.legal_name ?? null}
       onboardingStores={allStores}
     >
+      {isSuspended ? <SuspendedBanner /> : null}
       <TermsAcceptanceBanner />
       <Outlet />
     </AppShell>
+  );
+}
+
+/**
+ * Persistent banner for suspended accounts: unpaid work (new quotes, orders,
+ * payments, top-ups) is frozen, while paid orders keep flowing to delivery
+ * and disputes remain available.
+ */
+function SuspendedBanner() {
+  return (
+    <div className="mb-4 rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3">
+      <p className="text-sm">
+        <span className="font-medium">Your account is suspended.</span>{" "}
+        <span className="text-muted-foreground">
+          New quotes, orders and payments are paused. Orders already paid continue to fulfilment,
+          and you can still track them and open disputes. Contact your account manager to
+          reactivate your account.
+        </span>
+      </p>
+    </div>
   );
 }
 

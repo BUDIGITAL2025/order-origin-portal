@@ -19,6 +19,11 @@ export class QuotaExceededError extends Error {
 }
 
 function toSubmitError(message: string): Error {
+  if (message.includes("ACCOUNT_SUSPENDED")) {
+    return new Error(
+      "Your account is suspended — contact your account manager. Paid orders and disputes are unaffected.",
+    );
+  }
   if (message.includes("QUOTE_LIMIT_REACHED")) {
     return new QuotaExceededError(
       "You've used all 5 quote requests in your Basic plan this month. Upgrade to Unlimited for uncapped requests.",
@@ -40,6 +45,11 @@ export const createQuoteRequest = createServerFn({ method: "POST" })
       .eq("id", userId)
       .maybeSingle();
     if (!profile) throw new Error("Complete your company profile first");
+    if (profile.status === "suspended") {
+      throw new Error(
+        "Your account is suspended — contact your account manager. Paid orders and disputes are unaffected.",
+      );
+    }
     if (profile.status !== "active") {
       throw new Error("Your account is not active yet");
     }
