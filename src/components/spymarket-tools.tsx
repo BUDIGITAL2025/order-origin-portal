@@ -636,7 +636,7 @@ function LookupTab({ go }: { go: SpyMarketToolsProps["go"] }) {
         </CardContent>
       </Card>
 
-      <CallFeedback state={call.state} onConfirm={call.confirm} onCancel={call.cancelConfirm} />
+      <CallFeedback state={call.state} onConfirm={call.confirm} onCancel={call.cancelConfirm} onRetry={call.retry} />
 
       {call.state.kind === "loading" && <LoadingRows />}
 
@@ -997,7 +997,7 @@ function ShopsTab({
         </CardContent>
       </Card>
 
-      <CallFeedback state={call.state} onConfirm={call.confirm} onCancel={call.cancelConfirm} />
+      <CallFeedback state={call.state} onConfirm={call.confirm} onCancel={call.cancelConfirm} onRetry={call.retry} />
 
       {searching && pages.length === 0 && <LoadingRows rows={6} />}
 
@@ -1168,7 +1168,7 @@ function ShopDetailTab({
         </Card>
       )}
 
-      <CallFeedback state={call.state} onConfirm={call.confirm} onCancel={call.cancelConfirm} />
+      <CallFeedback state={call.state} onConfirm={call.confirm} onCancel={call.cancelConfirm} onRetry={call.retry} />
 
       {call.state.kind === "loading" && <LoadingRows rows={6} />}
 
@@ -1705,7 +1705,7 @@ function ShopOnDemand({
         </div>
 
         {activeSection && !sectionData[activeSection] && (
-          <CallFeedback state={call.state} onConfirm={call.confirm} onCancel={call.cancelConfirm} />
+          <CallFeedback state={call.state} onConfirm={call.confirm} onCancel={call.cancelConfirm} onRetry={call.retry} />
         )}
         {activeSection && call.state.kind === "loading" && !loaded && <LoadingRows rows={3} />}
 
@@ -2095,7 +2095,7 @@ function AdsTab({ costs }: { costs?: EndpointCosts | undefined }) {
         Reach/spend data covers EU &amp; UK ads only. Facebook platform only in public v1.
       </p>
 
-      <CallFeedback state={call.state} onConfirm={call.confirm} onCancel={call.cancelConfirm} />
+      <CallFeedback state={call.state} onConfirm={call.confirm} onCancel={call.cancelConfirm} onRetry={call.retry} />
 
       {searching && pages.length === 0 && <LoadingRows rows={6} />}
 
@@ -2241,7 +2241,7 @@ function AdDetailDialog({
 
         {call.state.kind === "loading" && <LoadingRows rows={4} />}
         {call.state.kind !== "ok" && (
-          <CallFeedback state={call.state} onConfirm={call.confirm} onCancel={call.cancelConfirm} />
+          <CallFeedback state={call.state} onConfirm={call.confirm} onCancel={call.cancelConfirm} onRetry={call.retry} />
         )}
 
         {ad && (
@@ -2460,7 +2460,7 @@ function EmailDetailDialog({
 
         {call.state.kind === "loading" && <LoadingRows rows={4} />}
         {call.state.kind !== "ok" && (
-          <CallFeedback state={call.state} onConfirm={call.confirm} onCancel={call.cancelConfirm} />
+          <CallFeedback state={call.state} onConfirm={call.confirm} onCancel={call.cancelConfirm} onRetry={call.retry} />
         )}
 
         {email && (
@@ -2658,7 +2658,7 @@ function EmailsTab({ costs }: { costs?: EndpointCosts | undefined }) {
         </CardContent>
       </Card>
 
-      <CallFeedback state={call.state} onConfirm={call.confirm} onCancel={call.cancelConfirm} />
+      <CallFeedback state={call.state} onConfirm={call.confirm} onCancel={call.cancelConfirm} onRetry={call.retry} />
 
       {searching && pages.length === 0 && <LoadingRows rows={4} />}
 
