@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { z } from "zod";
 import { EmptyState, PageHeader } from "@/components/app-shell";
+import { QuoteSlaBadge } from "@/components/quote-sla";
 import { QuoteStatusBadge, TierBadge } from "@/components/status-badges";
 import { Button } from "@/components/ui/button";
 import {
@@ -48,9 +49,36 @@ function AdminQuotesPage() {
 
   const quotes = data?.quotes ?? [];
 
+  // Worklist ordering: open requests first, most urgent (closest to / past
+  // the 48h target) at the top; answered requests follow, newest first.
+  const isOpen = (s: string) => s === "submitted" || s === "sourcing";
+  const sorted = [...quotes].sort((a, b) => {
+    const aOpen = isOpen(a.status);
+    const bOpen = isOpen(b.status);
+    if (aOpen && bOpen) {
+      return new Date(a.quote_due_at).getTime() - new Date(b.quote_due_at).getTime();
+    }
+    if (aOpen) return -1;
+    if (bOpen) return 1;
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
+  const overdueCount = quotes.filter(
+    (q) => isOpen(q.status) && new Date(q.quote_due_at).getTime() < Date.now(),
+  ).length;
+
   return (
     <div>
-      <PageHeader title="Quote queue" description="All client requests, oldest first." />
+      <PageHeader
+        title="Quote queue"
+        description="Open requests first, most urgent at the top."
+      />
+
+      {overdueCount > 0 && (
+        <div className="mb-4 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive">
+          {overdueCount} {overdueCount === 1 ? "request is" : "requests are"} past the 48h sourcing
+          target.
+        </div>
+      )}
 
       <div className="mb-4 flex flex-wrap gap-1.5">
         <Button
