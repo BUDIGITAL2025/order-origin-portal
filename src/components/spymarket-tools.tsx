@@ -335,8 +335,13 @@ function useMeteredCall(fn: ServerFnLike) {
     setState({ kind: "idle" });
   }, []);
   const reset = React.useCallback(() => setState({ kind: "idle" }), []);
+  /** Re-fire the exact same query (e.g. after a timeout). */
+  const retry = React.useCallback(() => {
+    const input = lastInputRef.current;
+    if (input) void execute(input);
+  }, [execute]);
 
-  return { state, execute, confirm, cancelConfirm, reset };
+  return { state, execute, confirm, cancelConfirm, reset, retry };
 }
 
 /** Renders confirm dialog / error / insufficient-credits / post-call cost. */
