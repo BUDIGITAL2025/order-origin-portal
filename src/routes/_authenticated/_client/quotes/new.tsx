@@ -514,10 +514,10 @@ function NewQuotePageInner() {
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label htmlFor={`q-name-${entry.key}`}>Product name</Label>
+                      <Label htmlFor={`q-name-${entry.key}`}>Product name (optional)</Label>
                       <Input
                         id={`q-name-${entry.key}`}
-                        placeholder="e.g. Stainless steel thermos 750ml"
+                        placeholder="Auto-filled from the link — edit if needed"
                         value={entry.name}
                         onChange={(e) =>
                           setEntries((prev) =>
