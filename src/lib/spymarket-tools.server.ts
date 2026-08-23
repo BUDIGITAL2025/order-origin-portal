@@ -104,6 +104,82 @@ async function getAdmin() {
   return supabaseAdmin;
 }
 
+// ---------------------------------------------------------------------------
+// Learned per-endpoint pricing (spymarket_endpoint_costs)
+// ---------------------------------------------------------------------------
+
+export interface EndpointCost {
+  endpoint: string;
+  creditsPerRow: number;
+  sampleCount: number;
+  lastObservedAt: string | null;
+}
+
+/** Learned per-row rate for an endpoint; null when never observed. */
+async function getEndpointRate(endpoint: string): Promise<number | null> {
+  const admin = await getAdmin();
+  const { data, error } = await admin
+    .from("spymarket_endpoint_costs")
+    .select("credits_per_row, sample_count")
+    .eq("endpoint", endpoint)
+    .maybeSingle();
+  if (error) {
+    console.error("[spymarket] endpoint cost read failed:", error.message);
+    return null;
+  }
+  if (!data || data.sample_count === 0) return null;
+  return Number(data.credits_per_row);
+}
+
+/** Running-average upsert of the observed credits-per-row for an endpoint. */
+async function learnEndpointCost(endpoint: string, observedPerRow: number): Promise<void> {
+  const admin = await getAdmin();
+  const { data: existing, error } = await admin
+    .from("spymarket_endpoint_costs")
+    .select("credits_per_row, sample_count")
+    .eq("endpoint", endpoint)
+    .maybeSingle();
+  if (error) {
+    console.error("[spymarket] endpoint cost read failed:", error.message);
+    return;
+  }
+  const count = existing?.sample_count ?? 0;
+  const prev = existing ? Number(existing.credits_per_row) : observedPerRow;
+  const next = Math.round(((prev * count + observedPerRow) / (count + 1)) * 1000) / 1000;
+  const { error: upError } = await admin.from("spymarket_endpoint_costs").upsert({
+    endpoint,
+    credits_per_row: next,
+    last_observed_at: new Date().toISOString(),
+    sample_count: count + 1,
+  });
+  if (upError) {
+    console.error("[spymarket] endpoint cost upsert failed:", upError.message);
+  } else if (existing && Number(existing.credits_per_row) !== next) {
+    console.warn(
+      `[spymarket] endpoint ${endpoint} price updated: ${existing.credits_per_row} → ${next} credits/row (${count + 1} samples)`,
+    );
+  }
+}
+
+/** All learned endpoint prices — feeds UI estimates and the usage dashboard. */
+export async function getEndpointCosts(): Promise<EndpointCost[]> {
+  const admin = await getAdmin();
+  const { data, error } = await admin
+    .from("spymarket_endpoint_costs")
+    .select("endpoint, credits_per_row, sample_count, last_observed_at")
+    .order("endpoint");
+  if (error) {
+    console.error("[spymarket] endpoint costs read failed:", error.message);
+    return [];
+  }
+  return (data ?? []).map((r) => ({
+    endpoint: r.endpoint,
+    creditsPerRow: Number(r.credits_per_row),
+    sampleCount: r.sample_count,
+    lastObservedAt: r.last_observed_at,
+  }));
+}
+
 /** Credits spent today (UTC) by this user, excluding zero-cost cache hits. */
 export async function getUserDayTotal(userId: string): Promise<number> {
   const admin = await getAdmin();
@@ -142,6 +218,10 @@ async function logCall(entry: {
     // Callers without a profiles row (e.g. minted test users) must still be
     // logged — this log is the negotiation record. Retry with called_by null.
     if (error.code === "23503") {
+      console.warn(
+        "[spymarket] called_by has no profiles row — logging with called_by=null:",
+        entry.userId,
+      );
       const { error: retryError } = await admin
         .from("spymarket_usage_log")
         .insert({ ...row, called_by: null });
