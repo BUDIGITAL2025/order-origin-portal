@@ -48,7 +48,6 @@ import { Route as AuthenticatedAdminDisputesIdRouteImport } from './routes/_auth
 import { Route as AuthenticatedAdminQuotesIndexRouteImport } from './routes/_authenticated/admin/quotes/index'
 import { Route as AuthenticatedAdminQuotesIdRouteImport } from './routes/_authenticated/admin/quotes/$id'
 import { Route as ApiPublicCronAutoTopupRouteImport } from './routes/api/public/cron/auto-topup'
-import { Route as ApiPublicCronBackfillReceiptsRouteImport } from './routes/api/public/cron/backfill-receipts'
 import { Route as ApiPublicCronDocumentsSweepRouteImport } from './routes/api/public/cron/documents-sweep'
 import { Route as ApiPublicCronOrderExpiryRouteImport } from './routes/api/public/cron/order-expiry'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
@@ -275,12 +274,6 @@ const ApiPublicCronAutoTopupRoute = ApiPublicCronAutoTopupRouteImport.update({
   path: '/api/public/cron/auto-topup',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPublicCronBackfillReceiptsRoute =
-  ApiPublicCronBackfillReceiptsRouteImport.update({
-    id: '/api/public/cron/backfill-receipts',
-    path: '/api/public/cron/backfill-receipts',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 const ApiPublicCronDocumentsSweepRoute =
   ApiPublicCronDocumentsSweepRouteImport.update({
     id: '/api/public/cron/documents-sweep',
@@ -335,7 +328,6 @@ export interface FileRoutesByFullPath {
   '/admin/disputes/$id': typeof AuthenticatedAdminDisputesIdRoute
   '/admin/quotes/$id': typeof AuthenticatedAdminQuotesIdRoute
   '/api/public/cron/auto-topup': typeof ApiPublicCronAutoTopupRoute
-  '/api/public/cron/backfill-receipts': typeof ApiPublicCronBackfillReceiptsRoute
   '/api/public/cron/documents-sweep': typeof ApiPublicCronDocumentsSweepRoute
   '/api/public/cron/order-expiry': typeof ApiPublicCronOrderExpiryRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
@@ -378,7 +370,6 @@ export interface FileRoutesByTo {
   '/admin/disputes/$id': typeof AuthenticatedAdminDisputesIdRoute
   '/admin/quotes/$id': typeof AuthenticatedAdminQuotesIdRoute
   '/api/public/cron/auto-topup': typeof ApiPublicCronAutoTopupRoute
-  '/api/public/cron/backfill-receipts': typeof ApiPublicCronBackfillReceiptsRoute
   '/api/public/cron/documents-sweep': typeof ApiPublicCronDocumentsSweepRoute
   '/api/public/cron/order-expiry': typeof ApiPublicCronOrderExpiryRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
@@ -424,7 +415,6 @@ export interface FileRoutesById {
   '/_authenticated/admin/disputes/$id': typeof AuthenticatedAdminDisputesIdRoute
   '/_authenticated/admin/quotes/$id': typeof AuthenticatedAdminQuotesIdRoute
   '/api/public/cron/auto-topup': typeof ApiPublicCronAutoTopupRoute
-  '/api/public/cron/backfill-receipts': typeof ApiPublicCronBackfillReceiptsRoute
   '/api/public/cron/documents-sweep': typeof ApiPublicCronDocumentsSweepRoute
   '/api/public/cron/order-expiry': typeof ApiPublicCronOrderExpiryRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
@@ -469,7 +459,6 @@ export interface FileRouteTypes {
     | '/admin/disputes/$id'
     | '/admin/quotes/$id'
     | '/api/public/cron/auto-topup'
-    | '/api/public/cron/backfill-receipts'
     | '/api/public/cron/documents-sweep'
     | '/api/public/cron/order-expiry'
     | '/api/public/payments/webhook'
@@ -512,7 +501,6 @@ export interface FileRouteTypes {
     | '/admin/disputes/$id'
     | '/admin/quotes/$id'
     | '/api/public/cron/auto-topup'
-    | '/api/public/cron/backfill-receipts'
     | '/api/public/cron/documents-sweep'
     | '/api/public/cron/order-expiry'
     | '/api/public/payments/webhook'
@@ -557,7 +545,6 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/disputes/$id'
     | '/_authenticated/admin/quotes/$id'
     | '/api/public/cron/auto-topup'
-    | '/api/public/cron/backfill-receipts'
     | '/api/public/cron/documents-sweep'
     | '/api/public/cron/order-expiry'
     | '/api/public/payments/webhook'
@@ -574,7 +561,6 @@ export interface RootRouteChildren {
   ResetPasswordRoute: typeof ResetPasswordRoute
   TermsRoute: typeof TermsRoute
   ApiPublicCronAutoTopupRoute: typeof ApiPublicCronAutoTopupRoute
-  ApiPublicCronBackfillReceiptsRoute: typeof ApiPublicCronBackfillReceiptsRoute
   ApiPublicCronDocumentsSweepRoute: typeof ApiPublicCronDocumentsSweepRoute
   ApiPublicCronOrderExpiryRoute: typeof ApiPublicCronOrderExpiryRoute
   ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
@@ -855,13 +841,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCronAutoTopupRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/cron/backfill-receipts': {
-      id: '/api/public/cron/backfill-receipts'
-      path: '/api/public/cron/backfill-receipts'
-      fullPath: '/api/public/cron/backfill-receipts'
-      preLoaderRoute: typeof ApiPublicCronBackfillReceiptsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/public/cron/documents-sweep': {
       id: '/api/public/cron/documents-sweep'
       path: '/api/public/cron/documents-sweep'
@@ -1010,7 +989,6 @@ const rootRouteChildren: RootRouteChildren = {
   ResetPasswordRoute: ResetPasswordRoute,
   TermsRoute: TermsRoute,
   ApiPublicCronAutoTopupRoute: ApiPublicCronAutoTopupRoute,
-  ApiPublicCronBackfillReceiptsRoute: ApiPublicCronBackfillReceiptsRoute,
   ApiPublicCronDocumentsSweepRoute: ApiPublicCronDocumentsSweepRoute,
   ApiPublicCronOrderExpiryRoute: ApiPublicCronOrderExpiryRoute,
   ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
