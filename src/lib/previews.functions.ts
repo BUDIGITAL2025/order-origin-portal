@@ -32,6 +32,8 @@ export const getUrlPreview = createServerFn({ method: "GET" })
     if (cacheError) throw new Error(cacheError.message);
 
     if (cached && Date.now() - new Date(cached.scraped_at).getTime() < CACHE_TTL_MS) {
+      // `variants` was added after the generated types — cast until they regenerate.
+      const cachedVariants = (cached as { variants?: string[] | null }).variants ?? [];
       return {
         status: "ok" as const,
         cached: true,
@@ -42,6 +44,7 @@ export const getUrlPreview = createServerFn({ method: "GET" })
           description: cached.description,
           imageUrls: cached.image_urls ?? [],
           priceHint: cached.price_hint,
+          variants: cachedVariants,
           source: cached.source,
         },
       };
@@ -72,10 +75,12 @@ export const getUrlPreview = createServerFn({ method: "GET" })
           description: scraped.description,
           image_urls: scraped.imageUrls,
           price_hint: scraped.priceHint,
+          variants: scraped.variants,
           source: scraped.source,
           scraped_at: new Date().toISOString(),
           requested_by: context.userId,
-        },
+          // `variants` exists in the DB but not yet in the generated types.
+        } as unknown as Database["public"]["Tables"]["url_previews"]["Insert"],
         { onConflict: "url_normalized" },
       )
       .select("id")
@@ -92,6 +97,7 @@ export const getUrlPreview = createServerFn({ method: "GET" })
         description: scraped.description,
         imageUrls: scraped.imageUrls,
         priceHint: scraped.priceHint,
+        variants: scraped.variants,
         source: scraped.source,
       },
     };
