@@ -31,8 +31,17 @@ export const Route = createFileRoute("/api/public/payments/webhook")({
         const env = rawEnv;
 
         try {
+          // While the project is deliberately in test mode, acknowledge live
+          // webhooks without processing them. This prevents any live Stripe
+          // event from mutating production state before intentional go-live.
+          const { STRIPE_FORCE_TEST_MODE, verifyWebhook } = await import(
+            "@/lib/stripe.server"
+          );
+          if (env === "live" && STRIPE_FORCE_TEST_MODE) {
+            return Response.json({ received: true, ignored: "live_disabled" });
+          }
+
           // 1. Signature verification (also reads the raw body).
-          const { verifyWebhook } = await import("@/lib/stripe.server");
           const event = await verifyWebhook(request, env);
 
           const { supabaseAdmin } = await import(
