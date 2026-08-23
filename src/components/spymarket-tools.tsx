@@ -246,12 +246,15 @@ function CountryChips({ list, max = 8 }: { list: unknown; max?: number }) {
   if (rows.length === 0) return null;
   return (
     <div className="flex flex-wrap gap-1.5">
-      {rows.slice(0, max).map((c, i) => (
-        <Badge key={i} variant="secondary" className="rounded-full text-[11px]">
-          {asStr(c["countryCode"]) ?? asStr(c["country"]) ?? "?"} ·{" "}
-          {fmtPct(asNum(c["share"]))}
-        </Badge>
-      ))}
+      {rows.slice(0, max).map((c, i) => {
+        const share = asNum(c["share"]);
+        return (
+          <Badge key={i} variant="secondary" className="rounded-full text-[11px]">
+            {asStr(c["countryCode"]) ?? asStr(c["country"]) ?? "?"}
+            {share != null && ` · ${Math.round(share * 100)}%`}
+          </Badge>
+        );
+      })}
     </div>
   );
 }
