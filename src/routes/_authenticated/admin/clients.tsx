@@ -291,7 +291,7 @@ function AdminClientsPage() {
                                         {s.subscription_status}
                                       </Badge>
                                       {s.stripe_subscription_id && (
-                                        <div className="mt-1 max-w-32 truncate font-mono text-xs text-muted-foreground">
+                                        <div className="mt-1 max-w-32 truncate tnum text-xs text-muted-foreground">
                                           {s.stripe_subscription_id}
                                         </div>
                                       )}
@@ -326,10 +326,10 @@ function AdminClientsPage() {
                                         </SelectContent>
                                       </Select>
                                     </TableCell>
-                                    <TableCell className="text-right font-mono text-sm">
+                                    <TableCell className="text-right tnum text-sm">
                                       {Number(s.avg_daily_units_30d ?? 0).toFixed(1)}
                                     </TableCell>
-                                    <TableCell className="text-right font-mono text-sm">
+                                    <TableCell className="text-right tnum text-sm">
                                       {s.quotes_used_this_month} / {planQuota(s.subscription_plan) ?? "∞"}
                                     </TableCell>
                                     <TableCell>
@@ -343,7 +343,7 @@ function AdminClientsPage() {
                                         </div>
                                       )}
                                       {s.middleware_tenant_id && (
-                                        <div className="mt-1 max-w-40 truncate font-mono text-xs text-muted-foreground">
+                                        <div className="mt-1 max-w-40 truncate tnum text-xs text-muted-foreground">
                                           {s.middleware_tenant_id}
                                         </div>
                                       )}

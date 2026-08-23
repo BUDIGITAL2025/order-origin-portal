@@ -130,7 +130,7 @@ function AdminEntitiesPage() {
                           <TableCell>
                             <IntegrationModeBadge mode={store.integration_mode} />
                           </TableCell>
-                          <TableCell className="font-mono text-xs">
+                          <TableCell className="tnum text-xs">
                             {store.middleware_tenant_id ?? "—"}
                           </TableCell>
                           <TableCell>

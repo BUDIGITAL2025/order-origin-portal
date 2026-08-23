@@ -67,7 +67,7 @@ function DocumentsPage() {
             <TableBody>
               {documents.map((doc) => (
                 <TableRow key={doc.id}>
-                  <TableCell className="font-mono text-xs font-medium">
+                  <TableCell className="tnum text-xs font-medium">
                     {doc.document_number}
                   </TableCell>
                   <TableCell>
@@ -83,7 +83,7 @@ function DocumentsPage() {
                         ? "Wallet credit"
                         : "Monthly plan"}
                   </TableCell>
-                  <TableCell className="text-right font-mono text-sm">
+                  <TableCell className="text-right tnum text-sm">
                     {formatUSD(doc.amount)}
                   </TableCell>
                   <TableCell className="text-right">

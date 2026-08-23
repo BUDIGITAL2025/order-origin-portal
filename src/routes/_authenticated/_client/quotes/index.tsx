@@ -53,6 +53,7 @@ function MyQuotesPageInner() {
         <EmptyState
           title="No quote requests yet"
           hint="Send us a product link and we'll come back with per-variant pricing."
+          action={{ label: "Request a quote", to: "/quotes/new" }}
         />
       ) : (
         <div className="rounded-lg border border-border bg-card">
@@ -76,7 +77,7 @@ function MyQuotesPageInner() {
                   <TableCell className="max-w-64">
                     <div className="truncate text-sm">{q.product_name || q.product_url}</div>
                   </TableCell>
-                  <TableCell className="text-right font-mono text-sm">
+                  <TableCell className="text-right tnum text-sm">
                     {q.target_monthly_volume ?? "—"}
                   </TableCell>
                   <TableCell>

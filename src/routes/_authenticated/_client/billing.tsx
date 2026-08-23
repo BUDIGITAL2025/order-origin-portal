@@ -470,7 +470,7 @@ function BillingPage() {
               <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Current balance
               </div>
-              <div className="font-mono text-2xl font-semibold">
+              <div className="tnum text-2xl font-semibold">
                 {formatUSD(wallet?.balance ?? data?.balance ?? 0)}
               </div>
             </div>
@@ -610,19 +610,19 @@ function BillingPage() {
                       <TxnTypeBadge type={t.type} />
                     </TableCell>
                     <TableCell className="max-w-64 truncate text-sm">{t.description}</TableCell>
-                    <TableCell className="max-w-40 truncate font-mono text-xs text-muted-foreground">
+                    <TableCell className="max-w-40 truncate tnum text-xs text-muted-foreground">
                       {t.reference ?? "—"}
                     </TableCell>
                     <TableCell
                       className={
-                        "text-right font-mono text-sm " +
+                        "text-right tnum text-sm " +
                         (t.type === "debit" ? "text-destructive" : "text-success")
                       }
                     >
                       {t.type === "debit" ? "−" : "+"}
                       {formatUSD(t.amount)}
                     </TableCell>
-                    <TableCell className="text-right font-mono text-sm">
+                    <TableCell className="text-right tnum text-sm">
                       {formatUSD(t.balance_after)}
                     </TableCell>
                   </TableRow>

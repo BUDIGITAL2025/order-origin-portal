@@ -445,7 +445,7 @@ function AdminQuoteDetailPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <div className="text-xs uppercase tracking-wide text-muted-foreground">Volume / month</div>
-                  <div className="font-mono">{quote.target_monthly_volume ?? "—"}</div>
+                  <div className="tnum">{quote.target_monthly_volume ?? "—"}</div>
                 </div>
                 <div>
                   <div className="text-xs uppercase tracking-wide text-muted-foreground">Client</div>
@@ -585,7 +585,7 @@ function AdminQuoteDetailPage() {
                               disabled={!rowEditable}
                               aria-label="Variant label"
                             />
-                            <div className="font-mono text-[10px] text-muted-foreground">
+                            <div className="tnum text-[10px] text-muted-foreground">
                               {row.sku ?? "SKU on save"}
                             </div>
                             <div className="grid grid-cols-2 gap-1.5">
@@ -669,7 +669,7 @@ function AdminQuoteDetailPage() {
                                       }
                                       disabled={!cellEditable}
                                       aria-label={`${f.label} (${country})`}
-                                      className="h-7 font-mono text-xs"
+                                      className="h-7 tnum text-xs"
                                     />
                                   </div>
                                 ))}
@@ -677,7 +677,7 @@ function AdminQuoteDetailPage() {
                                   <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
                                     Price
                                   </span>
-                                  <span className="font-mono text-xs font-semibold">
+                                  <span className="tnum text-xs font-semibold">
                                     {formatUSD(cellPrice(cell))}
                                   </span>
                                 </div>
@@ -685,7 +685,7 @@ function AdminQuoteDetailPage() {
                                   <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
                                     Margin
                                   </span>
-                                  <span className="font-mono text-xs text-muted-foreground">
+                                  <span className="tnum text-xs text-muted-foreground">
                                     {(() => {
                                       const m = cellMarginPct(cell);
                                       return m == null ? "—" : `${m.toFixed(1)}%`;
@@ -722,7 +722,7 @@ function AdminQuoteDetailPage() {
                 <div className="grid grid-cols-3 gap-px overflow-hidden rounded-md border border-border bg-border text-sm">
                   <div className="bg-muted/40 p-3">
                     <div className="text-xs uppercase tracking-wide text-muted-foreground">Grid</div>
-                    <div className="font-mono font-medium">
+                    <div className="tnum font-medium">
                       {rows.length} variant{rows.length === 1 ? "" : "s"} × {countries.length}{" "}
                       {countries.length === 1 ? "country" : "countries"}
                     </div>
@@ -731,13 +731,13 @@ function AdminQuoteDetailPage() {
                     <div className="text-xs uppercase tracking-wide text-muted-foreground">
                       Lowest unit price
                     </div>
-                    <div className="font-mono font-medium">{formatUSD(minPrice)}</div>
+                    <div className="tnum font-medium">{formatUSD(minPrice)}</div>
                   </div>
                   <div className="bg-muted/40 p-3">
                     <div className="text-xs uppercase tracking-wide text-muted-foreground">
                       Highest unit price
                     </div>
-                    <div className="font-mono font-semibold">{formatUSD(maxPrice)}</div>
+                    <div className="tnum font-semibold">{formatUSD(maxPrice)}</div>
                   </div>
                 </div>
               )}

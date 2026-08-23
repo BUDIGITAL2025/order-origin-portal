@@ -89,7 +89,13 @@ function DashboardPage() {
 
   // Storeless accounts get the onboarding checklist instead of store metrics.
   if (context && allStores.length === 0) {
-    return <OnboardingCard entity={entities[0] ?? null} hasQuote={quotes.length > 0} />;
+    return <OnboardingCard entity={entities[0] ?? null} hasQuote={quotes.length > 0} hasStore={false} />;
+  }
+
+  // No real activity yet — show the checklist instead of a row of zeroed
+  // metric cards. Only once both queries have resolved, to avoid a flash.
+  if (context && quotesData && walletData && quotes.length === 0 && transactions.length === 0) {
+    return <OnboardingCard entity={entity} hasQuote={false} hasStore />;
   }
 
   return (
@@ -112,7 +118,7 @@ function DashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="font-mono text-2xl font-semibold">
+            <div className="tnum text-2xl font-semibold">
               {formatUSD(walletData?.balance ?? 0)}
             </div>
           </CardContent>
@@ -125,7 +131,7 @@ function DashboardPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="font-mono text-2xl font-semibold">{counts[status] ?? 0}</div>
+              <div className="tnum text-2xl font-semibold">{counts[status] ?? 0}</div>
             </CardContent>
           </Card>
         ))}
@@ -147,7 +153,7 @@ function DashboardPage() {
         <CardContent>
           <div className="flex flex-wrap items-center gap-x-8 gap-y-2">
             <div>
-              <div className="font-mono text-xl font-semibold">
+              <div className="tnum text-xl font-semibold">
                 {quotesUsed}
                 <span className="text-sm font-normal text-muted-foreground">
                   {" "}
@@ -263,7 +269,7 @@ function DashboardPage() {
                       <TableCell>
                         <QuoteStatusBadge status={q.status} validUntil={q.quote_valid_until} />
                       </TableCell>
-                      <TableCell className="text-right font-mono text-sm">
+                      <TableCell className="text-right tnum text-sm">
                         {q.quote_valid_until ? formatDate(q.quote_valid_until) : "—"}
                       </TableCell>
                     </TableRow>
@@ -310,7 +316,7 @@ function DashboardPage() {
                       <TableCell className="max-w-40 truncate text-sm">{t.description}</TableCell>
                       <TableCell
                         className={
-                          "text-right font-mono text-sm " +
+                          "text-right tnum text-sm " +
                           (t.type === "debit" ? "text-destructive" : "text-success")
                         }
                       >
@@ -336,9 +342,11 @@ function DashboardPage() {
 function OnboardingCard({
   entity,
   hasQuote,
+  hasStore,
 }: {
   entity: { id: string; legal_name: string; vat_number: string | null } | null;
   hasQuote: boolean;
+  hasStore: boolean;
 }) {
   const steps = [
     {
@@ -351,7 +359,7 @@ function OnboardingCard({
     {
       title: "Add your first store",
       description: "Connect a Shopify store or add any store URL — each store gets its own catalogue and quotes.",
-      done: false,
+      done: hasStore,
       to: "/stores/new",
       cta: "Add store",
     },
@@ -382,7 +390,7 @@ function OnboardingCard({
                     <Check className="h-3 w-3" />
                   </span>
                 ) : (
-                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-muted font-mono text-xs text-muted-foreground">
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-muted tnum text-xs text-muted-foreground">
                     {i + 1}
                   </span>
                 )}

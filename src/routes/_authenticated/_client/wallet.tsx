@@ -53,7 +53,7 @@ function WalletPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="font-mono text-3xl font-semibold">
+          <div className="tnum text-3xl font-semibold">
             {isPending ? "…" : formatUSD(data?.balance ?? 0)}
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
@@ -90,19 +90,19 @@ function WalletPage() {
                     <TxnTypeBadge type={t.type} />
                   </TableCell>
                   <TableCell className="max-w-64 truncate text-sm">{t.description}</TableCell>
-                  <TableCell className="font-mono text-xs text-muted-foreground">
+                  <TableCell className="tnum text-xs text-muted-foreground">
                     {t.reference ?? "—"}
                   </TableCell>
                   <TableCell
                     className={
-                      "text-right font-mono text-sm " +
+                      "text-right tnum text-sm " +
                       (t.type === "debit" ? "text-destructive" : "text-success")
                     }
                   >
                     {t.type === "debit" ? "−" : "+"}
                     {formatUSD(t.amount)}
                   </TableCell>
-                  <TableCell className="text-right font-mono text-sm">
+                  <TableCell className="text-right tnum text-sm">
                     {formatUSD(t.balance_after)}
                   </TableCell>
                   <TableCell className="text-right">
