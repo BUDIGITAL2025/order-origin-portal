@@ -103,7 +103,7 @@ function AdminQuotesPage() {
 
       {isPending ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
-      ) : quotes.length === 0 ? (
+      ) : sorted.length === 0 ? (
         <EmptyState title="No requests" hint={status ? `Nothing with status "${status}".` : "The queue is empty."} />
       ) : (
         <div className="rounded-lg border border-border bg-card">
@@ -115,12 +115,13 @@ function AdminQuotesPage() {
                 <TableHead>Product</TableHead>
                 <TableHead className="text-right">Vol./mo</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>48h target</TableHead>
                 <TableHead>Ref</TableHead>
                 <TableHead />
               </TableRow>
             </TableHeader>
             <TableBody>
-              {quotes.map((q) => {
+              {sorted.map((q) => {
                 const client = q.profiles as {
                   company_name?: string;
                   pricing_tier?: string;
