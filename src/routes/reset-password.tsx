@@ -14,6 +14,7 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { MARKETING_URL } from "@/lib/config";
+import { passwordSchema } from "@/lib/schemas";
 
 export const Route = createFileRoute("/reset-password")({
   head: () => ({
@@ -93,7 +94,9 @@ function ResetPasswordPage() {
           {ready ? (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-1.5">
-                <Label htmlFor="rp-password">New password (min. 8 characters)</Label>
+                <Label htmlFor="rp-password">
+                  New password (min. 8 characters, 1 uppercase, 1 symbol)
+                </Label>
                 <PasswordInput
                   id="rp-password"
                   autoComplete="new-password"
