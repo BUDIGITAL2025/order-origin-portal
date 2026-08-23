@@ -1,0 +1,1 @@
+ALTER TABLE public.documents ALTER COLUMN store_id DROP NOT NULL;

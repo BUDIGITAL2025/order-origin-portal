@@ -289,8 +289,12 @@ async function getEntityBlock(admin: Admin, entityId: string): Promise<ClientBlo
   };
 }
 
-/** Pick a store under the entity to attach the document to (documents.store_id is required). */
-async function resolveStoreIdForEntity(admin: Admin, entityId: string): Promise<string> {
+/**
+ * Pick a store under the entity to attach the document to. Storeless
+ * entities (manual mode, onboarding) get null — documents.store_id is
+ * nullable; the entity is the owner.
+ */
+async function resolveStoreIdForEntity(admin: Admin, entityId: string): Promise<string | null> {
   const { data, error } = await admin
     .from("stores")
     .select("id")
@@ -299,8 +303,7 @@ async function resolveStoreIdForEntity(admin: Admin, entityId: string): Promise<
     .limit(1)
     .maybeSingle();
   if (error) throw new Error(error.message);
-  if (!data) throw new Error("No store found for entity");
-  return data.id;
+  return data?.id ?? null;
 }
 
 /**
@@ -328,7 +331,9 @@ async function storeReceipt(
     .upload(path, pdf, { contentType: "application/pdf" });
   if (uploadError) throw new Error(uploadError.message);
 
-  const storeId = args.storeId ?? (await resolveStoreIdForEntity(admin, args.entityId));
+  const storeId = args.storeId !== undefined
+    ? args.storeId
+    : await resolveStoreIdForEntity(admin, args.entityId);
   const { error: insertError } = await admin.from("documents").insert({
     entity_id: args.entityId,
     store_id: storeId,
