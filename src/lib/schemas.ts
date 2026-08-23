@@ -105,6 +105,8 @@ export const quoteRequestSchema = z.object({
   // the RPC resolves the account's subscribed workspace when omitted, and
   // creates a draft one for storeless accounts.
   store_id: z.string().uuid().optional(),
+  // Scraped url_previews row the client saw, so the admin gets the same card.
+  preview_id: z.string().uuid().optional(),
 });
 
 export const quoteLineInputSchema = z.object({

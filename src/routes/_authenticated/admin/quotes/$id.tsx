@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/app-shell";
 import { LineStatusBadge, QuoteStatusBadge, TierBadge } from "@/components/status-badges";
+import { UrlPreviewCard } from "@/components/url-preview-card";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -162,7 +163,11 @@ function AdminQuoteDetailPage() {
 
   const clientTier = effectiveTier(client?.pricing_tier, client?.tier_override);
 
-  const imagePaths = (quote?.image_urls ?? []).filter(Boolean) as string[];
+  // Uploaded files are private-bucket paths (need signed URLs); scraped preview
+  // images are external https URLs rendered directly.
+  const allImageRefs = (quote?.image_urls ?? []).filter(Boolean) as string[];
+  const imagePaths = allImageRefs.filter((p) => !/^https?:\/\//i.test(p));
+  const externalImages = allImageRefs.filter((p) => /^https?:\/\//i.test(p));
   const { data: images } = useQuery({
     queryKey: ["admin-quote-images", id, imagePaths.join(",")],
     queryFn: () => fetchImages({ data: { paths: imagePaths } }),
@@ -461,15 +466,24 @@ function AdminQuoteDetailPage() {
                   </div>
                 </div>
               </div>
-              {images && images.urls.length > 0 && (
+              {((images && images.urls.length > 0) || externalImages.length > 0) && (
                 <div>
                   <div className="mb-1.5 text-xs uppercase tracking-wide text-muted-foreground">Images</div>
                   <div className="flex flex-wrap gap-2">
-                    {images.urls.map((img) => (
+                    {(images?.urls ?? []).map((img) => (
                       <a key={img.path} href={img.url} target="_blank" rel="noreferrer">
                         <img
                           src={img.url}
                           alt="Quote attachment"
+                          className="h-16 w-16 rounded-md border border-border object-cover"
+                        />
+                      </a>
+                    ))}
+                    {externalImages.map((src) => (
+                      <a key={src} href={src} target="_blank" rel="noreferrer">
+                        <img
+                          src={src}
+                          alt="Scraped product image"
                           className="h-16 w-16 rounded-md border border-border object-cover"
                         />
                       </a>
@@ -503,6 +517,18 @@ function AdminQuoteDetailPage() {
               )}
             </CardContent>
           </Card>
+          {data?.preview && (
+            <UrlPreviewCard
+              url={data.preview.url_normalized}
+              preview={{
+                status: "ok",
+                title: data.preview.title,
+                description: data.preview.description,
+                imageUrls: data.preview.image_urls ?? [],
+                priceHint: data.preview.price_hint,
+              }}
+            />
+          )}
         </div>
 
         <Card>

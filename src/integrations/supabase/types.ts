@@ -878,6 +878,7 @@ export type Database = {
           id: string
           image_urls: string[] | null
           notes: string | null
+          preview_id: string | null
           product_name: string | null
           product_url: string
           quote_breach_notified_at: string | null
@@ -897,6 +898,7 @@ export type Database = {
           id?: string
           image_urls?: string[] | null
           notes?: string | null
+          preview_id?: string | null
           product_name?: string | null
           product_url: string
           quote_breach_notified_at?: string | null
@@ -916,6 +918,7 @@ export type Database = {
           id?: string
           image_urls?: string[] | null
           notes?: string | null
+          preview_id?: string | null
           product_name?: string | null
           product_url?: string
           quote_breach_notified_at?: string | null
@@ -931,6 +934,13 @@ export type Database = {
           target_monthly_volume?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "quote_requests_preview_id_fkey"
+            columns: ["preview_id"]
+            isOneToOne: false
+            referencedRelation: "url_previews"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "quote_requests_quoted_by_fkey"
             columns: ["quoted_by"]
@@ -1118,6 +1128,45 @@ export type Database = {
           payload?: Json | null
           processed_at?: string | null
           stripe_event_id?: string
+        }
+        Relationships: []
+      }
+      url_previews: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          image_urls: string[]
+          price_hint: string | null
+          requested_by: string | null
+          scraped_at: string
+          source: Database["public"]["Enums"]["url_preview_source"]
+          title: string | null
+          url_normalized: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_urls?: string[]
+          price_hint?: string | null
+          requested_by?: string | null
+          scraped_at?: string
+          source: Database["public"]["Enums"]["url_preview_source"]
+          title?: string | null
+          url_normalized: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_urls?: string[]
+          price_hint?: string | null
+          requested_by?: string | null
+          scraped_at?: string
+          source?: Database["public"]["Enums"]["url_preview_source"]
+          title?: string | null
+          url_normalized?: string
         }
         Relationships: []
       }
@@ -1627,6 +1676,7 @@ export type Database = {
           p_image_urls?: string[]
           p_notes?: string
           p_on_behalf_of?: string
+          p_preview_id?: string
           p_product_name?: string
           p_product_url?: string
           p_store_id?: string
@@ -1639,6 +1689,7 @@ export type Database = {
           id: string
           image_urls: string[] | null
           notes: string | null
+          preview_id: string | null
           product_name: string | null
           product_url: string
           quote_breach_notified_at: string | null
@@ -1721,6 +1772,7 @@ export type Database = {
       store_platform: "shopify" | "woocommerce" | "other"
       subscription_plan: "basic" | "unlimited"
       subscription_status: "none" | "active" | "past_due" | "canceled"
+      url_preview_source: "firecrawl" | "fetch" | "perplexity"
       wallet_txn_type: "credit" | "debit" | "adjustment"
     }
     CompositeTypes: {
@@ -1885,6 +1937,7 @@ export const Constants = {
       store_platform: ["shopify", "woocommerce", "other"],
       subscription_plan: ["basic", "unlimited"],
       subscription_status: ["none", "active", "past_due", "canceled"],
+      url_preview_source: ["firecrawl", "fetch", "perplexity"],
       wallet_txn_type: ["credit", "debit", "adjustment"],
     },
   },

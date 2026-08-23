@@ -72,9 +72,13 @@ function MyQuoteDetailPage() {
   const imageKey = (data?.quote?.image_urls ?? []).join("|");
   const [imageUrls, setImageUrls] = useState<string[]>([]);
   useEffect(() => {
-    const paths = imageKey ? imageKey.split("|") : [];
+    // Scraped preview images are external https URLs rendered directly;
+    // uploaded files are private-bucket paths needing short-lived signed URLs.
+    const all = imageKey ? imageKey.split("|") : [];
+    const external = all.filter((p) => /^https?:\/\//i.test(p));
+    const paths = all.filter((p) => !/^https?:\/\//i.test(p));
     if (paths.length === 0) {
-      setImageUrls([]);
+      setImageUrls(external);
       return;
     }
     let cancelled = false;
@@ -83,7 +87,10 @@ function MyQuoteDetailPage() {
       .createSignedUrls(paths, 300)
       .then(({ data: signed }) => {
         if (cancelled) return;
-        setImageUrls((signed ?? []).map((s) => s.signedUrl).filter((u): u is string => !!u));
+        setImageUrls([
+          ...external,
+          ...(signed ?? []).map((s) => s.signedUrl).filter((u): u is string => !!u),
+        ]);
       });
     return () => {
       cancelled = true;
