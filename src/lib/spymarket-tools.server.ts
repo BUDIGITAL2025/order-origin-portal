@@ -5,9 +5,11 @@
  * cache, full usage logging, 402/429 handling and the per-user daily soft
  * limit. The browser never talks to Trendtrack directly.
  *
- * Cost model: metered endpoints charge 1 credit per returned row, so the
- * worst-case cost of any call is its row limit — that number is shown on the
- * action button before executing, and the real cost after.
+ * Cost model: per-row pricing is LEARNED, never assumed. After every metered
+ * call the observed credits-per-row is upserted into spymarket_endpoint_costs
+ * (running average), and all estimates multiply the row limit by the learned
+ * rate for that endpoint. Endpoints with no observation yet are reported as
+ * "cost unknown" instead of guessing 1 credit/row.
  */
 import type { Json } from "@/integrations/supabase/types";
 
@@ -48,7 +50,7 @@ export interface CallOptions {
   body?: Record<string, unknown> | undefined;
   /** Compact description of the call, stored in the usage log. */
   summary?: Record<string, unknown> | undefined;
-  /** Worst-case credits (1 per returned row). */
+  /** Max rows this call can return — multiplied by the learned per-row rate. */
   estimatedCost: number;
   /** Default true. Lookup/facets/usage are zero-credit. */
   metered?: boolean | undefined;

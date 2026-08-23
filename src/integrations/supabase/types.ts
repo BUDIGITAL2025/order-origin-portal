@@ -985,6 +985,27 @@ export type Database = {
         }
         Relationships: []
       }
+      spymarket_endpoint_costs: {
+        Row: {
+          credits_per_row: number
+          endpoint: string
+          last_observed_at: string | null
+          sample_count: number
+        }
+        Insert: {
+          credits_per_row: number
+          endpoint: string
+          last_observed_at?: string | null
+          sample_count?: number
+        }
+        Update: {
+          credits_per_row?: number
+          endpoint?: string
+          last_observed_at?: string | null
+          sample_count?: number
+        }
+        Relationships: []
+      }
       spymarket_interest: {
         Row: {
           account_id: string
