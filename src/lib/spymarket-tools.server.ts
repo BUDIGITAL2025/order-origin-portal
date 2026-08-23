@@ -126,7 +126,7 @@ async function logCall(entry: {
   cacheHit: boolean;
 }): Promise<void> {
   const admin = await getAdmin();
-  const { error } = await admin.from("spymarket_usage_log").insert({
+  const row = {
     called_by: entry.userId,
     endpoint: entry.endpoint,
     query_summary: entry.summary as unknown as Json,
@@ -134,8 +134,20 @@ async function logCall(entry: {
     credits_cost: entry.creditsCost,
     credits_remaining: entry.creditsRemaining,
     cache_hit: entry.cacheHit,
-  });
-  if (error) console.error("[spymarket] usage log insert failed:", error.message);
+  };
+  const { error } = await admin.from("spymarket_usage_log").insert(row);
+  if (error) {
+    // Callers without a profiles row (e.g. minted test users) must still be
+    // logged — this log is the negotiation record. Retry with called_by null.
+    if (error.code === "23503") {
+      const { error: retryError } = await admin
+        .from("spymarket_usage_log")
+        .insert({ ...row, called_by: null });
+      if (retryError) console.error("[spymarket] usage log insert failed:", retryError.message);
+    } else {
+      console.error("[spymarket] usage log insert failed:", error.message);
+    }
+  }
 }
 
 /**
