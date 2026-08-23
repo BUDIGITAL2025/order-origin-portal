@@ -406,7 +406,7 @@ function AdminQuoteDetailPage() {
     <div>
       <PageHeader
         title={quote.product_name || "Quote request"}
-        description={`Submitted ${formatDate(quote.created_at)}${quote.internal_reference ? ` · Ref: ${quote.internal_reference}` : ""}${quote.supersedes_quote_id ? " · requote of an earlier request" : ""}`}
+        description={`Submitted ${formatDate(quote.created_at)}${countries.length > 0 ? ` · Ships to: ${countries.map((c) => countryName(c)).join(", ")}` : ""}${quote.internal_reference ? ` · Ref: ${quote.internal_reference}` : ""}${quote.supersedes_quote_id ? " · requote of an earlier request" : ""}`}
         actions={
           <>
             <Button asChild variant="ghost" size="sm" className="gap-1">
