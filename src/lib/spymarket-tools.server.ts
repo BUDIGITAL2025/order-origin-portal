@@ -9,6 +9,7 @@
  * worst-case cost of any call is its row limit — that number is shown on the
  * action button before executing, and the real cost after.
  */
+import type { Json } from "@/integrations/supabase/types";
 
 const BASE_URL = "https://api.trendtrack.io/v1";
 /** Their data is D-1 snapshots — anything fresher than 24h is served free. */
@@ -128,7 +129,7 @@ async function logCall(entry: {
   const { error } = await admin.from("spymarket_usage_log").insert({
     called_by: entry.userId,
     endpoint: entry.endpoint,
-    query_summary: entry.summary,
+    query_summary: entry.summary as unknown as Json,
     rows_returned: entry.rowsReturned,
     credits_cost: entry.creditsCost,
     credits_remaining: entry.creditsRemaining,
@@ -263,7 +264,7 @@ export async function trendtrackCall<T = unknown>(opts: CallOptions): Promise<To
     const { error } = await admin.from("spymarket_cache").upsert({
       cache_key: cacheKey,
       endpoint: opts.endpoint,
-      payload: payload as Record<string, unknown>,
+      payload: payload as unknown as Json,
       fetched_at: new Date().toISOString(),
     });
     if (error) console.error("[spymarket] cache upsert failed:", error.message);
