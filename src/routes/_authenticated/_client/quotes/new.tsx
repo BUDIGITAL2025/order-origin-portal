@@ -344,6 +344,22 @@ function NewQuotePageInner() {
   // Upgrades go through Stripe checkout on the Billing page — the webhook
   // flips the plan after payment confirms.
 
+  // Wait for the account context before choosing between paywall and form —
+  // otherwise subscribed clients see a paywall flash while it loads.
+  if (!ctx) {
+    return (
+      <div className="max-w-2xl">
+        <PageHeader
+          title="Request a quote"
+          description="Send us a product link and we'll come back with a price, MOQ and lead time."
+        />
+        <Card>
+          <CardContent className="p-8 text-sm text-muted-foreground">Loading…</CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   if (quotaBlocked || limitReached) {
     return (
       <div className="max-w-2xl">
