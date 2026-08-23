@@ -29,6 +29,7 @@ import { getOnboardingLinks } from "@/lib/onboarding.functions";
 import { getMyWallet } from "@/lib/wallet.functions";
 import { cn } from "@/lib/utils";
 import { PaymentTestModeBanner } from "@/components/PaymentTestModeBanner";
+import { LegalFooter } from "@/components/legal";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { StoreSwitcher, getCurrentStoreId, STORE_CHANGED_EVENT } from "@/components/store-switcher";
 import { useMyContext } from "@/routes/_authenticated/_client";
@@ -400,6 +401,8 @@ export function AppShell({
           {role === "client" && <PastDueBanner />}
           <div className="mx-auto max-w-6xl px-6 py-6">{children}</div>
         </main>
+
+        <LegalFooter className="border-t border-border" />
       </div>
     </div>
   );

@@ -745,6 +745,8 @@ export type Database = {
           id: string
           phone: string
           status: Database["public"]["Enums"]["profile_status"]
+          terms_accepted_at: string | null
+          terms_version: string | null
         }
         Insert: {
           auto_topup_amount?: number | null
@@ -757,6 +759,8 @@ export type Database = {
           id: string
           phone: string
           status?: Database["public"]["Enums"]["profile_status"]
+          terms_accepted_at?: string | null
+          terms_version?: string | null
         }
         Update: {
           auto_topup_amount?: number | null
@@ -769,6 +773,8 @@ export type Database = {
           id?: string
           phone?: string
           status?: Database["public"]["Enums"]["profile_status"]
+          terms_accepted_at?: string | null
+          terms_version?: string | null
         }
         Relationships: []
       }

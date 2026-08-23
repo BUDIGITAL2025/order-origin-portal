@@ -15,8 +15,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
-import { completeSignup, getMyContext } from "@/lib/profiles.functions";
+import { acceptCurrentTerms, completeSignup, getMyContext } from "@/lib/profiles.functions";
 import { completeSignupSchema } from "@/lib/schemas";
+import { TERMS_VERSION } from "@/lib/terms";
 
 export const Route = createFileRoute("/_authenticated/_client")({
   component: ClientLayout,
@@ -57,8 +58,61 @@ function ClientLayout() {
       companyName={firstEntity?.legal_name ?? null}
       onboardingStores={allStores}
     >
+      <TermsAcceptanceBanner />
       <Outlet />
     </AppShell>
+  );
+}
+
+/**
+ * One-time Terms acceptance banner. Shows whenever the profile's accepted
+ * version lags the current TERMS_VERSION (new users who skipped the signup
+ * checkbox, and everyone after a future version bump). Accepting records
+ * the new version + timestamp on the profile and the banner never shows
+ * again for that version.
+ */
+function TermsAcceptanceBanner() {
+  const { data: ctx } = useMyContext();
+  const callAccept = useServerFn(acceptCurrentTerms);
+  const queryClient = useQueryClient();
+  const [busy, setBusy] = useState(false);
+
+  if (!ctx?.profile || ctx.profile.terms_version === TERMS_VERSION) return null;
+
+  const handleAccept = async () => {
+    setBusy(true);
+    try {
+      await callAccept({});
+      await queryClient.invalidateQueries({ queryKey: ["my-context"] });
+      toast.success("Thanks — Terms of Service accepted.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not record acceptance");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-primary/30 bg-primary/10 px-4 py-3">
+      <p className="min-w-0 flex-1 text-sm">
+        <span className="font-medium">We've updated our Terms of Service.</span>{" "}
+        <span className="text-muted-foreground">
+          Please{" "}
+          <a
+            href="/terms"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium text-foreground underline underline-offset-4"
+          >
+            review the new terms
+          </a>{" "}
+          and accept to continue using FlySales.
+        </span>
+      </p>
+      <Button size="sm" onClick={() => void handleAccept()} disabled={busy}>
+        {busy ? "Saving…" : "I accept the Terms"}
+      </Button>
+    </div>
   );
 }
 

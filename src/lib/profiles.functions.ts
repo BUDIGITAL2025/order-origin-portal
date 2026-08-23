@@ -13,6 +13,7 @@ import {
   storeIdSchema,
   tierOverrideSchema,
 } from "./schemas";
+import { TERMS_VERSION } from "./terms";
 
 export interface ContextStore {
   id: string;
@@ -54,12 +55,14 @@ export interface MyContext {
     phone: string;
     status: "pending" | "active" | "suspended" | "draft";
     created_at: string;
+    /** Terms version last accepted — null/older than TERMS_VERSION → banner. */
+    terms_version: string | null;
   } | null;
   /** Legal entities owned by this account, each with their stores. */
   entities: ContextEntity[];
 }
 
-const PROFILE_SELECT = "id, contact_name, phone, status, created_at";
+const PROFILE_SELECT = "id, contact_name, phone, status, created_at, terms_version";
 const STORE_SELECT =
   "id, entity_id, store_name, store_url, platform, integration_mode, subscription_plan, subscription_status, quotes_used_this_month, quotes_period_start, fee_waived, pricing_tier, status, created_at";
 const ENTITY_SELECT = `id, legal_name, country, vat_number, address, status, auto_topup_enabled, created_at, stores(${STORE_SELECT})`;
@@ -114,6 +117,10 @@ export const completeSignup = createServerFn({ method: "POST" })
         contact_name: data.contact_name,
         phone: data.phone,
         status: "active",
+        // Stamped only when the signup form's Terms checkbox was checked.
+        ...(data.terms_accepted
+          ? { terms_version: TERMS_VERSION, terms_accepted_at: new Date().toISOString() }
+          : {}),
       });
       if (profileError) throw new Error(profileError.message);
     }
@@ -136,6 +143,25 @@ export const completeSignup = createServerFn({ method: "POST" })
     if (roleError && roleError.code !== "23505") throw new Error(roleError.message);
 
     return { ok: true, already: Boolean(existing) };
+  });
+
+/**
+ * Record acceptance of the current Terms version. Called from the one-time
+ * banner shown to users whose profile terms_version lags TERMS_VERSION.
+ * Idempotent — re-accepting the same version just refreshes the timestamp.
+ */
+export const acceptCurrentTerms = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { error } = await context.supabase
+      .from("profiles")
+      .update({
+        terms_version: TERMS_VERSION,
+        terms_accepted_at: new Date().toISOString(),
+      })
+      .eq("id", context.userId);
+    if (error) throw new Error(error.message);
+    return { ok: true, terms_version: TERMS_VERSION };
   });
 
 /**
