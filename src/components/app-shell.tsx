@@ -29,7 +29,7 @@ import { getMyWallet } from "@/lib/wallet.functions";
 import { cn } from "@/lib/utils";
 import { PaymentTestModeBanner } from "@/components/PaymentTestModeBanner";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { StoreSwitcher, getCurrentStoreId } from "@/components/store-switcher";
+import { StoreSwitcher, getCurrentStoreId, STORE_CHANGED_EVENT } from "@/components/store-switcher";
 import { useMyContext } from "@/routes/_authenticated/_client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -308,7 +308,7 @@ export function AppShell({
   role: "client" | "admin";
   email: string | null;
   companyName: string | null;
-  onboardingStore?: OnboardingStore | null;
+  onboardingStores?: OnboardingStore[];
   children: React.ReactNode;
 }) {
   const navigate = useNavigate();
