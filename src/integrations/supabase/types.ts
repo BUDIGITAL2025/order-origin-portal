@@ -942,6 +942,45 @@ export type Database = {
           },
         ]
       }
+      spymarket_interest: {
+        Row: {
+          account_id: string
+          created_at: string
+          entity_id: string | null
+          id: string
+          plan_interest: Database["public"]["Enums"]["spymarket_plan"]
+        }
+        Insert: {
+          account_id: string
+          created_at?: string
+          entity_id?: string | null
+          id?: string
+          plan_interest: Database["public"]["Enums"]["spymarket_plan"]
+        }
+        Update: {
+          account_id?: string
+          created_at?: string
+          entity_id?: string | null
+          id?: string
+          plan_interest?: Database["public"]["Enums"]["spymarket_plan"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "spymarket_interest_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "spymarket_interest_entity_id_fkey"
+            columns: ["entity_id"]
+            isOneToOne: false
+            referencedRelation: "entities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stores: {
         Row: {
           approved_at: string | null
@@ -1664,6 +1703,7 @@ export type Database = {
       push_status: "pending" | "pushed" | "failed"
       quote_line_status: "pending" | "accepted" | "rejected"
       quote_status: "submitted" | "sourcing" | "quoted" | "closed" | "expired"
+      spymarket_plan: "starter" | "plus" | "max"
       store_platform: "shopify" | "woocommerce" | "other"
       subscription_plan: "basic" | "unlimited"
       subscription_status: "none" | "active" | "past_due" | "canceled"
@@ -1827,6 +1867,7 @@ export const Constants = {
       push_status: ["pending", "pushed", "failed"],
       quote_line_status: ["pending", "accepted", "rejected"],
       quote_status: ["submitted", "sourcing", "quoted", "closed", "expired"],
+      spymarket_plan: ["starter", "plus", "max"],
       store_platform: ["shopify", "woocommerce", "other"],
       subscription_plan: ["basic", "unlimited"],
       subscription_status: ["none", "active", "past_due", "canceled"],
