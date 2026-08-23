@@ -45,8 +45,15 @@ export const Route = createFileRoute("/api/public/cron/order-expiry")({
             "@/integrations/supabase/client.server"
           );
           const { sendClientEmail } = await import("@/lib/email.server");
+          const { flagBreachedQuotes } = await import("@/lib/quotes.server");
           const now = Date.now();
-          const summary = { reminder_24: 0, reminder_48: 0, reminder_72: 0, cancelled: 0 };
+          const summary = {
+            reminder_24: 0,
+            reminder_48: 0,
+            reminder_72: 0,
+            cancelled: 0,
+            quote_sla_breached: 0,
+          };
 
           for (const step of REMINDER_STEPS) {
             const cutoff = new Date(now - step.hours * 3_600_000).toISOString();
@@ -136,6 +143,10 @@ export const Route = createFileRoute("/api/public/cron/order-expiry")({
             }
             summary.cancelled += 1;
           }
+
+          // Quote SLA sweep: stamp open requests that breached their 48h
+          // sourcing target and record a notification (admins read all).
+          summary.quote_sla_breached = await flagBreachedQuotes(supabaseAdmin);
 
           console.log("order expiry sweep:", JSON.stringify(summary));
           return Response.json({ ok: true, ...summary });
