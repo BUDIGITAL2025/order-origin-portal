@@ -127,8 +127,10 @@ function AdminQuotesPage() {
                   pricing_tier?: string;
                   tier_override?: string | null;
                 } | null;
+                const overdue =
+                  isOpen(q.status) && new Date(q.quote_due_at).getTime() < Date.now();
                 return (
-                  <TableRow key={q.id}>
+                  <TableRow key={q.id} className={overdue ? "bg-destructive/5" : undefined}>
                     <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
                       {formatDate(q.created_at)}
                     </TableCell>
@@ -144,6 +146,9 @@ function AdminQuotesPage() {
                     </TableCell>
                     <TableCell>
                       <QuoteStatusBadge status={q.status} validUntil={q.quote_valid_until} />
+                    </TableCell>
+                    <TableCell>
+                      <QuoteSlaBadge dueAt={q.quote_due_at} status={q.status} />
                     </TableCell>
                     <TableCell className="max-w-32 truncate tnum text-xs text-muted-foreground">
                       {q.internal_reference ?? "—"}
