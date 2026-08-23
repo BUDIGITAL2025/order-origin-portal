@@ -71,5 +71,10 @@ export function mapQuoteForAdmin(row: unknown, internal?: QuoteInternal | null):
     avg_daily_units_30d: stores?.avg_daily_units_30d ?? null,
     subscription_plan: stores?.subscription_plan ?? null,
   };
-  return { ...rest, profiles };
+  return {
+    ...rest,
+    profiles,
+    admin_notes: internal?.admin_notes ?? null,
+    internal_reference: internal?.internal_reference ?? null,
+  };
 }
