@@ -54,7 +54,7 @@ export interface CallOptions {
   estimatedCost: number;
   /** Default true. Lookup/facets/usage are zero-credit. */
   metered?: boolean | undefined;
-  /** Default: metered calls are cached 24h. */
+  /** Default true: all endpoints (free ones too) are cached 24h. */
   cacheable?: boolean | undefined;
   /** User confirmed beyond the daily soft limit. */
   confirmOverage?: boolean | undefined;
