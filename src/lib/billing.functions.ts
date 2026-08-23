@@ -289,8 +289,6 @@ export const createBatchOrderCheckout = createServerFn({ method: "POST" })
     const { batchOrderCheckoutSchema } = await import("./schemas");
     const data = batchOrderCheckoutSchema.parse((rest as { data: unknown }).data);
     const { createStripeClient } = await import("./stripe.server");
-    const { validateAppUrl } = await import("./config");
-    const urls = validateAppUrl(data.returnUrl);
     // RLS scopes this read to the caller's own stores.
     const { data: rows, error } = await context.supabase
       .from("orders")
@@ -327,29 +325,31 @@ export const createBatchOrderCheckout = createServerFn({ method: "POST" })
           },
         },
       ],
-      success_url: urls.success,
-      cancel_url: urls.cancel,
-      metadata: {
-        flysales_entity_id: entityId,
-        kind: "order_batch",
-        batch_reference: session.id ?? "",
-      },
-      payment_intent_data: {
-        metadata: { flysales_entity_id: entityId, kind: "order_batch", batch_reference: "" },
-      },
+      success_url: `${data.returnUrl}?batch=success&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${data.returnUrl}?batch=cancel`,
+      metadata: { flysales_entity_id: entityId, kind: "order_batch" },
     });
     if (!session.url) throw new Error("Stripe did not return a checkout URL");
-    // The reference is the session id — set it now that it exists.
-    await stripe.checkout.sessions.update(session.id, {
-      metadata: { batch_reference: session.id },
-    });
+    // The batch reference is the session id — only known after creation, so
+    // stamp it onto the session AND its payment intent now.
+    const batchMeta = { batch_reference: session.id };
+    await stripe.checkout.sessions.update(session.id, { metadata: batchMeta });
+    const piId =
+      typeof session.payment_intent === "string" ? session.payment_intent : null;
+    if (piId) {
+      await stripe.paymentIntents.update(piId, {
+        metadata: { flysales_entity_id: entityId, kind: "order_batch", ...batchMeta },
+      });
+    }
     const { getAdminClient } = await import("./admin.server");
     const admin = await getAdminClient();
     const { error: insertError } = await admin.from("order_batch_payments").insert({
       entity_id: entityId,
       order_ids: orders.map((o) => o.id),
+      amount: Math.round(total * 100) / 100,
       status: "pending",
       stripe_session_id: session.id,
+      stripe_payment_intent_id: piId,
     });
     if (insertError) throw new Error(insertError.message);
     return { url: session.url };
