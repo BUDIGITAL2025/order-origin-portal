@@ -9,13 +9,18 @@ import * as React from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  ArrowDownRight,
   ArrowRight,
+  ArrowUpRight,
+  Bookmark,
+  BookmarkCheck,
   ChevronDown,
   ChevronUp,
   Database,
   ExternalLink,
   Eye,
   FlaskConical,
+  Globe,
   LineChart,
   Loader2,
   Mail,
@@ -24,6 +29,8 @@ import {
   Play,
   RefreshCw,
   Search,
+  SlidersHorizontal,
+  Star,
   Store,
   Users,
   Wallet,
@@ -44,7 +51,6 @@ import {
   spymarketSearchAds,
 } from "@/lib/spymarket-tools.functions";
 import type { ToolOk, ToolResult } from "@/lib/spymarket-tools.server";
-import { COUNTRIES } from "@/lib/countries";
 import { cn } from "@/lib/utils";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
@@ -76,7 +82,22 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Switch } from "@/components/ui/switch";
+import {
+  CountryDualContent,
+  DualRangeContent,
+  FilterChip,
+  ListContent,
+} from "@/components/spymarket/filters";
+import {
+  AreaChart,
+  Flag,
+  FlagStack,
+  LazySparkline,
+  Sparkline,
+  filterRange,
+  toTrendPoints,
+  type TrendPoint,
+} from "@/components/spymarket/viz";
 import {
   Table,
   TableBody,
@@ -127,53 +148,6 @@ function costLabel(costs: EndpointCosts | undefined, endpoint: string, rows: num
   const c = costs?.find((x) => x.endpoint === endpoint);
   if (!c || c.sampleCount === 0) return "cost unknown — measured on 1st call";
   return `up to ~${fmtInt(Math.ceil(rows * c.creditsPerRow))} credits (est.)`;
-}
-
-/** Tiny inline SVG sparkline for time-series points ({period|date, value|reach}). */
-function Sparkline({
-  points,
-  className,
-  height = 36,
-}: {
-  points: Array<Record<string, unknown>> | undefined;
-  className?: string;
-  height?: number;
-}) {
-  if (!points || points.length < 2) return null;
-  const values = points
-    .map((p) => asNum(p["value"] ?? p["reach"]))
-    .filter((v): v is number => v !== null);
-  if (values.length < 2) return null;
-  const w = 240;
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const span = max - min || 1;
-  const step = w / (values.length - 1);
-  const coords = values
-    .map(
-      (v, i) =>
-        `${(i * step).toFixed(1)},${(height - 3 - ((v - min) / span) * (height - 6)).toFixed(1)}`,
-    )
-    .join(" ");
-  return (
-    <svg
-      viewBox={`0 0 ${w} ${height}`}
-      preserveAspectRatio="none"
-      className={cn("w-full text-primary", className)}
-      style={{ height }}
-      aria-hidden
-    >
-      <polyline
-        points={coords}
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        vectorEffect="non-scaling-stroke"
-        strokeLinejoin="round"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
 }
 
 /** Collapsible "View raw data" panel with the full API payload. */
@@ -475,7 +449,10 @@ export interface SpyMarketToolsProps {
   tab: string;
   shopId?: string | undefined;
   domain?: string | undefined;
-  go: (patch: { tab?: string; shopId?: string; domain?: string }) => void;
+  /** Full validated search params — filters/sort hydrate from the URL. */
+  search: Record<string, string | undefined>;
+  /** Merge a patch into the URL query string (shareable filtered views). */
+  go: (patch: Record<string, string | undefined>) => void;
 }
 
 const TOOL_TABS: ReadonlyArray<{ id: string; label: string; badge?: string }> = [
@@ -487,7 +464,7 @@ const TOOL_TABS: ReadonlyArray<{ id: string; label: string; badge?: string }> = 
   { id: "usage", label: "Usage", badge: "free" },
 ];
 
-export function SpyMarketTools({ tab, shopId, domain, go }: SpyMarketToolsProps) {
+export function SpyMarketTools({ tab, shopId, domain, search, go }: SpyMarketToolsProps) {
   const statusFn = useServerFn(getSpyMarketToolsStatus);
   const { data: status, isLoading } = useQuery({
     queryKey: ["spymarket-tools-status"],
@@ -559,9 +536,11 @@ export function SpyMarketTools({ tab, shopId, domain, go }: SpyMarketToolsProps)
       </div>
 
       {tab === "lookup" && <LookupTab go={go} />}
-      {tab === "shops" && <ShopsTab go={go} initialDomain={domain} costs={status.endpointCosts} />}
+      {tab === "shops" && (
+        <ShopsTab go={go} initialDomain={domain} costs={status.endpointCosts} url={search} />
+      )}
       {tab === "shop" && <ShopDetailTab shopId={shopId} go={go} costs={status.endpointCosts} />}
-      {tab === "ads" && <AdsTab costs={status.endpointCosts} />}
+      {tab === "ads" && <AdsTab costs={status.endpointCosts} url={search} go={go} />}
       {tab === "emails" && <EmailsTab costs={status.endpointCosts} />}
       {tab === "usage" && <UsageTab />}
     </div>
@@ -726,265 +705,260 @@ const LANGUAGES = [
   { code: "pl", name: "Polish" },
 ];
 
+const SHOP_SORTS = [
+  { value: "monthlyVisits", label: "Most traffic" },
+  { value: "activeAds", label: "Most ads" },
+  { value: "productsCount", label: "Biggest catalogue" },
+  { value: "createdAt", label: "Newest" },
+];
+
+const VISITS_RANGE_MAX = 50_000_000;
+const ADS_RANGE_MAX = 500;
+const PRODUCTS_RANGE_MAX = 10_000;
+
+interface ShopsFilters {
+  search: string;
+  searchType: string;
+  minVisits: string;
+  maxVisits: string;
+  minAds: string;
+  maxAds: string;
+  adsWindow: string;
+  minProducts: string;
+  maxProducts: string;
+  plusOnly: boolean;
+  categoryId: string;
+  countriesInc: string[];
+  countriesExc: string[];
+  language: string;
+  trustpilot: string;
+  sortBy: string;
+}
+
+function shopsFiltersFromUrl(
+  url: Record<string, string | undefined>,
+  initialDomain?: string | undefined,
+): ShopsFilters {
+  return {
+    search: url["sq"] ?? initialDomain ?? "",
+    searchType: url["st"] ?? "domain",
+    minVisits: url["vmin"] ?? "",
+    maxVisits: url["vmax"] ?? "",
+    minAds: url["amin"] ?? "",
+    maxAds: url["amax"] ?? "",
+    adsWindow: url["awin"] ?? "last30d",
+    minProducts: url["pmin"] ?? "",
+    maxProducts: url["pmax"] ?? "",
+    plusOnly: url["plus"] === "1",
+    categoryId: url["cat"] ?? "",
+    countriesInc: url["cinc"]?.split(",").filter(Boolean) ?? [],
+    countriesExc: url["cexc"]?.split(",").filter(Boolean) ?? [],
+    language: url["lang"] ?? "",
+    trustpilot: url["tp"] ?? "",
+    sortBy: url["ssort"] ?? "monthlyVisits",
+  };
+}
+
+/** Serialize filters into short query keys; undefined keys drop out of the URL. */
+function shopsUrlPatch(f: ShopsFilters): Record<string, string | undefined> {
+  return {
+    tab: "shops",
+    domain: undefined,
+    sq: f.search.trim() || undefined,
+    st: f.searchType !== "domain" ? f.searchType : undefined,
+    vmin: f.minVisits || undefined,
+    vmax: f.maxVisits || undefined,
+    amin: f.minAds || undefined,
+    amax: f.maxAds || undefined,
+    awin: (f.minAds || f.maxAds) && f.adsWindow !== "last30d" ? f.adsWindow : undefined,
+    pmin: f.minProducts || undefined,
+    pmax: f.maxProducts || undefined,
+    plus: f.plusOnly ? "1" : undefined,
+    cat: f.categoryId || undefined,
+    cinc: f.countriesInc.length > 0 ? f.countriesInc.join(",") : undefined,
+    cexc: f.countriesExc.length > 0 ? f.countriesExc.join(",") : undefined,
+    lang: f.language || undefined,
+    tp: f.trustpilot || undefined,
+    ssort: f.sortBy !== "monthlyVisits" ? f.sortBy : undefined,
+  };
+}
+
+/** "2024-03-12" → "1y 9m old". */
+function shopAge(createdAt: string | null): string | null {
+  if (!createdAt) return null;
+  const then = new Date(createdAt).getTime();
+  if (!Number.isFinite(then)) return null;
+  const months = Math.max(0, Math.round((Date.now() - then) / (30.44 * 86_400_000)));
+  if (months < 1) return "<1mo old";
+  if (months < 12) return `${months}mo old`;
+  const y = Math.floor(months / 12);
+  const m = months % 12;
+  return m === 0 ? `${y}y old` : `${y}y ${m}m old`;
+}
+
 function ShopsTab({
   go,
   initialDomain,
   costs,
+  url,
 }: {
   go: SpyMarketToolsProps["go"];
   initialDomain?: string | undefined;
   costs?: EndpointCosts | undefined;
+  url: Record<string, string | undefined>;
 }) {
   const queryShops = useServerFn(spymarketQueryShops);
   const call = useMeteredCall(queryShops as ServerFnLike);
   const categoriesFn = useServerFn(spymarketCategories);
 
-  const [search, setSearch] = React.useState(initialDomain ?? "");
-  const [searchType, setSearchType] = React.useState("domain");
-  const [minVisits, setMinVisits] = React.useState("");
-  const [maxVisits, setMaxVisits] = React.useState("");
-  const [minAds, setMinAds] = React.useState("");
-  const [adsWindow, setAdsWindow] = React.useState("last30d");
-  const [minProducts, setMinProducts] = React.useState("");
-  const [maxProducts, setMaxProducts] = React.useState("");
-  const [plusOnly, setPlusOnly] = React.useState(false);
-  const [categoryId, setCategoryId] = React.useState("");
-  const [country, setCountry] = React.useState("");
-  const [language, setLanguage] = React.useState("");
-  const [trustpilot, setTrustpilot] = React.useState("");
+  // Applied filter state — hydrated from the URL so shared links restore the view.
+  const [f, setF] = React.useState<ShopsFilters>(() => shopsFiltersFromUrl(url, initialDomain));
   const [limit, setLimit] = React.useState(32);
   const [pages, setPages] = React.useState<Rec[][]>([]);
 
-  const { data: categoriesResult } = useQuery({
+  const { data: categories } = useQuery({
     queryKey: ["spymarket-categories"],
-    staleTime: 60 * 60 * 1000,
-    queryFn: () => categoriesFn({ data: {} }),
+    queryFn: async () => {
+      const res = (await categoriesFn()) as ToolOk<unknown>;
+      return asArr(res.data).map(asRec);
+    },
+    staleTime: 24 * 60 * 60 * 1000,
   });
-  const categories =
-    categoriesResult?.status === "ok" ? dataRows(categoriesResult.data) : [];
 
-  const buildInput = (offset: number): Record<string, unknown> => ({
-    ...(search.trim() ? { search: search.trim(), searchType } : {}),
-    ...(minVisits ? { minMonthlyVisits: Number(minVisits) } : {}),
-    ...(maxVisits ? { maxMonthlyVisits: Number(maxVisits) } : {}),
-    ...(minAds ? { minActiveAds: Number(minAds), adsTimePeriod: adsWindow } : {}),
-    ...(minProducts ? { minProductsCount: Number(minProducts) } : {}),
-    ...(maxProducts ? { maxProductsCount: Number(maxProducts) } : {}),
-    ...(plusOnly ? { isShopifyPlus: true } : {}),
-    ...(categoryId ? { categoryId: Number(categoryId) } : {}),
-    ...(country ? { country } : {}),
-    ...(language ? { language } : {}),
-    ...(trustpilot ? { minTrustpilotRating: Number(trustpilot) } : {}),
-    limit,
-    offset,
-  });
+  /** Commit a patch to state AND the URL (shareable filtered views). */
+  const apply = (patch: Partial<ShopsFilters>) => {
+    setF((prev) => {
+      const next = { ...prev, ...patch };
+      go(shopsUrlPatch(next));
+      return next;
+    });
+  };
+
+  const buildInput = (offset: number): Record<string, unknown> => {
+    const input: Record<string, unknown> = { limit, offset, sortBy: f.sortBy, order: "desc" };
+    if (f.search.trim()) {
+      input["search"] = f.search.trim();
+      input["searchType"] = f.searchType;
+    }
+    if (f.minVisits) input["minMonthlyVisits"] = Number(f.minVisits);
+    if (f.maxVisits) input["maxMonthlyVisits"] = Number(f.maxVisits);
+    if (f.minAds) input["minActiveAds"] = Number(f.minAds);
+    if (f.maxAds) input["maxActiveAds"] = Number(f.maxAds);
+    if (f.minAds || f.maxAds) input["adsTimePeriod"] = f.adsWindow;
+    if (f.minProducts) input["minProductsCount"] = Number(f.minProducts);
+    if (f.maxProducts) input["maxProductsCount"] = Number(f.maxProducts);
+    if (f.plusOnly) input["isShopifyPlus"] = true;
+    if (f.categoryId) input["categoryId"] = Number(f.categoryId);
+    if (f.countriesInc.length > 0) input["countries"] = f.countriesInc;
+    if (f.language) input["language"] = f.language;
+    if (f.trustpilot) input["minTrustpilotRating"] = Number(f.trustpilot);
+    return input;
+  };
 
   const runSearch = async () => {
     setPages([]);
+    go(shopsUrlPatch(f));
     await call.execute(buildInput(0));
   };
+
   const loadMore = async () => {
     await call.execute(buildInput(pages.length * limit));
   };
 
-  // Append successful results into pages.
+  // Accumulate pages; a fresh search replaces, load-more appends.
   const lastResultRef = React.useRef<ToolOk<unknown> | null>(null);
   React.useEffect(() => {
     if (call.state.kind === "ok" && call.state.result !== lastResultRef.current) {
       lastResultRef.current = call.state.result;
       const rows = dataRows(call.state.result.data);
-      setPages((prev) => {
-        // First page replaces; later pages append.
-        const offset = (asRec(call.state.kind === "ok" ? call.state.result.data : {})[""], 0);
-        void offset;
-        return prev.length === 0 || rows.length === 0 ? [rows] : [...prev, rows];
-      });
+      setPages((prev) => (prev.length === 0 || rows.length === 0 ? [rows] : [...prev, rows]));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [call.state]);
 
-  // Reset accumulation when a fresh search starts.
+  // Deep link: /admin/spymarket-tools?tab=shops&sq=… (or any filter param) auto-runs.
+  const autoRanRef = React.useRef(false);
+  React.useEffect(() => {
+    if (autoRanRef.current) return;
+    autoRanRef.current = true;
+    const hadParams = Boolean(
+      initialDomain ||
+        url["sq"] || url["vmin"] || url["vmax"] || url["amin"] || url["amax"] ||
+        url["pmin"] || url["pmax"] || url["plus"] || url["cat"] || url["cinc"] ||
+        url["lang"] || url["tp"] || url["ssort"],
+    );
+    if (hadParams) void call.execute(buildInput(0));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const searching = call.state.kind === "loading";
-  const allRows = pages.flat();
-  const lastPageRows = pages.length > 0 ? (pages[pages.length - 1]?.length ?? 0) : 0;
-  const hasMore = pages.length > 0 && lastPageRows >= limit;
+  // Country exclusion is applied client-side (the upstream API ignores it).
+  const excSet = new Set(f.countriesExc);
+  const allRows = pages.flat().filter((r) => {
+    if (excSet.size === 0) return true;
+    const cc = asStr(asRec(r["profile"])["countryCode"]);
+    return cc == null || !excSet.has(cc);
+  });
+  const lastPage = pages[pages.length - 1];
+  const hasMore = lastPage != null && lastPage.length >= limit;
+
+  const visitsRange: [number, number] = [
+    Number(f.minVisits) || 0,
+    Number(f.maxVisits) || VISITS_RANGE_MAX,
+  ];
+  const adsRange: [number, number] = [Number(f.minAds) || 0, Number(f.maxAds) || ADS_RANGE_MAX];
+  const productsRange: [number, number] = [
+    Number(f.minProducts) || 0,
+    Number(f.maxProducts) || PRODUCTS_RANGE_MAX,
+  ];
+  const categoryLabel = f.categoryId
+    ? (asStr(categories?.find((c) => String(asNum(c["id"])) === f.categoryId)?.["label"]) ??
+      "1 selected")
+    : null;
 
   return (
     <div className="space-y-4">
       <Card className="rounded-2xl">
-        <CardContent className="grid gap-4 p-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="space-y-1.5 sm:col-span-2">
-            <Label>Search (optional)</Label>
-            <div className="flex gap-2">
+        <CardContent className="space-y-3 p-4">
+          {/* Search row */}
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative min-w-52 flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="domain, product or shop name"
-                className="rounded-full"
-              />
-              <Select value={searchType} onValueChange={setSearchType}>
-                <SelectTrigger className="w-36 rounded-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="domain">domain</SelectItem>
-                  <SelectItem value="productName">product name</SelectItem>
-                  <SelectItem value="shopContains">shop contains</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>Monthly visits</Label>
-            <div className="flex items-center gap-2">
-              <Input
-                value={minVisits}
-                onChange={(e) => setMinVisits(e.target.value.replace(/\D/g, ""))}
-                placeholder="min"
-                inputMode="numeric"
-                className="rounded-full"
-              />
-              <span className="text-muted-foreground">–</span>
-              <Input
-                value={maxVisits}
-                onChange={(e) => setMaxVisits(e.target.value.replace(/\D/g, ""))}
-                placeholder="max"
-                inputMode="numeric"
-                className="rounded-full"
+                value={f.search}
+                onChange={(e) => setF((p) => ({ ...p, search: e.target.value }))}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") void runSearch();
+                }}
+                placeholder="domain, product or shop name (optional)"
+                className="rounded-full pl-9"
               />
             </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>Active ads (min)</Label>
-            <div className="flex gap-2">
-              <Input
-                value={minAds}
-                onChange={(e) => setMinAds(e.target.value.replace(/\D/g, ""))}
-                placeholder="0"
-                inputMode="numeric"
-                className="rounded-full"
-              />
-              <Select value={adsWindow} onValueChange={setAdsWindow}>
-                <SelectTrigger className="w-28 rounded-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="last24h">24h</SelectItem>
-                  <SelectItem value="last7d">7d</SelectItem>
-                  <SelectItem value="last30d">30d</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>Products</Label>
-            <div className="flex items-center gap-2">
-              <Input
-                value={minProducts}
-                onChange={(e) => setMinProducts(e.target.value.replace(/\D/g, ""))}
-                placeholder="min"
-                inputMode="numeric"
-                className="rounded-full"
-              />
-              <span className="text-muted-foreground">–</span>
-              <Input
-                value={maxProducts}
-                onChange={(e) => setMaxProducts(e.target.value.replace(/\D/g, ""))}
-                placeholder="max"
-                inputMode="numeric"
-                className="rounded-full"
-              />
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>Category</Label>
-            <Select value={categoryId} onValueChange={setCategoryId}>
-              <SelectTrigger className="rounded-full">
-                <SelectValue placeholder="Any category" />
+            <Select
+              value={f.searchType}
+              onValueChange={(v) => setF((p) => ({ ...p, searchType: v }))}
+            >
+              <SelectTrigger className="w-44 rounded-full">
+                <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {categories.map((c, i) => (
-                  <SelectItem key={i} value={String(asNum(c["id"]) ?? i)}>
-                    {asStr(c["label"]) ?? asStr(c["name"]) ?? `#${asNum(c["id"]) ?? i}`}
+                <SelectItem value="domain">Domain</SelectItem>
+                <SelectItem value="productName">Product name</SelectItem>
+                <SelectItem value="shopContains">Shop contains</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={f.sortBy} onValueChange={(v) => apply({ sortBy: v })}>
+              <SelectTrigger className="w-44 rounded-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {SHOP_SORTS.map((s) => (
+                  <SelectItem key={s.value} value={s.value}>
+                    {s.label}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>Country</Label>
-            <Select value={country} onValueChange={setCountry}>
-              <SelectTrigger className="rounded-full">
-                <SelectValue placeholder="Any country" />
-              </SelectTrigger>
-              <SelectContent>
-                {COUNTRIES.map((c) => (
-                  <SelectItem key={c.code} value={c.code}>
-                    {c.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>Language</Label>
-            <Select value={language} onValueChange={setLanguage}>
-              <SelectTrigger className="rounded-full">
-                <SelectValue placeholder="Any language" />
-              </SelectTrigger>
-              <SelectContent>
-                {LANGUAGES.map((l) => (
-                  <SelectItem key={l.code} value={l.code}>
-                    {l.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>Trustpilot rating</Label>
-            <Select value={trustpilot} onValueChange={setTrustpilot}>
-              <SelectTrigger className="rounded-full">
-                <SelectValue placeholder="Any" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="3">3.0+</SelectItem>
-                <SelectItem value="4">4.0+</SelectItem>
-                <SelectItem value="4.5">4.5+</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="flex items-end justify-between gap-3 pb-1">
-            <div className="flex items-center gap-2">
-              <Switch id="plus-only" checked={plusOnly} onCheckedChange={setPlusOnly} />
-              <Label htmlFor="plus-only" className="cursor-pointer">
-                Shopify Plus only
-              </Label>
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>Page size (max 100)</Label>
-            <Input
-              value={String(limit)}
-              onChange={(e) => {
-                const n = Number(e.target.value.replace(/\D/g, ""));
-                setLimit(Number.isFinite(n) ? Math.min(Math.max(n, 1), 100) : 32);
-              }}
-              inputMode="numeric"
-              className="w-28 rounded-full"
-            />
-          </div>
-
-          <div className="flex items-end sm:col-span-2 lg:col-span-4">
             <Button className="rounded-full" disabled={searching} onClick={() => void runSearch()}>
               {searching ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -994,6 +968,192 @@ function ShopsTab({
               Search — {costLabel(costs, "shops/query", limit)}
             </Button>
           </div>
+
+          {/* Filter chips */}
+          <div className="flex flex-wrap items-center gap-2">
+            <SlidersHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
+            <FilterChip
+              label="Traffic"
+              active={Boolean(f.minVisits || f.maxVisits)}
+              display={`${fmtCompact(visitsRange[0])}–${f.maxVisits ? fmtCompact(visitsRange[1]) : "∞"}`}
+              onApply={() => apply({})}
+              onClear={() => apply({ minVisits: "", maxVisits: "" })}
+            >
+              <DualRangeContent
+                min={0}
+                max={VISITS_RANGE_MAX}
+                logScale
+                value={visitsRange}
+                onChange={([lo, hi]) =>
+                  setF((p) => ({
+                    ...p,
+                    minVisits: lo > 0 ? String(lo) : "",
+                    maxVisits: hi < VISITS_RANGE_MAX ? String(hi) : "",
+                  }))
+                }
+                formatLabel={(n) => fmtCompact(n)}
+              />
+            </FilterChip>
+
+            <FilterChip
+              label="Active ads"
+              active={Boolean(f.minAds || f.maxAds)}
+              display={`${adsRange[0]}–${f.maxAds ? String(adsRange[1]) : "∞"}`}
+              onApply={() => apply({})}
+              onClear={() => apply({ minAds: "", maxAds: "" })}
+            >
+              <DualRangeContent
+                min={0}
+                max={ADS_RANGE_MAX}
+                value={adsRange}
+                onChange={([lo, hi]) =>
+                  setF((p) => ({
+                    ...p,
+                    minAds: lo > 0 ? String(lo) : "",
+                    maxAds: hi < ADS_RANGE_MAX ? String(hi) : "",
+                  }))
+                }
+              />
+              <div className="mt-3 flex items-center justify-between border-t pt-3">
+                <span className="text-xs text-muted-foreground">Window</span>
+                <Select
+                  value={f.adsWindow}
+                  onValueChange={(v) => setF((p) => ({ ...p, adsWindow: v }))}
+                >
+                  <SelectTrigger className="h-8 w-28 rounded-full text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="last24h">24h</SelectItem>
+                    <SelectItem value="last7d">7d</SelectItem>
+                    <SelectItem value="last30d">30d</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </FilterChip>
+
+            <FilterChip
+              label="Products"
+              active={Boolean(f.minProducts || f.maxProducts)}
+              display={`${productsRange[0]}–${f.maxProducts ? String(productsRange[1]) : "∞"}`}
+              onApply={() => apply({})}
+              onClear={() => apply({ minProducts: "", maxProducts: "" })}
+            >
+              <DualRangeContent
+                min={0}
+                max={PRODUCTS_RANGE_MAX}
+                logScale
+                value={productsRange}
+                onChange={([lo, hi]) =>
+                  setF((p) => ({
+                    ...p,
+                    minProducts: lo > 0 ? String(lo) : "",
+                    maxProducts: hi < PRODUCTS_RANGE_MAX ? String(hi) : "",
+                  }))
+                }
+                formatLabel={(n) => fmtCompact(n)}
+              />
+            </FilterChip>
+
+            <FilterChip
+              label="Country"
+              active={f.countriesInc.length > 0 || f.countriesExc.length > 0}
+              display={
+                [
+                  f.countriesInc.length > 0 ? `+${f.countriesInc.length}` : null,
+                  f.countriesExc.length > 0 ? `−${f.countriesExc.length}` : null,
+                ]
+                  .filter(Boolean)
+                  .join(" ") || undefined
+              }
+              onApply={() => apply({})}
+              onClear={() => apply({ countriesInc: [], countriesExc: [] })}
+              contentClassName="w-[26rem]"
+            >
+              <CountryDualContent
+                include={f.countriesInc}
+                exclude={f.countriesExc}
+                onIncludeChange={(c) => setF((p) => ({ ...p, countriesInc: c }))}
+                onExcludeChange={(c) => setF((p) => ({ ...p, countriesExc: c }))}
+              />
+            </FilterChip>
+
+            <FilterChip
+              label="Category"
+              active={f.categoryId !== ""}
+              display={categoryLabel ?? undefined}
+              onApply={() => apply({})}
+              onClear={() => apply({ categoryId: "" })}
+            >
+              <ListContent
+                searchable
+                options={(categories ?? []).map((c) => ({
+                  value: String(asNum(c["id"]) ?? ""),
+                  label: asStr(c["label"]) ?? "—",
+                }))}
+                value={f.categoryId}
+                onChange={(v) => setF((p) => ({ ...p, categoryId: v }))}
+              />
+            </FilterChip>
+
+            <FilterChip
+              label="Language"
+              active={f.language !== ""}
+              display={LANGUAGES.find((l) => l.code === f.language)?.name}
+              onApply={() => apply({})}
+              onClear={() => apply({ language: "" })}
+            >
+              <ListContent
+                options={LANGUAGES.map((l) => ({ value: l.code, label: l.name }))}
+                value={f.language}
+                onChange={(v) => setF((p) => ({ ...p, language: v }))}
+              />
+            </FilterChip>
+
+            <FilterChip
+              label="Trustpilot"
+              active={f.trustpilot !== ""}
+              display={f.trustpilot ? `${f.trustpilot}+` : undefined}
+              onApply={() => apply({})}
+              onClear={() => apply({ trustpilot: "" })}
+            >
+              <ListContent
+                options={[
+                  { value: "3", label: "3.0+" },
+                  { value: "4", label: "4.0+" },
+                  { value: "4.5", label: "4.5+" },
+                ]}
+                value={f.trustpilot}
+                onChange={(v) => setF((p) => ({ ...p, trustpilot: v }))}
+              />
+            </FilterChip>
+
+            <button
+              type="button"
+              onClick={() => apply({ plusOnly: !f.plusOnly })}
+              className={cn(
+                "inline-flex h-8 items-center rounded-full border px-3 text-xs font-medium transition-colors",
+                f.plusOnly
+                  ? "border-primary/40 bg-primary/15 text-primary"
+                  : "border-border bg-card text-muted-foreground hover:text-foreground",
+              )}
+            >
+              Shopify Plus
+            </button>
+
+            <div className="ml-auto flex items-center gap-2">
+              <Label className="text-xs text-muted-foreground">Page size</Label>
+              <Input
+                value={String(limit)}
+                onChange={(e) => {
+                  const n = Number(e.target.value);
+                  if (Number.isFinite(n)) setLimit(Math.min(100, Math.max(1, Math.trunc(n))));
+                }}
+                className="h-8 w-16 rounded-full text-xs"
+                inputMode="numeric"
+              />
+            </div>
+          </div>
         </CardContent>
       </Card>
 
@@ -1002,97 +1162,302 @@ function ShopsTab({
       {searching && pages.length === 0 && <LoadingRows rows={6} />}
 
       {allRows.length > 0 && (
-        <Card className="rounded-2xl">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Shop</TableHead>
-                <TableHead>Country</TableHead>
-                <TableHead className="text-right">Visits/mo</TableHead>
-                <TableHead className="text-right">Active ads</TableHead>
-                <TableHead className="text-right">Products</TableHead>
-                <TableHead className="text-right">Google ads</TableHead>
-                <TableHead />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {allRows.map((row, i) => {
-                const id = asStr(row["id"]);
-                const domain = asStr(row["domain"]);
-                const profile = asRec(row["profile"]);
-                const traffic = asRec(row["traffic"]);
-                const advertising = asRec(row["advertising"]);
-                const catalog = asRec(row["catalog"]);
-                const googleAds = asRec(row["googleAds"]);
-                const screenshot = asStr(row["screenshotUrl"]);
-                const name = asStr(row["name"]) ?? domain ?? "Unknown shop";
-                return (
-                  <TableRow
-                    key={id ?? i}
-                    className={cn(id && "cursor-pointer")}
-                    onClick={() => id && go({ tab: "shop", shopId: id })}
-                  >
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        {screenshot ? (
-                          <img
-                            src={screenshot}
-                            alt=""
-                            loading="lazy"
-                            className="h-10 w-16 shrink-0 rounded-md border object-cover"
-                          />
-                        ) : null}
-                        <div className="min-w-0">
-                          <p className="truncate font-medium">{name}</p>
-                          {domain && (
-                            <p className="truncate text-xs text-muted-foreground">{domain}</p>
-                          )}
+        <Card className="overflow-hidden rounded-2xl">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="sticky left-0 z-10 min-w-[240px] bg-card">Shop</TableHead>
+                  <TableHead className="min-w-[210px]">Best sellers</TableHead>
+                  <TableHead className="min-w-[130px]">Categories</TableHead>
+                  <TableHead className="min-w-[170px]">Visits / month</TableHead>
+                  <TableHead className="min-w-[170px]">Meta ads</TableHead>
+                  <TableHead className="min-w-[200px]">Latest creatives</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {allRows.map((row, i) => {
+                  const id = asStr(row["id"]);
+                  const rowDomain = asStr(row["domain"]);
+                  const profile = asRec(row["profile"]);
+                  const traffic = asRec(row["traffic"]);
+                  const advertising = asRec(row["advertising"]);
+                  const catalog = asRec(row["catalog"]);
+                  const screenshot = asStr(row["screenshotUrl"]);
+                  const name = asStr(row["name"]) ?? rowDomain ?? "Unknown shop";
+                  const countryCode = asStr(profile["countryCode"]);
+                  const createdAt = asStr(row["createdAt"]);
+                  const age = shopAge(createdAt);
+                  const sellers = asArr(catalog["bestSellers"]).map(asRec).slice(0, 3);
+                  const productsCount = asNum(catalog["productsCount"]);
+                  const cats = [
+                    ...new Set(
+                      [
+                        asStr(catalog["mainCategory"]),
+                        ...asArr(catalog["categories"]).map((c) => asStr(c)),
+                      ].filter((c): c is string => !!c),
+                    ),
+                  ];
+                  const visitCountries = asArr(traffic["topCountries"])
+                    .map(asRec)
+                    .map((c) => asStr(c["countryCode"]));
+                  const adCountries = asArr(advertising["topCountries"])
+                    .map(asRec)
+                    .map((c) => asStr(c["countryCode"]));
+                  const creatives = asArr(row["latestAds"]).map(asRec).slice(0, 3);
+                  const activeAds = asNum(advertising["activeAds"]);
+                  return (
+                    <TableRow
+                      key={id ?? i}
+                      className={cn("h-[100px]", id && "cursor-pointer")}
+                      onClick={() => id && go({ tab: "shop", shopId: id })}
+                    >
+                      {/* 1 — Shop info (sticky) */}
+                      <TableCell className="sticky left-0 z-10 bg-card">
+                        <div className="flex items-center gap-3">
+                          <div className="relative shrink-0">
+                            {screenshot ? (
+                              <img
+                                src={screenshot}
+                                alt=""
+                                loading="lazy"
+                                className="h-14 w-24 rounded-lg border object-cover"
+                              />
+                            ) : (
+                              <div className="flex h-14 w-24 items-center justify-center rounded-lg border bg-muted">
+                                <Store className="h-4 w-4 text-muted-foreground" />
+                              </div>
+                            )}
+                            <Flag
+                              code={countryCode}
+                              size={16}
+                              className="absolute -bottom-1 -right-1 ring-2 ring-card"
+                            />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <p className="truncate text-sm font-semibold">{name}</p>
+                              {profile["isShopifyPlus"] === true && (
+                                <Badge
+                                  variant="secondary"
+                                  className="rounded-full px-1.5 py-0 text-[10px]"
+                                >
+                                  Plus
+                                </Badge>
+                              )}
+                            </div>
+                            {rowDomain && (
+                              <p className="flex items-center gap-1 truncate text-xs text-muted-foreground">
+                                <Globe className="h-3 w-3 shrink-0" />
+                                {rowDomain}
+                              </p>
+                            )}
+                            {(createdAt || age) && (
+                              <p className="mt-0.5 text-[11px] text-muted-foreground">
+                                {createdAt?.slice(0, 10)}
+                                {age && ` · ${age}`}
+                              </p>
+                            )}
+                          </div>
                         </div>
-                        {profile["isShopifyPlus"] === true && (
-                          <Badge variant="secondary" className="rounded-full">
-                            Plus
-                          </Badge>
+                      </TableCell>
+                      {/* 2 — Best sellers */}
+                      <TableCell>
+                        {sellers.length > 0 ? (
+                          <div className="flex items-center gap-1.5">
+                            {sellers.map((p, j) => {
+                              const img = asStr(p["imageUrl"]);
+                              return img ? (
+                                <img
+                                  key={j}
+                                  src={img}
+                                  alt={asStr(p["title"]) ?? "Best seller"}
+                                  loading="lazy"
+                                  className="h-[60px] w-[60px] rounded-lg border object-cover"
+                                />
+                              ) : null;
+                            })}
+                            {productsCount != null && (
+                              <span className="ml-1 whitespace-nowrap text-xs text-muted-foreground">
+                                {fmtInt(productsCount)} products
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">
+                            {productsCount != null ? `${fmtInt(productsCount)} products` : "—"}
+                          </span>
                         )}
-                      </div>
-                    </TableCell>
-                    <TableCell>{asStr(profile["countryCode"]) ?? "—"}</TableCell>
-                    <TableCell className="text-right">
-                      {fmtCompact(asNum(traffic["monthlyVisits"]))}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {fmtInt(asNum(advertising["activeAds"]))}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {fmtInt(asNum(catalog["productsCount"]))}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {fmtInt(asNum(googleAds["liveAds"]))}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <ArrowRight className="ml-auto h-4 w-4 text-muted-foreground" />
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+                      </TableCell>
+                      {/* 3 — Categories */}
+                      <TableCell>
+                        {cats.length > 0 ? (
+                          <div className="flex flex-wrap gap-1">
+                            {cats.slice(0, 2).map((c) => (
+                              <Badge key={c} variant="secondary" className="rounded-full text-[10px]">
+                                {c}
+                              </Badge>
+                            ))}
+                            {cats.length > 2 && (
+                              <Badge variant="outline" className="rounded-full text-[10px]">
+                                +{cats.length - 2}
+                              </Badge>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                      {/* 4 — Monthly visits + sparkline */}
+                      <TableCell>
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-semibold">
+                              {fmtCompact(asNum(traffic["monthlyVisits"]))}
+                            </span>
+                            <FlagStack codes={visitCountries} size={14} />
+                          </div>
+                          <LazySparkline points={toTrendPoints(traffic["history"])} />
+                        </div>
+                      </TableCell>
+                      {/* 5 — Meta ads + sparkline */}
+                      <TableCell>
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            {activeAds != null && (
+                              <span className="h-2 w-2 shrink-0 rounded-full bg-primary" />
+                            )}
+                            <span className="text-sm font-semibold">{fmtInt(activeAds)}</span>
+                            <FlagStack codes={adCountries} size={14} />
+                          </div>
+                          <LazySparkline points={toTrendPoints(advertising["history"])} />
+                        </div>
+                      </TableCell>
+                      {/* 6 — Latest creatives */}
+                      <TableCell>
+                        {creatives.length > 0 ? (
+                          <div className="flex gap-1.5">
+                            {creatives.map((a, j) => {
+                              const img = asStr(a["thumbnailUrl"]) ?? asStr(a["mediaUrl"]);
+                              const isVideo = asStr(a["mediaType"]) === "video";
+                              return (
+                                <div
+                                  key={j}
+                                  className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg border bg-muted"
+                                >
+                                  {img && (
+                                    <img
+                                      src={img}
+                                      alt="Ad creative"
+                                      loading="lazy"
+                                      className="h-full w-full object-cover"
+                                    />
+                                  )}
+                                  {isVideo && (
+                                    <Play className="absolute inset-0 m-auto h-4 w-4 text-white drop-shadow" />
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
         </Card>
       )}
 
-      {hasMore && (
+      {call.state.kind === "ok" && allRows.length === 0 && !searching && (
+        <Card className="rounded-2xl">
+          <CardContent className="p-8 text-center text-sm text-muted-foreground">
+            No shops matched. Loosen the filters or try another search.
+          </CardContent>
+        </Card>
+      )}
+
+      {hasMore && !searching && (
         <div className="flex justify-center">
-          <Button
-            variant="outline"
-            className="rounded-full"
-            disabled={searching}
-            onClick={() => void loadMore()}
-          >
-            {searching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+          <Button variant="outline" className="rounded-full" onClick={() => void loadMore()}>
             Load more — {costLabel(costs, "shops/query", limit)}
           </Button>
         </div>
       )}
     </div>
+  );
+}
+
+/** Large area chart with 3M/6M/ALL range toggle and a top-countries footer. */
+function TrendChart({
+  title,
+  icon,
+  points,
+  countries,
+}: {
+  title: string;
+  icon: React.ReactNode;
+  points: TrendPoint[];
+  countries: unknown;
+}) {
+  const [range, setRange] = React.useState<"3M" | "6M" | "ALL">("ALL");
+  const filtered = filterRange(points, range);
+  const countryRows = asArr(countries).map(asRec).slice(0, 5);
+  if (points.length < 2 && countryRows.length === 0) return null;
+  return (
+    <Card className="rounded-2xl">
+      <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+          {icon}
+          {title}
+        </CardTitle>
+        <div className="flex gap-1">
+          {(["3M", "6M", "ALL"] as const).map((r) => (
+            <button
+              key={r}
+              type="button"
+              onClick={() => setRange(r)}
+              className={cn(
+                "rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors",
+                range === r
+                  ? "bg-primary/15 text-primary"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {r}
+            </button>
+          ))}
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {filtered.length >= 2 ? (
+          <AreaChart points={filtered} />
+        ) : (
+          <p className="py-8 text-center text-sm text-muted-foreground">No series data.</p>
+        )}
+        {countryRows.length > 0 && (
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t pt-3">
+            {countryRows.map((c, i) => {
+              const code = asStr(c["countryCode"]) ?? asStr(c["code"]) ?? asStr(c["country"]);
+              const share = asNum(c["share"]);
+              return (
+                <span key={i} className="flex items-center gap-1.5 text-xs">
+                  <Flag code={code} size={14} />
+                  <span className="font-medium">{code ?? "?"}</span>
+                  {share != null && (
+                    <span className="text-muted-foreground">{Math.round(share * 100)}%</span>
+                  )}
+                </span>
+              );
+            })}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -1150,6 +1515,15 @@ function ShopDetailTab({
     "twitter",
     "linkedin",
   ] as const;
+
+  const socialStats = SOCIAL_PLATFORMS.map((p) => asRec(socials[p]));
+  const socialFollowerValues = socialStats.map((s) => asNum(s["followers"]));
+  const socialTotal = socialFollowerValues.some((v) => v != null)
+    ? socialFollowerValues.reduce<number>((acc, v) => acc + (v ?? 0), 0)
+    : null;
+  const socialCount = socialStats.filter(
+    (s) => asNum(s["followers"]) != null || asStr(s["handle"]),
+  ).length;
 
   return (
     <div className="space-y-4">
@@ -1228,21 +1602,96 @@ function ShopDetailTab({
                   </p>
                 )}
               </div>
-              {asNum(trustpilot["rating"]) != null && (
-                <a
-                  href={asStr(trustpilot["url"]) ?? "#"}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-right"
-                >
-                  <p className="text-lg font-semibold">{asNum(trustpilot["rating"])?.toFixed(1)}</p>
-                  <p className="text-xs text-muted-foreground">
-                    Trustpilot · {fmtInt(asNum(trustpilot["reviewCount"]))} reviews
-                  </p>
-                </a>
-              )}
             </CardContent>
           </Card>
+
+          {/* KPI row */}
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Card className="rounded-2xl">
+              <CardContent className="p-4">
+                <p className="text-xs font-medium text-muted-foreground">Monthly visits</p>
+                <div className="mt-1 flex items-center gap-2">
+                  <p className="text-2xl font-semibold">
+                    {fmtCompact(asNum(traffic["monthlyVisits"]))}
+                  </p>
+                  {asNum(traffic["growth30d"]) != null && (
+                    <span
+                      className={cn(
+                        "inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[11px] font-semibold",
+                        (asNum(traffic["growth30d"]) ?? 0) >= 0
+                          ? "bg-primary/15 text-primary"
+                          : "bg-destructive/10 text-destructive",
+                      )}
+                    >
+                      {(asNum(traffic["growth30d"]) ?? 0) >= 0 ? (
+                        <ArrowUpRight className="h-3 w-3" />
+                      ) : (
+                        <ArrowDownRight className="h-3 w-3" />
+                      )}
+                      {fmtPct(asNum(traffic["growth30d"]))}
+                    </span>
+                  )}
+                </div>
+                <p className="mt-1 text-[11px] text-muted-foreground">30-day growth</p>
+              </CardContent>
+            </Card>
+            <Card className="rounded-2xl">
+              <CardContent className="p-4">
+                <p className="text-xs font-medium text-muted-foreground">Trustpilot</p>
+                {asNum(trustpilot["rating"]) != null ? (
+                  <>
+                    <div className="mt-1 flex items-center gap-2">
+                      <p className="text-2xl font-semibold">
+                        {asNum(trustpilot["rating"])?.toFixed(1)}
+                      </p>
+                      <Star className="h-4 w-4 fill-primary text-primary" />
+                    </div>
+                    <a
+                      href={asStr(trustpilot["url"]) ?? "#"}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-1 inline-block text-[11px] text-muted-foreground hover:text-foreground"
+                    >
+                      {fmtInt(asNum(trustpilot["reviewCount"]))} reviews
+                    </a>
+                  </>
+                ) : (
+                  <p className="mt-1 text-sm text-muted-foreground">No rating</p>
+                )}
+              </CardContent>
+            </Card>
+            <Card className="rounded-2xl">
+              <CardContent className="p-4">
+                <p className="text-xs font-medium text-muted-foreground">Socials</p>
+                {socialTotal != null ? (
+                  <>
+                    <p className="mt-1 text-2xl font-semibold">{fmtCompact(socialTotal)}</p>
+                    <p className="mt-1 text-[11px] text-muted-foreground">
+                      followers across {socialCount} platform{socialCount === 1 ? "" : "s"}
+                    </p>
+                  </>
+                ) : (
+                  <p className="mt-1 text-sm text-muted-foreground">No profiles</p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Big charts — series already in the shop payload, no extra calls */}
+          <div className="grid gap-4 xl:grid-cols-2">
+            <TrendChart
+              title="Traffic over time"
+              icon={<LineChart className="h-4 w-4 text-primary" />}
+              points={toTrendPoints(traffic["history"])}
+              countries={traffic["topCountries"]}
+            />
+            <TrendChart
+              title="Active ads over time"
+              icon={<Megaphone className="h-4 w-4 text-primary" />}
+              points={toTrendPoints(advertising["history"])}
+              countries={advertising["topCountries"] ?? advertising["countryDistribution"]}
+            />
+          </div>
 
           <div className="grid gap-4 lg:grid-cols-2">
             {/* Traffic */}
@@ -1273,7 +1722,7 @@ function ShopDetailTab({
                   </div>
                 ))}
               </div>
-              <Sparkline points={asArr(traffic["history"]).map(asRec)} height={56} />
+              {/* series chart moved to the big "Traffic over time" card above */}
               {asArr(traffic["topCountries"]).length > 0 && (
                 <div className="space-y-1.5 pt-1">
                   <p className="text-xs font-medium text-muted-foreground">Top countries</p>
@@ -1352,7 +1801,7 @@ function ShopDetailTab({
                 <p className="text-xs text-muted-foreground">reach 30d (EU/UK)</p>
               </div>
             </div>
-            <Sparkline points={asArr(advertising["history"]).map(asRec)} height={56} />
+            {/* series chart moved to the big "Active ads over time" card above */}
             {asArr(advertising["countryDistribution"]).length > 0 && (
               <div className="space-y-1.5">
                 <p className="text-xs font-medium text-muted-foreground">Country distribution</p>
@@ -1860,7 +2309,7 @@ function ShopOnDemand({
                           )}
                         </p>
                       </div>
-                      <Sparkline points={series} height={40} className="mt-2" />
+                      <Sparkline points={toTrendPoints(series)} height={40} className="mt-2" />
                     </div>
                   );
                 })}
@@ -1954,15 +2403,23 @@ function ShopOnDemand({
 // 4. AD LIBRARY
 // ---------------------------------------------------------------------------
 
-function AdsTab({ costs }: { costs?: EndpointCosts | undefined }) {
+function AdsTab({
+  costs,
+  url,
+  go,
+}: {
+  costs?: EndpointCosts | undefined;
+  url: Record<string, string | undefined>;
+  go: SpyMarketToolsProps["go"];
+}) {
   const searchAds = useServerFn(spymarketSearchAds);
   const call = useMeteredCall(searchAds as ServerFnLike);
 
-  const [search, setSearch] = React.useState("");
-  const [searchType, setSearchType] = React.useState("adCopy");
-  const [status, setStatus] = React.useState("active");
-  const [mediaType, setMediaType] = React.useState("");
-  const [sortBy, setSortBy] = React.useState("longestRunning");
+  const [search, setSearch] = React.useState(url["aq"] ?? "");
+  const [searchType, setSearchType] = React.useState(url["atyp"] ?? "adCopy");
+  const [status, setStatus] = React.useState(url["astat"] ?? "active");
+  const [mediaType, setMediaType] = React.useState(url["amed"] ?? "");
+  const [sortBy, setSortBy] = React.useState(url["asort"] ?? "longestRunning");
   const [limit, setLimit] = React.useState(24);
   const [pages, setPages] = React.useState<Rec[][]>([]);
   const [adDetailId, setAdDetailId] = React.useState<string | null>(null);
@@ -2347,7 +2804,7 @@ function AdDetailDialog({
                       </span>
                     )}
                   </p>
-                  <Sparkline points={reachPoints} height={64} />
+                  <Sparkline points={toTrendPoints(reachPoints)} height={64} />
                 </div>
               ) : (
                 <div className="flex items-center gap-2">

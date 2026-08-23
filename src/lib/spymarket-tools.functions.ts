@@ -71,14 +71,20 @@ export const spymarketQueryShops = createServerFn({ method: "POST" })
         minMonthlyVisits: z.number().int().min(0).optional(),
         maxMonthlyVisits: z.number().int().min(0).optional(),
         minActiveAds: z.number().int().min(0).optional(),
+        maxActiveAds: z.number().int().min(0).optional(),
         adsTimePeriod: z.enum(["last24h", "last7d", "last30d"]).optional(),
         minProductsCount: z.number().int().min(0).optional(),
         maxProductsCount: z.number().int().min(0).optional(),
         isShopifyPlus: z.boolean().optional(),
         categoryId: z.number().int().optional(),
         country: z.string().length(2).optional(),
+        countries: z.array(z.string().length(2)).max(20).optional(),
         language: z.string().max(10).optional(),
         minTrustpilotRating: z.number().min(0).max(5).optional(),
+        sortBy: z
+          .enum(["monthlyVisits", "activeAds", "productsCount", "createdAt"])
+          .default("monthlyVisits"),
+        order: z.enum(["desc", "asc"]).default("desc"),
         limit: z.number().int().min(1).max(100).default(32),
         offset: z.number().int().min(0).default(0),
         confirmOverage: z.boolean().optional(),
@@ -90,8 +96,8 @@ export const spymarketQueryShops = createServerFn({ method: "POST" })
     await requireAdmin(context.supabase, context.userId);
     const mod = await import("./spymarket-tools.server");
     const body: Record<string, unknown> = {
-      sortBy: "monthlyVisits",
-      order: "desc",
+      sortBy: data.sortBy,
+      order: data.order,
       limit: data.limit,
       offset: data.offset,
     };
@@ -101,15 +107,22 @@ export const spymarketQueryShops = createServerFn({ method: "POST" })
     }
     if (data.minMonthlyVisits != null) body["minMonthlyVisits"] = data.minMonthlyVisits;
     if (data.maxMonthlyVisits != null) body["maxMonthlyVisits"] = data.maxMonthlyVisits;
-    if (data.minActiveAds != null) {
-      body["minActiveAds"] = data.minActiveAds;
+    if (data.minActiveAds != null || data.maxActiveAds != null) {
+      if (data.minActiveAds != null) body["minActiveAds"] = data.minActiveAds;
+      if (data.maxActiveAds != null) body["maxActiveAds"] = data.maxActiveAds;
       body["adsTimePeriod"] = data.adsTimePeriod ?? "last30d";
     }
     if (data.minProductsCount != null) body["minProductsCount"] = data.minProductsCount;
     if (data.maxProductsCount != null) body["maxProductsCount"] = data.maxProductsCount;
     if (data.isShopifyPlus != null) body["isShopifyPlus"] = data.isShopifyPlus;
     if (data.categoryId != null) body["categoryIds"] = [data.categoryId];
-    if (data.country) body["creationCountries"] = [data.country];
+    // Multi-country include; legacy single `country` still accepted.
+    const includeCountries = data.countries?.length
+      ? data.countries
+      : data.country
+        ? [data.country]
+        : null;
+    if (includeCountries) body["creationCountries"] = includeCountries;
     if (data.language) body["languages"] = [data.language];
     if (data.minTrustpilotRating != null) body["minTrustpilotRating"] = data.minTrustpilotRating;
     return mod.trendtrackCall({
@@ -124,11 +137,14 @@ export const spymarketQueryShops = createServerFn({ method: "POST" })
           minMonthlyVisits: data.minMonthlyVisits ?? null,
           maxMonthlyVisits: data.maxMonthlyVisits ?? null,
           minActiveAds: data.minActiveAds ?? null,
+          maxActiveAds: data.maxActiveAds ?? null,
           isShopifyPlus: data.isShopifyPlus ?? null,
           categoryId: data.categoryId ?? null,
-          country: data.country ?? null,
+          countries: includeCountries,
           language: data.language ?? null,
           minTrustpilotRating: data.minTrustpilotRating ?? null,
+          sortBy: data.sortBy,
+          order: data.order,
         },
         limit: data.limit,
         offset: data.offset,
