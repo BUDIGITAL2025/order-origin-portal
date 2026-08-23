@@ -127,7 +127,7 @@ function AdminWalletPage() {
               {entityId && walletData && (
                 <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm">
                   Current balance:{" "}
-                  <span className="font-mono font-medium">{formatUSD(walletData.balance)}</span>
+                  <span className="tnum font-medium">{formatUSD(walletData.balance)}</span>
                 </div>
               )}
               {entityId && walletData && walletData.balance > 0 && (
@@ -236,14 +236,14 @@ function AdminWalletPage() {
                         <TableCell className="max-w-40 truncate text-sm">{t.description}</TableCell>
                         <TableCell
                           className={
-                            "text-right font-mono text-sm " +
+                            "text-right tnum text-sm " +
                             (t.type === "debit" ? "text-destructive" : "text-success")
                           }
                         >
                           {t.type === "debit" ? "−" : "+"}
                           {formatUSD(t.amount)}
                         </TableCell>
-                        <TableCell className="text-right font-mono text-sm">
+                        <TableCell className="text-right tnum text-sm">
                           {formatUSD(t.balance_after)}
                         </TableCell>
                       </TableRow>

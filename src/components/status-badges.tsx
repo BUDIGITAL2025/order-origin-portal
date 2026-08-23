@@ -117,7 +117,7 @@ type ProductType = "simple" | "bundle";
 
 const PRODUCT_TYPE_STYLES: Record<ProductType, string> = {
   simple: "bg-muted text-muted-foreground border-border",
-  bundle: "bg-primary/10 text-primary border-primary/25",
+  bundle: "bg-info/10 text-info border-info/25",
 };
 
 export function ProductTypeBadge({ type }: { type: ProductType }) {

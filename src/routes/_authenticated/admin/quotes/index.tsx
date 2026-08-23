@@ -110,13 +110,13 @@ function AdminQuotesPage() {
                     <TableCell className="max-w-56">
                       <div className="truncate text-sm">{q.product_name || q.product_url}</div>
                     </TableCell>
-                    <TableCell className="text-right font-mono text-sm">
+                    <TableCell className="text-right tnum text-sm">
                       {q.target_monthly_volume ?? "—"}
                     </TableCell>
                     <TableCell>
                       <QuoteStatusBadge status={q.status} validUntil={q.quote_valid_until} />
                     </TableCell>
-                    <TableCell className="max-w-32 truncate font-mono text-xs text-muted-foreground">
+                    <TableCell className="max-w-32 truncate tnum text-xs text-muted-foreground">
                       {q.internal_reference ?? "—"}
                     </TableCell>
                     <TableCell className="text-right">

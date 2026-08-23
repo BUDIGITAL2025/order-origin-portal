@@ -64,7 +64,7 @@ function LandingPage() {
           <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
             Supplier portal
           </p>
-          <h1 className="mt-3 max-w-2xl text-4xl font-bold tracking-tight">
+          <h1 className="mt-3 max-w-2xl text-4xl font-semibold tracking-tight">
             Product sourcing and fulfilment for professional dropshippers.
           </h1>
           <p className="mt-4 max-w-xl text-base text-muted-foreground">

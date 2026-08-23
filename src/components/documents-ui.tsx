@@ -44,10 +44,10 @@ const ORDER_STYLES: Record<OrderStatus, string> = {
   awaiting_payment: "bg-warning/10 text-warning border-warning/25",
   paid: "bg-success/10 text-success border-success/25",
   processing: "bg-info/10 text-info border-info/25",
-  shipped: "bg-info/10 text-info border-info/25",
+  shipped: "bg-success/10 text-success border-success/25",
   delivered: "bg-success/10 text-success border-success/25",
-  cancelled: "bg-muted text-muted-foreground border-border",
-  needs_review: "bg-destructive/10 text-destructive border-destructive/25",
+  cancelled: "bg-destructive/10 text-destructive border-destructive/25",
+  needs_review: "bg-warning/10 text-warning border-warning/25",
 };
 
 const ORDER_LABELS: Record<OrderStatus, string> = {

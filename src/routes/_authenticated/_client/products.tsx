@@ -94,7 +94,7 @@ function CopySku({ sku }: { sku: string }) {
   const [copied, setCopied] = useState(false);
   return (
     <span className="inline-flex items-center gap-1.5">
-      <span className="font-mono text-xs text-muted-foreground">{sku}</span>
+      <span className="tnum text-xs text-muted-foreground">{sku}</span>
       <Button
         variant="ghost"
         size="icon"
@@ -121,7 +121,7 @@ function PriceBadges({ entries }: { entries: { country: string; price: number; l
       {entries.map((e) => (
         <span
           key={e.country}
-          className="inline-flex items-center gap-1 rounded-md bg-muted/60 px-1.5 py-0.5 font-mono text-xs"
+          className="inline-flex items-center gap-1 rounded-md bg-muted/60 px-1.5 py-0.5 tnum text-xs"
         >
           <span className="font-semibold">{e.country}</span>
           {formatUSD(e.price)}
@@ -234,7 +234,7 @@ function BundleDialog({
                     {p.product_name}
                     {p.variant_label ? ` — ${p.variant_label}` : ""}
                   </div>
-                  <div className="font-mono text-xs text-muted-foreground">{p.sku}</div>
+                  <div className="tnum text-xs text-muted-foreground">{p.sku}</div>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <Label htmlFor={`qty-${p.id}`} className="text-xs text-muted-foreground">
@@ -456,7 +456,7 @@ function MyProductsPageInner() {
                       <TableCell className="text-right">
                         <PriceBadges entries={priceEntries} />
                       </TableCell>
-                      <TableCell className="text-right font-mono text-sm">{p.moq ?? "—"}</TableCell>
+                      <TableCell className="text-right tnum text-sm">{p.moq ?? "—"}</TableCell>
                       <TableCell>
                         <ProductStatusBadge status={p.status} />
                       </TableCell>
@@ -509,13 +509,13 @@ function MyProductsPageInner() {
                             {bundleComponents.map((c) => (
                               <div key={c.id} className="flex items-center justify-between text-sm">
                                 <span>
-                                  <span className="font-mono text-xs text-muted-foreground">
+                                  <span className="tnum text-xs text-muted-foreground">
                                     {c.component?.sku}
                                   </span>{" "}
                                   {c.component?.product_name}
                                   {c.component?.variant_label ? ` — ${c.component.variant_label}` : ""}
                                 </span>
-                                <span className="font-mono text-xs text-muted-foreground">
+                                <span className="tnum text-xs text-muted-foreground">
                                   ×{c.quantity}
                                 </span>
                               </div>

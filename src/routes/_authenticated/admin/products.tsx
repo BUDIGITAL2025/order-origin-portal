@@ -238,7 +238,7 @@ function AdminProductsPage() {
                         </div>
                       )}
                     </TableCell>
-                    <TableCell className="font-mono text-xs text-muted-foreground">{p.sku}</TableCell>
+                    <TableCell className="tnum text-xs text-muted-foreground">{p.sku}</TableCell>
                     <TableCell>
                       <ProductTypeBadge type={p.product_type} />
                     </TableCell>
@@ -248,7 +248,7 @@ function AdminProductsPage() {
                           ? bundlePrices.map((r) => (
                               <span
                                 key={r.country_code}
-                                className="inline-flex items-center gap-1 rounded-md bg-muted/60 px-1.5 py-0.5 font-mono text-xs"
+                                className="inline-flex items-center gap-1 rounded-md bg-muted/60 px-1.5 py-0.5 tnum text-xs"
                                 title={`Calculated ${formatUSD(r.calculated_price ?? 0)}${p.price_override != null ? ` · override ${formatUSD(p.price_override)}` : ""}`}
                               >
                                 <span className="font-semibold">{r.country_code}</span>
@@ -258,7 +258,7 @@ function AdminProductsPage() {
                           : simplePrices.map((r) => (
                               <span
                                 key={r.country_code}
-                                className="inline-flex items-center gap-1 rounded-md bg-muted/60 px-1.5 py-0.5 font-mono text-xs"
+                                className="inline-flex items-center gap-1 rounded-md bg-muted/60 px-1.5 py-0.5 tnum text-xs"
                               >
                                 <span className="font-semibold">{r.country_code}</span>
                                 {r.unit_price != null ? formatUSD(r.unit_price) : "—"}

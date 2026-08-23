@@ -161,7 +161,7 @@ function MyQuoteDetailPage() {
             </div>
             <div>
               <div className="text-xs uppercase tracking-wide text-muted-foreground">Volume / month</div>
-              <div className="font-mono">{quote.target_monthly_volume ?? "—"}</div>
+              <div className="tnum">{quote.target_monthly_volume ?? "—"}</div>
             </div>
           </CardContent>
         </Card>
@@ -195,7 +195,7 @@ function MyQuoteDetailPage() {
                       <TableRow key={v.label}>
                         <TableCell className="align-top">
                           <div className="text-sm font-medium">{v.label}</div>
-                          <div className="font-mono text-xs text-muted-foreground">{v.sku}</div>
+                          <div className="tnum text-xs text-muted-foreground">{v.sku}</div>
                           {v.moq != null && (
                             <div className="text-xs text-muted-foreground">MOQ {v.moq}</div>
                           )}
@@ -212,7 +212,7 @@ function MyQuoteDetailPage() {
                           return (
                             <TableCell key={c} className="align-top">
                               <div className="space-y-1.5">
-                                <div className="font-mono text-sm font-medium">
+                                <div className="tnum text-sm font-medium">
                                   {line.unit_price != null ? formatUSD(line.unit_price) : "—"}
                                 </div>
                                 <div className="text-xs text-muted-foreground">

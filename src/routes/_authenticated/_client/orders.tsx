@@ -83,7 +83,7 @@ function OrdersPage() {
                 const receiptId = receiptByOrder.get(order.id);
                 return (
                   <TableRow key={order.id}>
-                    <TableCell className="font-mono text-xs font-medium">
+                    <TableCell className="tnum text-xs font-medium">
                       {order.external_order_number ?? order.id.slice(0, 8)}
                     </TableCell>
                     <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
@@ -95,13 +95,13 @@ function OrdersPage() {
                     <TableCell className="text-sm text-muted-foreground">
                       {order.destination_country ?? "—"}
                     </TableCell>
-                    <TableCell className="text-right font-mono text-sm">
+                    <TableCell className="text-right tnum text-sm">
                       {order.order_items.reduce(
                         (acc, item) => acc + Math.max(1, item.quantity ?? 1),
                         0,
                       )}
                     </TableCell>
-                    <TableCell className="text-right font-mono text-sm">
+                    <TableCell className="text-right tnum text-sm">
                       {order.total_amount != null ? formatUSD(order.total_amount) : "—"}
                     </TableCell>
                     <TableCell className="text-right">
