@@ -412,11 +412,25 @@ function NewQuotePageInner() {
                         ? `${PLANS.basic.quoteQuota} quote requests per month`
                         : "Unlimited quote requests"}
                     </p>
-                    <Button asChild size="sm" className="mt-3 w-full">
-                      <Link to="/billing">Subscribe to {PLANS[key].label}</Link>
+                    <Button
+                      size="sm"
+                      className="mt-3 w-full"
+                      disabled={subscribe.isPending}
+                      onClick={() => {
+                        setSubscribeError(null);
+                        subscribe.mutate(key);
+                      }}
+                    >
+                      {subscribe.isPending ? "Opening checkout…" : `Subscribe to ${PLANS[key].label}`}
                     </Button>
                   </div>
                 ))}
+                {subscribeError && (
+                  <p className="text-sm text-destructive sm:col-span-2">
+                    Could not start checkout: {subscribeError}. If this keeps happening, contact
+                    support.
+                  </p>
+                )}
               </CardContent>
             </Card>
           )}
