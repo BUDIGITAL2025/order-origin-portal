@@ -384,6 +384,16 @@ export async function trendtrackCall<T = Json>(opts: CallOptions): Promise<ToolR
     const code = typeof errObj?.["code"] === "string" ? errObj["code"] : `HTTP_${res.status}`;
     const message =
       typeof errObj?.["message"] === "string" ? errObj["message"] : `Trendtrack error ${res.status}`;
+    await logCall({
+      userId: opts.userId,
+      endpoint: opts.endpoint,
+      summary,
+      rowsReturned: 0,
+      creditsCost: 0,
+      creditsRemaining: usage.remaining,
+      cacheHit: false,
+      error: `${code}: ${message}`,
+    });
     throw new Error(`TRENDTRACK_${code}: ${message}`);
   }
 
