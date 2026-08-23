@@ -35,9 +35,17 @@ export const signupSchema = z.object({
   contact_name: z.string().trim().min(2, "Contact name is required").max(120),
   phone: z.string().trim().min(5, "Phone is required").max(40),
   country: z.string().trim().min(2, "Country is required").max(80),
+  // Required checkbox — signup is blocked until the Terms are accepted.
+  terms: z.boolean().refine((v) => v, "You must agree to the Terms of Service"),
 });
 
-export const completeSignupSchema = signupSchema.omit({ email: true, password: true });
+export const completeSignupSchema = signupSchema
+  .omit({ email: true, password: true, terms: true })
+  .extend({
+    // True only when the caller came through the signup form's checkbox —
+    // legacy/OAuth fallbacks skip this and accept via the banner instead.
+    terms_accepted: z.boolean().optional(),
+  });
 
 // Stores are added after signup — the *.myshopify.com rule applies here,
 // not at signup.
