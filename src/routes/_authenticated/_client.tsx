@@ -1,7 +1,7 @@
 import { createFileRoute, Navigate, Outlet } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { supabase } from "@/integrations/supabase/client";
 import { completeSignup, getMyContext } from "@/lib/profiles.functions";
 import { completeSignupSchema } from "@/lib/schemas";
 
@@ -65,10 +66,51 @@ function CompleteProfile() {
   const callCompleteSignup = useServerFn(completeSignup);
   const queryClient = useQueryClient();
   const [busy, setBusy] = useState(false);
+  // The signup form already collected these values — they live on the auth
+  // user's metadata. If they're all present we complete the profile without
+  // asking again; the manual form below is only a fallback for accounts
+  // created before that (or via OAuth) where metadata is missing.
+  const [phase, setPhase] = useState<"checking" | "form">("checking");
+  const attempted = useRef(false);
   const [form, setForm] = useState({ contact_name: "", phone: "", country: "" });
 
   const setField = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm((s) => ({ ...s, [key]: e.target.value }));
+
+  const submit = async (values: typeof form) => {
+    setBusy(true);
+    try {
+      await callCompleteSignup({ data: values });
+      await queryClient.invalidateQueries({ queryKey: ["my-context"] });
+      toast.success("Profile saved — welcome to FlySales.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not save profile");
+      setPhase("form");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  useEffect(() => {
+    if (attempted.current) return;
+    attempted.current = true;
+    void supabase.auth.getUser().then(({ data }) => {
+      const meta = (data.user?.user_metadata ?? {}) as Record<string, unknown>;
+      const fromMeta = {
+        contact_name: typeof meta["contact_name"] === "string" ? (meta["contact_name"] as string) : "",
+        phone: typeof meta["phone"] === "string" ? (meta["phone"] as string) : "",
+        country: typeof meta["country"] === "string" ? (meta["country"] as string) : "",
+      };
+      setForm(fromMeta);
+      const parsed = completeSignupSchema.safeParse(fromMeta);
+      if (parsed.success) {
+        void submit(parsed.data);
+      } else {
+        setPhase("form");
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -77,17 +119,16 @@ function CompleteProfile() {
       toast.error(parsed.error.issues[0]?.message ?? "Check your input");
       return;
     }
-    setBusy(true);
-    try {
-      await callCompleteSignup({ data: parsed.data });
-      await queryClient.invalidateQueries({ queryKey: ["my-context"] });
-      toast.success("Profile saved — welcome to FlySales.");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not save profile");
-    } finally {
-      setBusy(false);
-    }
+    await submit(parsed.data);
   };
+
+  if (phase === "checking") {
+    return (
+      <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">
+        Setting up your account…
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4 py-10">

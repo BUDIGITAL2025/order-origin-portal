@@ -135,7 +135,16 @@ function AuthPage() {
       const { data, error } = await supabase.auth.signUp({
         email: parsed.data.email,
         password: parsed.data.password,
-        options: { emailRedirectTo: `${APP_BASE_URL}/auth` },
+        options: {
+          emailRedirectTo: `${APP_BASE_URL}/auth`,
+          // Persisted on the auth user so the profile can be completed
+          // automatically after email confirmation — no re-asking.
+          data: {
+            contact_name: parsed.data.contact_name,
+            phone: parsed.data.phone,
+            country: parsed.data.country,
+          },
+        },
       });
       if (error) {
         toast.error(error.message);
