@@ -90,6 +90,31 @@ function NewQuotePageInner() {
   const [uploading, setUploading] = useState(false);
   const [quotaBlocked, setQuotaBlocked] = useState(false);
   const [plansBlocked, setPlansBlocked] = useState(false);
+  const [subscribeError, setSubscribeError] = useState<string | null>(null);
+
+  // Return from Stripe checkout: sub=success/cancel. Activation arrives via
+  // webhook — refresh the context so the paywall lifts as soon as it lands.
+  const { sub } = Route.useSearch();
+  useEffect(() => {
+    if (sub === "success") {
+      toast.success("Subscription received — it activates as soon as the payment confirms.");
+      void queryClient.invalidateQueries({ queryKey: ["my-context"] });
+      const poll = setInterval(
+        () => void queryClient.invalidateQueries({ queryKey: ["my-context"] }),
+        3000,
+      );
+      const stop = setTimeout(() => clearInterval(poll), 30000);
+      void navigate({ to: "/quotes/new", replace: true, search: {} });
+      return () => {
+        clearInterval(poll);
+        clearTimeout(stop);
+      };
+    }
+    if (sub === "cancel") {
+      toast.info("Checkout canceled — nothing was charged.");
+      void navigate({ to: "/quotes/new", replace: true, search: {} });
+    }
+  }, [sub, navigate, queryClient]);
 
   // Quota and plan live on the current workspace (localStorage selection,
   // resolved after hydration; falls back to the first workspace).
