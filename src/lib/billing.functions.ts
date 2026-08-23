@@ -89,7 +89,7 @@ export const getBillingOverview = createServerFn({ method: "GET" })
         .select("balance_after")
         .eq("entity_id", entity.id)
         .order("created_at", { ascending: false })
-        .order("id", { ascending: false })
+        .order("seq", { ascending: false })
         .limit(1)
         .maybeSingle(),
       admin

@@ -10,6 +10,9 @@ export const getMyWallet = createServerFn({ method: "GET" })
       .from("wallet_transactions")
       .select("id, type, amount, balance_after, description, reference, created_at")
       .order("created_at", { ascending: false })
+      // seq = identity insertion order: deterministic tiebreak when two
+      // movements share the same transaction timestamp (now()).
+      .order("seq", { ascending: false })
       .limit(200);
     if (error) throw new Error(error.message);
     const transactions = data ?? [];
@@ -66,6 +69,7 @@ export const adminGetWallet = createServerFn({ method: "GET" })
       .select("id, type, amount, balance_after, description, reference, created_at")
       .eq("entity_id", data.client_id)
       .order("created_at", { ascending: false })
+      .order("seq", { ascending: false })
       .limit(100);
     if (error) throw new Error(error.message);
     const transactions = rows ?? [];
