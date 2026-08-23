@@ -3,6 +3,8 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
   autoTopupSettingsSchema,
+  batchOrderCheckoutSchema,
+  batchOrderIdsSchema,
   changePlanSchema,
   notificationIdsSchema,
   stripeEnvSchema,
@@ -252,9 +254,8 @@ export const createSubscriptionCheckout = createServerFn({ method: "POST" })
  */
 export const payOrdersFromWallet = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context, ...rest }) => {
-    const { batchOrderIdsSchema } = await import("./schemas");
-    const data = batchOrderIdsSchema.parse((rest as { data: unknown }).data);
+  .inputValidator((input) => batchOrderIdsSchema.parse(input))
+  .handler(async ({ data, context }) => {
     const { data: settled, error } = await context.supabase.rpc("pay_orders_from_wallet", {
       p_order_ids: data.orderIds,
     });
@@ -285,9 +286,8 @@ export const payOrdersFromWallet = createServerFn({ method: "POST" })
  */
 export const createBatchOrderCheckout = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context, ...rest }) => {
-    const { batchOrderCheckoutSchema } = await import("./schemas");
-    const data = batchOrderCheckoutSchema.parse((rest as { data: unknown }).data);
+  .inputValidator((input) => batchOrderCheckoutSchema.parse(input))
+  .handler(async ({ data, context }) => {
     const { createStripeClient } = await import("./stripe.server");
     // RLS scopes this read to the caller's own stores.
     const { data: rows, error } = await context.supabase
