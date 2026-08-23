@@ -1,11 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useHydrated } from "@tanstack/react-router";
-import { Boxes, ClipboardList, ShieldCheck, Wallet } from "lucide-react";
+import { ClipboardList, ShieldCheck, Wallet } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { MARKETING_URL } from "@/lib/config";
+import logoLightAsset from "@/assets/flysales-logo-light.png.asset.json";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -43,9 +44,12 @@ function LandingPage() {
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-card">
         <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-6">
-          <a href={MARKETING_URL} className="flex items-center gap-2">
-            <Boxes className="h-5 w-5 text-primary" />
-            <span className="text-sm font-semibold tracking-tight">FlySales</span>
+          <a href={MARKETING_URL}>
+            <img
+              src={logoLightAsset.url}
+              alt="FlySales"
+              className="h-7 w-auto"
+            />
           </a>
           {hydrated && signedIn ? (
             <Button asChild size="sm">
