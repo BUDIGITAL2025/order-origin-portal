@@ -11,6 +11,8 @@ export interface PreviewData {
   description: string | null;
   imageUrls: string[];
   priceHint: string | null;
+  /** Variant options detected on the page (e.g. "20cm", "Red / L"). Empty when none found. */
+  variants: string[];
   source: "firecrawl" | "fetch" | "perplexity";
 }
 
@@ -100,7 +102,7 @@ async function scrapeWithFirecrawl(url: string, apiKey: string): Promise<Preview
           {
             type: "json",
             prompt:
-              "Extract the product sold on this page: its title, a one-sentence description, the listed price (with currency symbol) if one is visible, and absolute URLs of the main product images.",
+              "Extract the product sold on this page: its title, a one-sentence description, the listed price (with currency symbol) if one is visible, absolute URLs of the main product images, and the purchasable variant options offered on the page (e.g. sizes like \"20cm\", \"26cm\", colors, pack sizes) as short labels — every distinct option across all option groups, empty array if the page sells a single fixed product.",
             schema: {
               type: "object",
               properties: {
@@ -108,6 +110,7 @@ async function scrapeWithFirecrawl(url: string, apiKey: string): Promise<Preview
                 description: { type: "string" },
                 price: { type: ["string", "null"] },
                 images: { type: "array", items: { type: "string" } },
+                variants: { type: "array", items: { type: "string" } },
               },
             },
           },
@@ -143,9 +146,10 @@ async function scrapeWithFirecrawl(url: string, apiKey: string): Promise<Preview
       .filter((v): v is string => v != null)
       .slice(0, 6);
     const priceHint = asString(json["price"]) ?? findPriceInText(markdown);
+    const variants = cleanVariants(asStringArray(json["variants"]));
 
     if (!title && imageUrls.length === 0) return null;
-    return { title, description, imageUrls, priceHint, source: "firecrawl" };
+    return { title, description, imageUrls, priceHint, variants, source: "firecrawl" };
   } catch {
     return null;
   }
@@ -195,8 +199,10 @@ async function scrapeWithFetch(url: string): Promise<PreviewData | null> {
         metaContent(html, "product:price:currency", "og:price:currency"),
       ) ?? jsonLdPrice(jsonLd) ?? findPriceInText(html.replace(/<[^>]+>/g, " ").slice(0, 50_000));
 
+    const variants = jsonLdVariants(jsonLd);
+
     if (!title && imageUrls.length === 0) return null;
-    return { title, description, imageUrls, priceHint, source: "fetch" };
+    return { title, description, imageUrls, priceHint, variants, source: "fetch" };
   } catch {
     return null;
   }
@@ -220,7 +226,7 @@ async function scrapeWithPerplexity(url: string, apiKey: string): Promise<Previe
           {
             role: "system",
             content:
-              'You extract product information from shopping URLs. Reply with ONLY a raw JSON object, no markdown fences: {"title": string|null, "description": string|null, "price": string|null, "images": string[]}. description is one sentence; price includes the currency symbol; images are absolute URLs of product photos (empty array if unknown).',
+              'You extract product information from shopping URLs. Reply with ONLY a raw JSON object, no markdown fences: {"title": string|null, "description": string|null, "price": string|null, "images": string[], "variants": string[]}. description is one sentence; price includes the currency symbol; images are absolute URLs of product photos (empty array if unknown); variants are the purchasable option labels offered on the page (sizes, colors, pack sizes — empty array if it is a single fixed product).',
           },
           { role: "user", content: `Product page: ${url}` },
         ],
@@ -247,6 +253,7 @@ async function scrapeWithPerplexity(url: string, apiKey: string): Promise<Previe
       description: asString(json["description"]),
       imageUrls,
       priceHint: asString(json["price"]),
+      variants: cleanVariants(asStringArray(json["variants"])),
       source: "perplexity",
     };
   } catch {
@@ -337,6 +344,28 @@ interface JsonLdProduct {
   description?: unknown;
   image?: unknown;
   offers?: unknown;
+  hasVariant?: unknown;
+}
+
+/** Normalizes raw variant labels: trimmed, de-duplicated, sane length, capped. */
+function cleanVariants(values: string[]): string[] {
+  return unique(
+    values
+      .map((v) => v.trim().replace(/\s+/g, " "))
+      .filter((v) => v.length > 0 && v.length <= 60),
+  ).slice(0, 12);
+}
+
+/** Variant labels from JSON-LD Product.hasVariant (array of nested Product nodes). */
+function jsonLdVariants(product: JsonLdProduct | null): string[] {
+  if (!product?.hasVariant) return [];
+  const nodes = Array.isArray(product.hasVariant) ? product.hasVariant : [product.hasVariant];
+  const names = nodes
+    .map((n) =>
+      n && typeof n === "object" ? asString((n as Record<string, unknown>)["name"]) : null,
+    )
+    .filter((v): v is string => v != null);
+  return cleanVariants(names);
 }
 
 /** First JSON-LD node typed Product (walks arrays and @graph). */

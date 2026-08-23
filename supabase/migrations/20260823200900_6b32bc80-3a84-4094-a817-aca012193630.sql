@@ -1,0 +1,1 @@
+ALTER TABLE public.url_previews ADD COLUMN IF NOT EXISTS variants text[] NOT NULL DEFAULT '{}';

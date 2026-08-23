@@ -1232,6 +1232,7 @@ export type Database = {
           source: Database["public"]["Enums"]["url_preview_source"]
           title: string | null
           url_normalized: string
+          variants: string[]
         }
         Insert: {
           created_at?: string
@@ -1244,6 +1245,7 @@ export type Database = {
           source: Database["public"]["Enums"]["url_preview_source"]
           title?: string | null
           url_normalized: string
+          variants?: string[]
         }
         Update: {
           created_at?: string
@@ -1256,6 +1258,7 @@ export type Database = {
           source?: Database["public"]["Enums"]["url_preview_source"]
           title?: string | null
           url_normalized?: string
+          variants?: string[]
         }
         Relationships: []
       }
