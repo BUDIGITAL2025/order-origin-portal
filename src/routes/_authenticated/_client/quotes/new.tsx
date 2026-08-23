@@ -89,7 +89,6 @@ function NewQuotePageInner() {
   const [files, setFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [quotaBlocked, setQuotaBlocked] = useState(false);
-  const [plansBlocked, setPlansBlocked] = useState(false);
   const [subscribeError, setSubscribeError] = useState<string | null>(null);
 
   // Return from Stripe checkout: sub=success/cancel. Activation arrives via
@@ -155,11 +154,11 @@ function NewQuotePageInner() {
       setSubscribeError(err instanceof Error ? err.message : "Could not start checkout"),
   });
 
-  // Paywall: submitting needs an active subscription on this workspace (or a
-  // fee waiver). The form stays visible and fillable; the plan options only
-  // appear when an unsubscribed client tries to submit. A storeless account
-  // can't be subscribed (plans live on workspaces), so it counts as needing
-  // one — the subscribe flow creates the draft workspace.
+  // Paywall: quote requests need an active subscription on the current
+  // workspace (or a fee waiver). Without one the plan picker replaces the
+  // form entirely — a client never sees a form they cannot submit. A
+  // storeless account can't be subscribed (plans live on workspaces), so it
+  // counts as needing one; the subscribe checkout creates the draft workspace.
   const needsSubscription =
     currentStore == null ||
     (currentStore.subscription_status !== "active" &&
