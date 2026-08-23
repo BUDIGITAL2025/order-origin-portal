@@ -11,6 +11,8 @@ export interface PreviewData {
   description: string | null;
   imageUrls: string[];
   priceHint: string | null;
+  /** Variant options detected on the page (e.g. "20cm", "Red / L"). Empty when none found. */
+  variants: string[];
   source: "firecrawl" | "fetch" | "perplexity";
 }
 
