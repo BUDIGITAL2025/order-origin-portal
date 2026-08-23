@@ -577,6 +577,7 @@ export async function getUsageDashboard(userId: string): Promise<{
       credits_cost: r.credits_cost,
       credits_remaining: r.credits_remaining,
       cache_hit: r.cache_hit,
+      error: r.error,
       created_at: r.created_at,
       called_by_name: r.called_by ? (nameOf.get(r.called_by) ?? "Unknown") : "Unknown",
     })),
