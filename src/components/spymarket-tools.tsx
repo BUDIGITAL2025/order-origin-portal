@@ -1682,6 +1682,55 @@ function UsageTab() {
 
       <Card className="rounded-2xl">
         <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium">Observed pricing (credits per row)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {data.observedPricing.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No pricing learned yet.</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Endpoint</TableHead>
+                  <TableHead className="text-right">Credits/row</TableHead>
+                  <TableHead className="text-right">Samples</TableHead>
+                  <TableHead className="text-right">Last observed</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {data.observedPricing.map((p) => (
+                  <TableRow key={p.endpoint}>
+                    <TableCell className="font-mono text-xs">{p.endpoint}</TableCell>
+                    <TableCell className="text-right">
+                      {p.sampleCount === 0 ? (
+                        <Badge variant="outline" className="rounded-full">
+                          provisional — not measured
+                        </Badge>
+                      ) : (
+                        p.creditsPerRow
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">{p.sampleCount}</TableCell>
+                    <TableCell className="text-right text-xs text-muted-foreground">
+                      {p.lastObservedAt
+                        ? new Date(p.lastObservedAt).toLocaleString("en-GB", {
+                            day: "2-digit",
+                            month: "short",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })
+                        : "—"}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="rounded-2xl">
+        <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium">Recent calls</CardTitle>
         </CardHeader>
         <CardContent>
