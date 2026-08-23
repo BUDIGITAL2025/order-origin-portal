@@ -278,10 +278,12 @@ type ServerFnLike = (opts: { data: Record<string, unknown> }) => Promise<ToolRes
 function useMeteredCall(fn: ServerFnLike) {
   const [state, setState] = React.useState<CallState>({ kind: "idle" });
   const pendingRef = React.useRef<(() => void) | null>(null);
+  const lastInputRef = React.useRef<Record<string, unknown> | null>(null);
   const queryClient = useQueryClient();
 
   const execute = React.useCallback(
     async (input: Record<string, unknown>, confirmOverage?: boolean) => {
+      lastInputRef.current = input;
       setState({ kind: "loading" });
       try {
         const result = await fn({
