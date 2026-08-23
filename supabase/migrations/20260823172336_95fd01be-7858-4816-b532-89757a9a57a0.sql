@@ -1,0 +1,1 @@
+ALTER TABLE public.spymarket_usage_log ADD COLUMN IF NOT EXISTS error text;
