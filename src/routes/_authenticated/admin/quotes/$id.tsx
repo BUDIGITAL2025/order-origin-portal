@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Copy, Plus, RefreshCw, Trash2 } from "lucide-react";
+import { ArrowLeft, Copy, MessageCircle, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/app-shell";
@@ -358,17 +358,43 @@ function AdminQuoteDetailPage() {
     onError: (err) => toast.error(err.message),
   });
 
-  const copyBrief = async () => {
-    if (!quote) return;
-    const brief = [
+  /**
+   * Sourcing brief shared by "Copy" and "WhatsApp". Destination countries drive
+   * the shipping cost, so they are mandatory here; variant context tells
+   * sourcing whether the pasted URL is the whole story or one of several
+   * options on the page.
+   */
+  const buildBrief = (): string => {
+    if (!quote) return "";
+    const countriesLine =
+      countries.length > 0
+        ? countries.map((c) => `${countryName(c)} (${c})`).join(", ")
+        : "—";
+    const seen = data?.preview?.variants ?? [];
+    const variantLine =
+      seen.length > 0
+        ? `Variants seen on page: ${seen.join(", ")} — confirm which to quote`
+        : "Client pasted a single-variant URL — confirm available variants before quoting.";
+    return [
       `Product URL: ${quote.product_url ?? ""}`,
       `Product: ${quote.product_name ?? "—"}`,
       `Client: ${client?.company_name ?? "—"} (${client?.contact_name ?? "—"})`,
+      `Target countries: ${countriesLine}`,
       `Expected volume: ${quote.target_monthly_volume ?? "—"} units/month`,
+      variantLine,
       `Notes: ${quote.notes ?? "—"}`,
     ].join("\n");
-    await navigator.clipboard.writeText(brief);
+  };
+
+  const copyBrief = async () => {
+    if (!quote) return;
+    await navigator.clipboard.writeText(buildBrief());
     toast.success("Sourcing brief copied to clipboard");
+  };
+
+  const sendWhatsApp = () => {
+    if (!quote) return;
+    window.open(`https://wa.me/?text=${encodeURIComponent(buildBrief())}`, "_blank", "noopener");
   };
 
   if (isPending) return <p className="text-sm text-muted-foreground">Loading…</p>;
@@ -419,6 +445,9 @@ function AdminQuoteDetailPage() {
             <Button variant="outline" size="sm" className="gap-1.5" onClick={() => void copyBrief()}>
               <Copy className="h-3.5 w-3.5" /> Copy sourcing brief
             </Button>
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={sendWhatsApp}>
+              <MessageCircle className="h-3.5 w-3.5" /> Send via WhatsApp
+            </Button>
           </>
         }
       />
@@ -448,6 +477,27 @@ function AdminQuoteDetailPage() {
                 <div className="text-xs uppercase tracking-wide text-muted-foreground">Notes</div>
                 <p className="whitespace-pre-wrap">{quote.notes || "—"}</p>
               </div>
+              <div>
+                <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Target countries
+                </div>
+                <p>{countries.map((c) => `${countryName(c)} (${c})`).join(", ") || "—"}</p>
+              </div>
+              {(data?.preview?.variants ?? []).length > 0 ? (
+                <div>
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Variants seen on page
+                  </div>
+                  <p>
+                    {(data?.preview?.variants ?? []).join(", ")}{" "}
+                    <span className="text-muted-foreground">— confirm which to quote</span>
+                  </p>
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Client pasted a single-variant URL — confirm available variants before quoting.
+                </p>
+              )}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <div className="text-xs uppercase tracking-wide text-muted-foreground">Volume / month</div>
