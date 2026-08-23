@@ -496,7 +496,7 @@ export async function getUsageDashboard(userId: string): Promise<{
 
   const { data: rows, error } = await admin
     .from("spymarket_usage_log")
-    .select("id, called_by, endpoint, rows_returned, credits_cost, credits_remaining, cache_hit, created_at")
+    .select("id, called_by, endpoint, rows_returned, credits_cost, credits_remaining, cache_hit, error, created_at")
     .gte("created_at", monthStart.toISOString())
     .order("created_at", { ascending: false })
     .limit(2000);
