@@ -1,9 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
-import { PageHeader } from "@/components/app-shell";
-import { EmptyState } from "@/components/empty-state";
-import { OrderStatusBadge } from "@/components/documents-ui";
+import { EmptyState, PageHeader } from "@/components/app-shell";
+import { OrderStatusBadge, type OrderStatus } from "@/components/documents-ui";
 import {
   DisputeReasonLabel,
   DisputeResolutionNote,
@@ -48,7 +47,8 @@ function DisputesPage() {
       ) : !disputes || disputes.length === 0 ? (
         <EmptyState
           title="No disputes"
-          description="If an order is never delivered, arrives damaged, or the wrong product is shipped, open a dispute from the order's detail page."
+          hint="If an order is never delivered, arrives damaged, or the wrong product is shipped, open a dispute from the order's detail page."
+          action={{ label: "View orders", to: "/orders" }}
         />
       ) : (
         <div className="rounded-2xl border border-border bg-card">
@@ -80,7 +80,7 @@ function DisputesPage() {
                         {order?.external_order_number ?? d.order_id.slice(0, 8)}
                       </Link>
                       <div className="mt-0.5">
-                        <OrderStatusBadge status={order?.status ?? ""} />
+                        <OrderStatusBadge status={(order?.status ?? "awaiting_payment") as OrderStatus} />
                       </div>
                     </TableCell>
                     <TableCell className="text-sm">

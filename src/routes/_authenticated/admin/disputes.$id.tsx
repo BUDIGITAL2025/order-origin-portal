@@ -144,12 +144,8 @@ function AdminDisputeDetailPage() {
         <ArrowLeft className="h-3.5 w-3.5" /> Dispute queue
       </Link>
       <PageHeader
-        title={
-          <>
-            Dispute — order {order?.external_order_number ?? dispute.order_id.slice(0, 8)}
-          </>
-        }
-        description={`Opened ${formatDateTime(dispute.created_at)} · <DisputeReasonLabel reason={dispute.reason} />`}
+        title={`Dispute — order ${order?.external_order_number ?? dispute.order_id.slice(0, 8)}`}
+        description={`Opened ${formatDateTime(dispute.created_at)}`}
       />
 
       <div className="mb-6 flex flex-wrap items-center gap-3">

@@ -2,9 +2,8 @@ import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
-import { PageHeader } from "@/components/app-shell";
-import { EmptyState } from "@/components/empty-state";
-import { OrderStatusBadge } from "@/components/documents-ui";
+import { EmptyState, PageHeader } from "@/components/app-shell";
+import { OrderStatusBadge, type OrderStatus } from "@/components/documents-ui";
 import {
   DisputeReasonLabel,
   DisputeStatusBadge,
@@ -84,7 +83,7 @@ function AdminDisputesPage() {
       ) : !disputes || disputes.length === 0 ? (
         <EmptyState
           title="No disputes here"
-          description="No disputes match this filter. New claims appear in Open, oldest first."
+          hint="No disputes match this filter. New claims appear in Open, oldest first."
         />
       ) : (
         <div className="mb-8 rounded-2xl border border-border bg-card">
@@ -125,7 +124,7 @@ function AdminDisputesPage() {
                         {order?.external_order_number ?? d.order_id.slice(0, 8)}
                       </Link>
                       <div className="mt-0.5">
-                        <OrderStatusBadge status={order?.status ?? ""} />
+                        <OrderStatusBadge status={(order?.status ?? "awaiting_payment") as OrderStatus} />
                       </div>
                     </TableCell>
                     <TableCell className="text-sm">

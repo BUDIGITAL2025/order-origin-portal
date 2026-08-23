@@ -57,11 +57,7 @@ function DisputeDetailPage() {
         <ArrowLeft className="h-3.5 w-3.5" /> All disputes
       </Link>
       <PageHeader
-        title={
-          <>
-            Dispute — order {order?.external_order_number ?? dispute.order_id.slice(0, 8)}
-          </>
-        }
+        title={`Dispute — order ${order?.external_order_number ?? dispute.order_id.slice(0, 8)}`}
         description={`Opened ${formatDateTime(dispute.created_at)}`}
       />
 
