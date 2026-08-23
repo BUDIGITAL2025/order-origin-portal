@@ -1405,33 +1405,62 @@ export type Database = {
           isSetofReturn: true
         }
       }
-      apply_wallet_transaction: {
-        Args: {
-          p_amount: number
-          p_description: string
-          p_entity_id: string
-          p_reference?: string
-          p_type: string
-        }
-        Returns: {
-          amount: number
-          balance_after: number
-          created_at: string
-          created_by: string | null
-          description: string
-          entity_id: string
-          id: string
-          reference: string | null
-          seq: number
-          type: Database["public"]["Enums"]["wallet_txn_type"]
-        }
-        SetofOptions: {
-          from: "*"
-          to: "wallet_transactions"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
+      apply_wallet_transaction:
+        | {
+            Args: {
+              p_amount: number
+              p_description: string
+              p_entity_id: string
+              p_reference?: string
+              p_type: string
+            }
+            Returns: {
+              amount: number
+              balance_after: number
+              created_at: string
+              created_by: string | null
+              description: string
+              entity_id: string
+              id: string
+              reference: string | null
+              seq: number
+              type: Database["public"]["Enums"]["wallet_txn_type"]
+            }
+            SetofOptions: {
+              from: "*"
+              to: "wallet_transactions"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
+        | {
+            Args: {
+              p_amount: number
+              p_created_by?: string
+              p_description: string
+              p_entity_id: string
+              p_reference?: string
+              p_type: string
+            }
+            Returns: {
+              amount: number
+              balance_after: number
+              created_at: string
+              created_by: string | null
+              description: string
+              entity_id: string
+              id: string
+              reference: string | null
+              seq: number
+              type: Database["public"]["Enums"]["wallet_txn_type"]
+            }
+            SetofOptions: {
+              from: "*"
+              to: "wallet_transactions"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
       connect_draft_store: {
         Args: { p_store_id: string; p_store_name?: string; p_store_url: string }
         Returns: {
