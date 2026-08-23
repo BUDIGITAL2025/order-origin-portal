@@ -16,7 +16,7 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
-import { APP_BASE_URL, MARKETING_URL } from "@/lib/config";
+import { getAppBaseUrl, MARKETING_URL } from "@/lib/config";
 import { loginSchema, signupSchema } from "@/lib/schemas";
 import { completeSignup, getMyContext } from "@/lib/profiles.functions";
 
