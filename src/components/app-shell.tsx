@@ -49,6 +49,7 @@ interface NavItem {
 
 const CLIENT_NAV: NavItem[] = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/workspaces", label: "Workspaces", icon: Store },
   { to: "/quotes/new", label: "Request a quote", icon: FilePlus2 },
   { to: "/quotes", label: "My quotes", icon: ClipboardList },
   { to: "/products", label: "My products", icon: Package },
@@ -93,6 +94,7 @@ function PastDueBanner() {
 
 const ADMIN_NAV: NavItem[] = [
   { to: "/admin/quotes", label: "Quote queue", icon: ClipboardList },
+  { to: "/admin/orders", label: "Orders", icon: ShoppingCart },
   { to: "/admin/products", label: "Products", icon: Package },
   { to: "/admin/disputes", label: "Disputes", icon: ShieldAlert },
   { to: "/admin/clients", label: "Clients", icon: Users },
