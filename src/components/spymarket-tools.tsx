@@ -1165,7 +1165,8 @@ function ShopOnDemand({
 
   React.useEffect(() => {
     if (call.state.kind === "ok" && activeSection && !sectionData[activeSection]) {
-      setSectionData((prev) => ({ ...prev, [activeSection]: call.state.result }));
+      const result = call.state.result;
+      setSectionData((prev) => ({ ...prev, [activeSection]: result }));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [call.state]);
