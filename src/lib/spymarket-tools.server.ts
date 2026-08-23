@@ -202,6 +202,8 @@ async function logCall(entry: {
   creditsCost: number;
   creditsRemaining: number | null;
   cacheHit: boolean;
+  /** Failure reason for calls that never produced a billable response. */
+  error?: string | undefined;
 }): Promise<void> {
   const admin = await getAdmin();
   const row = {
@@ -212,6 +214,7 @@ async function logCall(entry: {
     credits_cost: entry.creditsCost,
     credits_remaining: entry.creditsRemaining,
     cache_hit: entry.cacheHit,
+    error: entry.error ?? null,
   };
   const { error } = await admin.from("spymarket_usage_log").insert(row);
   if (error) {
