@@ -287,7 +287,9 @@ function AuthPage() {
                     />
                   </div>
                   <div className="col-span-2 space-y-1.5">
-                    <Label htmlFor="su-password">Password (min. 8 characters)</Label>
+                    <Label htmlFor="su-password">
+                      Password (min. 8 characters, 1 uppercase, 1 symbol)
+                    </Label>
                     <PasswordInput
                       id="su-password"
                       autoComplete="new-password"

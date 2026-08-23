@@ -14,6 +14,7 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { MARKETING_URL } from "@/lib/config";
+import { passwordSchema } from "@/lib/schemas";
 
 export const Route = createFileRoute("/reset-password")({
   head: () => ({
@@ -49,8 +50,9 @@ function ResetPasswordPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password.length < 8) {
-      toast.error("Password must be at least 8 characters");
+    const parsed = passwordSchema.safeParse(password);
+    if (!parsed.success) {
+      toast.error(parsed.error.issues[0]?.message ?? "Check your password");
       return;
     }
     if (password !== confirm) {
@@ -92,7 +94,9 @@ function ResetPasswordPage() {
           {ready ? (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-1.5">
-                <Label htmlFor="rp-password">New password (min. 8 characters)</Label>
+                <Label htmlFor="rp-password">
+                  New password (min. 8 characters, 1 uppercase, 1 symbol)
+                </Label>
                 <PasswordInput
                   id="rp-password"
                   autoComplete="new-password"

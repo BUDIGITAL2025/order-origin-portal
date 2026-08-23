@@ -17,12 +17,21 @@ const storeUrlMatchesPlatform = (
   }
 };
 
+// Password rule, deliberately simple: 8+ characters with at least one
+// uppercase letter and one symbol. Used by signup and password reset.
+export const passwordSchema = z
+  .string()
+  .min(8, "Password must be at least 8 characters")
+  .max(128)
+  .regex(/[A-Z]/, "Password needs at least one uppercase letter")
+  .regex(/[^A-Za-z0-9]/, "Password needs at least one symbol (e.g. ! @ # $)");
+
 // Signup collects the account and the entity's basics only — no store at
 // this step. The entity's legal name defaults to the contact name; fiscal
 // fields are completed later from the billing page.
 export const signupSchema = z.object({
   email: z.string().trim().email("Invalid email address").max(255),
-  password: z.string().min(8, "Password must be at least 8 characters").max(128),
+  password: passwordSchema,
   contact_name: z.string().trim().min(2, "Contact name is required").max(120),
   phone: z.string().trim().min(5, "Phone is required").max(40),
   country: z.string().trim().min(2, "Country is required").max(80),
