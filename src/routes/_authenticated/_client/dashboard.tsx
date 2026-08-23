@@ -20,8 +20,9 @@ import { formatDate, formatDateTime, formatUSD } from "@/lib/format";
 import { PLANS, planLabel, planQuota, quotaResetDate } from "@/lib/plans";
 import { Badge } from "@/components/ui/badge";
 import { getMyContext } from "@/lib/profiles.functions";
-import { listMyQuotes } from "@/lib/quotes.functions";
+import { listMyOpenQuotes, listMyQuotes } from "@/lib/quotes.functions";
 import { getMyWallet } from "@/lib/wallet.functions";
+import { OpenQuotesWidget } from "@/components/open-quotes-widget";
 
 export const Route = createFileRoute("/_authenticated/_client/dashboard")({
   head: () => ({
@@ -37,6 +38,7 @@ export const Route = createFileRoute("/_authenticated/_client/dashboard")({
 function DashboardPage() {
   const fetchContext = useServerFn(getMyContext);
   const fetchQuotes = useServerFn(listMyQuotes);
+  const fetchOpenQuotes = useServerFn(listMyOpenQuotes);
   const fetchWallet = useServerFn(getMyWallet);
 
   const { data: context } = useQuery({
@@ -46,6 +48,10 @@ function DashboardPage() {
   const { data: quotesData } = useQuery({
     queryKey: ["my-quotes"],
     queryFn: fetchQuotes,
+  });
+  const { data: openQuotesData } = useQuery({
+    queryKey: ["my-open-quotes"],
+    queryFn: fetchOpenQuotes,
   });
   const { data: walletData } = useQuery({
     queryKey: ["my-wallet"],
