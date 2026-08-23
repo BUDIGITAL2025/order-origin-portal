@@ -1053,6 +1053,7 @@ export type Database = {
           credits_cost: number
           credits_remaining: number | null
           endpoint: string
+          error: string | null
           id: string
           query_summary: Json
           rows_returned: number
@@ -1064,6 +1065,7 @@ export type Database = {
           credits_cost?: number
           credits_remaining?: number | null
           endpoint: string
+          error?: string | null
           id?: string
           query_summary?: Json
           rows_returned?: number
@@ -1075,6 +1077,7 @@ export type Database = {
           credits_cost?: number
           credits_remaining?: number | null
           endpoint?: string
+          error?: string | null
           id?: string
           query_summary?: Json
           rows_returned?: number

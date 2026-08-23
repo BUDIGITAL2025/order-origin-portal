@@ -54,7 +54,7 @@ export interface CallOptions {
   estimatedCost: number;
   /** Default true. Lookup/facets/usage are zero-credit. */
   metered?: boolean | undefined;
-  /** Default: metered calls are cached 24h. */
+  /** Default true: all endpoints (free ones too) are cached 24h. */
   cacheable?: boolean | undefined;
   /** User confirmed beyond the daily soft limit. */
   confirmOverage?: boolean | undefined;
@@ -202,6 +202,8 @@ async function logCall(entry: {
   creditsCost: number;
   creditsRemaining: number | null;
   cacheHit: boolean;
+  /** Failure reason for calls that never produced a billable response. */
+  error?: string | undefined;
 }): Promise<void> {
   const admin = await getAdmin();
   const row = {
@@ -212,6 +214,7 @@ async function logCall(entry: {
     credits_cost: entry.creditsCost,
     credits_remaining: entry.creditsRemaining,
     cache_hit: entry.cacheHit,
+    error: entry.error ?? null,
   };
   const { error } = await admin.from("spymarket_usage_log").insert(row);
   if (error) {
@@ -243,7 +246,9 @@ export async function trendtrackCall<T = Json>(opts: CallOptions): Promise<ToolR
   if (!apiKey) throw new Error("TRENDTRACK_NOT_CONFIGURED");
 
   const metered = opts.metered !== false;
-  const cacheable = opts.cacheable ?? metered;
+  // Everything is cached 24h by default — free endpoints too, so a retry
+  // after a timeout serves instantly when we already have the answer.
+  const cacheable = opts.cacheable ?? true;
   const summary = opts.summary ?? {};
 
   // Estimate = max rows × the LEARNED per-row rate for this endpoint (1× only
@@ -308,17 +313,45 @@ export async function trendtrackCall<T = Json>(opts: CallOptions): Promise<ToolR
       ...(opts.body ? { "Content-Type": "application/json" } : {}),
     },
     ...(opts.body ? { body: JSON.stringify(opts.body) } : {}),
-    signal: AbortSignal.timeout(30_000),
   };
 
-  let res = await fetch(url.toString(), init);
+  // Their API can be slow: 30s per attempt, and each attempt gets a FRESH
+  // signal (reusing one signal would let the 429 retry inherit a nearly-
+  // expired timer from the first attempt).
+  const doFetch = () =>
+    fetch(url.toString(), { ...init, signal: AbortSignal.timeout(30_000) });
 
-  // 429: respect Retry-After, single retry.
-  if (res.status === 429) {
-    const retryAfter = Number.parseInt(res.headers.get("retry-after") ?? "", 10);
-    const waitMs = Math.min((Number.isFinite(retryAfter) ? retryAfter : 2) * 1000, 10_000);
-    await new Promise((resolve) => setTimeout(resolve, waitMs));
-    res = await fetch(url.toString(), init);
+  let res: Response;
+  try {
+    res = await doFetch();
+
+    // 429: respect Retry-After, single retry.
+    if (res.status === 429) {
+      const retryAfter = Number.parseInt(res.headers.get("retry-after") ?? "", 10);
+      const waitMs = Math.min((Number.isFinite(retryAfter) ? retryAfter : 2) * 1000, 10_000);
+      await new Promise((resolve) => setTimeout(resolve, waitMs));
+      res = await doFetch();
+    }
+  } catch (err) {
+    // No response = no credits charged by them: log the failure at cost 0
+    // with cache_hit=false and the reason, for our own visibility.
+    const isTimeout =
+      (err instanceof DOMException && (err.name === "TimeoutError" || err.name === "AbortError")) ||
+      (err instanceof Error && err.name === "TimeoutError");
+    await logCall({
+      userId: opts.userId,
+      endpoint: opts.endpoint,
+      summary,
+      rowsReturned: 0,
+      creditsCost: 0,
+      creditsRemaining: null,
+      cacheHit: false,
+      error: isTimeout
+        ? "timeout after 30s"
+        : `network: ${err instanceof Error ? err.message : String(err)}`,
+    });
+    if (isTimeout) throw new Error("TRENDTRACK_TIMEOUT");
+    throw err instanceof Error ? err : new Error(String(err));
   }
 
   const usage = parseUsageHeaders(res);
@@ -351,6 +384,16 @@ export async function trendtrackCall<T = Json>(opts: CallOptions): Promise<ToolR
     const code = typeof errObj?.["code"] === "string" ? errObj["code"] : `HTTP_${res.status}`;
     const message =
       typeof errObj?.["message"] === "string" ? errObj["message"] : `Trendtrack error ${res.status}`;
+    await logCall({
+      userId: opts.userId,
+      endpoint: opts.endpoint,
+      summary,
+      rowsReturned: 0,
+      creditsCost: 0,
+      creditsRemaining: usage.remaining,
+      cacheHit: false,
+      error: `${code}: ${message}`,
+    });
     throw new Error(`TRENDTRACK_${code}: ${message}`);
   }
 
@@ -439,6 +482,7 @@ export async function getUsageDashboard(userId: string): Promise<{
     credits_cost: number;
     credits_remaining: number | null;
     cache_hit: boolean;
+    error: string | null;
     created_at: string;
     called_by_name: string;
   }>;
@@ -452,7 +496,7 @@ export async function getUsageDashboard(userId: string): Promise<{
 
   const { data: rows, error } = await admin
     .from("spymarket_usage_log")
-    .select("id, called_by, endpoint, rows_returned, credits_cost, credits_remaining, cache_hit, created_at")
+    .select("id, called_by, endpoint, rows_returned, credits_cost, credits_remaining, cache_hit, error, created_at")
     .gte("created_at", monthStart.toISOString())
     .order("created_at", { ascending: false })
     .limit(2000);
@@ -533,6 +577,7 @@ export async function getUsageDashboard(userId: string): Promise<{
       credits_cost: r.credits_cost,
       credits_remaining: r.credits_remaining,
       cache_hit: r.cache_hit,
+      error: r.error,
       created_at: r.created_at,
       called_by_name: r.called_by ? (nameOf.get(r.called_by) ?? "Unknown") : "Unknown",
     })),

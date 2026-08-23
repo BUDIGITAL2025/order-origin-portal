@@ -22,6 +22,7 @@ import {
   Megaphone,
   Package,
   Play,
+  RefreshCw,
   Search,
   Store,
   Users,
@@ -269,6 +270,7 @@ type CallState =
   | { kind: "ok"; result: ToolOk<unknown> }
   | { kind: "confirm"; dayTotal: number; estimatedCost: number }
   | { kind: "insufficient"; balance: number | null; message: string }
+  | { kind: "timeout" }
   | { kind: "error"; message: string };
 
 type ServerFnLike = (opts: { data: Record<string, unknown> }) => Promise<ToolResult<unknown>>;
@@ -276,10 +278,12 @@ type ServerFnLike = (opts: { data: Record<string, unknown> }) => Promise<ToolRes
 function useMeteredCall(fn: ServerFnLike) {
   const [state, setState] = React.useState<CallState>({ kind: "idle" });
   const pendingRef = React.useRef<(() => void) | null>(null);
+  const lastInputRef = React.useRef<Record<string, unknown> | null>(null);
   const queryClient = useQueryClient();
 
   const execute = React.useCallback(
     async (input: Record<string, unknown>, confirmOverage?: boolean) => {
+      lastInputRef.current = input;
       setState({ kind: "loading" });
       try {
         const result = await fn({
@@ -306,6 +310,10 @@ function useMeteredCall(fn: ServerFnLike) {
       } catch (err) {
         if (err instanceof Error && err.message === "TRENDTRACK_NOT_CONFIGURED") {
           setState({ kind: "error", message: "TRENDTRACK_API_KEY is not configured." });
+        } else if (err instanceof Error && err.message === "TRENDTRACK_TIMEOUT") {
+          // Slow upstream — the friendly message + retry button live in
+          // CallFeedback; the last input is kept in lastInputRef.
+          setState({ kind: "timeout" });
         } else {
           setState({
             kind: "error",
@@ -327,8 +335,13 @@ function useMeteredCall(fn: ServerFnLike) {
     setState({ kind: "idle" });
   }, []);
   const reset = React.useCallback(() => setState({ kind: "idle" }), []);
+  /** Re-fire the exact same query (e.g. after a timeout). */
+  const retry = React.useCallback(() => {
+    const input = lastInputRef.current;
+    if (input) void execute(input);
+  }, [execute]);
 
-  return { state, execute, confirm, cancelConfirm, reset };
+  return { state, execute, confirm, cancelConfirm, reset, retry };
 }
 
 /** Renders confirm dialog / error / insufficient-credits / post-call cost. */
@@ -336,10 +349,12 @@ function CallFeedback({
   state,
   onConfirm,
   onCancel,
+  onRetry,
 }: {
   state: CallState;
   onConfirm: () => void;
   onCancel: () => void;
+  onRetry?: (() => void) | undefined;
 }) {
   return (
     <>
@@ -378,6 +393,23 @@ function CallFeedback({
                 Current balance: <span className="font-semibold">{fmtInt(state.balance)}</span>{" "}
                 credits. The call was stopped — nothing was retried.
               </>
+            )}
+          </AlertDescription>
+        </Alert>
+      )}
+      {state.kind === "timeout" && (
+        <Alert>
+          <RefreshCw className="h-4 w-4" />
+          <AlertTitle>Trendtrack is responding slowly</AlertTitle>
+          <AlertDescription className="flex flex-wrap items-center gap-2">
+            <span>
+              Trendtrack is responding slowly — try again in a moment. No credits were charged.
+            </span>
+            {onRetry && (
+              <Button size="sm" variant="outline" className="rounded-full" onClick={onRetry}>
+                <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
+                Retry
+              </Button>
             )}
           </AlertDescription>
         </Alert>
@@ -604,7 +636,7 @@ function LookupTab({ go }: { go: SpyMarketToolsProps["go"] }) {
         </CardContent>
       </Card>
 
-      <CallFeedback state={call.state} onConfirm={call.confirm} onCancel={call.cancelConfirm} />
+      <CallFeedback state={call.state} onConfirm={call.confirm} onCancel={call.cancelConfirm} onRetry={call.retry} />
 
       {call.state.kind === "loading" && <LoadingRows />}
 
@@ -965,7 +997,7 @@ function ShopsTab({
         </CardContent>
       </Card>
 
-      <CallFeedback state={call.state} onConfirm={call.confirm} onCancel={call.cancelConfirm} />
+      <CallFeedback state={call.state} onConfirm={call.confirm} onCancel={call.cancelConfirm} onRetry={call.retry} />
 
       {searching && pages.length === 0 && <LoadingRows rows={6} />}
 
@@ -1136,7 +1168,7 @@ function ShopDetailTab({
         </Card>
       )}
 
-      <CallFeedback state={call.state} onConfirm={call.confirm} onCancel={call.cancelConfirm} />
+      <CallFeedback state={call.state} onConfirm={call.confirm} onCancel={call.cancelConfirm} onRetry={call.retry} />
 
       {call.state.kind === "loading" && <LoadingRows rows={6} />}
 
@@ -1673,7 +1705,7 @@ function ShopOnDemand({
         </div>
 
         {activeSection && !sectionData[activeSection] && (
-          <CallFeedback state={call.state} onConfirm={call.confirm} onCancel={call.cancelConfirm} />
+          <CallFeedback state={call.state} onConfirm={call.confirm} onCancel={call.cancelConfirm} onRetry={call.retry} />
         )}
         {activeSection && call.state.kind === "loading" && !loaded && <LoadingRows rows={3} />}
 
@@ -2063,7 +2095,7 @@ function AdsTab({ costs }: { costs?: EndpointCosts | undefined }) {
         Reach/spend data covers EU &amp; UK ads only. Facebook platform only in public v1.
       </p>
 
-      <CallFeedback state={call.state} onConfirm={call.confirm} onCancel={call.cancelConfirm} />
+      <CallFeedback state={call.state} onConfirm={call.confirm} onCancel={call.cancelConfirm} onRetry={call.retry} />
 
       {searching && pages.length === 0 && <LoadingRows rows={6} />}
 
@@ -2209,7 +2241,7 @@ function AdDetailDialog({
 
         {call.state.kind === "loading" && <LoadingRows rows={4} />}
         {call.state.kind !== "ok" && (
-          <CallFeedback state={call.state} onConfirm={call.confirm} onCancel={call.cancelConfirm} />
+          <CallFeedback state={call.state} onConfirm={call.confirm} onCancel={call.cancelConfirm} onRetry={call.retry} />
         )}
 
         {ad && (
@@ -2246,6 +2278,7 @@ function AdDetailDialog({
                   state={mediaCall.state}
                   onConfirm={mediaCall.confirm}
                   onCancel={mediaCall.cancelConfirm}
+                  onRetry={mediaCall.retry}
                 />
               </div>
             )}
@@ -2339,6 +2372,7 @@ function AdDetailDialog({
                   state={reachCall.state}
                   onConfirm={reachCall.confirm}
                   onCancel={reachCall.cancelConfirm}
+                  onRetry={reachCall.retry}
                 />
               )}
             </div>
@@ -2428,7 +2462,7 @@ function EmailDetailDialog({
 
         {call.state.kind === "loading" && <LoadingRows rows={4} />}
         {call.state.kind !== "ok" && (
-          <CallFeedback state={call.state} onConfirm={call.confirm} onCancel={call.cancelConfirm} />
+          <CallFeedback state={call.state} onConfirm={call.confirm} onCancel={call.cancelConfirm} onRetry={call.retry} />
         )}
 
         {email && (
@@ -2626,7 +2660,7 @@ function EmailsTab({ costs }: { costs?: EndpointCosts | undefined }) {
         </CardContent>
       </Card>
 
-      <CallFeedback state={call.state} onConfirm={call.confirm} onCancel={call.cancelConfirm} />
+      <CallFeedback state={call.state} onConfirm={call.confirm} onCancel={call.cancelConfirm} onRetry={call.retry} />
 
       {searching && pages.length === 0 && <LoadingRows rows={4} />}
 
@@ -2903,6 +2937,15 @@ function UsageTab() {
                       {r.cache_hit && (
                         <Badge className="rounded-full bg-primary/15 text-primary hover:bg-primary/15">
                           cache
+                        </Badge>
+                      )}
+                      {r.error && (
+                        <Badge
+                          variant="destructive"
+                          className="rounded-full"
+                          title={r.error}
+                        >
+                          {r.error.startsWith("timeout") ? "timeout" : "failed"}
                         </Badge>
                       )}
                     </TableCell>

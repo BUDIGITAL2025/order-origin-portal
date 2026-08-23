@@ -34,7 +34,7 @@ export const spymarketLookup = createServerFn({ method: "POST" })
       summary: { q: data.q },
       estimatedCost: 0,
       metered: false,
-      cacheable: false,
+      cacheable: true,
     });
   });
 
