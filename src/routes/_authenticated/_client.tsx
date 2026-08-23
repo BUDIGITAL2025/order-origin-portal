@@ -48,14 +48,14 @@ function ClientLayout() {
   if (ctx?.profile && ctx.profile.status !== "active") return <Navigate to="/pending" />;
 
   const firstEntity = ctx?.entities?.[0] ?? null;
-  const firstStore = ctx?.entities?.flatMap((e) => e.stores)[0] ?? null;
+  const allStores = ctx?.entities?.flatMap((e) => e.stores) ?? [];
 
   return (
     <AppShell
       role="client"
       email={ctx?.email ?? null}
       companyName={firstEntity?.legal_name ?? null}
-      onboardingStore={firstStore}
+      onboardingStores={allStores}
     >
       <Outlet />
     </AppShell>

@@ -13,10 +13,18 @@ import { useMyContext } from "@/routes/_authenticated/_client";
 
 const STORAGE_KEY = "flysales:current-store";
 
+/** Fired on window whenever the selected workspace changes (same-tab). */
+export const STORE_CHANGED_EVENT = "flysales:store-changed";
+
 /** Persisted store selection — the scope used by the hierarchy rollout. */
 export function getCurrentStoreId(): string | null {
   if (typeof window === "undefined") return null;
   return window.localStorage.getItem(STORAGE_KEY);
+}
+
+function setCurrentStoreId(id: string) {
+  window.localStorage.setItem(STORAGE_KEY, id);
+  window.dispatchEvent(new Event(STORE_CHANGED_EVENT));
 }
 
 /**
@@ -38,7 +46,7 @@ export function StoreSwitcher() {
     if (!first) return;
     const stored = getCurrentStoreId();
     const valid = stored && allStores.some((s) => s.id === stored) ? stored : first.id;
-    if (stored !== valid) window.localStorage.setItem(STORAGE_KEY, valid);
+    if (stored !== valid) setCurrentStoreId(valid);
     setCurrent(valid);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ctx]);
@@ -49,7 +57,7 @@ export function StoreSwitcher() {
     <Select
       value={current}
       onValueChange={(id) => {
-        window.localStorage.setItem(STORAGE_KEY, id);
+        setCurrentStoreId(id);
         setCurrent(id);
       }}
     >

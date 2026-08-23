@@ -29,7 +29,7 @@ import { getMyWallet } from "@/lib/wallet.functions";
 import { cn } from "@/lib/utils";
 import { PaymentTestModeBanner } from "@/components/PaymentTestModeBanner";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { StoreSwitcher, getCurrentStoreId } from "@/components/store-switcher";
+import { StoreSwitcher, getCurrentStoreId, STORE_CHANGED_EVENT } from "@/components/store-switcher";
 import { useMyContext } from "@/routes/_authenticated/_client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -104,19 +104,24 @@ const ADMIN_NAV: NavItem[] = [
 ];
 
 interface OnboardingStore {
+  id: string;
   platform: string;
   store_url: string | null;
   integration_mode: string;
 }
 
 /**
- * Resources block — quiet links below the main nav, separated by a divider.
- * Shown only while the client still has a setup step left:
- *  - "Create a Shopify store" while they have no Shopify store URL on file.
- *  - "Install our Shopify app" to Shopify clients not yet on automatic mode.
- * Hidden entirely once platform is Shopify with a store and automatic sync.
+ * "Get started" block — quiet links pinned to the bottom of the client
+ * sidebar, below the main nav and separated by a divider. Visibility follows
+ * the CURRENT workspace (the store-switcher selection):
+ *  - "Create a Shopify store" while the workspace has no connected Shopify
+ *    store (draft / no store_url — or no workspace at all yet).
+ *  - "Install our Shopify app" while the workspace is not on automatic
+ *    integration mode; rendered disabled with a "Coming soon" badge until
+ *    the SHOPIFY_APP_URL backend config has a value.
+ * Hidden entirely once the workspace is fully connected and automatic.
  */
-function ResourcesSection({ store }: { store: OnboardingStore }) {
+function GetStartedSection({ stores }: { stores: OnboardingStore[] }) {
   const fetchLinks = useServerFn(getOnboardingLinks);
   const { data: links } = useQuery({
     queryKey: ["onboarding-links"],
@@ -124,23 +129,42 @@ function ResourcesSection({ store }: { store: OnboardingStore }) {
     queryFn: fetchLinks,
   });
 
-  const isShopify = store.platform === "shopify";
-  const hasStore = (store.store_url ?? "").trim().length > 0;
-  const isAutomatic = store.integration_mode === "automatic";
+  // The current workspace lives in localStorage — resolve after hydration
+  // and follow store-switcher changes (same-tab custom event).
+  const [currentId, setCurrentId] = React.useState<string | null>(null);
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => {
+    const read = () => setCurrentId(getCurrentStoreId());
+    read();
+    setMounted(true);
+    window.addEventListener(STORE_CHANGED_EVENT, read);
+    return () => window.removeEventListener(STORE_CHANGED_EVENT, read);
+  }, []);
+  if (!mounted) return null;
 
-  const showCreateStore = !isShopify || !hasStore;
-  const showInstallApp = isShopify && !isAutomatic;
+  const store = stores.find((s) => s.id === currentId) ?? stores[0] ?? null;
 
-  // Fully set up — no resources left to surface.
+  const hasConnectedStore = !!store && (store.store_url ?? "").trim().length > 0;
+  const isAutomatic = store?.integration_mode === "automatic";
+
+  const showCreateStore = !hasConnectedStore;
+  const showInstallApp = !isAutomatic;
+
+  // Fully connected + automatic — nothing left to surface.
   if (!showCreateStore && !showInstallApp) return null;
 
   const appUrl = links?.shopifyAppUrl ?? null;
   const affiliateUrl = links?.shopifyAffiliateUrl ?? null;
 
+  // The install item always renders when allowed (its disabled state covers
+  // the missing URL); the create-store item needs its URL to be useful.
+  const renderCreate = showCreateStore && !!affiliateUrl;
+  if (!showInstallApp && !renderCreate) return null;
+
   return (
     <div className="border-t border-sidebar-border px-3 py-3">
       <p className="px-2 pb-1.5 text-[10px] font-medium uppercase tracking-wider text-sidebar-foreground/60">
-        Resources
+        Get started
       </p>
       <div className="space-y-0.5">
         {showInstallApp &&
@@ -164,7 +188,7 @@ function ResourcesSection({ store }: { store: OnboardingStore }) {
               </Badge>
             </div>
           ))}
-        {showCreateStore && affiliateUrl && (
+        {renderCreate && (
           <div>
             <a
               href={affiliateUrl}
@@ -278,13 +302,13 @@ export function AppShell({
   role,
   email,
   companyName,
-  onboardingStore,
+  onboardingStores,
   children,
 }: {
   role: "client" | "admin";
   email: string | null;
   companyName: string | null;
-  onboardingStore?: OnboardingStore | null;
+  onboardingStores?: OnboardingStore[];
   children: React.ReactNode;
 }) {
   const navigate = useNavigate();
@@ -344,7 +368,7 @@ export function AppShell({
             </Link>
           ))}
         </nav>
-        {role === "client" && onboardingStore && <ResourcesSection store={onboardingStore} />}
+        {role === "client" && <GetStartedSection stores={onboardingStores ?? []} />}
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
