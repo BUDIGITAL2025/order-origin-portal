@@ -449,6 +449,10 @@ export async function issueWalletTopupReceipt(
   const amount = Number(txn.amount);
   const number = await nextDocumentNumber(admin);
 
+  // Dispute credits are wallet credits too, but no card was charged —
+  // the receipt must say where the money came from.
+  const isDisputeCredit = txn.description?.startsWith("Dispute credit") ?? false;
+
   return storeReceipt(admin, {
     entityId: txn.entity_id,
     documentType: "wallet_topup",
@@ -456,16 +460,16 @@ export async function issueWalletTopupReceipt(
     amount,
     receipt: {
       documentNumber: number,
-      documentKind: "Wallet top-up",
+      documentKind: isDisputeCredit ? "Dispute credit" : "Wallet top-up",
       issuedAt: new Date(),
       paymentDate: new Date(txn.created_at),
-      paymentMethod: "Card (Stripe)",
+      paymentMethod: isDisputeCredit ? "Wallet credit (dispute resolution)" : "Card (Stripe)",
       referenceLines: [],
       client,
       lines: [
         {
           description: txn.description || "Wallet top-up",
-          detail: "Prepaid wallet credit",
+          detail: isDisputeCredit ? "Goodwill credit" : "Prepaid wallet credit",
           quantity: null,
           unitPrice: null,
           total: amount,
