@@ -1,4 +1,3 @@
-import { StoreGate } from "@/components/store-gate";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
@@ -23,7 +22,7 @@ export const Route = createFileRoute("/_authenticated/_client/quotes/")({
       { name: "robots", content: "noindex" },
     ],
   }),
-  component: MyQuotesPageGated,
+  component: MyQuotesPageInner,
 });
 
 function MyQuotesPageInner() {
@@ -103,10 +102,3 @@ function MyQuotesPageInner() {
   );
 }
 
-function MyQuotesPageGated() {
-  return (
-    <StoreGate feature="Quotes">
-      <MyQuotesPageInner />
-    </StoreGate>
-  );
-}

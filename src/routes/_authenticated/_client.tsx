@@ -136,7 +136,7 @@ function CompleteProfile() {
         <CardHeader>
           <CardTitle className="text-lg">Complete your profile</CardTitle>
           <CardDescription>
-            Just the basics — you can add your store and company details afterwards.
+            Just the basics — you can add a workspace and company details afterwards.
           </CardDescription>
         </CardHeader>
         <CardContent>

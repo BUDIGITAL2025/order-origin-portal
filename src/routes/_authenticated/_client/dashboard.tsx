@@ -357,17 +357,17 @@ function OnboardingCard({
       cta: "Complete details",
     },
     {
-      title: "Add your first store",
-      description: "Connect a Shopify store or add any store URL — each store gets its own catalogue and quotes.",
+      title: "Add your first workspace",
+      description: "Manual mode works from day one — connect your Shopify store later, when you are ready.",
       done: hasStore,
       to: "/stores/new",
-      cta: "Add store",
+      cta: "Add workspace",
     },
     {
       title: "Request your first quote",
       description: hasQuote
         ? "Quote requested — our sourcing team is on it."
-        : "Paste a product URL and we source it for you. Needs a store first.",
+        : "Paste a product URL and we source it for you.",
       done: hasQuote,
       to: "/quotes/new",
       cta: "Request a quote",

@@ -182,7 +182,7 @@ function BillingPage() {
   const subscribe = useMutation({
     mutationFn: async (plan: "basic" | "unlimited") => {
       if (!environment) throw new Error("Payments are not configured for this build");
-      if (!storeId) throw new Error("No store selected");
+      if (!storeId) throw new Error("No workspace selected");
       const result = await callSubscribe({
         data: {
           plan,
@@ -203,7 +203,7 @@ function BillingPage() {
   const change = useMutation({
     mutationFn: async (plan: "basic" | "unlimited") => {
       if (!environment) throw new Error("Payments are not configured for this build");
-      if (!storeId) throw new Error("No store selected");
+      if (!storeId) throw new Error("No workspace selected");
       const result = await callChangePlan({ data: { plan, environment, storeId } });
       if ("error" in result) throw new Error(result.error);
       return result;
@@ -223,7 +223,7 @@ function BillingPage() {
   const keepPlan = useMutation({
     mutationFn: async () => {
       if (!environment) throw new Error("Payments are not configured for this build");
-      if (!storeId) throw new Error("No store selected");
+      if (!storeId) throw new Error("No workspace selected");
       const result = await callCancelPending({ data: { storeId, environment } });
       if ("error" in result) throw new Error(result.error);
       return result;
@@ -245,7 +245,7 @@ function BillingPage() {
       if (autoEnabled && (amount ?? 0) < TOPUP_MIN) {
         throw new Error(`Auto top-up amount must be at least $${TOPUP_MIN}`);
       }
-      if (!storeId) throw new Error("No store selected");
+      if (!storeId) throw new Error("No workspace selected");
       return callSaveAuto({ data: { enabled: autoEnabled, threshold, amount, storeId } });
     },
     onSuccess: async () => {
@@ -343,7 +343,7 @@ function BillingPage() {
               <CardTitle className="flex items-center gap-2 text-base">
                 <CreditCard className="h-4 w-4" /> Subscription
               </CardTitle>
-              <CardDescription>Plans are per store.</CardDescription>
+              <CardDescription>Plans are per workspace.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               <p className="text-sm text-muted-foreground">

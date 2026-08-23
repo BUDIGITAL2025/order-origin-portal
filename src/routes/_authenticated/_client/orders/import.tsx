@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, FileUp } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/app-shell";
@@ -24,8 +24,10 @@ import {
 } from "@/components/ui/table";
 import { z } from "zod";
 import { validateAddressFields } from "@/lib/address";
-import { importMyManualOrders } from "@/lib/orders.functions";
+import { formatUSD } from "@/lib/format";
+import { importMyManualOrders, listMyCatalogue } from "@/lib/orders.functions";
 import { manualOrderGroupSchema } from "@/lib/schemas";
+import { getMyWallet } from "@/lib/wallet.functions";
 import { useMyContext } from "../../_client";
 
 export const Route = createFileRoute("/_authenticated/_client/orders/import")({
@@ -204,6 +206,40 @@ function ImportOrdersPage() {
   const allStores = ctx?.entities?.flatMap((e) => e.stores) ?? [];
   const store = allStores.find((s) => s.id === storeId) ?? allStores[0] ?? null;
 
+  // Catalogue prices (per country) and wallet balance drive the cost preview.
+  const callCatalogue = useServerFn(listMyCatalogue);
+  const callWallet = useServerFn(getMyWallet);
+  const { data: catalogue } = useQuery({
+    queryKey: ["my-catalogue", store?.id],
+    enabled: Boolean(store?.id),
+    queryFn: () => callCatalogue({ data: { store_id: store!.id } }),
+  });
+  const { data: wallet } = useQuery({ queryKey: ["my-wallet"], queryFn: callWallet });
+
+  // SKU → unit price resolver for the destination country of each group.
+  const priceBySku = useMemo(() => {
+    const bySku = new Map(
+      (catalogue?.products ?? []).map((p) => [p.sku, p] as const),
+    );
+    const simple = new Map<string, number>(
+      (catalogue?.countryPrices ?? []).map(
+        (p) => [`${p.product_id}:${p.country_code}`, Number(p.unit_price)] as const,
+      ),
+    );
+    const bundle = new Map<string, number>(
+      (catalogue?.bundlePrices ?? []).map(
+        (p) => [`${p.bundle_product_id}:${p.country_code}`, Number(p.effective_price)] as const,
+      ),
+    );
+    return (sku: string, country: string): { price: number | null; known: boolean } => {
+      const product = bySku.get(sku);
+      if (!product) return { price: null, known: false };
+      const key = `${product.id}:${country}`;
+      const price = product.product_type === "bundle" ? bundle.get(key) : simple.get(key);
+      return { price: price ?? null, known: true };
+    };
+  }, [catalogue]);
+
   const [preview, setPreview] = useState<PreviewOrder[] | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -221,8 +257,27 @@ function ImportOrdersPage() {
     });
   }
 
-  const validOrders = (preview ?? []).filter((p) => p.group);
-  const invalidCount = (preview ?? []).length - validOrders.length;
+  // Enrich each previewed order with a cost estimate and SKU-level errors.
+  const enriched = (preview ?? []).map((p) => {
+    const skuErrors: string[] = [];
+    let cost = 0;
+    for (const line of p.lines) {
+      const { price, known } = priceBySku(line.sku, p.country);
+      if (!known) {
+        skuErrors.push(`Unknown SKU ${line.sku} in this workspace`);
+      } else if (price == null) {
+        skuErrors.push(`No ${p.country} price for ${line.sku}`);
+      } else {
+        cost += price * line.quantity;
+      }
+    }
+    return { ...p, skuErrors, cost };
+  });
+  const validOrders = enriched.filter((p) => p.group && p.skuErrors.length === 0);
+  const invalidCount = enriched.length - validOrders.length;
+  const totalCost = validOrders.reduce((acc, p) => acc + p.cost, 0);
+  const balance = wallet?.balance ?? 0;
+  const resultingBalance = balance - totalCost;
 
   async function submitAll() {
     if (!store || validOrders.length === 0) return;
@@ -329,40 +384,59 @@ function ImportOrdersPage() {
                   <TableHead>Customer</TableHead>
                   <TableHead>Country</TableHead>
                   <TableHead className="text-right">Lines</TableHead>
+                  <TableHead className="text-right">Est. total</TableHead>
                   <TableHead>Check</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {preview.map((p) => (
-                  <TableRow key={p.key}>
-                    <TableCell className="tnum text-xs font-medium">
-                      {p.reference || "—"}
-                    </TableCell>
-                    <TableCell className="text-sm">{p.customer}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{p.country}</TableCell>
-                    <TableCell className="text-right tnum text-sm">{p.lines.length}</TableCell>
-                    <TableCell>
-                      {p.errors.length === 0 ? (
-                        <span className="text-xs font-medium text-primary">Ready</span>
-                      ) : (
-                        <ul className="space-y-0.5 text-xs text-destructive">
-                          {p.errors.slice(0, 3).map((e) => (
-                            <li key={e}>{e}</li>
-                          ))}
-                          {p.errors.length > 3 && <li>+{p.errors.length - 3} more</li>}
-                        </ul>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {enriched.map((p) => {
+                  const allErrors = [...p.errors, ...p.skuErrors];
+                  return (
+                    <TableRow key={p.key}>
+                      <TableCell className="tnum text-xs font-medium">
+                        {p.reference || "—"}
+                      </TableCell>
+                      <TableCell className="text-sm">{p.customer}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{p.country}</TableCell>
+                      <TableCell className="text-right tnum text-sm">{p.lines.length}</TableCell>
+                      <TableCell className="text-right tnum text-sm">
+                        {allErrors.length === 0 ? formatUSD(p.cost) : "—"}
+                      </TableCell>
+                      <TableCell>
+                        {allErrors.length === 0 ? (
+                          <span className="text-xs font-medium text-primary">Ready</span>
+                        ) : (
+                          <ul className="space-y-0.5 text-xs text-destructive">
+                            {allErrors.slice(0, 3).map((e) => (
+                              <li key={e}>{e}</li>
+                            ))}
+                            {allErrors.length > 3 && <li>+{allErrors.length - 3} more</li>}
+                          </ul>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
-            <div className="mt-4 flex items-center justify-between">
-              <p className="text-xs text-muted-foreground">
-                {invalidCount > 0
-                  ? "Invalid groups are excluded below — re-upload a fixed file to include them."
-                  : `Importing into ${store?.store_name ?? "your workspace"}.`}
-              </p>
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+              <div className="text-xs text-muted-foreground">
+                {invalidCount > 0 ? (
+                  <p>Invalid groups are excluded — re-upload a fixed file to include them.</p>
+                ) : (
+                  <p>Importing into {store?.store_name ?? "your workspace"}.</p>
+                )}
+                {validOrders.length > 0 && (
+                  <p className="tnum mt-1">
+                    Total cost {formatUSD(totalCost)} · wallet balance {formatUSD(balance)} ·{" "}
+                    <span className={resultingBalance < 0 ? "font-medium text-warning" : ""}>
+                      balance after {formatUSD(resultingBalance)}
+                    </span>
+                    {resultingBalance < 0 &&
+                      " — orders beyond your balance land as awaiting payment"}
+                  </p>
+                )}
+              </div>
               <Button onClick={submitAll} disabled={busy || validOrders.length === 0}>
                 {busy
                   ? "Importing…"

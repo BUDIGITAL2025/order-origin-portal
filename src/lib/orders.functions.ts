@@ -182,7 +182,7 @@ export const listMyOrders = createServerFn({ method: "GET" })
     const { data, error } = await context.supabase
       .from("orders")
       .select(
-        "id, external_order_number, status, payment_method, total_amount, destination_country, paid_at, created_at, order_items(id, sku, quantity, unit_price, line_total)",
+        "id, external_order_number, status, payment_method, total_amount, destination_country, paid_at, shipped_at, tracking_number, tracking_carrier, created_at, order_items(id, sku, quantity, unit_price, line_total)",
       )
       .order("created_at", { ascending: false })
       .limit(200);

@@ -55,7 +55,7 @@ export function StoreSwitcher() {
     >
       <SelectTrigger className="h-8 w-full bg-background text-xs">
         <Store className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-        <SelectValue placeholder="Select a store" />
+        <SelectValue placeholder="Select a workspace" />
       </SelectTrigger>
       <SelectContent>
         {entities.map((entity) => (

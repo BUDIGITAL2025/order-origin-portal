@@ -1,4 +1,3 @@
-import { StoreGate } from "@/components/store-gate";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -27,7 +26,7 @@ export const Route = createFileRoute("/_authenticated/_client/quotes/new")({
       { name: "robots", content: "noindex" },
     ],
   }),
-  component: NewQuotePageGated,
+  component: NewQuotePageInner,
 });
 
 function NewQuotePageInner() {
@@ -44,9 +43,37 @@ function NewQuotePageInner() {
   const [files, setFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [quotaBlocked, setQuotaBlocked] = useState(false);
+  const [plansBlocked, setPlansBlocked] = useState(false);
+
+  // Quota and plan live on the current workspace (localStorage selection,
+  // resolved after hydration; falls back to the first workspace).
+  const [currentStoreId, setCurrentStoreId] = useState<string | null>(null);
+  useEffect(() => {
+    setCurrentStoreId(getCurrentStoreId());
+  }, []);
+  const allStores = ctx?.entities?.flatMap((e) => e.stores) ?? [];
+  const currentStore = allStores.find((s) => s.id === currentStoreId) ?? allStores[0] ?? null;
+
+  const plan = currentStore?.subscription_plan ?? "basic";
+  const quota = planQuota(plan);
+  const quotesUsed = currentStore?.quotes_used_this_month ?? 0;
+  const limitReached = quota != null && quotesUsed >= quota;
+
+  // Paywall: submitting needs an active subscription on this workspace (or a
+  // fee waiver). The form stays visible and fillable; the plan options only
+  // appear when an unsubscribed client tries to submit.
+  const needsSubscription =
+    currentStore != null &&
+    currentStore.subscription_status !== "active" &&
+    currentStore.subscription_status !== "past_due" &&
+    !currentStore.fee_waived;
 
   const submit = useMutation({
     mutationFn: async () => {
+      if (needsSubscription) {
+        setPlansBlocked(true);
+        throw new Error("Pick a plan to send quote requests — your request has not been submitted.");
+      }
       const parsed = quoteRequestSchema.safeParse({
         product_url: productUrl,
         product_name: productName,
@@ -98,58 +125,6 @@ function NewQuotePageInner() {
   // Upgrades go through Stripe checkout on the Billing page — the webhook
   // flips the plan after payment confirms.
 
-  // Quota and plan live on the current store (localStorage selection,
-  // resolved after hydration; falls back to the first store).
-  const [currentStoreId, setCurrentStoreId] = useState<string | null>(null);
-  useEffect(() => {
-    setCurrentStoreId(getCurrentStoreId());
-  }, []);
-  const allStores = ctx?.entities?.flatMap((e) => e.stores) ?? [];
-  const currentStore = allStores.find((s) => s.id === currentStoreId) ?? allStores[0] ?? null;
-
-  const plan = currentStore?.subscription_plan ?? "basic";
-  const quota = planQuota(plan);
-  const quotesUsed = currentStore?.quotes_used_this_month ?? 0;
-  const limitReached = quota != null && quotesUsed >= quota;
-
-  // Paywall: requesting quotes needs an active subscription on this
-  // workspace (or a fee waiver). Browsing stays open; only submission gates.
-  const needsSubscription =
-    currentStore != null &&
-    currentStore.subscription_status !== "active" &&
-    currentStore.subscription_status !== "past_due" &&
-    !currentStore.fee_waived;
-
-  if (needsSubscription) {
-    return (
-      <div className="max-w-2xl">
-        <PageHeader
-          title="Request a quote"
-          description="Send us a product link and we'll come back with a price, MOQ and lead time."
-        />
-        <Card>
-          <CardContent className="flex flex-col items-start gap-3 p-8">
-            <ArrowUpCircle className="h-8 w-8 text-primary" />
-            <h2 className="text-lg font-semibold">Subscribe to request quotes</h2>
-            <p className="text-sm text-muted-foreground">
-              Quote requests are part of a {PLANS.basic.label} or {PLANS.unlimited.label}{" "}
-              subscription. Subscribe first — no store connection needed — and come straight
-              back here.
-            </p>
-            <div className="flex gap-2">
-              <Button asChild size="sm">
-                <Link to="/billing">See plans</Link>
-              </Button>
-              <Button asChild size="sm" variant="outline">
-                <Link to="/dashboard">Back to dashboard</Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   if (quotaBlocked || limitReached) {
     return (
       <div className="max-w-2xl">
@@ -192,6 +167,39 @@ function NewQuotePageInner() {
         title="Request a quote"
         description="Send us a product link and we'll come back with a price, MOQ and lead time."
       />
+      {plansBlocked && needsSubscription && (
+        <Card className="mb-4 border-primary/40">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <ArrowUpCircle className="h-5 w-5 text-primary" />
+              Pick a plan to send this request
+            </CardTitle>
+            <CardDescription>
+              Your request above is safe — nothing was submitted. Quote requests are part of a
+              workspace subscription; no shop connection needed.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-3 sm:grid-cols-2">
+            {(["basic", "unlimited"] as const).map((key) => (
+              <div key={key} className="rounded-xl border border-border p-4">
+                <p className="text-sm font-semibold">{PLANS[key].label}</p>
+                <p className="tnum text-xl font-semibold">
+                  ${PLANS[key].priceUsd}
+                  <span className="text-xs font-normal text-muted-foreground">/month</span>
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {key === "basic"
+                    ? `${PLANS.basic.quoteQuota} quote requests per month`
+                    : "Unlimited quote requests"}
+                </p>
+                <Button asChild size="sm" className="mt-3 w-full">
+                  <Link to="/billing">Subscribe to {PLANS[key].label}</Link>
+                </Button>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Product details</CardTitle>
@@ -303,13 +311,5 @@ function NewQuotePageInner() {
         </CardContent>
       </Card>
     </div>
-  );
-}
-
-function NewQuotePageGated() {
-  return (
-    <StoreGate feature="Quote requests">
-      <NewQuotePageInner />
-    </StoreGate>
   );
 }

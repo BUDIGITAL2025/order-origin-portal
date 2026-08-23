@@ -2,7 +2,8 @@ import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Copy } from "lucide-react";
+import { toast } from "sonner";
 import { PageHeader } from "@/components/app-shell";
 import { OrderStatusBadge } from "@/components/documents-ui";
 import { OpenDisputeDialog } from "@/components/OpenDisputeDialog";
@@ -132,10 +133,21 @@ function OrderDetailPage() {
                 <dd>{order.delivered_at ? formatDateTime(order.delivered_at) : "—"}</dd>
               </div>
               {order.tracking_number && (
-                <div className="flex justify-between">
+                <div className="flex items-center justify-between">
                   <dt className="text-muted-foreground">Tracking</dt>
-                  <dd className="tnum text-xs">
+                  <dd className="tnum flex items-center gap-1.5 text-xs">
                     {order.tracking_carrier}: {order.tracking_number}
+                    <button
+                      type="button"
+                      aria-label="Copy tracking number"
+                      className="text-muted-foreground hover:text-foreground"
+                      onClick={() => {
+                        void navigator.clipboard.writeText(order.tracking_number!);
+                        toast.success("Tracking number copied");
+                      }}
+                    >
+                      <Copy className="h-3.5 w-3.5" />
+                    </button>
                   </dd>
                 </div>
               )}

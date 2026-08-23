@@ -49,10 +49,10 @@ function NewStorePage() {
     try {
       await callAddMyStore({ data: parsed.data });
       await queryClient.invalidateQueries({ queryKey: ["my-context"] });
-      toast.success("Store added — our team will review and connect it.");
+      toast.success("Workspace added — our team will review it.");
       await navigate({ to: "/dashboard" });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not add store");
+      toast.error(err instanceof Error ? err.message : "Could not add workspace");
     } finally {
       setBusy(false);
     }
@@ -62,7 +62,7 @@ function NewStorePage() {
     <div className="mx-auto max-w-lg py-8">
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Add a store</CardTitle>
+          <CardTitle className="text-lg">Add a workspace</CardTitle>
           <CardDescription>
             Each store gets its own catalogue, quotes, orders and subscription. Your wallet
             stays shared across the whole entity.
@@ -90,7 +90,7 @@ function NewStorePage() {
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="ns-url">
-                {form.platform === "shopify" ? "Shopify domain" : "Store URL"}
+                {form.platform === "shopify" ? "Shopify domain" : "Shop URL"}
               </Label>
               <Input
                 id="ns-url"
@@ -103,7 +103,7 @@ function NewStorePage() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="ns-name">Store name (optional)</Label>
+              <Label htmlFor="ns-name">Workspace name (optional)</Label>
               <Input
                 id="ns-name"
                 placeholder="My shop"
@@ -118,7 +118,7 @@ function NewStorePage() {
               </p>
             )}
             <Button type="submit" className="w-full" disabled={busy}>
-              {busy ? "Adding…" : "Add store"}
+              {busy ? "Adding…" : "Add workspace"}
             </Button>
           </form>
         </CardContent>
