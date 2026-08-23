@@ -1339,7 +1339,8 @@ function ShopsTab({
                           <div className="flex gap-1.5">
                             {creatives.map((a, j) => {
                               const img = asStr(a["thumbnailUrl"]) ?? asStr(a["mediaUrl"]);
-                              const isVideo = asStr(a["mediaType"]) === "video";
+                              const isVideo =
+                                (asStr(a["type"]) ?? asStr(a["mediaType"])) === "video";
                               return (
                                 <div
                                   key={j}
@@ -2881,15 +2882,23 @@ function AdDetailDialog({
   const audience = asRec(ad?.["audience"]);
   const flags = asRec(ad?.["flags"]);
   const media = asRec(ad?.["media"]);
+  // The API sends media.type ("video" | "image"); mediaType kept as a safety
+  // fallback for older cached payloads.
+  const mediaKind = asStr(media["type"]) ?? asStr(media["mediaType"]);
+  const isVideo = mediaKind === "video";
+  // Video MP4s already ship in the detail payload — the paid ads/media-url
+  // endpoint is only a fallback when no playable URL is present.
+  const playableUrl = asStr(media["mediaUrl"]);
+  const posterUrl = asStr(media["thumbnailUrl"]);
+  const fetchedMediaUrl =
+    mediaCall.state.kind === "ok"
+      ? asStr(asRec(asRec(mediaCall.state.result.data)["data"])["mediaUrl"]) ??
+        asStr(asRec(asRec(mediaCall.state.result.data)["data"])["url"])
+      : null;
 
   const reachPoints =
     reachCall.state.kind === "ok"
       ? asArr(asRec(reachCall.state.result.data)["data"]).map(asRec)
-      : null;
-  const mediaUrl =
-    mediaCall.state.kind === "ok"
-      ? asStr(asRec(asRec(mediaCall.state.result.data)["data"])["mediaUrl"]) ??
-        asStr(asRec(asRec(mediaCall.state.result.data)["data"])["url"])
       : null;
 
   return (
@@ -2910,41 +2919,45 @@ function AdDetailDialog({
         {ad && (
           <div className="space-y-4">
             {/* Media */}
-            {mediaUrl ? (
-              <video src={mediaUrl} controls className="w-full rounded-xl border" />
-            ) : asStr(media["mediaUrl"]) && asStr(media["mediaType"]) === "video" ? (
-              <video src={asStr(media["mediaUrl"]) ?? ""} controls className="w-full rounded-xl border" />
-            ) : asStr(media["thumbnailUrl"]) ? (
+            {isVideo ? (
+              (playableUrl ?? fetchedMediaUrl) ? (
+                <video
+                  src={playableUrl ?? fetchedMediaUrl ?? ""}
+                  poster={posterUrl ?? undefined}
+                  controls
+                  className="w-full rounded-xl border"
+                />
+              ) : (
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="rounded-full"
+                    disabled={mediaCall.state.kind === "loading"}
+                    onClick={() => adId && void mediaCall.execute({ adId })}
+                  >
+                    {mediaCall.state.kind === "loading" ? (
+                      <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Play className="mr-2 h-3.5 w-3.5" />
+                    )}
+                    Load video — {costLabel(costs, "ads/media-url", 1)}
+                  </Button>
+                  <CallFeedback
+                    state={mediaCall.state}
+                    onConfirm={mediaCall.confirm}
+                    onCancel={mediaCall.cancelConfirm}
+                    onRetry={mediaCall.retry}
+                  />
+                </div>
+              )
+            ) : (posterUrl ?? playableUrl) ? (
               <img
-                src={asStr(media["thumbnailUrl"]) ?? ""}
+                src={posterUrl ?? playableUrl ?? ""}
                 alt="Ad creative"
                 className="max-h-72 w-full rounded-xl border object-contain"
               />
             ) : null}
-            {asStr(media["mediaType"]) === "video" && !mediaUrl && !asStr(media["mediaUrl"]) && (
-              <div className="flex items-center gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="rounded-full"
-                  disabled={mediaCall.state.kind === "loading"}
-                  onClick={() => adId && void mediaCall.execute({ adId })}
-                >
-                  {mediaCall.state.kind === "loading" ? (
-                    <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <Play className="mr-2 h-3.5 w-3.5" />
-                  )}
-                  Load video — {costLabel(costs, "ads/media-url", 1)}
-                </Button>
-                <CallFeedback
-                  state={mediaCall.state}
-                  onConfirm={mediaCall.confirm}
-                  onCancel={mediaCall.cancelConfirm}
-                  onRetry={mediaCall.retry}
-                />
-              </div>
-            )}
 
             {/* Copy */}
             <div className="space-y-1.5">
