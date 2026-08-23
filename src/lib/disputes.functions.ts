@@ -121,7 +121,7 @@ export const adminGetDispute = createServerFn({ method: "GET" })
     const { data: dispute, error } = await context.supabase
       .from("disputes")
       .select(
-        "id, order_id, store_id, reason, description, evidence_urls, status, resolution, credit_amount, admin_notes, resolved_at, created_at, orders(external_order_number, status, total_amount, destination_country, paid_at, shipped_at, delivered_at, order_items(sku, quantity, unit_price, line_total))",
+        "id, order_id, store_id, reason, description, evidence_urls, status, resolution, credit_amount, resolved_at, created_at, orders(external_order_number, status, total_amount, destination_country, paid_at, shipped_at, delivered_at, order_items(sku, quantity, unit_price, line_total))",
       )
       .eq("id", data.dispute_id)
       .maybeSingle();
@@ -133,8 +133,19 @@ export const adminGetDispute = createServerFn({ method: "GET" })
       .eq("dispute_id", dispute.id)
       .order("created_at", { ascending: true });
     if (msgError) throw new Error(msgError.message);
+    // Internal notes live in an admin-only table (RLS: has_role admin).
+    const { data: internal, error: internalError } = await context.supabase
+      .from("dispute_internal_notes")
+      .select("admin_notes")
+      .eq("dispute_id", dispute.id)
+      .maybeSingle();
+    if (internalError) throw new Error(internalError.message);
     const evidence = await signEvidence((dispute.evidence_urls ?? []) as string[]);
-    return { dispute, messages: messages ?? [], evidence };
+    return {
+      dispute: { ...dispute, admin_notes: internal?.admin_notes ?? null },
+      messages: messages ?? [],
+      evidence,
+    };
   });
 
 /** Admin: mark a dispute as under investigation. */

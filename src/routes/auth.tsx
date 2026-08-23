@@ -110,7 +110,7 @@ function AuthPage() {
     setBusy(true);
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(parsed.data, {
-        redirectTo: `${APP_BASE_URL}/reset-password`,
+        redirectTo: `${getAppBaseUrl()}/reset-password`,
       });
       if (error) {
         toast.error(error.message);
@@ -136,7 +136,7 @@ function AuthPage() {
         email: parsed.data.email,
         password: parsed.data.password,
         options: {
-          emailRedirectTo: `${APP_BASE_URL}/auth`,
+          emailRedirectTo: `${getAppBaseUrl()}/auth`,
           // Persisted on the auth user so the profile can be completed
           // automatically after email confirmation — no re-asking.
           data: {
