@@ -8,9 +8,22 @@ const getEnv = (key: string): string => {
 
 export type StripeEnv = "sandbox" | "live";
 
+/**
+ * Stage gate: production is deliberately staying in Stripe test mode for now.
+ * While this is true, every server-side Stripe API call is routed to the
+ * sandbox account — even if a stale live client token asks for "live".
+ * Set to false only as part of the intentional go-live change.
+ */
+export const STRIPE_FORCE_TEST_MODE = true;
+
+function effectiveStripeEnv(requestedEnv: StripeEnv): StripeEnv {
+  return STRIPE_FORCE_TEST_MODE ? "sandbox" : requestedEnv;
+}
+
 const GATEWAY_STRIPE_BASE = "https://connector-gateway.lovable.dev/stripe";
 
-export function getConnectionApiKey(env: StripeEnv): string {
+export function getConnectionApiKey(requestedEnv: StripeEnv): string {
+  const env = effectiveStripeEnv(requestedEnv);
   return env === "sandbox"
     ? getEnv("STRIPE_SANDBOX_API_KEY")
     : getEnv("STRIPE_LIVE_API_KEY");
@@ -18,8 +31,8 @@ export function getConnectionApiKey(env: StripeEnv): string {
 
 // Routes api.stripe.com requests through the connector gateway.
 // Only api.stripe.com is proxied (not files.stripe.com or connect.stripe.com).
-export function createStripeClient(env: StripeEnv): Stripe {
-  const connectionApiKey = getConnectionApiKey(env);
+export function createStripeClient(requestedEnv: StripeEnv): Stripe {
+  const connectionApiKey = getConnectionApiKey(requestedEnv);
   const lovableApiKey = getEnv("LOVABLE_API_KEY");
 
   return new Stripe(connectionApiKey, {
