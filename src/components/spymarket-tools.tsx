@@ -949,7 +949,7 @@ function ShopDetailTab({
             </p>
             <Button className="rounded-full" onClick={() => void call.execute({ shopId })}>
               <Play className="mr-2 h-4 w-4" />
-              Load profile — 1 credit
+              Load profile — {costLabel(costs, "shops/detail", 1)}
             </Button>
           </CardContent>
         </Card>
@@ -1171,7 +1171,7 @@ function ShopDetailTab({
             </Card>
           )}
 
-          <ShopOnDemand shopId={shopId} go={go} />
+          <ShopOnDemand shopId={shopId} go={go} costs={costs} />
         </>
       )}
     </div>
@@ -1182,9 +1182,11 @@ function ShopDetailTab({
 function ShopOnDemand({
   shopId,
   go,
+  costs,
 }: {
   shopId: string;
   go: SpyMarketToolsProps["go"];
+  costs?: EndpointCosts | undefined;
 }) {
   const getTab = useServerFn(spymarketGetShopTab);
   const call = useMeteredCall(getTab as ServerFnLike);
