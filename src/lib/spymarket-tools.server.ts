@@ -416,6 +416,7 @@ export async function getToolsStatus(userId: string): Promise<{
     dayTotal: await getUserDayTotal(userId),
     dailySoftLimit: DAILY_SOFT_LIMIT_CREDITS,
     creditsRemaining: last?.credits_remaining ?? null,
+    endpointCosts: await getEndpointCosts(),
   };
 }
 
@@ -428,6 +429,7 @@ export async function getUsageDashboard(userId: string): Promise<{
   totalCalls: number;
   byMember: Array<{ name: string; credits: number; calls: number }>;
   byEndpoint: Array<{ endpoint: string; credits: number; calls: number }>;
+  observedPricing: EndpointCost[];
   creditsRemaining: number | null;
   liveBalance: number | null;
   recent: Array<{
