@@ -43,19 +43,19 @@ export interface CallOptions {
   endpoint: string;
   /** API path, e.g. "/shops/query". */
   path: string;
-  method?: "GET" | "POST";
-  query?: Record<string, string | number | boolean | undefined>;
-  body?: Record<string, unknown>;
+  method?: "GET" | "POST" | undefined;
+  query?: Record<string, string | number | boolean | undefined> | undefined;
+  body?: Record<string, unknown> | undefined;
   /** Compact description of the call, stored in the usage log. */
-  summary?: Record<string, unknown>;
+  summary?: Record<string, unknown> | undefined;
   /** Worst-case credits (1 per returned row). */
   estimatedCost: number;
   /** Default true. Lookup/facets/usage are zero-credit. */
-  metered?: boolean;
+  metered?: boolean | undefined;
   /** Default: metered calls are cached 24h. */
-  cacheable?: boolean;
+  cacheable?: boolean | undefined;
   /** User confirmed beyond the daily soft limit. */
-  confirmOverage?: boolean;
+  confirmOverage?: boolean | undefined;
 }
 
 interface UsageHeaders {
@@ -144,7 +144,7 @@ async function logCall(entry: {
  *  - "confirm"      → user is beyond the daily soft limit; UI must confirm
  *  - "insufficient" → 402 from Trendtrack; shows balance, never retried
  */
-export async function trendtrackCall<T = unknown>(opts: CallOptions): Promise<ToolResult<T>> {
+export async function trendtrackCall<T = Json>(opts: CallOptions): Promise<ToolResult<T>> {
   const apiKey = process.env["TRENDTRACK_API_KEY"];
   if (!apiKey) throw new Error("TRENDTRACK_NOT_CONFIGURED");
 
