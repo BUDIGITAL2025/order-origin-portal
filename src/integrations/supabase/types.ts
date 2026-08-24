@@ -67,6 +67,39 @@ export type Database = {
           },
         ]
       }
+      cron_runs: {
+        Row: {
+          created_at: string
+          detail: Json | null
+          error: string | null
+          finished_at: string | null
+          id: string
+          job: string
+          ok: boolean | null
+          started_at: string
+        }
+        Insert: {
+          created_at?: string
+          detail?: Json | null
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          job: string
+          ok?: boolean | null
+          started_at?: string
+        }
+        Update: {
+          created_at?: string
+          detail?: Json | null
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          job?: string
+          ok?: boolean | null
+          started_at?: string
+        }
+        Relationships: []
+      }
       dispute_internal_notes: {
         Row: {
           admin_notes: string | null
@@ -350,6 +383,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      error_logs: {
+        Row: {
+          context: Json | null
+          created_at: string
+          error: string
+          id: string
+          job: string
+        }
+        Insert: {
+          context?: Json | null
+          created_at?: string
+          error: string
+          id?: string
+          job: string
+        }
+        Update: {
+          context?: Json | null
+          created_at?: string
+          error?: string
+          id?: string
+          job?: string
+        }
+        Relationships: []
+      }
+      internal_settings: {
+        Row: {
+          key: string
+          updated_at: string
+          value: string
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          value: string
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          value?: string
+        }
+        Relationships: []
       }
       notifications: {
         Row: {
@@ -1659,6 +1734,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      invoke_cron_endpoint: {
+        Args: { p_job: string; p_method?: string; p_path: string }
+        Returns: undefined
       }
       open_dispute: {
         Args: {

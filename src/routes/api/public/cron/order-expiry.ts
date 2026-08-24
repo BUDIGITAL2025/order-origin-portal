@@ -40,10 +40,11 @@ export const Route = createFileRoute("/api/public/cron/order-expiry")({
         const authError = await authenticateCronRequest(request);
         if (authError) return authError;
 
-        try {
-          const { supabaseAdmin } = await import(
-            "@/integrations/supabase/client.server"
-          );
+        const { supabaseAdmin } = await import(
+          "@/integrations/supabase/client.server"
+        );
+        const { runCronJob } = await import("@/lib/ops.server");
+        const outcome = await runCronJob(supabaseAdmin, "order-expiry", async () => {
           const { sendClientEmail } = await import("@/lib/email.server");
           const { flagBreachedQuotes } = await import("@/lib/quotes.server");
           const now = Date.now();
@@ -149,11 +150,12 @@ export const Route = createFileRoute("/api/public/cron/order-expiry")({
           summary.quote_sla_breached = await flagBreachedQuotes(supabaseAdmin);
 
           console.log("order expiry sweep:", JSON.stringify(summary));
-          return Response.json({ ok: true, ...summary });
-        } catch (error) {
-          console.error("order expiry sweep error:", error);
+          return summary;
+        });
+        if (!outcome.ok) {
           return Response.json({ error: "Sweep failed" }, { status: 500 });
         }
+        return Response.json({ ok: true, ...outcome.result });
       },
     },
   },

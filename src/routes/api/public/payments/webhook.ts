@@ -85,6 +85,12 @@ export const Route = createFileRoute("/api/public/payments/webhook")({
               .update({ error: message.slice(0, 1000) })
               .eq("stripe_event_id", event.id);
             console.error("Webhook processing error:", event.type, message);
+            const { logAppError } = await import("@/lib/ops.server");
+            await logAppError(supabaseAdmin, {
+              job: "stripe-webhook",
+              context: { event_id: event.id, type: event.type, env },
+              error: processingError,
+            });
             // 500 → Stripe retries once; the retry hits the idempotency gate
             // (row already exists) and stops. The error stays visible to admins.
             return new Response("Webhook handler error", { status: 500 });
