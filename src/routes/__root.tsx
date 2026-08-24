@@ -136,6 +136,11 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const router = useRouter();
 
+  // First-touch acquisition capture (utm_* / plan) — no-op without params.
+  useEffect(() => {
+    captureAcquisitionFromUrl();
+  }, []);
+
   useEffect(() => {
     const {
       data: { subscription },
