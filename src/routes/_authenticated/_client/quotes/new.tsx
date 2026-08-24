@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { COUNTRIES } from "@/lib/countries";
+import { getPlanHint } from "@/lib/acquisition";
 import { PLANS, planQuota, quotaResetDate } from "@/lib/plans";
 import { quoteRequestSchema } from "@/lib/schemas";
 import { createQuoteRequest } from "@/lib/quotes.functions";
@@ -91,6 +92,12 @@ function NewQuotePageInner() {
   const [uploading, setUploading] = useState(false);
   const [quotaBlocked, setQuotaBlocked] = useState(false);
   const [subscribeError, setSubscribeError] = useState<string | null>(null);
+  // Plan hinted by ?plan= on the visitor's first landing — pre-selected on
+  // the paywall so the choice isn't repeated. Null = current behaviour.
+  const [selectedPlan, setSelectedPlan] = useState<"basic" | "unlimited" | null>(null);
+  useEffect(() => {
+    setSelectedPlan(getPlanHint());
+  }, []);
 
   // Return from Stripe checkout: sub=success/cancel. Activation arrives via
   // webhook — refresh the context so the paywall lifts as soon as it lands.
@@ -420,8 +427,22 @@ function NewQuotePageInner() {
           </CardHeader>
           <CardContent className="grid gap-3 sm:grid-cols-2">
             {(["basic", "unlimited"] as const).map((key) => (
-              <div key={key} className="rounded-xl border border-border p-4">
-                <p className="text-sm font-semibold">{PLANS[key].label}</p>
+              <div
+                key={key}
+                className={
+                  selectedPlan === key
+                    ? "rounded-xl border-2 border-primary bg-primary/5 p-4"
+                    : "rounded-xl border border-border p-4"
+                }
+              >
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-semibold">{PLANS[key].label}</p>
+                  {selectedPlan === key && (
+                    <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary-foreground">
+                      Selected
+                    </span>
+                  )}
+                </div>
                 <p className="tnum text-xl font-semibold">
                   ${PLANS[key].priceUsd}
                   <span className="text-xs font-normal text-muted-foreground">/month</span>
@@ -434,8 +455,10 @@ function NewQuotePageInner() {
                 <Button
                   size="sm"
                   className="mt-3 w-full"
+                  variant={selectedPlan && selectedPlan !== key ? "outline" : "default"}
                   disabled={subscribe.isPending}
                   onClick={() => {
+                    setSelectedPlan(key);
                     setSubscribeError(null);
                     subscribe.mutate(key);
                   }}

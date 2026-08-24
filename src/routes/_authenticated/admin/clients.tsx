@@ -23,6 +23,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatSignupSource } from "@/lib/acquisition";
 import { formatDateTime } from "@/lib/format";
 import { PLANS, TIER_LABELS, effectiveTier, planQuota } from "@/lib/plans";
 import {
@@ -139,6 +140,11 @@ function AdminClientsPage() {
                 <div className="flex flex-wrap items-center gap-2">
                   <CardTitle className="text-base">{c.contact_name}</CardTitle>
                   <ProfileStatusBadge status={c.status} />
+                  {formatSignupSource(c.signup_source) && (
+                    <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+                      {formatSignupSource(c.signup_source)}
+                    </span>
+                  )}
                   <span className="ml-auto text-xs text-muted-foreground">
                     Account since {formatDateTime(c.created_at)}
                   </span>

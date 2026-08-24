@@ -815,6 +815,7 @@ export type Database = {
           created_at: string
           id: string
           phone: string
+          signup_source: Json | null
           status: Database["public"]["Enums"]["profile_status"]
           terms_accepted_at: string | null
           terms_version: string | null
@@ -825,6 +826,7 @@ export type Database = {
           created_at?: string
           id: string
           phone: string
+          signup_source?: Json | null
           status?: Database["public"]["Enums"]["profile_status"]
           terms_accepted_at?: string | null
           terms_version?: string | null
@@ -835,6 +837,7 @@ export type Database = {
           created_at?: string
           id?: string
           phone?: string
+          signup_source?: Json | null
           status?: Database["public"]["Enums"]["profile_status"]
           terms_accepted_at?: string | null
           terms_version?: string | null

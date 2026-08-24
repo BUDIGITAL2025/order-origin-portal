@@ -117,6 +117,8 @@ export const completeSignup = createServerFn({ method: "POST" })
         contact_name: data.contact_name,
         phone: data.phone,
         status: "active",
+        // Acquisition context from the landing URL; null when absent.
+        signup_source: data.signup_source ?? null,
         // Stamped only when the signup form's Terms checkbox was checked.
         ...(data.terms_accepted
           ? { terms_version: TERMS_VERSION, terms_accepted_at: new Date().toISOString() }
@@ -273,7 +275,7 @@ export const adminListClients = createServerFn({ method: "GET" })
     const admin = await getAdminClient();
     const { data, error } = await admin
       .from("profiles")
-      .select(`id, contact_name, phone, status, created_at, entities(id, legal_name, vat_number, country, status, created_at, stores(*))`)
+      .select(`id, contact_name, phone, status, created_at, signup_source, entities(id, legal_name, vat_number, country, status, created_at, stores(*))`)
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
     return { clients: data ?? [] };
