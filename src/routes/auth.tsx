@@ -20,6 +20,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { getAppBaseUrl, MARKETING_URL } from "@/lib/config";
 import { loginSchema, signupSchema } from "@/lib/schemas";
+import { getSignupSource } from "@/lib/acquisition";
 import { completeSignup, getMyContext } from "@/lib/profiles.functions";
 
 export const Route = createFileRoute("/auth")({
@@ -163,6 +164,8 @@ function AuthPage() {
           phone: parsed.data.phone,
           country: parsed.data.country,
           terms_accepted: true,
+          // Acquisition context captured on the visitor's first landing.
+          ...(getSignupSource() ? { signup_source: getSignupSource()! } : {}),
         },
       });
       toast.success("Account created — welcome to FlySales.");

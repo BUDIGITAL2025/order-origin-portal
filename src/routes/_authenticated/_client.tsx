@@ -17,6 +17,7 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { acceptCurrentTerms, completeSignup, getMyContext } from "@/lib/profiles.functions";
 import { completeSignupSchema } from "@/lib/schemas";
+import { getSignupSource } from "@/lib/acquisition";
 import { TERMS_VERSION } from "@/lib/terms";
 
 export const Route = createFileRoute("/_authenticated/_client")({
@@ -161,7 +162,8 @@ function CompleteProfile() {
   const submit = async (values: typeof form) => {
     setBusy(true);
     try {
-      await callCompleteSignup({ data: values });
+      const source = getSignupSource();
+      await callCompleteSignup({ data: { ...values, ...(source ? { signup_source: source } : {}) } });
       await queryClient.invalidateQueries({ queryKey: ["my-context"] });
       toast.success("Profile saved — welcome to FlySales.");
     } catch (err) {
