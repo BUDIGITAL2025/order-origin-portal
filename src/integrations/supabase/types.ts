@@ -1111,6 +1111,48 @@ export type Database = {
           },
         ]
       }
+      spymarket_subscriptions: {
+        Row: {
+          account_id: string
+          cancel_at_period_end: boolean
+          created_at: string
+          current_period_end: string | null
+          environment: string
+          id: string
+          plan: string
+          status: string
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          account_id: string
+          cancel_at_period_end?: boolean
+          created_at?: string
+          current_period_end?: string | null
+          environment?: string
+          id?: string
+          plan: string
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string
+          cancel_at_period_end?: boolean
+          created_at?: string
+          current_period_end?: string | null
+          environment?: string
+          id?: string
+          plan?: string
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       spymarket_usage_log: {
         Row: {
           cache_hit: boolean

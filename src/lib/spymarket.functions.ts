@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { stripeEnvSchema } from "./schemas";
 
 /**
  * SpyMarket interest capture. SpyMarket is a shell — no research tool, no
@@ -83,4 +84,117 @@ export const adminListSpyMarketInterest = createServerFn({ method: "GET" })
     const counts = { starter: 0, plus: 0, max: 0 };
     for (const e of entries) counts[e.plan_interest as keyof typeof counts] += 1;
     return { entries, counts, total: entries.length };
+  });
+
+// ============= Paid SpyMarket subscriptions =============
+
+/** Human-readable Stripe price lookup keys, stable across test and live. */
+export const SPYMARKET_PRICE_IDS = {
+  starter: "spymarket_starter_monthly",
+  plus: "spymarket_plus_monthly",
+  max: "spymarket_max_monthly",
+} as const;
+
+const checkoutSchema = z.object({
+  plan: z.enum(["starter", "plus", "max"]),
+  returnUrl: z.string().trim().url("Invalid return URL").max(500),
+  environment: stripeEnvSchema,
+});
+
+/** Client: my SpyMarket subscription for this Stripe environment, if any. */
+export const getMySpyMarketSubscription = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ environment: stripeEnvSchema }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { data: row, error } = await context.supabase
+      .from("spymarket_subscriptions")
+      .select("id, plan, status, cancel_at_period_end, current_period_end, created_at")
+      .eq("account_id", context.userId)
+      .eq("environment", data.environment)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return row;
+  });
+
+/**
+ * Client: Stripe Checkout for a SpyMarket plan. This is a separate
+ * subscription from the FlySales workspace plan — its own Stripe
+ * subscription, invoiced independently. Access to the tool starts at launch;
+ * billing starts now, which is what the client agreed to on the page.
+ */
+export const createSpyMarketCheckout = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => checkoutSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const { createStripeClient, getStripeErrorMessage } = await import("./stripe.server");
+    try {
+      const billing = await import("./billing.server");
+      const stripe = createStripeClient(data.environment);
+
+      // Already subscribed in this environment → nothing to buy.
+      const { data: existing } = await context.supabase
+        .from("spymarket_subscriptions")
+        .select("id, status")
+        .eq("account_id", context.userId)
+        .eq("environment", data.environment)
+        .in("status", ["active", "past_due"])
+        .limit(1)
+        .maybeSingle();
+      if (existing) {
+        throw new Error("You already have a SpyMarket subscription.");
+      }
+
+      const { getAdminClient } = await import("./admin.server");
+      const admin = await getAdminClient();
+      const { data: entity } = await admin
+        .from("entities")
+        .select("id, stripe_customer_id")
+        .eq("account_id", context.userId)
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+      const email = (context.claims?.email as string | undefined) ?? undefined;
+      const customerId = await billing.resolveOrCreateCustomer(stripe, {
+        ...(email ? { email } : {}),
+        userId: context.userId,
+        existingCustomerId: entity?.stripe_customer_id ?? null,
+      });
+      if (entity && entity.stripe_customer_id !== customerId) {
+        await admin.from("entities").update({ stripe_customer_id: customerId }).eq("id", entity.id);
+      }
+
+      const prices = await stripe.prices.list({
+        lookup_keys: [SPYMARKET_PRICE_IDS[data.plan]],
+      });
+      const price = prices.data[0];
+      if (!price) throw new Error("SpyMarket plan price not found");
+
+      const session = await stripe.checkout.sessions.create({
+        mode: "subscription",
+        customer: customerId,
+        line_items: [{ price: price.id, quantity: 1 }],
+        success_url: `${data.returnUrl}?spymarket=success&session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${data.returnUrl}?spymarket=cancel`,
+        metadata: {
+          kind: "spymarket_subscription",
+          flysales_user_id: context.userId,
+          plan: data.plan,
+        },
+        subscription_data: {
+          metadata: {
+            kind: "spymarket_subscription",
+            flysales_user_id: context.userId,
+            userId: context.userId,
+            plan: data.plan,
+          },
+        },
+      });
+      if (!session.url) throw new Error("Stripe did not return a checkout URL");
+      return { url: session.url };
+    } catch (error) {
+      return { error: getStripeErrorMessage(error) };
+    }
   });

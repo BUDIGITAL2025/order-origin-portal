@@ -1,15 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Eye, Search, Store, Telescope, TrendingUp } from "lucide-react";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { Check, Eye, Loader2, Search, Store, Telescope, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { getStripeEnvironment } from "@/lib/stripe";
 import {
-  getMySpyMarketInterest,
-  registerSpyMarketInterest,
+  createSpyMarketCheckout,
+  getMySpyMarketSubscription,
 } from "@/lib/spymarket.functions";
 
 export const Route = createFileRoute("/_authenticated/_client/spymarket")({
@@ -19,7 +20,7 @@ export const Route = createFileRoute("/_authenticated/_client/spymarket")({
       {
         name: "description",
         content:
-          "SpyMarket by FlySales: see competitor products, the ads and stores behind every dropshipping product, and the best-performing creatives. Join the waitlist.",
+          "SpyMarket by FlySales: see competitor products, the ads and stores behind every dropshipping product, and the best-performing creatives. Subscribe from $99/month.",
       },
       { name: "robots", content: "noindex" },
     ],
@@ -56,27 +57,36 @@ const BENEFITS = [
 ];
 
 function SpyMarketPage() {
-  const queryClient = useQueryClient();
-  const fetchInterest = useServerFn(getMySpyMarketInterest);
-  const register = useServerFn(registerSpyMarketInterest);
+  const environment = getStripeEnvironment();
+  const fetchSubscription = useServerFn(getMySpyMarketSubscription);
+  const checkout = useServerFn(createSpyMarketCheckout);
 
-  const { data: interest, isPending } = useQuery({
-    queryKey: ["spymarket-interest"],
-    queryFn: fetchInterest,
+  const { data: subscription, isPending } = useQuery({
+    queryKey: ["spymarket-subscription", environment],
+    queryFn: () => fetchSubscription({ data: { environment } }),
   });
 
   const mutation = useMutation({
-    mutationFn: (plan: PlanId) => register({ data: { plan } }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["spymarket-interest"] });
+    mutationFn: async (plan: PlanId) => {
+      const result = await checkout({
+        data: { plan, returnUrl: `${window.location.origin}/spymarket`, environment },
+      });
+      if ("error" in result) throw new Error(result.error);
+      return result;
+    },
+    onSuccess: (result) => {
+      window.location.href = result.url;
     },
     onError: (err) => {
-      toast.error(err instanceof Error ? err.message : "Could not join the waitlist");
+      toast.error(err instanceof Error ? err.message : "Could not start checkout");
     },
   });
 
-  const picked = (interest?.plan_interest ?? null) as PlanId | null;
-  const pickedPlan = PLANS.find((p) => p.id === picked) ?? null;
+  const activePlan =
+    subscription && (subscription.status === "active" || subscription.status === "past_due")
+      ? (subscription.plan as PlanId)
+      : null;
+  const activePlanRow = PLANS.find((p) => p.id === activePlan) ?? null;
 
   return (
     <div className="space-y-8">
@@ -110,30 +120,39 @@ function SpyMarketPage() {
         </div>
       </section>
 
-      {/* Confirmed state */}
-      {pickedPlan && (
+      {/* Subscribed state */}
+      {activePlanRow && (
         <div className="flex items-start gap-3 rounded-2xl border border-primary/40 bg-primary/10 px-5 py-4">
           <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
             <Check className="h-3.5 w-3.5" />
           </span>
           <div>
             <p className="text-sm font-medium">
-              You're on the list — we'll email you at launch.
+              SpyMarket {activePlanRow.name} is active
+              {subscription?.status === "past_due" ? " — payment failed" : ""}.
             </p>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              You picked <span className="font-medium text-foreground">{pickedPlan.name}</span>.
-              Pick another plan below to change it.
+              {subscription?.status === "past_due"
+                ? "Update your payment method to keep your plan — contact support and we'll sort it out."
+                : subscription?.cancel_at_period_end
+                  ? `Cancels on ${subscription.current_period_end ?? "the end of the period"}.`
+                  : `Your access is switched on at launch. ${
+                      subscription?.current_period_end
+                        ? `Next billing date ${subscription.current_period_end}.`
+                        : ""
+                    }`}
             </p>
           </div>
         </div>
       )}
 
-      {/* Plans — displayed, not purchasable. */}
+      {/* Plans — real checkout. */}
       <section>
         <h2 className="text-lg font-semibold tracking-tight">Plans</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          SpyMarket is not available yet. Join the waitlist and we'll email you
-          at launch.
+          {activePlanRow
+            ? "To change or cancel your SpyMarket plan, contact support."
+            : "Subscribe now to lock your plan. Billing starts today; the research tool switches on for subscribers at launch."}
         </p>
         {isPending ? (
           <div className="mt-4 grid gap-4 sm:grid-cols-3">
@@ -144,20 +163,20 @@ function SpyMarketPage() {
         ) : (
           <div className="mt-4 grid gap-4 sm:grid-cols-3">
             {PLANS.map((plan) => {
-              const isPicked = picked === plan.id;
+              const isActive = activePlan === plan.id;
               return (
                 <div
                   key={plan.id}
                   className={cn(
                     "flex flex-col rounded-2xl border bg-card p-6",
-                    isPicked ? "border-primary" : "border-border",
+                    isActive ? "border-primary" : "border-border",
                   )}
                 >
                   <div className="flex items-center justify-between">
                     <h3 className="text-base font-semibold">{plan.name}</h3>
-                    {isPicked && (
+                    {isActive && (
                       <Badge className="bg-primary text-primary-foreground hover:bg-primary">
-                        Your pick
+                        Your plan
                       </Badge>
                     )}
                   </div>
@@ -168,15 +187,14 @@ function SpyMarketPage() {
                   </p>
                   <Button
                     className="mt-6 w-full"
-                    variant={isPicked ? "outline" : "default"}
-                    disabled={mutation.isPending}
+                    variant={isActive ? "outline" : "default"}
+                    disabled={isActive || mutation.isPending || activePlan != null}
                     onClick={() => mutation.mutate(plan.id)}
                   >
-                    {isPicked
-                      ? "You're on the list"
-                      : picked
-                        ? "Switch to this plan"
-                        : "Join the waitlist"}
+                    {mutation.isPending && mutation.variables === plan.id && (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    )}
+                    {isActive ? "Current plan" : `Subscribe — ${plan.price}`}
                   </Button>
                 </div>
               );
@@ -187,8 +205,8 @@ function SpyMarketPage() {
 
       <p className="flex items-center gap-2 text-xs text-muted-foreground">
         <Store className="h-3.5 w-3.5" />
-        SpyMarket subscriptions will be separate from your FlySales workspace
-        plan. Joining the waitlist is free and does not charge you.
+        SpyMarket is billed separately from your FlySales workspace plan, on its
+        own monthly subscription. Cancel any time by contacting support.
       </p>
     </div>
   );

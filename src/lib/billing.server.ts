@@ -375,6 +375,72 @@ function idOf(ref: unknown): string | null {
 }
 
 /**
+ * SpyMarket subscriptions are a product of their own: separate Stripe
+ * subscription, separate row, no effect on workspace plans or quotas. The
+ * webhook is the only writer.
+ */
+async function syncSpyMarketSubscription(
+  admin: Admin,
+  sub: Record<string, unknown>,
+  env: StripeEnv,
+): Promise<boolean> {
+  const subId = String(sub["id"] ?? "");
+  const m = meta(sub);
+  const { data: existing } = await admin
+    .from("spymarket_subscriptions")
+    .select("id")
+    .eq("stripe_subscription_id", subId)
+    .maybeSingle();
+  if (!existing && m["kind"] !== "spymarket_subscription") return false;
+
+  const accountId = m["flysales_user_id"] ?? null;
+  const item = (
+    sub["items"] as { data?: Array<{ current_period_end?: number; price?: { lookup_key?: string | null } }> } | undefined
+  )?.data?.[0];
+  const lookup = item?.price?.lookup_key ?? null;
+  const planFromPrice =
+    lookup === "spymarket_max_monthly"
+      ? "max"
+      : lookup === "spymarket_plus_monthly"
+        ? "plus"
+        : lookup === "spymarket_starter_monthly"
+          ? "starter"
+          : null;
+  const plan = planFromPrice ?? (m["plan"] as string | undefined) ?? "starter";
+  const periodEndUnix =
+    item?.current_period_end ?? (sub["current_period_end"] as number | undefined) ?? null;
+
+  const row = {
+    plan,
+    status: mapSubscriptionStatus(sub["status"] as string | undefined) === "none"
+      ? "canceled"
+      : mapSubscriptionStatus(sub["status"] as string | undefined),
+    stripe_customer_id: idOf(sub["customer"]),
+    stripe_subscription_id: subId,
+    cancel_at_period_end: Boolean(sub["cancel_at_period_end"]),
+    current_period_end: periodEndUnix
+      ? new Date(periodEndUnix * 1000).toISOString().slice(0, 10)
+      : null,
+    environment: env,
+  };
+
+  if (existing) {
+    const { error } = await admin
+      .from("spymarket_subscriptions")
+      .update(row)
+      .eq("id", existing.id);
+    if (error) throw new Error(error.message);
+  } else {
+    if (!accountId) throw new Error("spymarket subscription without flysales_user_id");
+    const { error } = await admin
+      .from("spymarket_subscriptions")
+      .insert({ ...row, account_id: accountId });
+    if (error) throw new Error(error.message);
+  }
+  return true;
+}
+
+/**
  * Credit a wallet top-up exactly once per PaymentIntent. Called from BOTH
  * checkout.session.completed (payment mode) and payment_intent.succeeded —
  * the reference uniqueness rule makes the second call a no-op. Also stores
@@ -700,6 +766,28 @@ export async function processStripeEvent(
               .join("\n"),
           });
         }
+      } else if (kind === "spymarket_subscription") {
+        const subscriptionId = idOf(session["subscription"]);
+        if (subscriptionId) {
+          const sub = await stripe.subscriptions.retrieve(subscriptionId);
+          await syncSpyMarketSubscription(
+            admin,
+            sub as unknown as Record<string, unknown>,
+            env,
+          );
+        }
+        const accountId = meta(session)["flysales_user_id"];
+        const plan = meta(session)["plan"] ?? "starter";
+        if (accountId) {
+          await sendClientEmail(admin, {
+            clientId: accountId,
+            subject: "Your SpyMarket subscription is active",
+            text: [
+              `Plan: SpyMarket ${plan.charAt(0).toUpperCase() + plan.slice(1)}`,
+              "Billing has started. We'll email you the moment SpyMarket goes live and your access is switched on.",
+            ].join("\n"),
+          });
+        }
       } else if (kind === "wallet_topup") {
         const piId = idOf(session["payment_intent"]);
         if (piId) await handleWalletTopup(stripe, admin, piId);
@@ -712,12 +800,29 @@ export async function processStripeEvent(
 
     case "customer.subscription.created":
     case "customer.subscription.updated": {
+      if (await syncSpyMarketSubscription(admin, event.data.object, env)) return;
       await syncSubscriptionFromStripe(admin, event.data.object);
       return;
     }
 
     case "customer.subscription.deleted": {
       const sub = event.data.object;
+      {
+        const subId = String(sub["id"] ?? "");
+        const { data: spy } = await admin
+          .from("spymarket_subscriptions")
+          .select("id")
+          .eq("stripe_subscription_id", subId)
+          .maybeSingle();
+        if (spy) {
+          const { error } = await admin
+            .from("spymarket_subscriptions")
+            .update({ status: "canceled", cancel_at_period_end: false })
+            .eq("id", spy.id);
+          if (error) throw new Error(error.message);
+          return;
+        }
+      }
       const store = await findStoreByStripeSubscription(admin, String(sub["id"] ?? ""));
       if (!store) {
         console.error("subscription.deleted for unknown store", sub["id"]);
