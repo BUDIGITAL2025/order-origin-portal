@@ -1,6 +1,8 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { ArrowRight, ClipboardList } from "lucide-react";
+import { ArrowRight, ClipboardList, PackageSearch, Sparkles } from "lucide-react";
+import { EmptyState } from "@/components/app-shell";
 import { Badge } from "@/components/ui/badge";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
