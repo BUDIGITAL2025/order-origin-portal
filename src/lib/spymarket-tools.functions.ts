@@ -117,7 +117,11 @@ export const spymarketQueryShops = createServerFn({ method: "POST" })
       offset: data.offset,
     };
     if (term) {
-      body["search"] = [term];
+      // Their spec types `search` on /shops/query as a STRING (unlike
+      // /ads/query and /emails/query, which take arrays). Sending an array
+      // made the term be dropped upstream, returning an unfiltered
+      // top-traffic list.
+      body["search"] = term;
       body["searchType"] = effectiveSearchType;
     }
     if (data.minMonthlyVisits != null) body["minMonthlyVisits"] = data.minMonthlyVisits;
