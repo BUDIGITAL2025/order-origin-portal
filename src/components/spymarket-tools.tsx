@@ -853,6 +853,171 @@ function shopAge(createdAt: string | null): string | null {
   return m === 0 ? `${y}y old` : `${y}y ${m}m old`;
 }
 
+/**
+ * Free typeahead for the Shop Explorer.
+ *
+ * Cost contract: it calls ONLY `spymarketLookup` → `/v1/lookup`, declared
+ * `metered: false, estimatedCost: 0` server-side, so it can never charge
+ * credits and can never hit the soft-limit confirm path. The paid
+ * `/shops/query` is reached only through the explicit action at the bottom
+ * of the dropdown. Lookup hangs on fuzzy terms — we fail silent there.
+ */
+type Suggestion = {
+  key: string;
+  group: "Domain" | "Shop keywords";
+  type: string;
+  name: string;
+  url: string | null;
+  shopId: string | null;
+  visits: number | null;
+  activeAds: number | null;
+};
+
+function SearchTypeahead({
+  term,
+  open,
+  onClose,
+  onPick,
+  onSearchAll,
+  costs,
+  limit,
+}: {
+  term: string;
+  open: boolean;
+  onClose: () => void;
+  onPick: (s: Suggestion) => void;
+  onSearchAll: () => void;
+  costs: EndpointCosts | undefined;
+  limit: number;
+}) {
+  const lookup = useServerFn(spymarketLookup);
+  const [debounced, setDebounced] = React.useState("");
+  const [items, setItems] = React.useState<Suggestion[]>([]);
+  const [loading, setLoading] = React.useState(false);
+  const trimmed = term.trim();
+
+  React.useEffect(() => {
+    const t = setTimeout(() => setDebounced(trimmed), 400);
+    return () => clearTimeout(t);
+  }, [trimmed]);
+
+  const reqRef = React.useRef(0);
+  React.useEffect(() => {
+    if (debounced.length < 3) {
+      setItems([]);
+      setLoading(false);
+      return;
+    }
+    const id = ++reqRef.current;
+    setLoading(true);
+    void (async () => {
+      try {
+        const res = (await lookup({ data: { q: debounced } })) as ToolOk<unknown>;
+        if (id !== reqRef.current) return;
+        const rows = res.status === "ok" ? dataRows(res.data) : [];
+        setItems(
+          rows.map((item, i) => {
+            const shop = asRec(item["shop"]);
+            const advertiser = asRec(item["advertiser"]);
+            const url =
+              asStr(shop["websiteUrl"]) ??
+              asStr(advertiser["websiteUrl"]) ??
+              asStr(item["websiteUrl"]) ??
+              null;
+            const host = url?.replace(/^https?:\/\//, "").replace(/\/.*$/, "") ?? null;
+            const name =
+              asStr(shop["name"]) ?? asStr(advertiser["name"]) ?? asStr(item["name"]) ?? host ?? "—";
+            return {
+              key: `${i}-${host ?? name}`,
+              group: host?.toLowerCase().includes(debounced.toLowerCase())
+                ? ("Domain" as const)
+                : ("Shop keywords" as const),
+              type: asStr(item["type"]) ?? (shop["id"] ? "shop" : "advertiser"),
+              name,
+              url: host,
+              shopId: asStr(shop["id"]) ?? null,
+              visits: asNum(shop["monthlyVisits"]),
+              activeAds: asNum(shop["activeAds"] ?? advertiser["activeAds"]),
+            };
+          }),
+        );
+      } catch {
+        // Lookup timed out or errored — fail silent, never block typing and
+        // never fall back to the paid endpoint.
+        if (id === reqRef.current) setItems([]);
+      } finally {
+        if (id === reqRef.current) setLoading(false);
+      }
+    })();
+  }, [debounced, lookup]);
+
+  if (!open || trimmed.length < 3) return null;
+
+  const groups: Suggestion["group"][] = ["Domain", "Shop keywords"];
+
+  return (
+    <>
+      <div className="fixed inset-0 z-40" onClick={onClose} aria-hidden />
+      <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 overflow-hidden rounded-2xl border bg-popover text-popover-foreground shadow-lg">
+        <div className="max-h-80 overflow-y-auto py-1">
+          {loading && items.length === 0 && (
+            <p className="flex items-center gap-2 px-4 py-3 text-xs text-muted-foreground">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              Resolving suggestions — free
+            </p>
+          )}
+          {!loading && items.length === 0 && (
+            <p className="px-4 py-3 text-xs text-muted-foreground">
+              No free suggestions for “{trimmed}”.
+            </p>
+          )}
+          {groups.map((g) => {
+            const rows = items.filter((s) => s.group === g);
+            if (rows.length === 0) return null;
+            return (
+              <div key={g}>
+                <p className="px-4 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  {g}
+                </p>
+                {rows.map((s) => (
+                  <button
+                    key={s.key}
+                    type="button"
+                    onClick={() => onPick(s)}
+                    className="flex w-full items-center gap-3 px-4 py-2 text-left hover:bg-accent"
+                  >
+                    <Store className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-medium">{s.name}</span>
+                      {s.url && (
+                        <span className="block truncate text-xs text-muted-foreground">{s.url}</span>
+                      )}
+                    </span>
+                    <span className="shrink-0 text-[11px] text-muted-foreground">
+                      {s.visits != null ? `${fmtCompact(s.visits)} visits/mo` : s.type}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            );
+          })}
+        </div>
+        <div className="border-t p-2">
+          <Button
+            size="sm"
+            variant="secondary"
+            className="w-full rounded-full"
+            onClick={onSearchAll}
+          >
+            <Search className="mr-1.5 h-3.5 w-3.5" />
+            {`Search all “${trimmed}” in Shop Explorer — ${costLabel(costs, "shops/query", limit)}`}
+          </Button>
+        </div>
+      </div>
+    </>
+  );
+}
+
 function ShopsTab({
   go,
   initialDomain,
