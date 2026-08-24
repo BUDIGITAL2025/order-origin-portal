@@ -910,7 +910,7 @@ function ShopsTab({
     const input: Record<string, unknown> = {
       limit,
       offset,
-      sortBy: filters.sortBy,
+      sortBy: filters.search.trim() !== "" && !sortTouched ? "relevance" : filters.sortBy,
       order: "desc",
     };
     // Applied upstream via the API's DTC preset — filtered-out rows never
@@ -1036,7 +1036,13 @@ function ShopsTab({
                 <SelectItem value="productName">Product name</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={f.sortBy} onValueChange={(v) => apply({ sortBy: v })}>
+            <Select
+              value={effectiveSort}
+              onValueChange={(v) => {
+                setSortTouched(true);
+                apply({ sortBy: v });
+              }}
+            >
               <SelectTrigger className="w-44 rounded-full">
                 <SelectValue />
               </SelectTrigger>
