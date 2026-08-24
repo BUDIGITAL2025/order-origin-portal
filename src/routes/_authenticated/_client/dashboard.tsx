@@ -2,7 +2,9 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { ArrowRight, Check, ClipboardList, CreditCard, RefreshCcw, Store, Wallet } from "lucide-react";
+import { ArrowRight, Check, ClipboardList, CreditCard, Plus, RefreshCcw, Store, Wallet } from "lucide-react";
+import { CountUp, MiniSparkline, Reveal, balanceSeries, bucketCounts } from "@/components/dashboard-viz";
+
 import { EmptyState, PageHeader } from "@/components/app-shell";
 import { getCurrentStoreId } from "@/components/store-switcher";
 import { QuoteStatusBadge, TxnTypeBadge } from "@/components/status-badges";
