@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { MARKETING_URL } from "@/lib/config";
-import logoLightAsset from "@/assets/flysales-logo-black.svg.asset.json";
+import { BrandLogo } from "@/components/brand-logo";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -45,11 +45,7 @@ function LandingPage() {
       <header className="border-b border-border bg-card">
         <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-6">
           <a href={MARKETING_URL}>
-            <img
-              src={logoLightAsset.url}
-              alt="FlySales"
-              className="h-7 w-auto"
-            />
+            <BrandLogo className="h-7 w-auto" />
           </a>
           {hydrated && signedIn ? (
             <Button asChild size="sm">

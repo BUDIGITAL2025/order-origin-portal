@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import logoLightAsset from "@/assets/flysales-logo-black.svg.asset.json";
+import { BrandLogo } from "@/components/brand-logo";
 import { MARKETING_URL } from "@/lib/config";
 
 /** Shared chrome for the public legal pages (/terms, /privacy). */
@@ -17,7 +17,7 @@ export function LegalLayout({
       <header className="border-b border-border">
         <div className="mx-auto flex h-14 max-w-3xl items-center px-6">
           <a href={MARKETING_URL} className="flex items-center gap-2">
-            <img src={logoLightAsset.url} alt="FlySales" className="h-6 w-auto" />
+            <BrandLogo className="h-6 w-auto" />
           </a>
         </div>
       </header>

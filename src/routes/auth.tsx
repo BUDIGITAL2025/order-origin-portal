@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import logoLightAsset from "@/assets/flysales-logo-black.svg.asset.json";
+import { BrandLogo } from "@/components/brand-logo";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { LegalFooter } from "@/components/legal";
@@ -180,11 +180,7 @@ function AuthPage() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4 py-10">
       <a href={MARKETING_URL} className="mb-6">
-        <img
-          src={logoLightAsset.url}
-          alt="FlySales"
-          className="h-7 w-auto"
-        />
+        <BrandLogo className="h-7 w-auto" />
       </a>
 
       <Card className="w-full max-w-md">
