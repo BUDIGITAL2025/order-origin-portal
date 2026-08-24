@@ -154,7 +154,8 @@ export const spymarketQueryShops = createServerFn({ method: "POST" })
       method: "POST",
       body,
       summary: {
-        search: data.search ?? null,
+        search: term || null,
+        searchType: term ? effectiveSearchType : null,
         filters: {
           minMonthlyVisits: data.minMonthlyVisits ?? null,
           maxMonthlyVisits: data.maxMonthlyVisits ?? null,
@@ -162,13 +163,15 @@ export const spymarketQueryShops = createServerFn({ method: "POST" })
           maxActiveAds: data.maxActiveAds ?? null,
           isShopifyPlus: data.isShopifyPlus ?? null,
           dtcOnly: data.dtcOnly ?? null,
+          dtcApplied: Boolean(data.dtcOnly && !isDomainLookup),
           categoryId: data.categoryId ?? null,
           countries: includeCountries,
           language: data.language ?? null,
           minTrustpilotRating: data.minTrustpilotRating ?? null,
-          sortBy: data.sortBy,
+          sortBy: effectiveSortBy,
           order: data.order,
         },
+
         limit: data.limit,
         offset: data.offset,
       },
