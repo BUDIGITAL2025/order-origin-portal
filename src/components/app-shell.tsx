@@ -17,6 +17,8 @@ import {
   Package,
   ShieldAlert,
   ShoppingCart,
+  Sparkles,
+
   Store,
   Telescope,
   Users,
@@ -438,15 +440,20 @@ export function EmptyState({
   title,
   hint,
   action,
+  icon: Icon,
 }: {
   title: string;
   hint?: string;
   action?: { label: string; to: string };
+  icon?: React.ComponentType<{ className?: string }>;
 }) {
   return (
-    <div className="rounded-lg border border-dashed border-border bg-card px-6 py-10 text-center">
+    <div className="flex flex-col items-center rounded-lg border border-dashed border-border bg-card px-6 py-10 text-center">
+      <span className="mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-primary/10 text-primary ring-1 ring-primary/20">
+        {Icon ? <Icon className="h-5 w-5" /> : <Sparkles className="h-5 w-5" />}
+      </span>
       <p className="text-sm font-medium">{title}</p>
-      {hint && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}
+      {hint && <p className="mt-1 max-w-sm text-xs text-muted-foreground">{hint}</p>}
       {action && (
         <Button asChild size="sm" className="mt-4">
           <Link to={action.to}>{action.label}</Link>
@@ -455,3 +462,4 @@ export function EmptyState({
     </div>
   );
 }
+
