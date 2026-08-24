@@ -1298,15 +1298,15 @@ function ShopsTab({
       {allRows.length > 0 && (
         <Card className="overflow-hidden rounded-2xl">
           <div className="overflow-x-auto">
-            <Table>
+            <Table className="table-fixed">
               <TableHeader>
                 <TableRow>
-                  <TableHead className="sticky left-0 z-10 min-w-[240px] bg-card">Shop</TableHead>
-                  <TableHead className="min-w-[210px]">Best sellers</TableHead>
-                  <TableHead className="min-w-[130px]">Categories</TableHead>
-                  <TableHead className="min-w-[170px]">Visits / month</TableHead>
-                  <TableHead className="min-w-[170px]">Meta ads</TableHead>
-                  <TableHead className="min-w-[200px]">Latest creatives</TableHead>
+                  <TableHead className="sticky left-0 z-10 w-[280px] bg-card">Shop</TableHead>
+                  <TableHead className="w-[236px]">Best sellers</TableHead>
+                  <TableHead className="w-[150px]">Categories</TableHead>
+                  <TableHead className="w-[190px]">Visits / month</TableHead>
+                  <TableHead className="w-[190px]">Meta ads</TableHead>
+                  <TableHead className="w-[210px]">Latest creatives</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
