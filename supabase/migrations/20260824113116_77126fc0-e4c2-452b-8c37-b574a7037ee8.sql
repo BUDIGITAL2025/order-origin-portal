@@ -1,0 +1,1 @@
+SELECT cron.unschedule('flysales-cron-selftest');
