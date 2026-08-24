@@ -354,7 +354,7 @@ export function AppShell({
             <img
               src={logoAsset.url}
               alt="FlySales"
-              className="h-7 w-auto"
+              className="h-7 w-auto sm:h-8"
             />
           </a>
           <span className="ml-auto rounded border border-sidebar-border px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-sidebar-foreground">

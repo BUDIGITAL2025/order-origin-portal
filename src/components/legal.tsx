@@ -15,9 +15,9 @@ export function LegalLayout({
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <header className="border-b border-border">
-        <div className="mx-auto flex h-14 max-w-3xl items-center px-6">
+        <div className="mx-auto flex h-16 max-w-3xl items-center px-6">
           <a href={MARKETING_URL} className="flex items-center gap-2">
-            <BrandLogo className="h-6 w-auto" />
+            <BrandLogo className="h-7 w-auto sm:h-8" />
           </a>
         </div>
       </header>

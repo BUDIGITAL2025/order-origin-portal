@@ -65,9 +65,7 @@ function LandingPage() {
                 <Link to="/auth">Sign in</Link>
               </Button>
               <Button asChild size="lg" variant="outline">
-                <Link to="/auth" search={{ mode: "signup" } as never}>
-                  Create account
-                </Link>
+                <Link to="/auth">Create account</Link>
               </Button>
             </>
           )}
