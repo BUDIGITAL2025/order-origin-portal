@@ -95,6 +95,26 @@ function DashboardPage() {
   const usagePercent =
     quota == null ? 0 : Math.min(100, Math.round((quotesUsed / quota) * 100));
 
+  // Trend series (presentation only): balance sampled over 90 days, quote
+  // counts bucketed per week from the rows we already fetched.
+  const walletSeries = balanceSeries(transactions, walletData?.balance ?? 0);
+  const quoteSeries: Record<string, number[]> = {
+    submitted: bucketCounts(quotes.filter((q) => (q.status ?? "submitted") === "submitted").map((q) => q.created_at)),
+    quoted: bucketCounts(quotes.filter((q) => q.status === "quoted").map((q) => q.created_at)),
+    closed: bucketCounts(quotes.filter((q) => q.status === "closed").map((q) => q.created_at)),
+  };
+
+  // Days until the monthly quota resets (first day of next month).
+  const daysToReset = (() => {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(store?.quotes_period_start ?? "");
+    if (!m) return null;
+    const y = Number(m[1]);
+    const mo = Number(m[2]);
+    const next = Date.UTC(mo === 12 ? y + 1 : y, mo === 12 ? 0 : mo, 1);
+    return Math.max(0, Math.ceil((next - Date.now()) / 86_400_000));
+  })();
+
+
   const openQuotes = openQuotesData?.quotes ?? [];
   const subscribed = store?.subscription_status === "active";
 
