@@ -22,6 +22,7 @@ export const Route = createFileRoute("/api/public/cron/auto-topup")({
         const authError = await authenticateCronRequest(request);
         if (authError) return authError;
 
+        const startedAt = new Date().toISOString();
         const rawEnv = new URL(request.url).searchParams.get("env");
         const env = rawEnv === "live" ? "live" : "sandbox";
 
@@ -48,6 +49,13 @@ export const Route = createFileRoute("/api/public/cron/auto-topup")({
           .not("default_payment_method_id", "is", null)
           .gte("auto_topup_amount", billing.TOPUP_MIN_USD);
         if (error) {
+          await supabaseAdmin.from("cron_runs").insert({
+            job: "auto-topup",
+            started_at: startedAt,
+            finished_at: new Date().toISOString(),
+            ok: false,
+            error: error.message,
+          });
           return Response.json({ ok: false, error: error.message }, { status: 500 });
         }
 
@@ -130,6 +138,15 @@ export const Route = createFileRoute("/api/public/cron/auto-topup")({
             results.push({ entity: entity.id, status: "failed" });
           }
         }
+
+        // Observability: one cron_runs row per real execution.
+        await supabaseAdmin.from("cron_runs").insert({
+          job: "auto-topup",
+          started_at: startedAt,
+          finished_at: new Date().toISOString(),
+          ok: true,
+          detail: { processed: results.length, results } as never,
+        });
 
         return Response.json({ ok: true, processed: results.length, results });
       },

@@ -14,20 +14,22 @@ export const Route = createFileRoute("/api/public/cron/documents-sweep")({
         const authError = await authenticateCronRequest(request);
         if (authError) return authError;
 
-        try {
-          const { supabaseAdmin } = await import(
-            "@/integrations/supabase/client.server"
-          );
+        const { supabaseAdmin } = await import(
+          "@/integrations/supabase/client.server"
+        );
+        const { runCronJob } = await import("@/lib/ops.server");
+        const outcome = await runCronJob(supabaseAdmin, "documents-sweep", async () => {
           const { issueMissingOrderReceipts } = await import(
             "@/lib/documents.server"
           );
           const { issued, errors } = await issueMissingOrderReceipts(supabaseAdmin);
           console.log(`documents sweep: issued=${issued} errors=${errors}`);
-          return Response.json({ issued, errors });
-        } catch (error) {
-          console.error("documents sweep error:", error);
+          return { issued, errors };
+        });
+        if (!outcome.ok) {
           return Response.json({ error: "Sweep failed" }, { status: 500 });
         }
+        return Response.json(outcome.result);
       },
     },
   },
