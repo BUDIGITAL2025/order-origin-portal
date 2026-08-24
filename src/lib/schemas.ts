@@ -45,6 +45,15 @@ export const completeSignupSchema = signupSchema
     // True only when the caller came through the signup form's checkbox —
     // legacy/OAuth fallbacks skip this and accept via the banner instead.
     terms_accepted: z.boolean().optional(),
+    // Acquisition context captured from the landing URL (utm_*). Absent for
+    // visitors who arrived without any params.
+    signup_source: z
+      .object({
+        utm_source: z.string().trim().max(200).optional(),
+        utm_medium: z.string().trim().max(200).optional(),
+        utm_campaign: z.string().trim().max(200).optional(),
+      })
+      .optional(),
   });
 
 // Stores are added after signup — the *.myshopify.com rule applies here,
