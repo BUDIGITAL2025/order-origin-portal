@@ -871,6 +871,10 @@ function ShopsTab({
   // Applied filter state — hydrated from the URL so shared links restore the view.
   const [f, setF] = React.useState<ShopsFilters>(() => shopsFiltersFromUrl(url, initialDomain));
   const [limit, setLimit] = React.useState(32);
+  // A text search ranked by traffic surfaces the giants instead of the match,
+  // so we auto-switch to "Best match" until the user picks a sort themselves.
+  const [sortTouched, setSortTouched] = React.useState(url["ssort"] != null);
+  const effectiveSort = f.search.trim() !== "" && !sortTouched ? "relevance" : f.sortBy;
   const [pages, setPages] = React.useState<Rec[][]>([]);
 
   const { data: categories } = useQuery({
