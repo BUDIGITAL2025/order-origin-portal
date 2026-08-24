@@ -926,6 +926,15 @@ function ShopsTab({
   const lastPage = pages[pages.length - 1];
   const hasMore = lastPage != null && lastPage.length >= limit;
 
+  // Mirrors the server rule: the upstream DTC preset is skipped only for an
+  // exact-domain lookup, so the banner never claims a filter that wasn't sent.
+  const dtcApplied = !(
+    f.searchType === "domain" &&
+    f.search.trim() !== "" &&
+    /^(https?:\/\/)?[a-z0-9-]+(\.[a-z0-9-]+)+/i.test(f.search.trim())
+  );
+
+
   const visitsRange: [number, number] = [
     Number(f.minVisits) || 0,
     Number(f.maxVisits) || VISITS_RANGE_MAX,
