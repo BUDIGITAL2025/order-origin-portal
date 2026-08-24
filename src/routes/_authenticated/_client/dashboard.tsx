@@ -183,7 +183,7 @@ function DashboardPage() {
                     <CountUp value={counts[status] ?? 0} />
                   </div>
                   <div className="mt-3">
-                    <MiniSparkline values={quoteSeries[status]} />
+                    <MiniSparkline values={quoteSeries[status] ?? []} />
                   </div>
                   <p className="mt-2 text-[11px] text-muted-foreground">Last 90 days</p>
                 </CardContent>
