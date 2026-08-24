@@ -1395,40 +1395,41 @@ function ShopsTab({
                           </div>
                         </div>
                       </TableCell>
-                      {/* 2 — Best sellers */}
-                      <TableCell>
-                        {sellers.length > 0 ? (
-                          <div className="flex items-center gap-1.5">
-                            {sellers.map((p, j) => {
-                              const img = asStr(p["imageUrl"]);
-                              return img ? (
-                                <img
-                                  key={j}
-                                  src={img}
-                                  alt={asStr(p["title"]) ?? "Best seller"}
-                                  loading="lazy"
-                                  className="h-[60px] w-[60px] rounded-lg border object-cover"
-                                />
-                              ) : null;
-                            })}
-                            {productsCount != null && (
-                              <span className="ml-1 whitespace-nowrap text-xs text-muted-foreground">
-                                {fmtInt(productsCount)} products
-                              </span>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">
+                      {/* 2 — Best sellers: 3 thumbs on one row, count underneath */}
+                      <TableCell className="align-middle">
+                        <div className="space-y-1.5">
+                          {sellers.length > 0 && (
+                            <div className="flex items-center gap-1.5">
+                              {sellers.map((p, j) => {
+                                const img = asStr(p["imageUrl"]);
+                                return img ? (
+                                  <img
+                                    key={j}
+                                    src={img}
+                                    alt={asStr(p["title"]) ?? "Best seller"}
+                                    loading="lazy"
+                                    className="h-[64px] w-[64px] shrink-0 rounded-lg border object-cover"
+                                  />
+                                ) : null;
+                              })}
+                            </div>
+                          )}
+                          <p className="truncate text-xs text-muted-foreground">
                             {productsCount != null ? `${fmtInt(productsCount)} products` : "—"}
-                          </span>
-                        )}
+                          </p>
+                        </div>
                       </TableCell>
                       {/* 3 — Categories */}
-                      <TableCell>
+                      <TableCell className="align-middle">
                         {cats.length > 0 ? (
-                          <div className="flex flex-wrap gap-1">
+                          <div className="flex flex-col items-start gap-1">
                             {cats.slice(0, 2).map((c) => (
-                              <Badge key={c} variant="secondary" className="rounded-full text-[10px]">
+                              <Badge
+                                key={c}
+                                variant="secondary"
+                                className="block max-w-full truncate rounded-full text-[10px]"
+                                title={c}
+                              >
                                 {c}
                               </Badge>
                             ))}
