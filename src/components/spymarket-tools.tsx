@@ -974,11 +974,24 @@ function ShopsTab({
   const searching = call.state.kind === "loading";
   // Country exclusion is applied client-side (the upstream API ignores it).
   const excSet = new Set(f.countriesExc);
-  const allRows = pages.flat().filter((r) => {
+  const filteredRows = pages.flat().filter((r) => {
     if (excSet.size === 0) return true;
     const cc = asStr(asRec(r["profile"])["countryCode"]);
     return cc == null || !excSet.has(cc);
   });
+  // Upstream matches multi-word terms loosely (token OR), so rows that really
+  // contain a term token float to the top. Presentation only — no extra calls.
+  const terms = f.search.trim().toLowerCase().split(/\s+/).filter((t) => t.length > 2);
+  const matchScore = (r: Rec) => {
+    if (terms.length === 0) return 0;
+    const hay = `${asStr(r["name"]) ?? ""} ${asStr(r["domain"]) ?? ""}`.toLowerCase();
+    return -terms.filter((t) => hay.includes(t)).length;
+  };
+  const allRows =
+    terms.length > 0
+      ? [...filteredRows].sort((a, b) => matchScore(a) - matchScore(b))
+      : filteredRows;
+  const multiWord = f.search.trim().split(/\s+/).length > 1;
   const lastPage = pages[pages.length - 1];
   const hasMore = lastPage != null && lastPage.length >= limit;
 
