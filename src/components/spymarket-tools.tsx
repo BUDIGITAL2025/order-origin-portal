@@ -1343,11 +1343,11 @@ function ShopsTab({
                   return (
                     <TableRow
                       key={id ?? i}
-                      className={cn("h-[100px]", id && "cursor-pointer")}
+                      className={cn("h-[124px] border-b", id && "cursor-pointer")}
                       onClick={() => id && go({ tab: "shop", shopId: id })}
                     >
                       {/* 1 — Shop info (sticky) */}
-                      <TableCell className="sticky left-0 z-10 bg-card">
+                      <TableCell className="sticky left-0 z-10 bg-card align-middle">
                         <div className="flex items-center gap-3">
                           <div className="relative shrink-0">
                             {screenshot ? (
@@ -1355,10 +1355,10 @@ function ShopsTab({
                                 src={screenshot}
                                 alt=""
                                 loading="lazy"
-                                className="h-14 w-24 rounded-lg border object-cover"
+                                className="h-[68px] w-[108px] rounded-lg border object-cover"
                               />
                             ) : (
-                              <div className="flex h-14 w-24 items-center justify-center rounded-lg border bg-muted">
+                              <div className="flex h-[68px] w-[108px] items-center justify-center rounded-lg border bg-muted">
                                 <Store className="h-4 w-4 text-muted-foreground" />
                               </div>
                             )}
