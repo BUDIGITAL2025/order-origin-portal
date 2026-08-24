@@ -416,7 +416,8 @@ function DashboardPage() {
             )}
           </CardContent>
         </Card>
-      </div>
+      </Reveal>
+
     </div>
   );
 }
