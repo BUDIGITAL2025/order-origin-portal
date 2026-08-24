@@ -324,11 +324,17 @@ function CallFeedback({
   onConfirm,
   onCancel,
   onRetry,
+  timeoutTitle,
+  timeoutMessage,
+  timeoutExtra,
 }: {
   state: CallState;
   onConfirm: () => void;
   onCancel: () => void;
   onRetry?: (() => void) | undefined;
+  timeoutTitle?: string | undefined;
+  timeoutMessage?: React.ReactNode;
+  timeoutExtra?: React.ReactNode;
 }) {
   return (
     <>
@@ -374,10 +380,11 @@ function CallFeedback({
       {state.kind === "timeout" && (
         <Alert>
           <RefreshCw className="h-4 w-4" />
-          <AlertTitle>Trendtrack is responding slowly</AlertTitle>
+          <AlertTitle>{timeoutTitle ?? "Trendtrack is responding slowly"}</AlertTitle>
           <AlertDescription className="flex flex-wrap items-center gap-2">
             <span>
-              Trendtrack is responding slowly — try again in a moment. No credits were charged.
+              {timeoutMessage ??
+                "Trendtrack is responding slowly — try again in a moment. No credits were charged."}
             </span>
             {onRetry && (
               <Button size="sm" variant="outline" className="rounded-full" onClick={onRetry}>
@@ -385,6 +392,7 @@ function CallFeedback({
                 Retry
               </Button>
             )}
+            {timeoutExtra}
           </AlertDescription>
         </Alert>
       )}
@@ -535,7 +543,7 @@ export function SpyMarketTools({ tab, shopId, domain, search, go }: SpyMarketToo
         ))}
       </div>
 
-      {tab === "lookup" && <LookupTab go={go} />}
+      {tab === "lookup" && <LookupTab go={go} costs={status.endpointCosts} />}
       {tab === "shops" && (
         <ShopsTab go={go} initialDomain={domain} costs={status.endpointCosts} url={search} />
       )}
@@ -577,7 +585,13 @@ function Header({ status }: { status: { creditsRemaining: number | null; dayTota
 // 1. LOOKUP — free entry point
 // ---------------------------------------------------------------------------
 
-function LookupTab({ go }: { go: SpyMarketToolsProps["go"] }) {
+function LookupTab({
+  go,
+  costs,
+}: {
+  go: SpyMarketToolsProps["go"];
+  costs: EndpointCosts | undefined;
+}) {
   const lookup = useServerFn(spymarketLookup);
   const call = useMeteredCall(lookup as ServerFnLike);
   const [q, setQ] = React.useState("");
@@ -615,7 +629,27 @@ function LookupTab({ go }: { go: SpyMarketToolsProps["go"] }) {
         </CardContent>
       </Card>
 
-      <CallFeedback state={call.state} onConfirm={call.confirm} onCancel={call.cancelConfirm} onRetry={call.retry} />
+      <CallFeedback
+        state={call.state}
+        onConfirm={call.confirm}
+        onCancel={call.cancelConfirm}
+        onRetry={call.retry}
+        timeoutTitle="Lookup didn't resolve"
+        timeoutMessage={`Trendtrack's lookup couldn't resolve "${lastTerm}" — this happens with brand names that need fuzzy matching. Their exact-domain lookup is fast; fuzzy is unreliable on their side. No credits were charged.`}
+        timeoutExtra={
+          lastTerm ? (
+            <Button
+              size="sm"
+              variant="outline"
+              className="rounded-full"
+              onClick={() => go({ tab: "shops", sq: lastTerm, st: "shopContains" })}
+            >
+              <Store className="mr-1.5 h-3.5 w-3.5" />
+              {`Search "${lastTerm}" in Shop Explorer instead — ${costLabel(costs, "shops/query", 32)}`}
+            </Button>
+          ) : null
+        }
+      />
 
       {call.state.kind === "loading" && <LoadingRows />}
 
@@ -1205,7 +1239,27 @@ function ShopsTab({
         </CardContent>
       </Card>
 
-      <CallFeedback state={call.state} onConfirm={call.confirm} onCancel={call.cancelConfirm} onRetry={call.retry} />
+      <CallFeedback
+        state={call.state}
+        onConfirm={call.confirm}
+        onCancel={call.cancelConfirm}
+        onRetry={call.retry}
+        timeoutTitle="Lookup didn't resolve"
+        timeoutMessage={`Trendtrack's lookup couldn't resolve "${lastTerm}" — this happens with brand names that need fuzzy matching. Their exact-domain lookup is fast; fuzzy is unreliable on their side. No credits were charged.`}
+        timeoutExtra={
+          lastTerm ? (
+            <Button
+              size="sm"
+              variant="outline"
+              className="rounded-full"
+              onClick={() => go({ tab: "shops", sq: lastTerm, st: "shopContains" })}
+            >
+              <Store className="mr-1.5 h-3.5 w-3.5" />
+              {`Search "${lastTerm}" in Shop Explorer instead — ${costLabel(costs, "shops/query", 32)}`}
+            </Button>
+          ) : null
+        }
+      />
 
       {searching && pages.length === 0 && <LoadingRows rows={6} />}
 
@@ -1601,7 +1655,27 @@ function ShopDetailTab({
         </Card>
       )}
 
-      <CallFeedback state={call.state} onConfirm={call.confirm} onCancel={call.cancelConfirm} onRetry={call.retry} />
+      <CallFeedback
+        state={call.state}
+        onConfirm={call.confirm}
+        onCancel={call.cancelConfirm}
+        onRetry={call.retry}
+        timeoutTitle="Lookup didn't resolve"
+        timeoutMessage={`Trendtrack's lookup couldn't resolve "${lastTerm}" — this happens with brand names that need fuzzy matching. Their exact-domain lookup is fast; fuzzy is unreliable on their side. No credits were charged.`}
+        timeoutExtra={
+          lastTerm ? (
+            <Button
+              size="sm"
+              variant="outline"
+              className="rounded-full"
+              onClick={() => go({ tab: "shops", sq: lastTerm, st: "shopContains" })}
+            >
+              <Store className="mr-1.5 h-3.5 w-3.5" />
+              {`Search "${lastTerm}" in Shop Explorer instead — ${costLabel(costs, "shops/query", 32)}`}
+            </Button>
+          ) : null
+        }
+      />
 
       {call.state.kind === "loading" && <LoadingRows rows={6} />}
 
@@ -2213,7 +2287,27 @@ function ShopOnDemand({
         </div>
 
         {activeSection && !sectionData[activeSection] && (
-          <CallFeedback state={call.state} onConfirm={call.confirm} onCancel={call.cancelConfirm} onRetry={call.retry} />
+          <CallFeedback
+        state={call.state}
+        onConfirm={call.confirm}
+        onCancel={call.cancelConfirm}
+        onRetry={call.retry}
+        timeoutTitle="Lookup didn't resolve"
+        timeoutMessage={`Trendtrack's lookup couldn't resolve "${lastTerm}" — this happens with brand names that need fuzzy matching. Their exact-domain lookup is fast; fuzzy is unreliable on their side. No credits were charged.`}
+        timeoutExtra={
+          lastTerm ? (
+            <Button
+              size="sm"
+              variant="outline"
+              className="rounded-full"
+              onClick={() => go({ tab: "shops", sq: lastTerm, st: "shopContains" })}
+            >
+              <Store className="mr-1.5 h-3.5 w-3.5" />
+              {`Search "${lastTerm}" in Shop Explorer instead — ${costLabel(costs, "shops/query", 32)}`}
+            </Button>
+          ) : null
+        }
+      />
         )}
         {activeSection && call.state.kind === "loading" && !loaded && <LoadingRows rows={3} />}
 
@@ -2871,7 +2965,27 @@ function AdsTab({
         Reach/spend data covers EU &amp; UK ads only. Facebook platform only in public v1.
       </p>
 
-      <CallFeedback state={call.state} onConfirm={call.confirm} onCancel={call.cancelConfirm} onRetry={call.retry} />
+      <CallFeedback
+        state={call.state}
+        onConfirm={call.confirm}
+        onCancel={call.cancelConfirm}
+        onRetry={call.retry}
+        timeoutTitle="Lookup didn't resolve"
+        timeoutMessage={`Trendtrack's lookup couldn't resolve "${lastTerm}" — this happens with brand names that need fuzzy matching. Their exact-domain lookup is fast; fuzzy is unreliable on their side. No credits were charged.`}
+        timeoutExtra={
+          lastTerm ? (
+            <Button
+              size="sm"
+              variant="outline"
+              className="rounded-full"
+              onClick={() => go({ tab: "shops", sq: lastTerm, st: "shopContains" })}
+            >
+              <Store className="mr-1.5 h-3.5 w-3.5" />
+              {`Search "${lastTerm}" in Shop Explorer instead — ${costLabel(costs, "shops/query", 32)}`}
+            </Button>
+          ) : null
+        }
+      />
 
       {searching && pages.length === 0 && <LoadingRows rows={6} />}
 
@@ -2971,7 +3085,27 @@ function AdDetailDialog({
 
         {call.state.kind === "loading" && <LoadingRows rows={4} />}
         {call.state.kind !== "ok" && (
-          <CallFeedback state={call.state} onConfirm={call.confirm} onCancel={call.cancelConfirm} onRetry={call.retry} />
+          <CallFeedback
+        state={call.state}
+        onConfirm={call.confirm}
+        onCancel={call.cancelConfirm}
+        onRetry={call.retry}
+        timeoutTitle="Lookup didn't resolve"
+        timeoutMessage={`Trendtrack's lookup couldn't resolve "${lastTerm}" — this happens with brand names that need fuzzy matching. Their exact-domain lookup is fast; fuzzy is unreliable on their side. No credits were charged.`}
+        timeoutExtra={
+          lastTerm ? (
+            <Button
+              size="sm"
+              variant="outline"
+              className="rounded-full"
+              onClick={() => go({ tab: "shops", sq: lastTerm, st: "shopContains" })}
+            >
+              <Store className="mr-1.5 h-3.5 w-3.5" />
+              {`Search "${lastTerm}" in Shop Explorer instead — ${costLabel(costs, "shops/query", 32)}`}
+            </Button>
+          ) : null
+        }
+      />
         )}
 
         {ad && (
@@ -3196,7 +3330,27 @@ function EmailDetailDialog({
 
         {call.state.kind === "loading" && <LoadingRows rows={4} />}
         {call.state.kind !== "ok" && (
-          <CallFeedback state={call.state} onConfirm={call.confirm} onCancel={call.cancelConfirm} onRetry={call.retry} />
+          <CallFeedback
+        state={call.state}
+        onConfirm={call.confirm}
+        onCancel={call.cancelConfirm}
+        onRetry={call.retry}
+        timeoutTitle="Lookup didn't resolve"
+        timeoutMessage={`Trendtrack's lookup couldn't resolve "${lastTerm}" — this happens with brand names that need fuzzy matching. Their exact-domain lookup is fast; fuzzy is unreliable on their side. No credits were charged.`}
+        timeoutExtra={
+          lastTerm ? (
+            <Button
+              size="sm"
+              variant="outline"
+              className="rounded-full"
+              onClick={() => go({ tab: "shops", sq: lastTerm, st: "shopContains" })}
+            >
+              <Store className="mr-1.5 h-3.5 w-3.5" />
+              {`Search "${lastTerm}" in Shop Explorer instead — ${costLabel(costs, "shops/query", 32)}`}
+            </Button>
+          ) : null
+        }
+      />
         )}
 
         {email && (
@@ -3394,7 +3548,27 @@ function EmailsTab({ costs }: { costs?: EndpointCosts | undefined }) {
         </CardContent>
       </Card>
 
-      <CallFeedback state={call.state} onConfirm={call.confirm} onCancel={call.cancelConfirm} onRetry={call.retry} />
+      <CallFeedback
+        state={call.state}
+        onConfirm={call.confirm}
+        onCancel={call.cancelConfirm}
+        onRetry={call.retry}
+        timeoutTitle="Lookup didn't resolve"
+        timeoutMessage={`Trendtrack's lookup couldn't resolve "${lastTerm}" — this happens with brand names that need fuzzy matching. Their exact-domain lookup is fast; fuzzy is unreliable on their side. No credits were charged.`}
+        timeoutExtra={
+          lastTerm ? (
+            <Button
+              size="sm"
+              variant="outline"
+              className="rounded-full"
+              onClick={() => go({ tab: "shops", sq: lastTerm, st: "shopContains" })}
+            >
+              <Store className="mr-1.5 h-3.5 w-3.5" />
+              {`Search "${lastTerm}" in Shop Explorer instead — ${costLabel(costs, "shops/query", 32)}`}
+            </Button>
+          ) : null
+        }
+      />
 
       {searching && pages.length === 0 && <LoadingRows rows={4} />}
 
