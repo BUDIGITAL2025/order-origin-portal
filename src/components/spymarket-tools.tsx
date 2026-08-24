@@ -595,6 +595,16 @@ function LookupTab({
   const lookup = useServerFn(spymarketLookup);
   const call = useMeteredCall(lookup as ServerFnLike);
   const [q, setQ] = React.useState("");
+  // Term of the last submitted lookup — drives the honest timeout message and
+  // the opt-in Shop Explorer fallback (never fired automatically: it is paid).
+  const [lastTerm, setLastTerm] = React.useState("");
+  const run = React.useCallback(
+    (term: string) => {
+      setLastTerm(term);
+      void call.execute({ q: term });
+    },
+    [call],
+  );
 
   const results = call.state.kind === "ok" ? dataRows(call.state.result.data) : [];
 
@@ -608,7 +618,7 @@ function LookupTab({
               value={q}
               onChange={(e) => setQ(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter" && q.trim().length >= 2) void call.execute({ q: q.trim() });
+                if (e.key === "Enter" && q.trim().length >= 2) run(q.trim());
               }}
               placeholder="Brand, domain or handle — e.g. gymshark.com"
               className="rounded-full pl-9"
@@ -617,7 +627,7 @@ function LookupTab({
           <Button
             className="rounded-full"
             disabled={q.trim().length < 2 || call.state.kind === "loading"}
-            onClick={() => void call.execute({ q: q.trim() })}
+            onClick={() => run(q.trim())}
           >
             {call.state.kind === "loading" ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -628,6 +638,14 @@ function LookupTab({
           </Button>
         </CardContent>
       </Card>
+
+      <p className="text-xs text-muted-foreground">
+        Lookup resolves <span className="font-medium text-foreground">exact brand domains</span>{" "}
+        instantly — e.g. <span className="font-medium text-foreground">gymshark.com</span> or{" "}
+        <span className="font-medium text-foreground">nike.com</span>. For partial or fuzzy brand
+        names, use <span className="font-medium text-foreground">Shop Explorer</span> with the shop
+        name filter (that search is metered).
+      </p>
 
       <CallFeedback
         state={call.state}
