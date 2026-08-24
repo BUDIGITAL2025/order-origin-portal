@@ -17,6 +17,8 @@ import {
   Package,
   ShieldAlert,
   ShoppingCart,
+  Sparkles,
+
   Store,
   Telescope,
   Users,
