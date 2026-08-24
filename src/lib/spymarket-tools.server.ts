@@ -321,7 +321,7 @@ export async function trendtrackCall<T = Json>(opts: CallOptions): Promise<ToolR
   // signal (reusing one signal would let the 429 retry inherit a nearly-
   // expired timer from the first attempt).
   const doFetch = () =>
-    fetch(url.toString(), { ...init, signal: AbortSignal.timeout(30_000) });
+    fetch(url.toString(), { ...init, signal: AbortSignal.timeout(opts.timeoutMs ?? 30_000) });
 
   let res: Response;
   try {
@@ -349,7 +349,7 @@ export async function trendtrackCall<T = Json>(opts: CallOptions): Promise<ToolR
       creditsRemaining: null,
       cacheHit: false,
       error: isTimeout
-        ? "timeout after 30s"
+        ? `timeout after ${Math.round((opts.timeoutMs ?? 30_000) / 1000)}s`
         : `network: ${err instanceof Error ? err.message : String(err)}`,
     });
     if (isTimeout) throw new Error("TRENDTRACK_TIMEOUT");
