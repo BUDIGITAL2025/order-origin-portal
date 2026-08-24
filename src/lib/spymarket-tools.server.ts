@@ -58,6 +58,8 @@ export interface CallOptions {
   cacheable?: boolean | undefined;
   /** User confirmed beyond the daily soft limit. */
   confirmOverage?: boolean | undefined;
+  /** Per-attempt timeout. Default 30s; fuzzy lookup uses 12s. */
+  timeoutMs?: number | undefined;
 }
 
 interface UsageHeaders {
