@@ -871,6 +871,10 @@ function ShopsTab({
   // Applied filter state — hydrated from the URL so shared links restore the view.
   const [f, setF] = React.useState<ShopsFilters>(() => shopsFiltersFromUrl(url, initialDomain));
   const [limit, setLimit] = React.useState(32);
+  // A text search ranked by traffic surfaces the giants instead of the match,
+  // so we auto-switch to "Best match" until the user picks a sort themselves.
+  const [sortTouched, setSortTouched] = React.useState(url["ssort"] != null);
+  const effectiveSort = f.search.trim() !== "" && !sortTouched ? "relevance" : f.sortBy;
   const [pages, setPages] = React.useState<Rec[][]>([]);
 
   const { data: categories } = useQuery({
@@ -906,7 +910,7 @@ function ShopsTab({
     const input: Record<string, unknown> = {
       limit,
       offset,
-      sortBy: filters.sortBy,
+      sortBy: filters.search.trim() !== "" && !sortTouched ? "relevance" : filters.sortBy,
       order: "desc",
     };
     // Applied upstream via the API's DTC preset — filtered-out rows never
@@ -970,11 +974,24 @@ function ShopsTab({
   const searching = call.state.kind === "loading";
   // Country exclusion is applied client-side (the upstream API ignores it).
   const excSet = new Set(f.countriesExc);
-  const allRows = pages.flat().filter((r) => {
+  const filteredRows = pages.flat().filter((r) => {
     if (excSet.size === 0) return true;
     const cc = asStr(asRec(r["profile"])["countryCode"]);
     return cc == null || !excSet.has(cc);
   });
+  // Upstream matches multi-word terms loosely (token OR), so rows that really
+  // contain a term token float to the top. Presentation only — no extra calls.
+  const terms = f.search.trim().toLowerCase().split(/\s+/).filter((t) => t.length > 2);
+  const matchScore = (r: Rec) => {
+    if (terms.length === 0) return 0;
+    const hay = `${asStr(r["name"]) ?? ""} ${asStr(r["domain"]) ?? ""}`.toLowerCase();
+    return -terms.filter((t) => hay.includes(t)).length;
+  };
+  const allRows =
+    terms.length > 0
+      ? [...filteredRows].sort((a, b) => matchScore(a) - matchScore(b))
+      : filteredRows;
+  const multiWord = f.search.trim().split(/\s+/).length > 1;
   const lastPage = pages[pages.length - 1];
   const hasMore = lastPage != null && lastPage.length >= limit;
 
@@ -1032,7 +1049,13 @@ function ShopsTab({
                 <SelectItem value="productName">Product name</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={f.sortBy} onValueChange={(v) => apply({ sortBy: v })}>
+            <Select
+              value={effectiveSort}
+              onValueChange={(v) => {
+                setSortTouched(true);
+                apply({ sortBy: v });
+              }}
+            >
               <SelectTrigger className="w-44 rounded-full">
                 <SelectValue />
               </SelectTrigger>
@@ -1266,26 +1289,43 @@ function ShopsTab({
 
       {searching && pages.length === 0 && <LoadingRows rows={6} />}
 
-      {f.dtcOnly && call.state.kind === "ok" && (
-        <p className="text-xs text-muted-foreground">
-          {dtcApplied
-            ? "DTC preset applied upstream (indexed DTC shops with at least 1 product) — excluded rows never cost credits."
-            : "DTC preset skipped for this exact-domain lookup — results are unfiltered by design."}
-        </p>
+      {call.state.kind === "ok" && (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+          <span>
+            Sorted by{" "}
+            <span className="font-medium text-foreground">
+              {SHOP_SORTS.find((s) => s.value === effectiveSort)?.label ?? effectiveSort}
+            </span>
+            {f.search.trim() !== "" && !sortTouched && " — auto-selected for text search"}
+          </span>
+          {f.dtcOnly && (
+            <span>
+              {dtcApplied
+                ? "· DTC preset applied upstream (indexed DTC shops with at least 1 product) — excluded rows never cost credits."
+                : "· DTC preset skipped for this exact-domain lookup — results are unfiltered by design."}
+            </span>
+          )}
+          {multiWord && (
+            <span>
+              · Multi-word terms match loosely upstream — try the brand’s single-word name or its
+              domain for a tight match.
+            </span>
+          )}
+        </div>
       )}
 
       {allRows.length > 0 && (
         <Card className="overflow-hidden rounded-2xl">
           <div className="overflow-x-auto">
-            <Table>
+            <Table className="table-fixed">
               <TableHeader>
                 <TableRow>
-                  <TableHead className="sticky left-0 z-10 min-w-[240px] bg-card">Shop</TableHead>
-                  <TableHead className="min-w-[210px]">Best sellers</TableHead>
-                  <TableHead className="min-w-[130px]">Categories</TableHead>
-                  <TableHead className="min-w-[170px]">Visits / month</TableHead>
-                  <TableHead className="min-w-[170px]">Meta ads</TableHead>
-                  <TableHead className="min-w-[200px]">Latest creatives</TableHead>
+                  <TableHead className="sticky left-0 z-10 w-[280px] bg-card">Shop</TableHead>
+                  <TableHead className="w-[236px]">Best sellers</TableHead>
+                  <TableHead className="w-[150px]">Categories</TableHead>
+                  <TableHead className="w-[190px]">Visits / month</TableHead>
+                  <TableHead className="w-[190px]">Meta ads</TableHead>
+                  <TableHead className="w-[210px]">Latest creatives</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -1322,11 +1362,11 @@ function ShopsTab({
                   return (
                     <TableRow
                       key={id ?? i}
-                      className={cn("h-[100px]", id && "cursor-pointer")}
+                      className={cn("h-[124px] border-b", id && "cursor-pointer")}
                       onClick={() => id && go({ tab: "shop", shopId: id })}
                     >
                       {/* 1 — Shop info (sticky) */}
-                      <TableCell className="sticky left-0 z-10 bg-card">
+                      <TableCell className="sticky left-0 z-10 bg-card align-middle">
                         <div className="flex items-center gap-3">
                           <div className="relative shrink-0">
                             {screenshot ? (
@@ -1334,10 +1374,10 @@ function ShopsTab({
                                 src={screenshot}
                                 alt=""
                                 loading="lazy"
-                                className="h-14 w-24 rounded-lg border object-cover"
+                                className="h-[68px] w-[108px] rounded-lg border object-cover"
                               />
                             ) : (
-                              <div className="flex h-14 w-24 items-center justify-center rounded-lg border bg-muted">
+                              <div className="flex h-[68px] w-[108px] items-center justify-center rounded-lg border bg-muted">
                                 <Store className="h-4 w-4 text-muted-foreground" />
                               </div>
                             )}
@@ -1374,40 +1414,41 @@ function ShopsTab({
                           </div>
                         </div>
                       </TableCell>
-                      {/* 2 — Best sellers */}
-                      <TableCell>
-                        {sellers.length > 0 ? (
-                          <div className="flex items-center gap-1.5">
-                            {sellers.map((p, j) => {
-                              const img = asStr(p["imageUrl"]);
-                              return img ? (
-                                <img
-                                  key={j}
-                                  src={img}
-                                  alt={asStr(p["title"]) ?? "Best seller"}
-                                  loading="lazy"
-                                  className="h-[60px] w-[60px] rounded-lg border object-cover"
-                                />
-                              ) : null;
-                            })}
-                            {productsCount != null && (
-                              <span className="ml-1 whitespace-nowrap text-xs text-muted-foreground">
-                                {fmtInt(productsCount)} products
-                              </span>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">
+                      {/* 2 — Best sellers: 3 thumbs on one row, count underneath */}
+                      <TableCell className="align-middle">
+                        <div className="space-y-1.5">
+                          {sellers.length > 0 && (
+                            <div className="flex items-center gap-1.5">
+                              {sellers.map((p, j) => {
+                                const img = asStr(p["imageUrl"]);
+                                return img ? (
+                                  <img
+                                    key={j}
+                                    src={img}
+                                    alt={asStr(p["title"]) ?? "Best seller"}
+                                    loading="lazy"
+                                    className="h-[64px] w-[64px] shrink-0 rounded-lg border object-cover"
+                                  />
+                                ) : null;
+                              })}
+                            </div>
+                          )}
+                          <p className="truncate text-xs text-muted-foreground">
                             {productsCount != null ? `${fmtInt(productsCount)} products` : "—"}
-                          </span>
-                        )}
+                          </p>
+                        </div>
                       </TableCell>
                       {/* 3 — Categories */}
-                      <TableCell>
+                      <TableCell className="align-middle">
                         {cats.length > 0 ? (
-                          <div className="flex flex-wrap gap-1">
+                          <div className="flex flex-col items-start gap-1">
                             {cats.slice(0, 2).map((c) => (
-                              <Badge key={c} variant="secondary" className="rounded-full text-[10px]">
+                              <Badge
+                                key={c}
+                                variant="secondary"
+                                className="block max-w-full truncate rounded-full text-[10px]"
+                                title={c}
+                              >
                                 {c}
                               </Badge>
                             ))}
@@ -1421,33 +1462,34 @@ function ShopsTab({
                           <span className="text-xs text-muted-foreground">—</span>
                         )}
                       </TableCell>
-                      {/* 4 — Monthly visits + sparkline */}
-                      <TableCell>
+                      {/* 4 — Monthly visits: value + flags + sparkline in one cell */}
+                      <TableCell className="align-middle">
                         <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-semibold">
-                              {fmtCompact(asNum(traffic["monthlyVisits"]))}
-                            </span>
-                            <FlagStack codes={visitCountries} size={14} />
-                          </div>
-                          <LazySparkline points={toTrendPoints(traffic["history"])} />
+                          <span className="block text-sm font-semibold">
+                            {fmtCompact(asNum(traffic["monthlyVisits"]))}
+                          </span>
+                          <FlagStack codes={visitCountries} size={14} />
+                          <LazySparkline points={toTrendPoints(traffic["history"])} height={40} />
                         </div>
                       </TableCell>
-                      {/* 5 — Meta ads + sparkline */}
-                      <TableCell>
+                      {/* 5 — Meta ads: same rhythm as the visits cell */}
+                      <TableCell className="align-middle">
                         <div className="space-y-1">
-                          <div className="flex items-center gap-2">
+                          <span className="flex items-center gap-2 text-sm font-semibold">
                             {activeAds != null && (
                               <span className="h-2 w-2 shrink-0 rounded-full bg-primary" />
                             )}
-                            <span className="text-sm font-semibold">{fmtInt(activeAds)}</span>
-                            <FlagStack codes={adCountries} size={14} />
-                          </div>
-                          <LazySparkline points={toTrendPoints(advertising["history"])} />
+                            {fmtInt(activeAds)}
+                          </span>
+                          <FlagStack codes={adCountries} size={14} />
+                          <LazySparkline
+                            points={toTrendPoints(advertising["history"])}
+                            height={40}
+                          />
                         </div>
                       </TableCell>
                       {/* 6 — Latest creatives */}
-                      <TableCell>
+                      <TableCell className="align-middle">
                         {creatives.length > 0 ? (
                           <div className="flex gap-1.5">
                             {creatives.map((a, j) => {
@@ -1457,7 +1499,7 @@ function ShopsTab({
                               return (
                                 <div
                                   key={j}
-                                  className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg border bg-muted"
+                                  className="relative h-[64px] w-[64px] shrink-0 overflow-hidden rounded-lg border bg-muted"
                                 >
                                   {img && (
                                     <img

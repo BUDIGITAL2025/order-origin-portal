@@ -254,6 +254,20 @@ export function Sparkline({
           strokeLinejoin="round"
           strokeLinecap="round"
         />
+        {/* Visible marker at every data point (skipped on very dense series,
+            where dots would merge into a solid band). */}
+        {geo.pts.length <= 40 &&
+          geo.pts.map(([cx, cy], i) => (
+            <circle
+              key={i}
+              cx={cx}
+              cy={cy}
+              r="1.4"
+              fill="currentColor"
+              stroke="none"
+              opacity="0.85"
+            />
+          ))}
         {hover != null && geo.pts[hover] && (
           <circle cx={geo.pts[hover][0]} cy={geo.pts[hover][1]} r="3" fill="currentColor" />
         )}
