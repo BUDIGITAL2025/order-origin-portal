@@ -275,7 +275,7 @@ export const adminListClients = createServerFn({ method: "GET" })
     const admin = await getAdminClient();
     const { data, error } = await admin
       .from("profiles")
-      .select(`id, contact_name, phone, status, created_at, entities(id, legal_name, vat_number, country, status, created_at, stores(*))`)
+      .select(`id, contact_name, phone, status, created_at, signup_source, entities(id, legal_name, vat_number, country, status, created_at, stores(*))`)
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
     return { clients: data ?? [] };
