@@ -27,7 +27,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { MARKETING_URL } from "@/lib/config";
 import { formatUSD } from "@/lib/format";
-import logoAsset from "@/assets/flysales-logo-dark.svg.asset.json";
+import logoAsset from "@/assets/flysales-logo-green.svg.asset.json";
 import { getOnboardingLinks } from "@/lib/onboarding.functions";
 import { getMyWallet } from "@/lib/wallet.functions";
 import { cn } from "@/lib/utils";
