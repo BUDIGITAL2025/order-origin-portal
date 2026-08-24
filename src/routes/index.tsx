@@ -1,27 +1,26 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useHydrated } from "@tanstack/react-router";
-import { ClipboardList, ShieldCheck, Wallet } from "lucide-react";
 import { useEffect, useState } from "react";
+import { BrandLogo } from "@/components/brand-logo";
+import { LegalFooter } from "@/components/legal";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { MARKETING_URL } from "@/lib/config";
-import { BrandLogo } from "@/components/brand-logo";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "FlySales — B2B Dropshipping Supplier Portal" },
+      { title: "FlySales Portal — Sign in" },
       {
         name: "description",
         content:
-          "Source products through FlySales: request quotes with transparent pricing, MOQ and lead times, and manage your prepaid wallet — built for professional dropshippers.",
+          "Sign in to the FlySales supplier portal: request quotes, manage orders and top up your prepaid wallet.",
       },
-      { property: "og:title", content: "FlySales — B2B Dropshipping Supplier Portal" },
+      { property: "og:title", content: "FlySales Portal — Sign in" },
       {
         property: "og:description",
         content:
-          "Source products through FlySales: request quotes with transparent pricing, MOQ and lead times, and manage your prepaid wallet.",
+          "Sign in to the FlySales supplier portal: request quotes, manage orders and top up your prepaid wallet.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -30,6 +29,10 @@ export const Route = createFileRoute("/")({
   component: LandingPage,
 });
 
+/**
+ * Public door to the portal. flysales.io is the marketing site — this page only
+ * needs the brand mark, one line and the two ways in.
+ */
 function LandingPage() {
   const hydrated = useHydrated();
   const [signedIn, setSignedIn] = useState(false);
@@ -41,84 +44,49 @@ function LandingPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-card">
-        <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-6">
-          <a href={MARKETING_URL}>
-            <BrandLogo className="h-7 w-auto" />
-          </a>
+    <div className="flex min-h-screen flex-col bg-background">
+      <main className="flex flex-1 flex-col items-center justify-center px-6 py-16 text-center">
+        <a href={MARKETING_URL} aria-label="FlySales">
+          <BrandLogo className="h-8 w-auto sm:h-10" />
+        </a>
+
+        <h1 className="mt-8 max-w-md text-lg font-medium tracking-tight text-foreground">
+          Product sourcing and fulfilment for professional dropshippers.
+        </h1>
+
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
           {hydrated && signedIn ? (
-            <Button asChild size="sm">
+            <Button asChild size="lg">
               <Link to="/dashboard">Open portal</Link>
             </Button>
           ) : (
-            <Button asChild size="sm" variant={hydrated ? "default" : "outline"}>
-              <Link to="/auth">Client sign in</Link>
-            </Button>
+            <>
+              <Button asChild size="lg">
+                <Link to="/auth">Sign in</Link>
+              </Button>
+              <Button asChild size="lg" variant="outline">
+                <Link to="/auth">Create account</Link>
+              </Button>
+            </>
           )}
         </div>
-      </header>
 
-      <main className="mx-auto max-w-5xl px-6">
-        <section className="py-20">
-          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-            Supplier portal
-          </p>
-          <h1 className="mt-3 max-w-2xl text-4xl font-semibold tracking-tight">
-            Product sourcing and fulfilment for professional dropshippers.
-          </h1>
-          <p className="mt-4 max-w-xl text-base text-muted-foreground">
-            Send us a product link, receive a firm quote with price, MOQ and lead time,
-            and fulfil orders from your prepaid wallet. One portal, no spreadsheets.
-          </p>
-          <div className="mt-8 flex gap-3">
-            <Button asChild size="lg">
-              <Link to="/auth">Request access</Link>
-            </Button>
-            <Button asChild size="lg" variant="outline">
-              <Link to="/auth">Sign in</Link>
-            </Button>
-          </div>
-        </section>
-
-        <section className="grid gap-4 pb-20 sm:grid-cols-3">
-          <Card>
-            <CardHeader className="pb-2">
-              <ClipboardList className="h-5 w-5 text-primary" />
-              <CardTitle className="text-base">Quote requests</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-muted-foreground">
-              Submit any product URL. We source it and reply with a final price, minimum
-              order quantity and lead time — valid for a fixed period.
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <Wallet className="h-5 w-5 text-primary" />
-              <CardTitle className="text-base">Prepaid wallet</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-muted-foreground">
-              A transparent USD ledger of every credit and debit, so your balance is
-              always auditable down to the cent.
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <ShieldCheck className="h-5 w-5 text-primary" />
-              <CardTitle className="text-base">Vetted accounts</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-muted-foreground">
-              Every client is reviewed and approved before ordering. Your storefront
-              domain and company details are verified up front.
-            </CardContent>
-          </Card>
-        </section>
+        <p className="mt-6 text-xs text-muted-foreground">
+          New to FlySales?{" "}
+          <a
+            href="https://flysales.io"
+            className="underline underline-offset-4 hover:text-foreground"
+          >
+            Learn more at flysales.io
+          </a>
+        </p>
       </main>
 
-      <footer className="border-t border-border py-6">
-        <div className="mx-auto max-w-5xl px-6 text-xs text-muted-foreground">
+      <footer className="border-t border-border">
+        <div className="mx-auto max-w-3xl px-6 pt-6 text-center text-xs text-muted-foreground">
           © {new Date().getFullYear()} FlySales. Prices in USD, quotes in writing.
         </div>
+        <LegalFooter className="" />
       </footer>
     </div>
   );

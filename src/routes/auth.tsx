@@ -180,7 +180,7 @@ function AuthPage() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4 py-10">
       <a href={MARKETING_URL} className="mb-6">
-        <BrandLogo className="h-7 w-auto" />
+        <BrandLogo className="h-8 w-auto sm:h-10" />
       </a>
 
       <Card className="w-full max-w-md">
