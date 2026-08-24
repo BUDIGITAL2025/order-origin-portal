@@ -706,6 +706,7 @@ const LANGUAGES = [
 ];
 
 const SHOP_SORTS = [
+  { value: "relevance", label: "Best match" },
   { value: "monthlyVisits", label: "Most traffic" },
   { value: "activeAds", label: "Most ads" },
   { value: "productsCount", label: "Biggest catalogue" },
@@ -742,7 +743,7 @@ function shopsFiltersFromUrl(
 ): ShopsFilters {
   return {
     search: url["sq"] ?? initialDomain ?? "",
-    searchType: url["st"] ?? "domain",
+    searchType: url["st"] ?? "shopContains",
     minVisits: url["vmin"] ?? "",
     maxVisits: url["vmax"] ?? "",
     minAds: url["amin"] ?? "",
@@ -768,7 +769,7 @@ function shopsUrlPatch(f: ShopsFilters): Record<string, string | undefined> {
     tab: "shops",
     domain: undefined,
     sq: f.search.trim() || undefined,
-    st: f.searchType !== "domain" ? f.searchType : undefined,
+    st: f.searchType !== "shopContains" ? f.searchType : undefined,
     vmin: f.minVisits || undefined,
     vmax: f.maxVisits || undefined,
     amin: f.minAds || undefined,
@@ -925,6 +926,15 @@ function ShopsTab({
   const lastPage = pages[pages.length - 1];
   const hasMore = lastPage != null && lastPage.length >= limit;
 
+  // Mirrors the server rule: the upstream DTC preset is skipped only for an
+  // exact-domain lookup, so the banner never claims a filter that wasn't sent.
+  const dtcApplied = !(
+    f.searchType === "domain" &&
+    f.search.trim() !== "" &&
+    /^(https?:\/\/)?[a-z0-9-]+(\.[a-z0-9-]+)+/i.test(f.search.trim())
+  );
+
+
   const visitsRange: [number, number] = [
     Number(f.minVisits) || 0,
     Number(f.maxVisits) || VISITS_RANGE_MAX,
@@ -953,7 +963,7 @@ function ShopsTab({
                 onKeyDown={(e) => {
                   if (e.key === "Enter") void runSearch();
                 }}
-                placeholder="domain, product or shop name (optional)"
+                placeholder="brand or shop name, domain, product (optional)"
                 className="rounded-full pl-9"
               />
             </div>
@@ -965,9 +975,9 @@ function ShopsTab({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="domain">Domain</SelectItem>
+                <SelectItem value="shopContains">Shop name / text</SelectItem>
+                <SelectItem value="domain">Domain (exact)</SelectItem>
                 <SelectItem value="productName">Product name</SelectItem>
-                <SelectItem value="shopContains">Shop contains</SelectItem>
               </SelectContent>
             </Select>
             <Select value={f.sortBy} onValueChange={(v) => apply({ sortBy: v })}>
@@ -1166,7 +1176,7 @@ function ShopsTab({
 
             <button
               type="button"
-              title="Upstream Trendtrack filter — marketplaces, SaaS and non-store sites are excluded before results (and credits) are counted"
+              title="Upstream DTC preset (dtcRegion=all): only indexed DTC shops with at least 1 product. Skipped on exact-domain lookups, which are intentionally unfiltered."
               onClick={toggleDtcOnly}
               aria-pressed={f.dtcOnly}
               className={cn(
@@ -1201,8 +1211,9 @@ function ShopsTab({
 
       {f.dtcOnly && call.state.kind === "ok" && (
         <p className="text-xs text-muted-foreground">
-          DTC-only filter applied upstream — marketplaces and non-store sites are excluded before
-          results (and credits) are counted.
+          {dtcApplied
+            ? "DTC preset applied upstream (indexed DTC shops with at least 1 product) — excluded rows never cost credits."
+            : "DTC preset skipped for this exact-domain lookup — results are unfiltered by design."}
         </p>
       )}
 

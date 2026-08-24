@@ -83,7 +83,7 @@ export const spymarketQueryShops = createServerFn({ method: "POST" })
         language: z.string().max(10).optional(),
         minTrustpilotRating: z.number().min(0).max(5).optional(),
         sortBy: z
-          .enum(["monthlyVisits", "activeAds", "productsCount", "createdAt"])
+          .enum(["relevance", "monthlyVisits", "activeAds", "productsCount", "createdAt"])
           .default("monthlyVisits"),
         order: z.enum(["desc", "asc"]).default("desc"),
         limit: z.number().int().min(1).max(100).default(32),
@@ -96,15 +96,26 @@ export const spymarketQueryShops = createServerFn({ method: "POST" })
     const { requireAdmin } = await import("./admin.server");
     await requireAdmin(context.supabase, context.userId);
     const mod = await import("./spymarket-tools.server");
+    // "domain" is EXACT domain/related-domain matching upstream: a bare brand
+    // name like "gruns" produces no domain match and the term is dropped,
+    // leaving an unfiltered top-traffic list. Anything that isn't a hostname
+    // is therefore searched as free text instead.
+    const term = data.search?.trim() ?? "";
+    const looksLikeDomain = /^(https?:\/\/)?[a-z0-9-]+(\.[a-z0-9-]+)+/i.test(term);
+    const requestedType = data.searchType ?? "domain";
+    const effectiveSearchType =
+      requestedType === "domain" && term && !looksLikeDomain ? "shopContains" : requestedType;
+    const effectiveSortBy = data.sortBy;
+
     const body: Record<string, unknown> = {
-      sortBy: data.sortBy,
+      sortBy: effectiveSortBy,
       order: data.order,
       limit: data.limit,
       offset: data.offset,
     };
-    if (data.search) {
-      body["search"] = [data.search];
-      body["searchType"] = data.searchType ?? "domain";
+    if (term) {
+      body["search"] = [term];
+      body["searchType"] = effectiveSearchType;
     }
     if (data.minMonthlyVisits != null) body["minMonthlyVisits"] = data.minMonthlyVisits;
     if (data.maxMonthlyVisits != null) body["maxMonthlyVisits"] = data.maxMonthlyVisits;
@@ -113,17 +124,17 @@ export const spymarketQueryShops = createServerFn({ method: "POST" })
       if (data.maxActiveAds != null) body["maxActiveAds"] = data.maxActiveAds;
       body["adsTimePeriod"] = data.adsTimePeriod ?? "last30d";
     }
-    // DTC-only: native upstream preset (dtcRegion) — marketplaces, SaaS and
-    // institutional/non-store sites never enter the result set, so they never
-    // cost credits. Explicit domain searches bypass it (intentional
-    // single-shop lookup). Also requires a catalogue of at least 1 product.
-    const isDomainLookup = Boolean(data.search) && (data.searchType ?? "domain") === "domain";
+    // DTC-only: upstream preset (dtcRegion="all" = "any indexed DTC shop" per
+    // the API spec). Only an EXACT domain lookup bypasses it — a text search
+    // must stay filtered, otherwise the toggle silently does nothing.
+    const isDomainLookup = Boolean(term) && effectiveSearchType === "domain" && looksLikeDomain;
     if (data.dtcOnly && !isDomainLookup) {
       body["dtcRegion"] = "all";
       body["minProductsCount"] = Math.max(1, data.minProductsCount ?? 0);
     } else if (data.minProductsCount != null) {
       body["minProductsCount"] = data.minProductsCount;
     }
+
     if (data.maxProductsCount != null) body["maxProductsCount"] = data.maxProductsCount;
     if (data.isShopifyPlus != null) body["isShopifyPlus"] = data.isShopifyPlus;
     if (data.categoryId != null) body["categoryIds"] = [data.categoryId];
@@ -143,7 +154,8 @@ export const spymarketQueryShops = createServerFn({ method: "POST" })
       method: "POST",
       body,
       summary: {
-        search: data.search ?? null,
+        search: term || null,
+        searchType: term ? effectiveSearchType : null,
         filters: {
           minMonthlyVisits: data.minMonthlyVisits ?? null,
           maxMonthlyVisits: data.maxMonthlyVisits ?? null,
@@ -151,13 +163,15 @@ export const spymarketQueryShops = createServerFn({ method: "POST" })
           maxActiveAds: data.maxActiveAds ?? null,
           isShopifyPlus: data.isShopifyPlus ?? null,
           dtcOnly: data.dtcOnly ?? null,
+          dtcApplied: Boolean(data.dtcOnly && !isDomainLookup),
           categoryId: data.categoryId ?? null,
           countries: includeCountries,
           language: data.language ?? null,
           minTrustpilotRating: data.minTrustpilotRating ?? null,
-          sortBy: data.sortBy,
+          sortBy: effectiveSortBy,
           order: data.order,
         },
+
         limit: data.limit,
         offset: data.offset,
       },
