@@ -1443,33 +1443,34 @@ function ShopsTab({
                           <span className="text-xs text-muted-foreground">—</span>
                         )}
                       </TableCell>
-                      {/* 4 — Monthly visits + sparkline */}
-                      <TableCell>
+                      {/* 4 — Monthly visits: value + flags + sparkline in one cell */}
+                      <TableCell className="align-middle">
                         <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-semibold">
-                              {fmtCompact(asNum(traffic["monthlyVisits"]))}
-                            </span>
-                            <FlagStack codes={visitCountries} size={14} />
-                          </div>
-                          <LazySparkline points={toTrendPoints(traffic["history"])} />
+                          <span className="block text-sm font-semibold">
+                            {fmtCompact(asNum(traffic["monthlyVisits"]))}
+                          </span>
+                          <FlagStack codes={visitCountries} size={14} />
+                          <LazySparkline points={toTrendPoints(traffic["history"])} height={40} />
                         </div>
                       </TableCell>
-                      {/* 5 — Meta ads + sparkline */}
-                      <TableCell>
+                      {/* 5 — Meta ads: same rhythm as the visits cell */}
+                      <TableCell className="align-middle">
                         <div className="space-y-1">
-                          <div className="flex items-center gap-2">
+                          <span className="flex items-center gap-2 text-sm font-semibold">
                             {activeAds != null && (
                               <span className="h-2 w-2 shrink-0 rounded-full bg-primary" />
                             )}
-                            <span className="text-sm font-semibold">{fmtInt(activeAds)}</span>
-                            <FlagStack codes={adCountries} size={14} />
-                          </div>
-                          <LazySparkline points={toTrendPoints(advertising["history"])} />
+                            {fmtInt(activeAds)}
+                          </span>
+                          <FlagStack codes={adCountries} size={14} />
+                          <LazySparkline
+                            points={toTrendPoints(advertising["history"])}
+                            height={40}
+                          />
                         </div>
                       </TableCell>
                       {/* 6 — Latest creatives */}
-                      <TableCell>
+                      <TableCell className="align-middle">
                         {creatives.length > 0 ? (
                           <div className="flex gap-1.5">
                             {creatives.map((a, j) => {
@@ -1479,7 +1480,7 @@ function ShopsTab({
                               return (
                                 <div
                                   key={j}
-                                  className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg border bg-muted"
+                                  className="relative h-[64px] w-[64px] shrink-0 overflow-hidden rounded-lg border bg-muted"
                                 >
                                   {img && (
                                     <img
