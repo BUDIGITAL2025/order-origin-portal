@@ -302,11 +302,11 @@ function DashboardPage() {
         </Card>
       )}
 
-      <div className="mt-6">
+      <Reveal delay={380} className="mt-6">
         <OpenQuotesWidget quotes={openQuotes} subscribed={subscribed} />
-      </div>
+      </Reveal>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-2">
+      <Reveal delay={440} className="mt-6 grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader className="flex-row items-center justify-between pb-3">
             <CardTitle className="text-sm font-semibold">Recent quote requests</CardTitle>
@@ -319,7 +319,12 @@ function DashboardPage() {
           <CardContent className="p-0">
             {quotes.length === 0 ? (
               <div className="p-6">
-                <EmptyState title="No quote requests yet" hint="Submit your first product link to get a price." />
+                <EmptyState
+                  icon={ClipboardList}
+                  title="No quote requests yet"
+                  hint="Submit your first product link and we come back with a price."
+                  action={{ label: "Request a quote", to: "/quotes/new" }}
+                />
               </div>
             ) : (
               <Table>
@@ -368,7 +373,12 @@ function DashboardPage() {
           <CardContent className="p-0">
             {transactions.length === 0 ? (
               <div className="p-6">
-                <EmptyState title="No transactions yet" hint="Credits and debits will appear here." />
+                <EmptyState
+                  icon={Wallet}
+                  title="No transactions yet"
+                  hint="Top up your wallet to pay for orders — credits and debits show up here."
+                  action={{ label: "Top up wallet", to: "/billing" }}
+                />
               </div>
             ) : (
               <Table>
