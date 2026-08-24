@@ -35,6 +35,9 @@ export const spymarketLookup = createServerFn({ method: "POST" })
       estimatedCost: 0,
       metered: false,
       cacheable: true,
+      // Their fuzzy lookup either answers fast or hangs — nothing useful ever
+      // arrives after ~12s, so fail fast and let the UI offer a fallback.
+      timeoutMs: 12_000,
     });
   });
 
