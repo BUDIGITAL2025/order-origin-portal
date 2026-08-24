@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import logoLightAsset from "@/assets/flysales-logo-light.png.asset.json";
+import logoLightAsset from "@/assets/flysales-logo-black.svg.asset.json";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { LegalFooter } from "@/components/legal";

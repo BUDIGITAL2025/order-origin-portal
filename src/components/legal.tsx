@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import logoLightAsset from "@/assets/flysales-logo-light.png.asset.json";
+import logoLightAsset from "@/assets/flysales-logo-black.svg.asset.json";
 import { MARKETING_URL } from "@/lib/config";
 
 /** Shared chrome for the public legal pages (/terms, /privacy). */

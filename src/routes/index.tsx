@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { MARKETING_URL } from "@/lib/config";
-import logoLightAsset from "@/assets/flysales-logo-light.png.asset.json";
+import logoLightAsset from "@/assets/flysales-logo-black.svg.asset.json";
 
 export const Route = createFileRoute("/")({
   head: () => ({

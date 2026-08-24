@@ -2,7 +2,7 @@ import { createFileRoute, Navigate, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import logoLightAsset from "@/assets/flysales-logo-light.png.asset.json";
+import logoLightAsset from "@/assets/flysales-logo-black.svg.asset.json";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { MARKETING_URL } from "@/lib/config";
