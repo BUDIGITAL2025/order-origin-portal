@@ -83,7 +83,7 @@ export const spymarketQueryShops = createServerFn({ method: "POST" })
         language: z.string().max(10).optional(),
         minTrustpilotRating: z.number().min(0).max(5).optional(),
         sortBy: z
-          .enum(["monthlyVisits", "activeAds", "productsCount", "createdAt"])
+          .enum(["relevance", "monthlyVisits", "activeAds", "productsCount", "createdAt"])
           .default("monthlyVisits"),
         order: z.enum(["desc", "asc"]).default("desc"),
         limit: z.number().int().min(1).max(100).default(32),
