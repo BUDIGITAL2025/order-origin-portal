@@ -1305,6 +1305,12 @@ function ShopsTab({
                 : "· DTC preset skipped for this exact-domain lookup — results are unfiltered by design."}
             </span>
           )}
+          {multiWord && (
+            <span>
+              · Multi-word terms match loosely upstream — try the brand’s single-word name or its
+              domain for a tight match.
+            </span>
+          )}
         </div>
       )}
 
