@@ -58,22 +58,25 @@ export function OpenQuotesWidget({
       </CardHeader>
       <CardContent className="p-0">
         {visible.length === 0 ? (
-          subscribed ? (
-            <div className="p-6 text-sm text-muted-foreground">
-              No open quotations.{" "}
-              <Link to="/quotes/new" className="font-medium text-primary underline-offset-2 hover:underline">
-                Request your first quote.
-              </Link>
-            </div>
-          ) : (
-            <div className="p-6 text-sm text-muted-foreground">
-              Requesting quotes requires an active plan.{" "}
-              <Link to="/billing" className="font-medium text-primary underline-offset-2 hover:underline">
-                Choose a plan to get started.
-              </Link>
-            </div>
-          )
+          <div className="p-6">
+            {subscribed ? (
+              <EmptyState
+                icon={PackageSearch}
+                title="No open quotations"
+                hint="Paste a product URL and our sourcing team comes back with per-variant pricing."
+                action={{ label: "Request a quote", to: "/quotes/new" }}
+              />
+            ) : (
+              <EmptyState
+                icon={Sparkles}
+                title="Start sourcing with a plan"
+                hint="Quote requests are included in every plan — pick one and send your first product link."
+                action={{ label: "Choose a plan", to: "/billing" }}
+              />
+            )}
+          </div>
         ) : (
+
           <Table>
             <TableHeader>
               <TableRow>
