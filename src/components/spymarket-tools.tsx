@@ -1276,12 +1276,23 @@ function ShopsTab({
 
       {searching && pages.length === 0 && <LoadingRows rows={6} />}
 
-      {f.dtcOnly && call.state.kind === "ok" && (
-        <p className="text-xs text-muted-foreground">
-          {dtcApplied
-            ? "DTC preset applied upstream (indexed DTC shops with at least 1 product) — excluded rows never cost credits."
-            : "DTC preset skipped for this exact-domain lookup — results are unfiltered by design."}
-        </p>
+      {call.state.kind === "ok" && (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+          <span>
+            Sorted by{" "}
+            <span className="font-medium text-foreground">
+              {SHOP_SORTS.find((s) => s.value === effectiveSort)?.label ?? effectiveSort}
+            </span>
+            {f.search.trim() !== "" && !sortTouched && " — auto-selected for text search"}
+          </span>
+          {f.dtcOnly && (
+            <span>
+              {dtcApplied
+                ? "· DTC preset applied upstream (indexed DTC shops with at least 1 product) — excluded rows never cost credits."
+                : "· DTC preset skipped for this exact-domain lookup — results are unfiltered by design."}
+            </span>
+          )}
+        </div>
       )}
 
       {allRows.length > 0 && (
