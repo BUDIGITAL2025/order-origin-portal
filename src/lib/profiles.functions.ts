@@ -117,6 +117,8 @@ export const completeSignup = createServerFn({ method: "POST" })
         contact_name: data.contact_name,
         phone: data.phone,
         status: "active",
+        // Acquisition context from the landing URL; null when absent.
+        signup_source: data.signup_source ?? null,
         // Stamped only when the signup form's Terms checkbox was checked.
         ...(data.terms_accepted
           ? { terms_version: TERMS_VERSION, terms_accepted_at: new Date().toISOString() }
