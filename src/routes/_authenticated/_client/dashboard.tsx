@@ -120,34 +120,59 @@ function DashboardPage() {
         }
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="pb-1">
-            <CardTitle className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              <Wallet className="h-3.5 w-3.5" /> Wallet balance
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="tnum text-2xl font-semibold">
-              {formatUSD(walletData?.balance ?? 0)}
-            </div>
-          </CardContent>
-        </Card>
-        {(["submitted", "quoted", "closed"] as const).map((status) => (
-          <Card key={status}>
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Reveal className="lg:col-span-1">
+          <Card className="group h-full border-primary/30 bg-primary/[0.04] transition-shadow hover:shadow-md">
             <CardHeader className="pb-1">
               <CardTitle className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                <ClipboardList className="h-3.5 w-3.5" /> {status} quotes
+                <Wallet className="h-3.5 w-3.5 text-primary" /> Wallet balance
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="tnum text-2xl font-semibold">{counts[status] ?? 0}</div>
+              <div className="text-4xl font-semibold leading-none">
+                <CountUp value={walletData?.balance ?? 0} format={formatUSD} />
+              </div>
+              <div className="mt-3">
+                <MiniSparkline values={walletSeries} height={34} className="h-9" />
+              </div>
+              <div className="mt-3 flex items-center justify-between gap-2">
+                <p className="text-xs text-muted-foreground">Funds available for orders</p>
+                <Button asChild size="sm" className="gap-1">
+                  <Link to="/billing">
+                    <Plus className="h-3.5 w-3.5" /> Top up
+                  </Link>
+                </Button>
+              </div>
             </CardContent>
           </Card>
-        ))}
+        </Reveal>
+
+        <div className="grid gap-4 sm:grid-cols-3 lg:col-span-2">
+          {(["submitted", "quoted", "closed"] as const).map((status, i) => (
+            <Reveal key={status} delay={80 * (i + 1)}>
+              <Card className="h-full transition-all hover:-translate-y-0.5 hover:shadow-md">
+                <CardHeader className="pb-1">
+                  <CardTitle className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    <ClipboardList className="h-3.5 w-3.5" /> {status} quotes
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-semibold leading-none">
+                    <CountUp value={counts[status] ?? 0} />
+                  </div>
+                  <div className="mt-3">
+                    <MiniSparkline values={quoteSeries[status]} />
+                  </div>
+                  <p className="mt-2 text-[11px] text-muted-foreground">Last 90 days</p>
+                </CardContent>
+              </Card>
+            </Reveal>
+          ))}
+        </div>
       </div>
 
       {store != null && (
+      <Reveal delay={320}>
       <Card className="mt-4">
         <CardHeader className="flex-row items-center justify-between pb-2">
           <CardTitle className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -155,60 +180,73 @@ function DashboardPage() {
           </CardTitle>
           <div className="flex items-center gap-2">
             {store?.fee_waived && <Badge variant="secondary">Fee waived</Badge>}
-            <span className="text-xs font-medium text-muted-foreground">
-              {planLabel(plan)} plan — {formatUSD(PLANS[plan].priceUsd)}/month
+            <Badge variant="outline" className="font-medium">
+              {planLabel(plan)} — {formatUSD(PLANS[plan].priceUsd)}/mo
               {store?.fee_waived ? " · not billed" : ""}
-            </span>
+            </Badge>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-wrap items-center gap-x-8 gap-y-2">
+          <div className="grid gap-4 md:grid-cols-[1.4fr_1fr_1fr] md:items-center">
             <div>
-              <div className="tnum text-xl font-semibold">
-                {quotesUsed}
-                <span className="text-sm font-normal text-muted-foreground">
-                  {" "}
-                  / {quota == null ? "unlimited" : `${quota} quotes`}
+              <div className="flex items-baseline gap-1.5">
+                <span className="tnum text-3xl font-semibold leading-none">{quotesUsed}</span>
+                <span className="text-sm text-muted-foreground">
+                  / {quota == null ? "unlimited" : quota} quotes used
                 </span>
               </div>
-              <div className="text-xs text-muted-foreground">
-                used this month
-                {store?.quotes_period_start
-                  ? ` · resets ${quotaResetDate(store.quotes_period_start)}`
-                  : ""}
-              </div>
-            </div>
-            {quota != null && (
-              <div className="min-w-40 flex-1">
-                <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+              {quota != null && (
+                <div className="mt-3 h-2.5 w-full overflow-hidden rounded-full bg-muted">
                   <div
                     className={
-                      "h-full rounded-full transition-all " +
+                      "h-full rounded-full transition-all duration-700 " +
                       (usagePercent >= 100
                         ? "bg-destructive"
                         : usagePercent >= 80
                           ? "bg-warning"
-                          : "bg-success")
+                          : "bg-primary")
                     }
                     style={{ width: `${usagePercent}%` }}
                   />
                 </div>
+              )}
+            </div>
+            <div className="rounded-lg border border-border/70 bg-muted/40 px-3 py-2">
+              <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                Resets on
               </div>
-            )}
-            {quota != null && quotesUsed >= quota && (
-              <p className="text-xs font-medium text-warning">
-                Monthly allowance reached — upgrade to Unlimited ($
-                {PLANS.unlimited.priceUsd}/month) for uncapped quote requests from the{" "}
-                <Link to="/quotes/new" className="underline">
-                  quote form
-                </Link>
-                .
-              </p>
-            )}
+              <div className="tnum text-sm font-medium">
+                {quotaResetDate(store.quotes_period_start)}
+              </div>
+              {daysToReset != null && (
+                <div className="text-xs text-muted-foreground">in {daysToReset} days</div>
+              )}
+            </div>
+            <div className="rounded-lg border border-border/70 bg-muted/40 px-3 py-2">
+              <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                Remaining
+              </div>
+              <div className="tnum text-sm font-medium">
+                {quota == null ? "Unlimited" : `${Math.max(0, quota - quotesUsed)} quotes`}
+              </div>
+              <div className="text-xs text-muted-foreground">this billing month</div>
+            </div>
           </div>
+          {quota != null && quotesUsed >= quota && (
+            <p className="mt-3 text-xs font-medium text-warning">
+              Monthly allowance reached — upgrade to Unlimited (${PLANS.unlimited.priceUsd}/month)
+              for uncapped quote requests from the{" "}
+              <Link to="/quotes/new" className="underline">
+                quote form
+              </Link>
+              .
+            </p>
+          )}
         </CardContent>
       </Card>
+      </Reveal>
       )}
+
 
       {showAutoTopupPrompt && (
         <Card className="mt-4 border-primary/40 bg-primary/5">
