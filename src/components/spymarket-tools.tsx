@@ -1036,6 +1036,7 @@ function ShopsTab({
   // Applied filter state — hydrated from the URL so shared links restore the view.
   const [f, setF] = React.useState<ShopsFilters>(() => shopsFiltersFromUrl(url, initialDomain));
   const [limit, setLimit] = React.useState(32);
+  const [typeaheadOpen, setTypeaheadOpen] = React.useState(false);
   // A text search ranked by traffic surfaces the giants instead of the match,
   // so we auto-switch to "Best match" until the user picks a sort themselves.
   const [sortTouched, setSortTouched] = React.useState(url["ssort"] != null);
@@ -1193,12 +1194,36 @@ function ShopsTab({
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={f.search}
-                onChange={(e) => setF((p) => ({ ...p, search: e.target.value }))}
+                onChange={(e) => {
+                  setF((p) => ({ ...p, search: e.target.value }));
+                  setTypeaheadOpen(true);
+                }}
+                onFocus={() => setTypeaheadOpen(true)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") void runSearch();
+                  if (e.key === "Escape") setTypeaheadOpen(false);
+                  if (e.key === "Enter") {
+                    setTypeaheadOpen(false);
+                    void runSearch();
+                  }
                 }}
                 placeholder="brand or shop name, domain, product (optional)"
                 className="rounded-full pl-9"
+              />
+              <SearchTypeahead
+                term={f.search}
+                open={typeaheadOpen}
+                onClose={() => setTypeaheadOpen(false)}
+                costs={costs}
+                limit={limit}
+                onPick={(s) => {
+                  setTypeaheadOpen(false);
+                  if (s.shopId) go({ tab: "shop", shopId: s.shopId });
+                  else if (s.url) go({ tab: "shops", domain: s.url });
+                }}
+                onSearchAll={() => {
+                  setTypeaheadOpen(false);
+                  void runSearch();
+                }}
               />
             </div>
             <Select
