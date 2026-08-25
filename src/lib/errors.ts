@@ -12,11 +12,11 @@
  *  - Anything else       → returned unchanged.
  */
 
-import { STILL_STUCK } from "./support";
+import { STILL_STUCK, SUPPORT_EMAIL } from "./support";
 
 const BARE_CODE_MESSAGES: Record<string, string> = {
   STORE_NOT_FOUND: `Workspace not found. Refresh the page and try again. ${STILL_STUCK}`,
-  ENTITY_NOT_FOUND: `Account not fully set up. Write to ${SUPPORT_EMAIL_INLINE}.`,
+  ENTITY_NOT_FOUND: `Account not fully set up. Write to ${SUPPORT_EMAIL}.`,
   QUOTE_NOT_FOUND: "Quote not found.",
   ORDER_NOT_FOUND: "Order not found.",
   DISPUTE_NOT_FOUND: "Claim not found.",
