@@ -464,7 +464,8 @@ export async function callMiddleware(
     return { ok: false, skipped: true };
   }
 
-  const url = `${baseUrl.replace(/\/+$/, "")}${args.endpoint}`;
+  const queryString = new URLSearchParams(args.query ?? {}).toString();
+  const url = `${baseUrl.replace(/\/+$/, "")}${args.endpoint}${queryString ? `?${queryString}` : ""}`;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), CALL_TIMEOUT_MS);
   try {
@@ -474,7 +475,9 @@ export async function callMiddleware(
         Authorization: `Bearer ${serviceToken}`,
         "Idempotency-Key": args.idempotencyKey,
         "Content-Type": "application/json",
+        ...(args.headers ?? {}),
       },
+
       ...(args.body === undefined ? {} : { body: JSON.stringify(args.body) }),
       signal: controller.signal,
     });
