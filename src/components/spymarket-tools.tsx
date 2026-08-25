@@ -4278,7 +4278,7 @@ function AdsTab({
   const [grouped, setGrouped] = React.useState(false);
   const [copySort, setCopySort] = React.useState<"usage" | "longestRunning">("longestRunning");
   const [limit, setLimit] = React.useState(24);
-  const [pages, setPages] = React.useState<Rec[][]>([]);
+  const [pages, setPages] = useSessionState<Rec[][]>("ads:pages", () => []);
   const [adDetailId, setAdDetailId] = React.useState<string | null>(null);
   const [preview, setPreview] = React.useState<CreativeTarget | null>(null);
 
