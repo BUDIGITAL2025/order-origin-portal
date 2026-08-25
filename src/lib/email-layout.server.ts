@@ -75,9 +75,7 @@ function legalName(): string {
 
 function supportAddress(): string {
   return (
-    process.env["SUPPORT_EMAIL"]?.trim() ||
-    process.env["EMAIL_FROM_ADDRESS"]?.trim() ||
-    "support@flysales.app"
+    process.env["SUPPORT_EMAIL"]?.trim() || "support@flysales.app"
   );
 }
 
