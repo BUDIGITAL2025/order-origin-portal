@@ -356,3 +356,211 @@ export async function runStoredEvent(
     return { ok: false, error: message };
   }
 }
+
+// ============= Phase 2: outbound release signal (C2 step 4) =============
+
+/**
+ * Middleware endpoint paths, kept in one place so a spec change is a one-line
+ * edit. `{id}` is the middleware_order_id.
+ */
+export const MIDDLEWARE_PATHS = {
+  approve: "/api/admin/orders/{id}/approve",
+  reject: "/api/admin/orders/{id}/reject",
+} as const;
+
+const CALL_TIMEOUT_MS = 10_000;
+
+export type CallOutcome =
+  | { ok: true; status: number; body: string }
+  | { ok: false; skipped: true }
+  | { ok: false; skipped?: false; status: number | null; error: string };
+
+/**
+ * Single outbound door to the middleware. Bearer token + stable
+ * Idempotency-Key, 10s timeout, every attempt audited in integration_calls.
+ * Carries identifiers only — never amounts or balances.
+ */
+export async function callMiddleware(
+  admin: Admin,
+  args: {
+    endpoint: string;
+    method?: "POST" | "GET" | "PATCH";
+    body?: unknown;
+    tenantId?: string | null;
+    idempotencyKey: string;
+  },
+): Promise<CallOutcome> {
+  const { baseUrl, serviceToken } = middlewareConfig();
+  const method = args.method ?? "POST";
+
+  if (!baseUrl || !serviceToken) {
+    console.error(
+      "[middleware:release] MIDDLEWARE_BASE_URL / MIDDLEWARE_SERVICE_TOKEN not configured — call skipped:",
+      `${method} ${args.endpoint}`,
+    );
+    await logIntegrationCall(admin, {
+      endpoint: args.endpoint,
+      tenantId: args.tenantId ?? null,
+      idempotencyKey: args.idempotencyKey,
+      statusCode: null,
+      ok: false,
+      error: "skipped_unconfigured",
+    });
+    return { ok: false, skipped: true };
+  }
+
+  const url = `${baseUrl.replace(/\/+$/, "")}${args.endpoint}`;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), CALL_TIMEOUT_MS);
+  try {
+    const response = await fetch(url, {
+      method,
+      headers: {
+        Authorization: `Bearer ${serviceToken}`,
+        "Idempotency-Key": args.idempotencyKey,
+        "Content-Type": "application/json",
+      },
+      ...(args.body === undefined ? {} : { body: JSON.stringify(args.body) }),
+      signal: controller.signal,
+    });
+    const text = (await response.text().catch(() => "")).slice(0, 1000);
+    await logIntegrationCall(admin, {
+      endpoint: args.endpoint,
+      tenantId: args.tenantId ?? null,
+      idempotencyKey: args.idempotencyKey,
+      statusCode: response.status,
+      ok: response.ok,
+      error: response.ok ? null : text || `HTTP ${response.status}`,
+    });
+    if (!response.ok) {
+      return { ok: false, status: response.status, error: text || `HTTP ${response.status}` };
+    }
+    return { ok: true, status: response.status, body: text };
+  } catch (e) {
+    const error = e instanceof Error ? `${e.name}: ${e.message}` : String(e);
+    await logIntegrationCall(admin, {
+      endpoint: args.endpoint,
+      tenantId: args.tenantId ?? null,
+      idempotencyKey: args.idempotencyKey,
+      statusCode: null,
+      ok: false,
+      error,
+    });
+    return { ok: false, status: null, error };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+type ReleaseRow = {
+  id: string;
+  middleware_order_id: string | null;
+  release_status: string | null;
+  release_sent_at: string | null;
+  release_attempts: number;
+  stores: { middleware_tenant_id: string | null } | null;
+};
+
+const RELEASABLE = ["pending", "failed", "skipped_unconfigured", "pending_reject"];
+
+/**
+ * Sends one queued release/reject. Never touches payment fields: money has
+ * already settled, the signal just catches up.
+ */
+async function sendRelease(admin: Admin, order: ReleaseRow) {
+  const middlewareOrderId = order.middleware_order_id;
+  if (!middlewareOrderId) return { order_id: order.id, status: "skipped" };
+
+  const isReject = order.release_status === "pending_reject";
+  // Never reject after a release already went out.
+  if (isReject && (order.release_sent_at || order.release_status === "sent")) {
+    return { order_id: order.id, status: "already_sent" };
+  }
+
+  const path = (isReject ? MIDDLEWARE_PATHS.reject : MIDDLEWARE_PATHS.approve).replace(
+    "{id}",
+    encodeURIComponent(middlewareOrderId),
+  );
+  const outcome = await callMiddleware(admin, {
+    endpoint: path,
+    method: "POST",
+    // Identifiers only — no amounts, no balances.
+    body: { middleware_order_id: middlewareOrderId, flysales_order_id: order.id },
+    tenantId: order.stores?.middleware_tenant_id ?? null,
+    idempotencyKey: `${isReject ? "reject-" : "release-"}${middlewareOrderId}`,
+  });
+
+  const nowIso = new Date().toISOString();
+  const update: Database["public"]["Tables"]["orders"]["Update"] = {
+    release_last_attempt_at: nowIso,
+    release_attempts: (order.release_attempts ?? 0) + 1,
+  };
+  let resultStatus: string;
+  if (outcome.ok) {
+    update["release_status"] = isReject ? "rejected" : "sent";
+    update["release_sent_at"] = nowIso;
+    update["release_error"] = null;
+    resultStatus = isReject ? "rejected" : "sent";
+  } else if (outcome.skipped) {
+    update["release_status"] = "skipped_unconfigured";
+    update["release_error"] = "Middleware base URL / service token not configured";
+    resultStatus = "skipped_unconfigured";
+  } else {
+    // Stay queued: the retry loop picks it up again.
+    update["release_status"] = isReject ? "pending_reject" : "pending";
+    update["release_error"] = outcome.error.slice(0, 1000);
+    resultStatus = "pending";
+  }
+  await admin.from("orders").update(update).eq("id", order.id);
+  return { order_id: order.id, status: resultStatus };
+}
+
+/**
+ * Drains the release queue. Safe to call from a payment path (best-effort),
+ * the retry cron, or an admin retry button — the idempotency key makes a
+ * duplicate send a no-op middleware-side.
+ */
+export async function dispatchPendingReleases(
+  admin: Admin,
+  opts?: { orderIds?: string[]; limit?: number },
+): Promise<Array<{ order_id: string; status: string }>> {
+  let query = admin
+    .from("orders")
+    .select(
+      "id, middleware_order_id, release_status, release_sent_at, release_attempts, stores(middleware_tenant_id)",
+    )
+    .eq("source", "middleware")
+    .in("release_status", RELEASABLE)
+    .order("release_last_attempt_at", { ascending: true, nullsFirst: true })
+    .limit(opts?.limit ?? 50);
+  if (opts?.orderIds?.length) query = query.in("id", opts.orderIds);
+
+  const { data, error } = await query;
+  if (error) {
+    console.error("[middleware:release] could not read release queue:", error.message);
+    return [];
+  }
+
+  const results: Array<{ order_id: string; status: string }> = [];
+  for (const row of (data ?? []) as unknown as ReleaseRow[]) {
+    results.push(await sendRelease(admin, row));
+  }
+  return results;
+}
+
+/**
+ * Best-effort release right after a payment settles. Swallows everything:
+ * a release failure must never surface on a money path — the retry cron
+ * catches up.
+ */
+export async function releaseAfterPayment(
+  admin: Admin,
+  orderIds: string[],
+): Promise<void> {
+  if (orderIds.length === 0) return;
+  try {
+    await dispatchPendingReleases(admin, { orderIds, limit: orderIds.length });
+  } catch (e) {
+    console.error("[middleware:release] post-payment dispatch failed:", e);
+  }
+}

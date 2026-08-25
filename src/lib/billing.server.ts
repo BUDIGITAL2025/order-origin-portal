@@ -510,6 +510,15 @@ export async function handleWalletTopup(
     }
   }
 
+  // Release middleware-sourced orders this top-up just paid (best-effort).
+  {
+    const { releaseAfterPayment } = await import("./middleware.server");
+    await releaseAfterPayment(
+      admin,
+      released.map((o) => o.order_id),
+    );
+  }
+
   const balance = await getWalletBalance(admin, entityId);
   const lines = [
     `Amount credited: $${(pi.amount_received / 100).toFixed(2)}`,
@@ -613,6 +622,12 @@ export async function handleOrderBatchPayment(
       settledIds.push(order.id);
       await admin.rpc("release_order_to_fulfilment", { p_order_id: order.id });
     }
+  }
+
+  // Middleware release for the orders this card payment settled (best-effort).
+  {
+    const { releaseAfterPayment } = await import("./middleware.server");
+    await releaseAfterPayment(admin, settledIds);
   }
 
   // Leftover = paid minus what actually settled (authoritative: the ledger

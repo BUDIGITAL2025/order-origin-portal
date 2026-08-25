@@ -1,0 +1,1 @@
+revoke all on function public.queue_middleware_release() from public, anon, authenticated;

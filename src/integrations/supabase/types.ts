@@ -698,6 +698,11 @@ export type Database = {
           payment_method:
             | Database["public"]["Enums"]["order_payment_method"]
             | null
+          release_attempts: number
+          release_error: string | null
+          release_last_attempt_at: string | null
+          release_sent_at: string | null
+          release_status: string | null
           reminder_24_sent_at: string | null
           reminder_48_sent_at: string | null
           reminder_72_sent_at: string | null
@@ -725,6 +730,11 @@ export type Database = {
           payment_method?:
             | Database["public"]["Enums"]["order_payment_method"]
             | null
+          release_attempts?: number
+          release_error?: string | null
+          release_last_attempt_at?: string | null
+          release_sent_at?: string | null
+          release_status?: string | null
           reminder_24_sent_at?: string | null
           reminder_48_sent_at?: string | null
           reminder_72_sent_at?: string | null
@@ -752,6 +762,11 @@ export type Database = {
           payment_method?:
             | Database["public"]["Enums"]["order_payment_method"]
             | null
+          release_attempts?: number
+          release_error?: string | null
+          release_last_attempt_at?: string | null
+          release_sent_at?: string | null
+          release_status?: string | null
           reminder_24_sent_at?: string | null
           reminder_48_sent_at?: string | null
           reminder_72_sent_at?: string | null
@@ -1548,6 +1563,11 @@ export type Database = {
           payment_method:
             | Database["public"]["Enums"]["order_payment_method"]
             | null
+          release_attempts: number
+          release_error: string | null
+          release_last_attempt_at: string | null
+          release_sent_at: string | null
+          release_status: string | null
           reminder_24_sent_at: string | null
           reminder_48_sent_at: string | null
           reminder_72_sent_at: string | null
@@ -1713,6 +1733,11 @@ export type Database = {
           payment_method:
             | Database["public"]["Enums"]["order_payment_method"]
             | null
+          release_attempts: number
+          release_error: string | null
+          release_last_attempt_at: string | null
+          release_sent_at: string | null
+          release_status: string | null
           reminder_24_sent_at: string | null
           reminder_48_sent_at: string | null
           reminder_72_sent_at: string | null
@@ -1755,6 +1780,11 @@ export type Database = {
           payment_method:
             | Database["public"]["Enums"]["order_payment_method"]
             | null
+          release_attempts: number
+          release_error: string | null
+          release_last_attempt_at: string | null
+          release_sent_at: string | null
+          release_status: string | null
           reminder_24_sent_at: string | null
           reminder_48_sent_at: string | null
           reminder_72_sent_at: string | null
@@ -1839,6 +1869,11 @@ export type Database = {
           payment_method:
             | Database["public"]["Enums"]["order_payment_method"]
             | null
+          release_attempts: number
+          release_error: string | null
+          release_last_attempt_at: string | null
+          release_sent_at: string | null
+          release_status: string | null
           reminder_24_sent_at: string | null
           reminder_48_sent_at: string | null
           reminder_72_sent_at: string | null
@@ -1882,6 +1917,11 @@ export type Database = {
           payment_method:
             | Database["public"]["Enums"]["order_payment_method"]
             | null
+          release_attempts: number
+          release_error: string | null
+          release_last_attempt_at: string | null
+          release_sent_at: string | null
+          release_status: string | null
           reminder_24_sent_at: string | null
           reminder_48_sent_at: string | null
           reminder_72_sent_at: string | null

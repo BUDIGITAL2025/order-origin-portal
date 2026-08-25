@@ -321,6 +321,13 @@ export const payOrdersFromWallet = createServerFn({ method: "POST" })
           console.error("order receipt failed:", row.order_id, e);
         }
       }
+      // Middleware-sourced orders: tell the fulfilment engine to dispatch.
+      // Best-effort — the retry cron catches up, payment is never blocked.
+      const { releaseAfterPayment } = await import("./middleware.server");
+      await releaseAfterPayment(
+        admin,
+        rows.map((r) => r.order_id),
+      );
     }
     return { settled: rows };
   });

@@ -51,6 +51,7 @@ import { Route as AuthenticatedAdminQuotesIdRouteImport } from './routes/_authen
 import { Route as ApiPublicCronAutoTopupRouteImport } from './routes/api/public/cron/auto-topup'
 import { Route as ApiPublicCronDailyDigestRouteImport } from './routes/api/public/cron/daily-digest'
 import { Route as ApiPublicCronDocumentsSweepRouteImport } from './routes/api/public/cron/documents-sweep'
+import { Route as ApiPublicCronMiddlewareRetryRouteImport } from './routes/api/public/cron/middleware-retry'
 import { Route as ApiPublicCronOrderExpiryRouteImport } from './routes/api/public/cron/order-expiry'
 import { Route as ApiPublicMiddlewareWebhookRouteImport } from './routes/api/public/middleware/webhook'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
@@ -295,6 +296,12 @@ const ApiPublicCronDocumentsSweepRoute =
     path: '/api/public/cron/documents-sweep',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicCronMiddlewareRetryRoute =
+  ApiPublicCronMiddlewareRetryRouteImport.update({
+    id: '/api/public/cron/middleware-retry',
+    path: '/api/public/cron/middleware-retry',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicCronOrderExpiryRoute =
   ApiPublicCronOrderExpiryRouteImport.update({
     id: '/api/public/cron/order-expiry',
@@ -352,6 +359,7 @@ export interface FileRoutesByFullPath {
   '/api/public/cron/auto-topup': typeof ApiPublicCronAutoTopupRoute
   '/api/public/cron/daily-digest': typeof ApiPublicCronDailyDigestRoute
   '/api/public/cron/documents-sweep': typeof ApiPublicCronDocumentsSweepRoute
+  '/api/public/cron/middleware-retry': typeof ApiPublicCronMiddlewareRetryRoute
   '/api/public/cron/order-expiry': typeof ApiPublicCronOrderExpiryRoute
   '/api/public/middleware/webhook': typeof ApiPublicMiddlewareWebhookRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
@@ -397,6 +405,7 @@ export interface FileRoutesByTo {
   '/api/public/cron/auto-topup': typeof ApiPublicCronAutoTopupRoute
   '/api/public/cron/daily-digest': typeof ApiPublicCronDailyDigestRoute
   '/api/public/cron/documents-sweep': typeof ApiPublicCronDocumentsSweepRoute
+  '/api/public/cron/middleware-retry': typeof ApiPublicCronMiddlewareRetryRoute
   '/api/public/cron/order-expiry': typeof ApiPublicCronOrderExpiryRoute
   '/api/public/middleware/webhook': typeof ApiPublicMiddlewareWebhookRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
@@ -445,6 +454,7 @@ export interface FileRoutesById {
   '/api/public/cron/auto-topup': typeof ApiPublicCronAutoTopupRoute
   '/api/public/cron/daily-digest': typeof ApiPublicCronDailyDigestRoute
   '/api/public/cron/documents-sweep': typeof ApiPublicCronDocumentsSweepRoute
+  '/api/public/cron/middleware-retry': typeof ApiPublicCronMiddlewareRetryRoute
   '/api/public/cron/order-expiry': typeof ApiPublicCronOrderExpiryRoute
   '/api/public/middleware/webhook': typeof ApiPublicMiddlewareWebhookRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
@@ -492,6 +502,7 @@ export interface FileRouteTypes {
     | '/api/public/cron/auto-topup'
     | '/api/public/cron/daily-digest'
     | '/api/public/cron/documents-sweep'
+    | '/api/public/cron/middleware-retry'
     | '/api/public/cron/order-expiry'
     | '/api/public/middleware/webhook'
     | '/api/public/payments/webhook'
@@ -537,6 +548,7 @@ export interface FileRouteTypes {
     | '/api/public/cron/auto-topup'
     | '/api/public/cron/daily-digest'
     | '/api/public/cron/documents-sweep'
+    | '/api/public/cron/middleware-retry'
     | '/api/public/cron/order-expiry'
     | '/api/public/middleware/webhook'
     | '/api/public/payments/webhook'
@@ -584,6 +596,7 @@ export interface FileRouteTypes {
     | '/api/public/cron/auto-topup'
     | '/api/public/cron/daily-digest'
     | '/api/public/cron/documents-sweep'
+    | '/api/public/cron/middleware-retry'
     | '/api/public/cron/order-expiry'
     | '/api/public/middleware/webhook'
     | '/api/public/payments/webhook'
@@ -602,6 +615,7 @@ export interface RootRouteChildren {
   ApiPublicCronAutoTopupRoute: typeof ApiPublicCronAutoTopupRoute
   ApiPublicCronDailyDigestRoute: typeof ApiPublicCronDailyDigestRoute
   ApiPublicCronDocumentsSweepRoute: typeof ApiPublicCronDocumentsSweepRoute
+  ApiPublicCronMiddlewareRetryRoute: typeof ApiPublicCronMiddlewareRetryRoute
   ApiPublicCronOrderExpiryRoute: typeof ApiPublicCronOrderExpiryRoute
   ApiPublicMiddlewareWebhookRoute: typeof ApiPublicMiddlewareWebhookRoute
   ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
@@ -903,6 +917,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCronDocumentsSweepRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/cron/middleware-retry': {
+      id: '/api/public/cron/middleware-retry'
+      path: '/api/public/cron/middleware-retry'
+      fullPath: '/api/public/cron/middleware-retry'
+      preLoaderRoute: typeof ApiPublicCronMiddlewareRetryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/cron/order-expiry': {
       id: '/api/public/cron/order-expiry'
       path: '/api/public/cron/order-expiry'
@@ -1069,6 +1090,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicCronAutoTopupRoute: ApiPublicCronAutoTopupRoute,
   ApiPublicCronDailyDigestRoute: ApiPublicCronDailyDigestRoute,
   ApiPublicCronDocumentsSweepRoute: ApiPublicCronDocumentsSweepRoute,
+  ApiPublicCronMiddlewareRetryRoute: ApiPublicCronMiddlewareRetryRoute,
   ApiPublicCronOrderExpiryRoute: ApiPublicCronOrderExpiryRoute,
   ApiPublicMiddlewareWebhookRoute: ApiPublicMiddlewareWebhookRoute,
   ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
