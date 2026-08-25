@@ -5081,17 +5081,36 @@ function EmailDetailDialog({
   );
 }
 
-function EmailsTab({ costs }: { costs?: EndpointCosts | undefined }) {
+function EmailsTab({
+  costs,
+  scopeDomain,
+}: {
+  costs?: EndpointCosts | undefined;
+  scopeDomain?: string | undefined;
+}) {
   const queryEmails = useServerFn(spymarketQueryEmails);
-  const call = useMeteredCall(queryEmails as ServerFnLike);
+  const call = useMeteredCall(queryEmails as ServerFnLike, "emails");
 
-  const [search, setSearch] = React.useState("");
+  // An active shop context pre-fills the search — it never fires a paid call.
+  const [search, setSearch] = React.useState(scopeDomain ?? "");
   const [searchType, setSearchType] = React.useState("domain");
   const [sortBy, setSortBy] = React.useState("newest");
   const [campaignType, setCampaignType] = React.useState("");
   const [limit, setLimit] = React.useState(24);
-  const [pages, setPages] = React.useState<Rec[][]>([]);
+  const [pages, setPages] = useSessionState<Rec[][]>("emails:pages", () => []);
   const [emailDetailId, setEmailDetailId] = React.useState<string | number | null>(null);
+
+  // Follow the active shop context when it changes while the tab is mounted.
+  const lastScopeRef = React.useRef(scopeDomain);
+  React.useEffect(() => {
+    if (scopeDomain !== lastScopeRef.current) {
+      lastScopeRef.current = scopeDomain;
+      if (scopeDomain) {
+        setSearch(scopeDomain);
+        setSearchType("domain");
+      }
+    }
+  }, [scopeDomain]);
 
   const buildInput = (page: number): Record<string, unknown> => ({
     ...(search.trim() ? { search: search.trim() } : {}),
