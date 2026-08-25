@@ -38,6 +38,7 @@ import {
 } from "@/components/ui/table";
 import { formatDateTime, formatUSD } from "@/lib/format";
 import { adminListOrders, adminSetOrderTracking } from "@/lib/orders.functions";
+import { adminListDisputes } from "@/lib/disputes.functions";
 import { orderTrackingSchema } from "@/lib/schemas";
 
 export const Route = createFileRoute("/_authenticated/admin/orders")({
@@ -78,6 +79,7 @@ function workspaceOf(order: AdminOrder) {
 
 function AdminOrdersPage() {
   const fetchOrders = useServerFn(adminListOrders);
+  const fetchDisputes = useServerFn(adminListDisputes);
   const { data, isPending } = useQuery({
     queryKey: ["admin-orders"],
     queryFn: fetchOrders,
@@ -87,7 +89,16 @@ function AdminOrdersPage() {
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [search, setSearch] = useState("");
 
+  const { data: disputes } = useQuery({
+    queryKey: ["admin-disputes", "all"],
+    queryFn: () => fetchDisputes({ data: {} }),
+  });
+
   const rows = useMemo(() => data?.orders ?? [], [data]);
+  const disputedOrderIds = useMemo(
+    () => new Set((disputes ?? []).map((d) => d.order_id)),
+    [disputes],
+  );
 
   const counts = useMemo(() => {
     const base: Record<string, number> = {
@@ -99,10 +110,10 @@ function AdminOrdersPage() {
     };
     for (const o of rows) {
       if (o.status in base) base[o.status] = (base[o.status] ?? 0) + 1;
-      if (o.status === "disputed") base["disputed"] = (base["disputed"] ?? 0) + 1;
     }
+    base["disputed"] = disputedOrderIds.size;
     return base;
-  }, [rows]);
+  }, [rows, disputedOrderIds]);
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -112,7 +123,8 @@ function AdminOrdersPage() {
       list = list.filter((o) => o.status === "processing" || o.status === "shipped");
     else if (tab === "delivered") list = list.filter((o) => o.status === "delivered");
     else if (tab === "needs_review") list = list.filter((o) => o.status === "needs_review");
-    if (statusFilter) list = list.filter((o) => o.status === statusFilter);
+    if (statusFilter === "disputed") list = list.filter((o) => disputedOrderIds.has(o.id));
+    else if (statusFilter) list = list.filter((o) => o.status === statusFilter);
     if (term) {
       list = list.filter((o) =>
         [
@@ -127,7 +139,7 @@ function AdminOrdersPage() {
       );
     }
     return list;
-  }, [rows, tab, statusFilter, search]);
+  }, [rows, tab, statusFilter, search, disputedOrderIds]);
 
   return (
     <div>
@@ -243,7 +255,7 @@ function AdminOrdersPage() {
                             <RowAction
                               label={order.tracking_number ? "Edit tracking" : "Add tracking"}
                               icon={Truck}
-                              tone={order.tracking_number ? undefined : "primary"}
+                              {...(order.tracking_number ? {} : { tone: "primary" as const })}
                               onClick={() => setTrackingOrder(order)}
                             />
                           </RowActions>
