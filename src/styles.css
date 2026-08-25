@@ -88,15 +88,16 @@
   --text-muted: #6b7280;
   --border: #e5e7e3;
 
-  --accent: #b4e600;
-  --accent-hover: #a2cf00;
+  /* Canonical brand accent — one exact value in both themes. */
+  --accent: #a2ff00;
+  --accent-hover: #8fe000;
   --accent-fg: #1a2000;
-  --ring: #7fa500;
+  --ring: #8fe000;
 
   --sidebar-bg: #1c2024;
   --sidebar-fg: #a8aeb4;
   --sidebar-fg-active: #ffffff;
-  --sidebar-active-bg: rgba(180, 230, 0, 0.12);
+  --sidebar-active-bg: rgba(162, 255, 0, 0.12);
 
   --success: #16a34a;
   --warning: #d97706;
@@ -109,7 +110,7 @@
   --entry-fg: #f2f3f5;
   --entry-muted: #9ba1a8;
   --entry-line: rgba(255, 255, 255, 0.08);
-  --entry-accent: #b4e600;
+  --entry-accent: #a2ff00;
   --entry-accent-fg: #0a0b0d;
 }
 
@@ -125,16 +126,16 @@
   --text-muted: #9ba1a8;
   --border: rgba(255, 255, 255, 0.08);
 
-  --accent: #c4f520;
-  --accent-hover: #b0de1c;
-  --accent-fg: #10160a;
-  --ring: #c4f520;
+  --accent: #a2ff00;
+  --accent-hover: #8fe000;
+  --accent-fg: #1a2000;
+  --ring: #a2ff00;
 
   /* Sidebar sits a touch above the canvas, same family as the surfaces. */
   --sidebar-bg: #16181b;
   --sidebar-fg: #9ba1a8;
   --sidebar-fg-active: #f2f3f5;
-  --sidebar-active-bg: rgba(196, 245, 32, 0.12);
+  --sidebar-active-bg: rgba(162, 255, 0, 0.12);
 
   --success: #4ade80;
   --warning: #fbbf24;
