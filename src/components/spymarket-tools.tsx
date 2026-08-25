@@ -10,14 +10,17 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowDownRight,
+  ArrowLeft,
   ArrowRight,
   ArrowUpRight,
   Bookmark,
   BookmarkCheck,
   Check,
   ChevronDown,
+  ChevronRight,
   ChevronUp,
   Copy,
+  X,
   Database,
   Download,
   Maximize2,
@@ -290,15 +293,53 @@ type CallState =
 
 type ServerFnLike = (opts: { data: Record<string, unknown> }) => Promise<ToolResult<unknown>>;
 
-function useMeteredCall(fn: ServerFnLike) {
-  const [state, setState] = React.useState<CallState>({ kind: "idle" });
+/**
+ * Session-scoped memory for tab state. Leaving a tab (or drilling into a shop)
+ * unmounts its component; on return we rehydrate results, filters and paging
+ * from here instead of re-firing a paid call. Lives for the browser session
+ * only — a reload starts clean.
+ */
+const sessionMemory = new Map<string, unknown>();
+
+/** useState that survives unmount/remount within the session, keyed by `key`. */
+function useSessionState<T>(key: string, initial: () => T): [T, React.Dispatch<React.SetStateAction<T>>] {
+  const [value, setValue] = React.useState<T>(() =>
+    sessionMemory.has(key) ? (sessionMemory.get(key) as T) : initial(),
+  );
+  React.useEffect(() => {
+    sessionMemory.set(key, value);
+  }, [key, value]);
+  return [value, setValue];
+}
+
+/**
+ * @param persistKey when set, the last successful result is remembered for the
+ * session so returning to the tab costs zero credits.
+ */
+function useMeteredCall(fn: ServerFnLike, persistKey?: string) {
+  const [state, setState] = React.useState<CallState>(() => {
+    if (persistKey) {
+      const cached = sessionMemory.get(`call:${persistKey}`) as CallState | undefined;
+      if (cached && cached.kind === "ok") return cached;
+    }
+    return { kind: "idle" };
+  });
   const pendingRef = React.useRef<(() => void) | null>(null);
-  const lastInputRef = React.useRef<Record<string, unknown> | null>(null);
+  const lastInputRef = React.useRef<Record<string, unknown> | null>(
+    persistKey
+      ? ((sessionMemory.get(`input:${persistKey}`) as Record<string, unknown> | null) ?? null)
+      : null,
+  );
   const queryClient = useQueryClient();
+
+  React.useEffect(() => {
+    if (persistKey && state.kind === "ok") sessionMemory.set(`call:${persistKey}`, state);
+  }, [persistKey, state]);
 
   const execute = React.useCallback(
     async (input: Record<string, unknown>, confirmOverage?: boolean) => {
       lastInputRef.current = input;
+      if (persistKey) sessionMemory.set(`input:${persistKey}`, input);
       setState({ kind: "loading" });
       try {
         const result = await fn({
@@ -337,7 +378,7 @@ function useMeteredCall(fn: ServerFnLike) {
         }
       }
     },
-    [fn, queryClient],
+    [fn, queryClient, persistKey],
   );
 
   const confirm = React.useCallback(() => {
@@ -349,7 +390,10 @@ function useMeteredCall(fn: ServerFnLike) {
     pendingRef.current = null;
     setState({ kind: "idle" });
   }, []);
-  const reset = React.useCallback(() => setState({ kind: "idle" }), []);
+  const reset = React.useCallback(() => {
+    if (persistKey) sessionMemory.delete(`call:${persistKey}`);
+    setState({ kind: "idle" });
+  }, [persistKey]);
   /** Re-fire the exact same query (e.g. after a timeout). */
   const retry = React.useCallback(() => {
     const input = lastInputRef.current;
@@ -500,8 +544,19 @@ export interface SpyMarketToolsProps {
   domain?: string | undefined;
   /** Full validated search params — filters/sort hydrate from the URL. */
   search: Record<string, string | undefined>;
-  /** Merge a patch into the URL query string (shareable filtered views). */
-  go: (patch: Record<string, string | undefined>) => void;
+  /**
+   * Merge a patch into the URL query string (shareable filtered views).
+   * `{ push: true }` creates a history entry — used for tab and shop-context
+   * changes so browser back/forward walks between searches and details.
+   */
+  go: (patch: Record<string, string | undefined>, opts?: { push?: boolean }) => void;
+}
+
+/** The shop currently held as active context, as carried in the URL. */
+interface ActiveShop {
+  shopId: string | undefined;
+  domain: string | undefined;
+  name: string | undefined;
 }
 
 const TOOL_TABS: ReadonlyArray<{ id: string; label: string; badge?: string }> = [
@@ -558,6 +613,17 @@ export function SpyMarketTools({ tab, shopId, domain, search, go }: SpyMarketToo
     );
   }
 
+  const activeShop: ActiveShop | null =
+    search["shop"] || shopId
+      ? { shopId, domain: search["shop"], name: search["shopName"] }
+      : null;
+
+  const clearShop = () =>
+    go(
+      { shop: undefined, shopName: undefined, shopId: undefined, from: undefined, auto: undefined },
+      { push: true },
+    );
+
   return (
     <div className="space-y-6">
       <Header status={status} />
@@ -569,7 +635,7 @@ export function SpyMarketTools({ tab, shopId, domain, search, go }: SpyMarketToo
             variant={tab === t.id ? "default" : "outline"}
             size="sm"
             className="rounded-full"
-            onClick={() => go({ tab: t.id })}
+            onClick={() => go({ tab: t.id }, { push: true })}
           >
             {t.label}
             {t.badge && (
@@ -584,14 +650,137 @@ export function SpyMarketTools({ tab, shopId, domain, search, go }: SpyMarketToo
         ))}
       </div>
 
+      {activeShop && tab !== "usage" && (
+        <ActiveShopBar shop={activeShop} tab={tab} go={go} onClear={clearShop} />
+      )}
+
       {tab === "lookup" && <LookupTab go={go} costs={status.endpointCosts} />}
       {tab === "shops" && (
         <ShopsTab go={go} initialDomain={domain} costs={status.endpointCosts} url={search} />
       )}
-      {tab === "shop" && <ShopDetailTab shopId={shopId} go={go} costs={status.endpointCosts} />}
+      {tab === "shop" && (
+        <ShopDetailTab
+          shopId={shopId}
+          go={go}
+          costs={status.endpointCosts}
+          backTab={search["from"]}
+          autoLoad={search["auto"] === "1"}
+          contextDomain={search["shop"]}
+        />
+      )}
       {tab === "ads" && <AdsTab costs={status.endpointCosts} url={search} go={go} />}
-      {tab === "emails" && <EmailsTab costs={status.endpointCosts} />}
+      {tab === "emails" && (
+        <EmailsTab costs={status.endpointCosts} scopeDomain={search["shop"]} />
+      )}
       {tab === "usage" && <UsageTab />}
+    </div>
+  );
+}
+
+/**
+ * Active-shop context bar. Purely navigational: it pre-fills the scoped tabs
+ * and never fires a paid call by itself.
+ */
+function ActiveShopBar({
+  shop,
+  tab,
+  go,
+  onClear,
+}: {
+  shop: ActiveShop;
+  tab: string;
+  go: SpyMarketToolsProps["go"];
+  onClear: () => void;
+}) {
+  const label = shop.name ?? shop.domain ?? "Selected shop";
+  const scoped = tab === "ads" || tab === "emails" || tab === "shop";
+  return (
+    <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-primary/30 bg-primary/5 px-4 py-2.5">
+      <div className="flex min-w-0 items-center gap-2.5">
+        {shop.domain ? (
+          <img
+            src={`https://www.google.com/s2/favicons?domain=${shop.domain}&sz=64`}
+            alt=""
+            className="h-6 w-6 shrink-0 rounded-md border bg-background"
+          />
+        ) : (
+          <Store className="h-4 w-4 shrink-0 text-primary" />
+        )}
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold leading-tight">{label}</p>
+          {shop.domain && (
+            <p className="truncate font-mono text-[11px] text-muted-foreground">{shop.domain}</p>
+          )}
+        </div>
+      </div>
+      <Badge variant="secondary" className="rounded-full text-[10px]">
+        active context
+      </Badge>
+      <span className="text-xs text-muted-foreground">
+        {scoped
+          ? "This tab is scoped to this shop — fetches still need your explicit action."
+          : "Ad library and Emails will pre-fill with this shop."}
+      </span>
+      <div className="ml-auto flex items-center gap-1.5">
+        {shop.shopId && tab !== "shop" && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="rounded-full"
+            onClick={() => go({ tab: "shop", shopId: shop.shopId, from: tab }, { push: true })}
+          >
+            <Store className="mr-1.5 h-3.5 w-3.5" />
+            Shop detail
+          </Button>
+        )}
+        <Button
+          size="sm"
+          variant="ghost"
+          className="rounded-full"
+          onClick={onClear}
+          aria-label="Clear active shop"
+          title="Clear active shop"
+        >
+          <X className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/** Breadcrumb + back control shown at the top of every drill-down view. */
+function BackBar({
+  backTab,
+  go,
+  trail,
+}: {
+  backTab: string | undefined;
+  go: SpyMarketToolsProps["go"];
+  trail: string;
+}) {
+  const target = TOOL_TABS.find((t) => t.id === (backTab ?? "shops")) ?? TOOL_TABS[1]!;
+  return (
+    <div className="flex flex-wrap items-center gap-3">
+      <Button
+        size="sm"
+        variant="outline"
+        className="rounded-full"
+        onClick={() => go({ tab: target.id, auto: undefined }, { push: true })}
+      >
+        <ArrowLeft className="mr-1.5 h-3.5 w-3.5" />
+        Back to {target.label.toLowerCase()}
+      </Button>
+      <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        <button
+          type="button"
+          className="hover:text-foreground hover:underline"
+          onClick={() => go({ tab: target.id, auto: undefined }, { push: true })}
+        >
+          {target.label}
+        </button>
+        <ChevronRight className="h-3 w-3" />
+        <span className="font-medium text-foreground">{trail}</span>
+      </nav>
     </div>
   );
 }
@@ -634,11 +823,11 @@ function LookupTab({
   costs: EndpointCosts | undefined;
 }) {
   const lookup = useServerFn(spymarketLookup);
-  const call = useMeteredCall(lookup as ServerFnLike);
-  const [q, setQ] = React.useState("");
+  const call = useMeteredCall(lookup as ServerFnLike, "lookup");
+  const [q, setQ] = useSessionState("lookup:q", () => "");
   // Term of the last submitted lookup — drives the honest timeout message and
   // the opt-in Shop Explorer fallback (never fired automatically: it is paid).
-  const [lastTerm, setLastTerm] = React.useState("");
+  const [lastTerm, setLastTerm] = useSessionState("lookup:term", () => "");
   const run = React.useCallback(
     (term: string) => {
       setLastTerm(term);
@@ -716,7 +905,7 @@ function LookupTab({
         <p className="text-sm text-muted-foreground">No matches for that query.</p>
       )}
 
-      <div className="grid gap-3">
+      <div className="grid gap-2">
         {results.map((item, i) => {
           const shop = asRec(item["shop"]);
           const advertiser = asRec(item["advertiser"]);
@@ -729,43 +918,102 @@ function LookupTab({
             asStr(item["websiteUrl"]);
           const shopId = asStr(shop["id"]);
           const activeAds = asNum(shop["activeAds"] ?? advertiser["activeAds"]);
-          const visits = asNum(shop["monthlyVisits"]);
+          const visits = asNum(shop["monthlyVisits"] ?? item["monthlyVisits"]);
           const reach = asNum(advertiser["reach30d"]);
-          const domainForExplorer = url?.replace(/^https?:\/\//, "").replace(/\/.*$/, "") ?? null;
+          const category =
+            asStr(asRec(shop["category"])["name"]) ??
+            asStr(shop["category"]) ??
+            asStr(item["category"]);
+          const countries =
+            asArr(shop["countries"]).length > 0
+              ? shop["countries"]
+              : asArr(advertiser["countries"]).length > 0
+                ? advertiser["countries"]
+                : item["countries"];
+          const domain =
+            asStr(shop["domain"]) ??
+            asStr(item["domain"]) ??
+            url?.replace(/^https?:\/\//, "").replace(/\/.*$/, "") ??
+            null;
+
+          // One click straight in: the row itself opens Shop detail with the
+          // shop loaded, and the shop becomes the active context.
+          const openDetail = () =>
+            go(
+              {
+                tab: "shop",
+                shopId: shopId ?? undefined,
+                shop: domain ?? undefined,
+                shopName: name,
+                from: "lookup",
+                auto: shopId ? "1" : undefined,
+              },
+              { push: true },
+            );
 
           return (
-            <Card key={i} className="rounded-2xl">
-              <CardContent className="flex flex-wrap items-center gap-3 p-4">
+            <Card
+              key={i}
+              role={shopId ? "button" : undefined}
+              tabIndex={shopId ? 0 : undefined}
+              onClick={shopId ? openDetail : undefined}
+              onKeyDown={
+                shopId
+                  ? (e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        openDetail();
+                      }
+                    }
+                  : undefined
+              }
+              className={cn(
+                "rounded-2xl transition-colors",
+                shopId && "cursor-pointer hover:border-primary/50 hover:bg-muted/40",
+              )}
+            >
+              <CardContent className="flex flex-wrap items-center gap-3 p-3.5">
                 <Badge variant="secondary" className="rounded-full capitalize">
                   {type}
                 </Badge>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium">{name}</p>
-                  {url && <p className="truncate text-xs text-muted-foreground">{url}</p>}
+                  <p className="truncate text-sm font-semibold leading-tight">{name}</p>
+                  <div className="mt-0.5 flex flex-wrap items-center gap-2">
+                    {domain ? (
+                      <span className="truncate font-mono text-[11px] text-muted-foreground">
+                        {domain}
+                      </span>
+                    ) : (
+                      <span className="text-[11px] text-muted-foreground">no domain in payload</span>
+                    )}
+                    {category && (
+                      <Badge variant="outline" className="rounded-full px-1.5 py-0 text-[10px]">
+                        {category}
+                      </Badge>
+                    )}
+                  </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                  {activeAds != null && <span>{fmtInt(activeAds)} active ads</span>}
-                  {visits != null && <span>{fmtCompact(visits)} visits/mo</span>}
-                  {reach != null && <span>{fmtCompact(reach)} reach 30d</span>}
+                  {activeAds != null && <span className="tnum">{fmtInt(activeAds)} active ads</span>}
+                  {visits != null && <span className="tnum">{fmtCompact(visits)} visits/mo</span>}
+                  {reach != null && <span className="tnum">{fmtCompact(reach)} reach 30d</span>}
+                  <CountryChips list={countries} max={4} />
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-1.5" onClick={(e) => e.stopPropagation()}>
                   {shopId && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="rounded-full"
-                      onClick={() => go({ tab: "shop", shopId })}
-                    >
+                    <Button size="sm" variant="outline" className="rounded-full" onClick={openDetail}>
                       <Store className="mr-1.5 h-3.5 w-3.5" />
-                      Shop detail
+                      Open
                     </Button>
                   )}
-                  {domainForExplorer && (
+                  {domain && (
                     <Button
                       size="sm"
                       variant="ghost"
                       className="rounded-full"
-                      onClick={() => go({ tab: "shops", domain: domainForExplorer })}
+                      onClick={() =>
+                        go({ tab: "shops", domain, shop: domain, shopName: name }, { push: true })
+                      }
                     >
                       Find in explorer
                       <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
@@ -777,6 +1025,17 @@ function LookupTab({
           );
         })}
       </div>
+
+      {call.state.kind === "ok" && results.length > 0 && (
+        <details className="rounded-2xl border bg-muted/30 p-3">
+          <summary className="cursor-pointer text-xs font-medium text-muted-foreground">
+            Raw lookup payload (free endpoint — confirms available fields)
+          </summary>
+          <div className="mt-2">
+            <RawJson data={call.state.result.data} />
+          </div>
+        </details>
+      )}
     </div>
   );
 }
@@ -1391,7 +1650,9 @@ function ShopsTab({
   url: Record<string, string | undefined>;
 }) {
   const queryShops = useServerFn(spymarketQueryShops);
-  const call = useMeteredCall(queryShops as ServerFnLike);
+  // Persisted for the session: coming back from a shop detail restores the
+  // exact result set from memory — zero credits.
+  const call = useMeteredCall(queryShops as ServerFnLike, "shops");
   const categoriesFn = useServerFn(spymarketCategories);
 
   // Applied filter state — hydrated from the URL so shared links restore the view.
@@ -1402,7 +1663,7 @@ function ShopsTab({
   // so we auto-switch to "Best match" until the user picks a sort themselves.
   const [sortTouched, setSortTouched] = React.useState(url["ssort"] != null);
   const effectiveSort = f.search.trim() !== "" && !sortTouched ? "relevance" : f.sortBy;
-  const [pages, setPages] = React.useState<Rec[][]>([]);
+  const [pages, setPages] = useSessionState<Rec[][]>("shops:pages", () => []);
 
   const { data: categories } = useQuery({
     queryKey: ["spymarket-categories"],
@@ -1492,7 +1753,10 @@ function ShopsTab({
   };
 
   // Accumulate pages; a fresh search replaces, load-more appends.
-  const lastResultRef = React.useRef<ToolOk<unknown> | null>(null);
+  // Seeded from the restored result so remounting never re-appends the page.
+  const lastResultRef = React.useRef<ToolOk<unknown> | null>(
+    call.state.kind === "ok" ? call.state.result : null,
+  );
   React.useEffect(() => {
     if (call.state.kind === "ok" && call.state.result !== lastResultRef.current) {
       lastResultRef.current = call.state.result;
@@ -1507,6 +1771,9 @@ function ShopsTab({
   React.useEffect(() => {
     if (autoRanRef.current) return;
     autoRanRef.current = true;
+    // Back-navigation: results are already restored from session memory —
+    // never re-fire the paid search.
+    if (pages.length > 0) return;
     const hadParams = Boolean(
       initialDomain ||
         url["sq"] || url["vmin"] || url["vmax"] || url["amin"] || url["amax"] ||
@@ -1641,8 +1908,19 @@ function ShopsTab({
                 limit={limit}
                 onPick={(s) => {
                   setTypeaheadOpen(false);
-                  if (s.shopId) go({ tab: "shop", shopId: s.shopId });
-                  else if (s.url) go({ tab: "shops", domain: s.url });
+                  if (s.shopId)
+                    go(
+                      {
+                        tab: "shop",
+                        shopId: s.shopId,
+                        shop: s.url ?? undefined,
+                        shopName: s.name ?? undefined,
+                        from: "shops",
+                        auto: "1",
+                      },
+                      { push: true },
+                    );
+                  else if (s.url) go({ tab: "shops", domain: s.url }, { push: true });
                 }}
                 onSearchAll={() => {
                   setTypeaheadOpen(false);
@@ -1997,7 +2275,20 @@ function ShopsTab({
                     <TableRow
                       key={id ?? i}
                       className={cn("h-[124px] border-b", id && "cursor-pointer")}
-                      onClick={() => id && go({ tab: "shop", shopId: id })}
+                      onClick={() =>
+                        id &&
+                        go(
+                          {
+                            tab: "shop",
+                            shopId: id,
+                            shop: rowDomain ?? undefined,
+                            shopName: name,
+                            from: "shops",
+                            auto: "1",
+                          },
+                          { push: true },
+                        )
+                      }
                     >
                       {/* 1 — Shop info (sticky) */}
                       <TableCell className="sticky left-0 z-10 bg-card align-middle">
@@ -2261,13 +2552,29 @@ function ShopDetailTab({
   shopId,
   go,
   costs,
+  backTab,
+  autoLoad,
+  contextDomain,
 }: {
   shopId?: string | undefined;
   go: SpyMarketToolsProps["go"];
   costs?: EndpointCosts | undefined;
+  backTab?: string | undefined;
+  autoLoad?: boolean | undefined;
+  contextDomain?: string | undefined;
 }) {
   const getShop = useServerFn(spymarketGetShop);
-  const call = useMeteredCall(getShop as ServerFnLike);
+  // Cached per shop: revisiting a shop already loaded this session is free.
+  const call = useMeteredCall(getShop as ServerFnLike, shopId ? `shop:${shopId}` : undefined);
+
+  // One-click entry: load immediately when arriving with ?auto=1.
+  const autoRef = React.useRef(false);
+  React.useEffect(() => {
+    if (!shopId || !autoLoad || autoRef.current) return;
+    autoRef.current = true;
+    if (call.state.kind === "idle") void call.execute({ shopId });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shopId, autoLoad]);
 
   if (!shopId) {
     return (
@@ -2319,6 +2626,13 @@ function ShopDetailTab({
 
   return (
     <div className="space-y-4">
+      <BackBar
+        backTab={backTab}
+        go={go}
+        trail={
+          asStr(shop?.["name"]) ?? domain ?? contextDomain ?? "Shop"
+        }
+      />
       {call.state.kind === "idle" && (
         <Card className="rounded-2xl">
           <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
@@ -3942,10 +4256,14 @@ function AdsTab({
   go: SpyMarketToolsProps["go"];
 }) {
   const searchAds = useServerFn(spymarketSearchAds);
-  const call = useMeteredCall(searchAds as ServerFnLike);
+  const call = useMeteredCall(searchAds as ServerFnLike, "ads");
 
-  const [search, setSearch] = React.useState(url["aq"] ?? "");
-  const [searchType, setSearchType] = React.useState(url["atyp"] ?? "adCopy");
+  // An active shop context pre-fills the search; it never fires a paid call.
+  const scopeDomain = url["shop"];
+  const [search, setSearch] = React.useState(url["aq"] ?? scopeDomain ?? "");
+  const [searchType, setSearchType] = React.useState(
+    url["atyp"] ?? (!url["aq"] && scopeDomain ? "domain" : "adCopy"),
+  );
   const [status, setStatus] = React.useState(url["astat"] ?? "active");
   const [mediaType, setMediaType] = React.useState(url["amed"] ?? "");
   const [sortBy, setSortBy] = React.useState(url["asort"] ?? "longestRunning");
@@ -3960,7 +4278,7 @@ function AdsTab({
   const [grouped, setGrouped] = React.useState(false);
   const [copySort, setCopySort] = React.useState<"usage" | "longestRunning">("longestRunning");
   const [limit, setLimit] = React.useState(24);
-  const [pages, setPages] = React.useState<Rec[][]>([]);
+  const [pages, setPages] = useSessionState<Rec[][]>("ads:pages", () => []);
   const [adDetailId, setAdDetailId] = React.useState<string | null>(null);
   const [preview, setPreview] = React.useState<CreativeTarget | null>(null);
 
@@ -4000,7 +4318,9 @@ function AdsTab({
   });
 
 
-  const lastResultRef = React.useRef<ToolOk<unknown> | null>(null);
+  const lastResultRef = React.useRef<ToolOk<unknown> | null>(
+    call.state.kind === "ok" ? call.state.result : null,
+  );
   React.useEffect(() => {
     if (call.state.kind === "ok" && call.state.result !== lastResultRef.current) {
       lastResultRef.current = call.state.result;
@@ -4767,17 +5087,36 @@ function EmailDetailDialog({
   );
 }
 
-function EmailsTab({ costs }: { costs?: EndpointCosts | undefined }) {
+function EmailsTab({
+  costs,
+  scopeDomain,
+}: {
+  costs?: EndpointCosts | undefined;
+  scopeDomain?: string | undefined;
+}) {
   const queryEmails = useServerFn(spymarketQueryEmails);
-  const call = useMeteredCall(queryEmails as ServerFnLike);
+  const call = useMeteredCall(queryEmails as ServerFnLike, "emails");
 
-  const [search, setSearch] = React.useState("");
+  // An active shop context pre-fills the search — it never fires a paid call.
+  const [search, setSearch] = React.useState(scopeDomain ?? "");
   const [searchType, setSearchType] = React.useState("domain");
   const [sortBy, setSortBy] = React.useState("newest");
   const [campaignType, setCampaignType] = React.useState("");
   const [limit, setLimit] = React.useState(24);
-  const [pages, setPages] = React.useState<Rec[][]>([]);
+  const [pages, setPages] = useSessionState<Rec[][]>("emails:pages", () => []);
   const [emailDetailId, setEmailDetailId] = React.useState<string | number | null>(null);
+
+  // Follow the active shop context when it changes while the tab is mounted.
+  const lastScopeRef = React.useRef(scopeDomain);
+  React.useEffect(() => {
+    if (scopeDomain !== lastScopeRef.current) {
+      lastScopeRef.current = scopeDomain;
+      if (scopeDomain) {
+        setSearch(scopeDomain);
+        setSearchType("domain");
+      }
+    }
+  }, [scopeDomain]);
 
   const buildInput = (page: number): Record<string, unknown> => ({
     ...(search.trim() ? { search: search.trim() } : {}),
@@ -4788,7 +5127,9 @@ function EmailsTab({ costs }: { costs?: EndpointCosts | undefined }) {
     page,
   });
 
-  const lastResultRef = React.useRef<ToolOk<unknown> | null>(null);
+  const lastResultRef = React.useRef<ToolOk<unknown> | null>(
+    call.state.kind === "ok" ? call.state.result : null,
+  );
   React.useEffect(() => {
     if (call.state.kind === "ok" && call.state.result !== lastResultRef.current) {
       lastResultRef.current = call.state.result;
