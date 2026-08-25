@@ -3623,7 +3623,16 @@ function CreativeLightbox({
  *     (domain / headline / CTA).
  *  Z5 footer — outline Save (local) + solid View details.
  */
-function AdCard({ ad, onOpen }: { ad: Rec; onOpen: (id: string) => void }) {
+function AdCard({
+  ad,
+  onOpen,
+  onPreview,
+}: {
+  ad: Rec;
+  onOpen: (id: string) => void;
+  onPreview: (target: CreativeTarget) => void;
+}) {
+
   const media = asRec(ad["media"]);
   const content = asRec(ad["content"]);
   const metrics = asRec(ad["metrics"]);
