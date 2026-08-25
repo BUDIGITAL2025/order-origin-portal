@@ -1287,6 +1287,11 @@ function ShopsTab({
     if (filters.countriesInc.length > 0) input["countries"] = filters.countriesInc;
     if (filters.language) input["language"] = filters.language;
     if (filters.trustpilot) input["minTrustpilotRating"] = Number(filters.trustpilot);
+    const growth = rulesToConditions(filters.rules);
+    if (growth.trafficGrowth.length > 0) input["trafficGrowth"] = growth.trafficGrowth;
+    if (growth.adsGrowth.length > 0) input["adsGrowth"] = growth.adsGrowth;
+    if (filters.trending) input["displayInTrending"] = true;
+    if (filters.createdAfter) input["createdAfter"] = filters.createdAfter;
     return input;
   };
 
