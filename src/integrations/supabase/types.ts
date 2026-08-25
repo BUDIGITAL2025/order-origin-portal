@@ -417,6 +417,7 @@ export type Database = {
           id: string
           idempotency_key: string | null
           ok: boolean
+          simulator: boolean
           status_code: number | null
           tenant_id: string | null
         }
@@ -428,6 +429,7 @@ export type Database = {
           id?: string
           idempotency_key?: string | null
           ok?: boolean
+          simulator?: boolean
           status_code?: number | null
           tenant_id?: string | null
         }
@@ -439,6 +441,7 @@ export type Database = {
           id?: string
           idempotency_key?: string | null
           ok?: boolean
+          simulator?: boolean
           status_code?: number | null
           tenant_id?: string | null
         }
@@ -454,6 +457,7 @@ export type Database = {
           payload: Json
           processed_at: string | null
           signature_valid: boolean
+          simulator: boolean
           tenant_id: string | null
         }
         Insert: {
@@ -465,6 +469,7 @@ export type Database = {
           payload?: Json
           processed_at?: string | null
           signature_valid?: boolean
+          simulator?: boolean
           tenant_id?: string | null
         }
         Update: {
@@ -476,6 +481,7 @@ export type Database = {
           payload?: Json
           processed_at?: string | null
           signature_valid?: boolean
+          simulator?: boolean
           tenant_id?: string | null
         }
         Relationships: []
@@ -1119,6 +1125,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      simulator_calls: {
+        Row: {
+          action: string
+          created_at: string
+          endpoint: string
+          id: string
+          idempotency_key: string
+          payload: Json | null
+          replay_count: number
+          response: Json | null
+          updated_at: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          idempotency_key: string
+          payload?: Json | null
+          replay_count?: number
+          response?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          idempotency_key?: string
+          payload?: Json | null
+          replay_count?: number
+          response?: Json | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       spymarket_cache: {
         Row: {
