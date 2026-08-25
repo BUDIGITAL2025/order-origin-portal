@@ -761,6 +761,7 @@ const SHOP_SORTS = [
   { value: "relevance", label: "Best match" },
   { value: "monthlyVisits", label: "Most traffic" },
   { value: "activeAds", label: "Most ads" },
+  { value: "growth30d", label: "Fastest growing" },
   { value: "productsCount", label: "Biggest catalogue" },
   { value: "createdAt", label: "Newest" },
 ];
@@ -768,6 +769,96 @@ const SHOP_SORTS = [
 const VISITS_RANGE_MAX = 50_000_000;
 const ADS_RANGE_MAX = 500;
 const PRODUCTS_RANGE_MAX = 10_000;
+
+// ---------------------------------------------------------------------------
+// Growth rule builder
+//
+// Maps onto POST /v1/shops/query `trafficGrowth[]` / `adsGrowth[]`:
+//   { period, comparison: greater|lower, value: percentage }
+// Rising X% → comparison "greater", value +X. Falling X% → "lower", value −X.
+// Traffic windows: last30d | last90d | last180d.
+// Ads windows:     last7d  | last30d | last90d.
+// ---------------------------------------------------------------------------
+
+type GrowthMetric = "traffic" | "ads";
+type GrowthDirection = "rising" | "falling";
+
+interface GrowthRule {
+  metric: GrowthMetric;
+  direction: GrowthDirection;
+  /** Absolute percentage threshold, e.g. 30 → "at least 30%". */
+  percent: number;
+  /** Upstream period token, already valid for the chosen metric. */
+  period: string;
+}
+
+const TRAFFIC_WINDOWS = [
+  { value: "last30d", label: "1m" },
+  { value: "last90d", label: "3m" },
+  { value: "last180d", label: "6m" },
+];
+const ADS_WINDOWS = [
+  { value: "last7d", label: "7d" },
+  { value: "last30d", label: "1m" },
+  { value: "last90d", label: "3m" },
+];
+
+const windowsFor = (m: GrowthMetric) => (m === "traffic" ? TRAFFIC_WINDOWS : ADS_WINDOWS);
+const windowLabel = (r: GrowthRule) =>
+  windowsFor(r.metric).find((w) => w.value === r.period)?.label ?? r.period;
+
+const defaultRule = (metric: GrowthMetric): GrowthRule => ({
+  metric,
+  direction: "rising",
+  percent: 30,
+  period: metric === "traffic" ? "last30d" : "last30d",
+});
+
+/** "t:rising:30:last30d,a:rising:20:last7d" */
+function encodeRules(rules: GrowthRule[]): string | undefined {
+  if (rules.length === 0) return undefined;
+  return rules
+    .map((r) => `${r.metric === "traffic" ? "t" : "a"}:${r.direction}:${r.percent}:${r.period}`)
+    .join(",");
+}
+
+function decodeRules(raw: string | undefined): GrowthRule[] {
+  if (!raw) return [];
+  return raw
+    .split(",")
+    .map((chunk): GrowthRule | null => {
+      const [m, d, p, w] = chunk.split(":");
+      if (!m || !d || !p || !w) return null;
+      const metric: GrowthMetric = m === "a" ? "ads" : "traffic";
+      const percent = Number(p);
+      if (!Number.isFinite(percent)) return null;
+      if (!windowsFor(metric).some((x) => x.value === w)) return null;
+      return {
+        metric,
+        direction: d === "falling" ? "falling" : "rising",
+        percent: Math.abs(percent),
+        period: w,
+      };
+    })
+    .filter((r): r is GrowthRule => r !== null)
+    .slice(0, 4);
+}
+
+const ruleLabel = (r: GrowthRule) =>
+  `${r.metric === "traffic" ? "Traffic" : "Ads"} ${r.direction === "rising" ? "↑" : "↓"}${r.percent}% ${windowLabel(r)}`;
+
+/** Split rules into the two upstream condition arrays. */
+function rulesToConditions(rules: GrowthRule[]) {
+  const toCond = (r: GrowthRule) => ({
+    period: r.period,
+    comparison: r.direction === "rising" ? "greater" : "lower",
+    value: r.direction === "rising" ? r.percent : -r.percent,
+  });
+  return {
+    trafficGrowth: rules.filter((r) => r.metric === "traffic").map(toCond),
+    adsGrowth: rules.filter((r) => r.metric === "ads").map(toCond),
+  };
+}
 
 interface ShopsFilters {
   search: string;
@@ -787,6 +878,10 @@ interface ShopsFilters {
   language: string;
   trustpilot: string;
   sortBy: string;
+  rules: GrowthRule[];
+  trending: boolean;
+  createdAfter: string;
+  preset: string;
 }
 
 function shopsFiltersFromUrl(
@@ -812,6 +907,10 @@ function shopsFiltersFromUrl(
     language: url["lang"] ?? "",
     trustpilot: url["tp"] ?? "",
     sortBy: url["ssort"] ?? "monthlyVisits",
+    rules: decodeRules(url["gr"]),
+    trending: url["trend"] === "1",
+    createdAfter: url["cafter"] ?? "",
+    preset: url["pset"] ?? "",
   };
 }
 
@@ -837,8 +936,98 @@ function shopsUrlPatch(f: ShopsFilters): Record<string, string | undefined> {
     lang: f.language || undefined,
     tp: f.trustpilot || undefined,
     ssort: f.sortBy !== "monthlyVisits" ? f.sortBy : undefined,
+    gr: encodeRules(f.rules),
+    trend: f.trending ? "1" : undefined,
+    cafter: f.createdAfter || undefined,
+    pset: f.preset || undefined,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Preset views
+//
+// The public v1 API has no `preset` parameter (see docs/trendtrack-api-
+// reference.md → "Shop presets"), so each preset is a server-side filter+sort
+// recipe built from documented params only. Ad/Traffic peak have no upstream
+// peak field — they are approximated with growth + volume floors.
+// ---------------------------------------------------------------------------
+
+const daysAgoISO = (days: number) =>
+  new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10);
+
+interface ShopPreset {
+  id: string;
+  label: string;
+  hint: string;
+  patch: () => Partial<ShopsFilters>;
+}
+
+const SHOP_PRESETS: ShopPreset[] = [
+  {
+    id: "weekly-gems",
+    label: "Weekly Gems",
+    hint: "displayInTrending=true + createdAfter (last 180d) + ≥10k visits, sorted by growth30d.",
+    patch: () => ({
+      trending: true,
+      createdAfter: daysAgoISO(180),
+      minVisits: "10000",
+      maxVisits: "",
+      rules: [],
+      sortBy: "growth30d",
+    }),
+  },
+  {
+    id: "top-scaling",
+    label: "Top Scaling",
+    hint: "trafficGrowth ≥ +50% over last30d, sorted by growth30d.",
+    patch: () => ({
+      trending: false,
+      createdAfter: "",
+      rules: [{ metric: "traffic", direction: "rising", percent: 50, period: "last30d" }],
+      sortBy: "growth30d",
+    }),
+  },
+  {
+    id: "market-leaders",
+    label: "Market Leaders & DTC",
+    hint: "dtcRegion=all + ≥500k monthly visits, sorted by monthlyVisits.",
+    patch: () => ({
+      trending: false,
+      createdAfter: "",
+      rules: [],
+      dtcOnly: true,
+      minVisits: "500000",
+      sortBy: "monthlyVisits",
+    }),
+  },
+  {
+    id: "ad-peak",
+    label: "Ad Peak",
+    hint: "No peak field upstream — approximated with adsGrowth ≥ +30% over last7d and ≥50 active ads, sorted by activeAds.",
+    patch: () => ({
+      trending: false,
+      createdAfter: "",
+      rules: [{ metric: "ads", direction: "rising", percent: 30, period: "last7d" }],
+      minAds: "50",
+      maxAds: "",
+      adsWindow: "last7d",
+      sortBy: "activeAds",
+    }),
+  },
+  {
+    id: "traffic-peak",
+    label: "Traffic Peak",
+    hint: "No peak field upstream — approximated with trafficGrowth ≥ +100% over last90d and ≥100k visits, sorted by growth30d.",
+    patch: () => ({
+      trending: false,
+      createdAfter: "",
+      rules: [{ metric: "traffic", direction: "rising", percent: 100, period: "last90d" }],
+      minVisits: "100000",
+      maxVisits: "",
+      sortBy: "growth30d",
+    }),
+  },
+];
 
 /** "2024-03-12" → "1y 9m old". */
 function shopAge(createdAt: string | null): string | null {
