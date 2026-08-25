@@ -30,6 +30,7 @@ import { Route as AuthenticatedAdminClientsRouteImport } from './routes/_authent
 import { Route as AuthenticatedAdminDisputesRouteImport } from './routes/_authenticated/admin/disputes'
 import { Route as AuthenticatedAdminDocumentsRouteImport } from './routes/_authenticated/admin/documents'
 import { Route as AuthenticatedAdminEntitiesRouteImport } from './routes/_authenticated/admin/entities'
+import { Route as AuthenticatedAdminIntegrationRouteImport } from './routes/_authenticated/admin/integration'
 import { Route as AuthenticatedAdminOrdersRouteImport } from './routes/_authenticated/admin/orders'
 import { Route as AuthenticatedAdminProductsRouteImport } from './routes/_authenticated/admin/products'
 import { Route as AuthenticatedAdminSpymarketRouteImport } from './routes/_authenticated/admin/spymarket'
@@ -51,6 +52,7 @@ import { Route as ApiPublicCronAutoTopupRouteImport } from './routes/api/public/
 import { Route as ApiPublicCronDailyDigestRouteImport } from './routes/api/public/cron/daily-digest'
 import { Route as ApiPublicCronDocumentsSweepRouteImport } from './routes/api/public/cron/documents-sweep'
 import { Route as ApiPublicCronOrderExpiryRouteImport } from './routes/api/public/cron/order-expiry'
+import { Route as ApiPublicMiddlewareWebhookRouteImport } from './routes/api/public/middleware/webhook'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
 
 const IndexRoute = IndexRouteImport.update({
@@ -166,6 +168,12 @@ const AuthenticatedAdminEntitiesRoute =
   AuthenticatedAdminEntitiesRouteImport.update({
     id: '/entities',
     path: '/entities',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminIntegrationRoute =
+  AuthenticatedAdminIntegrationRouteImport.update({
+    id: '/integration',
+    path: '/integration',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 const AuthenticatedAdminOrdersRoute =
@@ -293,6 +301,12 @@ const ApiPublicCronOrderExpiryRoute =
     path: '/api/public/cron/order-expiry',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicMiddlewareWebhookRoute =
+  ApiPublicMiddlewareWebhookRouteImport.update({
+    id: '/api/public/middleware/webhook',
+    path: '/api/public/middleware/webhook',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicPaymentsWebhookRoute =
   ApiPublicPaymentsWebhookRouteImport.update({
     id: '/api/public/payments/webhook',
@@ -320,6 +334,7 @@ export interface FileRoutesByFullPath {
   '/admin/disputes': typeof AuthenticatedAdminDisputesRouteWithChildren
   '/admin/documents': typeof AuthenticatedAdminDocumentsRoute
   '/admin/entities': typeof AuthenticatedAdminEntitiesRoute
+  '/admin/integration': typeof AuthenticatedAdminIntegrationRoute
   '/admin/orders': typeof AuthenticatedAdminOrdersRoute
   '/admin/products': typeof AuthenticatedAdminProductsRoute
   '/admin/spymarket': typeof AuthenticatedAdminSpymarketRoute
@@ -338,6 +353,7 @@ export interface FileRoutesByFullPath {
   '/api/public/cron/daily-digest': typeof ApiPublicCronDailyDigestRoute
   '/api/public/cron/documents-sweep': typeof ApiPublicCronDocumentsSweepRoute
   '/api/public/cron/order-expiry': typeof ApiPublicCronOrderExpiryRoute
+  '/api/public/middleware/webhook': typeof ApiPublicMiddlewareWebhookRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/orders/': typeof AuthenticatedClientOrdersIndexRoute
   '/quotes/': typeof AuthenticatedClientQuotesIndexRoute
@@ -363,6 +379,7 @@ export interface FileRoutesByTo {
   '/admin/disputes': typeof AuthenticatedAdminDisputesRouteWithChildren
   '/admin/documents': typeof AuthenticatedAdminDocumentsRoute
   '/admin/entities': typeof AuthenticatedAdminEntitiesRoute
+  '/admin/integration': typeof AuthenticatedAdminIntegrationRoute
   '/admin/orders': typeof AuthenticatedAdminOrdersRoute
   '/admin/products': typeof AuthenticatedAdminProductsRoute
   '/admin/spymarket': typeof AuthenticatedAdminSpymarketRoute
@@ -381,6 +398,7 @@ export interface FileRoutesByTo {
   '/api/public/cron/daily-digest': typeof ApiPublicCronDailyDigestRoute
   '/api/public/cron/documents-sweep': typeof ApiPublicCronDocumentsSweepRoute
   '/api/public/cron/order-expiry': typeof ApiPublicCronOrderExpiryRoute
+  '/api/public/middleware/webhook': typeof ApiPublicMiddlewareWebhookRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/orders': typeof AuthenticatedClientOrdersIndexRoute
   '/quotes': typeof AuthenticatedClientQuotesIndexRoute
@@ -409,6 +427,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/disputes': typeof AuthenticatedAdminDisputesRouteWithChildren
   '/_authenticated/admin/documents': typeof AuthenticatedAdminDocumentsRoute
   '/_authenticated/admin/entities': typeof AuthenticatedAdminEntitiesRoute
+  '/_authenticated/admin/integration': typeof AuthenticatedAdminIntegrationRoute
   '/_authenticated/admin/orders': typeof AuthenticatedAdminOrdersRoute
   '/_authenticated/admin/products': typeof AuthenticatedAdminProductsRoute
   '/_authenticated/admin/spymarket': typeof AuthenticatedAdminSpymarketRoute
@@ -427,6 +446,7 @@ export interface FileRoutesById {
   '/api/public/cron/daily-digest': typeof ApiPublicCronDailyDigestRoute
   '/api/public/cron/documents-sweep': typeof ApiPublicCronDocumentsSweepRoute
   '/api/public/cron/order-expiry': typeof ApiPublicCronOrderExpiryRoute
+  '/api/public/middleware/webhook': typeof ApiPublicMiddlewareWebhookRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/_authenticated/_client/orders/': typeof AuthenticatedClientOrdersIndexRoute
   '/_authenticated/_client/quotes/': typeof AuthenticatedClientQuotesIndexRoute
@@ -454,6 +474,7 @@ export interface FileRouteTypes {
     | '/admin/disputes'
     | '/admin/documents'
     | '/admin/entities'
+    | '/admin/integration'
     | '/admin/orders'
     | '/admin/products'
     | '/admin/spymarket'
@@ -472,6 +493,7 @@ export interface FileRouteTypes {
     | '/api/public/cron/daily-digest'
     | '/api/public/cron/documents-sweep'
     | '/api/public/cron/order-expiry'
+    | '/api/public/middleware/webhook'
     | '/api/public/payments/webhook'
     | '/orders/'
     | '/quotes/'
@@ -497,6 +519,7 @@ export interface FileRouteTypes {
     | '/admin/disputes'
     | '/admin/documents'
     | '/admin/entities'
+    | '/admin/integration'
     | '/admin/orders'
     | '/admin/products'
     | '/admin/spymarket'
@@ -515,6 +538,7 @@ export interface FileRouteTypes {
     | '/api/public/cron/daily-digest'
     | '/api/public/cron/documents-sweep'
     | '/api/public/cron/order-expiry'
+    | '/api/public/middleware/webhook'
     | '/api/public/payments/webhook'
     | '/orders'
     | '/quotes'
@@ -542,6 +566,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/disputes'
     | '/_authenticated/admin/documents'
     | '/_authenticated/admin/entities'
+    | '/_authenticated/admin/integration'
     | '/_authenticated/admin/orders'
     | '/_authenticated/admin/products'
     | '/_authenticated/admin/spymarket'
@@ -560,6 +585,7 @@ export interface FileRouteTypes {
     | '/api/public/cron/daily-digest'
     | '/api/public/cron/documents-sweep'
     | '/api/public/cron/order-expiry'
+    | '/api/public/middleware/webhook'
     | '/api/public/payments/webhook'
     | '/_authenticated/_client/orders/'
     | '/_authenticated/_client/quotes/'
@@ -577,6 +603,7 @@ export interface RootRouteChildren {
   ApiPublicCronDailyDigestRoute: typeof ApiPublicCronDailyDigestRoute
   ApiPublicCronDocumentsSweepRoute: typeof ApiPublicCronDocumentsSweepRoute
   ApiPublicCronOrderExpiryRoute: typeof ApiPublicCronOrderExpiryRoute
+  ApiPublicMiddlewareWebhookRoute: typeof ApiPublicMiddlewareWebhookRoute
   ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
 }
 
@@ -729,6 +756,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminEntitiesRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/integration': {
+      id: '/_authenticated/admin/integration'
+      path: '/integration'
+      fullPath: '/admin/integration'
+      preLoaderRoute: typeof AuthenticatedAdminIntegrationRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/orders': {
       id: '/_authenticated/admin/orders'
       path: '/orders'
@@ -876,6 +910,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCronOrderExpiryRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/middleware/webhook': {
+      id: '/api/public/middleware/webhook'
+      path: '/api/public/middleware/webhook'
+      fullPath: '/api/public/middleware/webhook'
+      preLoaderRoute: typeof ApiPublicMiddlewareWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/payments/webhook': {
       id: '/api/public/payments/webhook'
       path: '/api/public/payments/webhook'
@@ -975,6 +1016,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminDisputesRoute: typeof AuthenticatedAdminDisputesRouteWithChildren
   AuthenticatedAdminDocumentsRoute: typeof AuthenticatedAdminDocumentsRoute
   AuthenticatedAdminEntitiesRoute: typeof AuthenticatedAdminEntitiesRoute
+  AuthenticatedAdminIntegrationRoute: typeof AuthenticatedAdminIntegrationRoute
   AuthenticatedAdminOrdersRoute: typeof AuthenticatedAdminOrdersRoute
   AuthenticatedAdminProductsRoute: typeof AuthenticatedAdminProductsRoute
   AuthenticatedAdminSpymarketRoute: typeof AuthenticatedAdminSpymarketRoute
@@ -989,6 +1031,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminDisputesRoute: AuthenticatedAdminDisputesRouteWithChildren,
   AuthenticatedAdminDocumentsRoute: AuthenticatedAdminDocumentsRoute,
   AuthenticatedAdminEntitiesRoute: AuthenticatedAdminEntitiesRoute,
+  AuthenticatedAdminIntegrationRoute: AuthenticatedAdminIntegrationRoute,
   AuthenticatedAdminOrdersRoute: AuthenticatedAdminOrdersRoute,
   AuthenticatedAdminProductsRoute: AuthenticatedAdminProductsRoute,
   AuthenticatedAdminSpymarketRoute: AuthenticatedAdminSpymarketRoute,
@@ -1027,6 +1070,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicCronDailyDigestRoute: ApiPublicCronDailyDigestRoute,
   ApiPublicCronDocumentsSweepRoute: ApiPublicCronDocumentsSweepRoute,
   ApiPublicCronOrderExpiryRoute: ApiPublicCronOrderExpiryRoute,
+  ApiPublicMiddlewareWebhookRoute: ApiPublicMiddlewareWebhookRoute,
   ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
 }
 export const routeTree = rootRouteImport

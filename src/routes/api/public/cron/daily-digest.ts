@@ -23,7 +23,7 @@ export const Route = createFileRoute("/api/public/cron/daily-digest")({
           const since = new Date(Date.now() - 24 * 3_600_000).toISOString();
           const nowIso = new Date().toISOString();
 
-          const [webhooks, crons, quotes, errors] = await Promise.all([
+          const [webhooks, crons, quotes, errors, integration] = await Promise.all([
             supabaseAdmin
               .from("stripe_events")
               .select("stripe_event_id, event_type, error", { count: "exact" })
@@ -47,6 +47,12 @@ export const Route = createFileRoute("/api/public/cron/daily-digest")({
               .select("job, error", { count: "exact" })
               .gte("created_at", since)
               .limit(10),
+            supabaseAdmin
+              .from("integration_events")
+              .select("event_id, event_type, tenant_id, error", { count: "exact" })
+              .not("error", "is", null)
+              .gte("created_at", since)
+              .limit(10),
           ]);
 
           const summary = {
@@ -54,6 +60,7 @@ export const Route = createFileRoute("/api/public/cron/daily-digest")({
             failed_crons: crons.count ?? 0,
             quotes_past_sla: quotes.count ?? 0,
             errors: errors.count ?? 0,
+            failed_integration_events: integration.count ?? 0,
           };
 
           const lines: string[] = [
@@ -76,6 +83,11 @@ export const Route = createFileRoute("/api/public/cron/daily-digest")({
             "",
             `Logged errors (24h): ${summary.errors}`,
             ...(errors.data ?? []).map((e) => `  • ${e.job}: ${e.error}`),
+            "",
+            `Failed middleware events (24h): ${summary.failed_integration_events}`,
+            ...(integration.data ?? []).map(
+              (e) => `  • ${e.event_type} (${e.event_id}, tenant ${e.tenant_id ?? "unknown"}): ${e.error}`,
+            ),
             "",
             "https://app.flysales.app/admin",
           ];

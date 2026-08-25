@@ -1,0 +1,1 @@
+revoke all on function public.ingest_middleware_order(text, text, text, text, jsonb, jsonb) from authenticated;

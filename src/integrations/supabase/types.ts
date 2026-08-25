@@ -408,6 +408,78 @@ export type Database = {
         }
         Relationships: []
       }
+      integration_calls: {
+        Row: {
+          created_at: string
+          direction: string
+          endpoint: string
+          error: string | null
+          id: string
+          idempotency_key: string | null
+          ok: boolean
+          status_code: number | null
+          tenant_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          direction?: string
+          endpoint: string
+          error?: string | null
+          id?: string
+          idempotency_key?: string | null
+          ok?: boolean
+          status_code?: number | null
+          tenant_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          direction?: string
+          endpoint?: string
+          error?: string | null
+          id?: string
+          idempotency_key?: string | null
+          ok?: boolean
+          status_code?: number | null
+          tenant_id?: string | null
+        }
+        Relationships: []
+      }
+      integration_events: {
+        Row: {
+          created_at: string
+          error: string | null
+          event_id: string
+          event_type: string
+          id: string
+          payload: Json
+          processed_at: string | null
+          signature_valid: boolean
+          tenant_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          error?: string | null
+          event_id: string
+          event_type: string
+          id?: string
+          payload?: Json
+          processed_at?: string | null
+          signature_valid?: boolean
+          tenant_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          error?: string | null
+          event_id?: string
+          event_type?: string
+          id?: string
+          payload?: Json
+          processed_at?: string | null
+          signature_valid?: boolean
+          tenant_id?: string | null
+        }
+        Relationships: []
+      }
       internal_settings: {
         Row: {
           key: string
@@ -631,6 +703,7 @@ export type Database = {
           reminder_72_sent_at: string | null
           shipped_at: string | null
           shipping_address: Json | null
+          source: string
           status: Database["public"]["Enums"]["order_status"]
           store_id: string
           total_amount: number | null
@@ -657,6 +730,7 @@ export type Database = {
           reminder_72_sent_at?: string | null
           shipped_at?: string | null
           shipping_address?: Json | null
+          source?: string
           status?: Database["public"]["Enums"]["order_status"]
           store_id: string
           total_amount?: number | null
@@ -683,6 +757,7 @@ export type Database = {
           reminder_72_sent_at?: string | null
           shipped_at?: string | null
           shipping_address?: Json | null
+          source?: string
           status?: Database["public"]["Enums"]["order_status"]
           store_id?: string
           total_amount?: number | null
@@ -1478,6 +1553,7 @@ export type Database = {
           reminder_72_sent_at: string | null
           shipped_at: string | null
           shipping_address: Json | null
+          source: string
           status: Database["public"]["Enums"]["order_status"]
           store_id: string
           total_amount: number | null
@@ -1642,6 +1718,7 @@ export type Database = {
           reminder_72_sent_at: string | null
           shipped_at: string | null
           shipping_address: Json | null
+          source: string
           status: Database["public"]["Enums"]["order_status"]
           store_id: string
           total_amount: number | null
@@ -1683,6 +1760,7 @@ export type Database = {
           reminder_72_sent_at: string | null
           shipped_at: string | null
           shipping_address: Json | null
+          source: string
           status: Database["public"]["Enums"]["order_status"]
           store_id: string
           total_amount: number | null
@@ -1738,6 +1816,49 @@ export type Database = {
           total: number
         }[]
       }
+      ingest_middleware_order: {
+        Args: {
+          p_destination_country: string
+          p_external_ref: string
+          p_line_items: Json
+          p_middleware_order_id: string
+          p_shipping_address: Json
+          p_tenant_id: string
+        }
+        Returns: {
+          cancelled_at: string | null
+          created_at: string
+          delivered_at: string | null
+          destination_country: string | null
+          external_order_id: string | null
+          external_order_number: string | null
+          id: string
+          middleware_order_id: string | null
+          needs_review_reason: string | null
+          paid_at: string | null
+          payment_method:
+            | Database["public"]["Enums"]["order_payment_method"]
+            | null
+          reminder_24_sent_at: string | null
+          reminder_48_sent_at: string | null
+          reminder_72_sent_at: string | null
+          shipped_at: string | null
+          shipping_address: Json | null
+          source: string
+          status: Database["public"]["Enums"]["order_status"]
+          store_id: string
+          total_amount: number | null
+          tracking_carrier: string | null
+          tracking_notified_at: string | null
+          tracking_number: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "orders"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       ingest_order: {
         Args: {
           p_destination_country: string
@@ -1766,6 +1887,7 @@ export type Database = {
           reminder_72_sent_at: string | null
           shipped_at: string | null
           shipping_address: Json | null
+          source: string
           status: Database["public"]["Enums"]["order_status"]
           store_id: string
           total_amount: number | null
