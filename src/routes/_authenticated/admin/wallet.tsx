@@ -5,6 +5,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { EmptyState, PageHeader } from "@/components/app-shell";
 import { TxnTypeBadge } from "@/components/status-badges";
+import { SummaryBar } from "@/components/admin-ui";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -85,11 +86,54 @@ function AdminWalletPage() {
 
   const transactions = walletData?.transactions ?? [];
 
+  // Summary covers the selected entity's current calendar month.
+  const now = new Date();
+  const thisMonth = transactions.filter((t) => {
+    const d = new Date(t.created_at);
+    return d.getUTCMonth() === now.getUTCMonth() && d.getUTCFullYear() === now.getUTCFullYear();
+  });
+  const adjustmentsThisMonth = thisMonth.filter((t) => t.type === "adjustment");
+  const creditedThisMonth = thisMonth
+    .filter((t) => t.type !== "debit")
+    .reduce((acc, t) => acc + Number(t.amount ?? 0), 0);
+  const debitedThisMonth = thisMonth
+    .filter((t) => t.type === "debit")
+    .reduce((acc, t) => acc + Number(t.amount ?? 0), 0);
+
   return (
     <div>
       <PageHeader
         title="Wallet adjustments"
         description="Manual credits and debits. Every entry is written to the append-only ledger."
+      />
+
+      <SummaryBar
+        className="lg:grid-cols-4"
+        items={[
+          {
+            key: "balance",
+            label: "Current balance",
+            value: entityId && walletData ? formatUSD(walletData.balance) : "—",
+            tone: "primary",
+          },
+          {
+            key: "adjustments",
+            label: "Adjustments this month",
+            value: adjustmentsThisMonth.length,
+          },
+          {
+            key: "credited",
+            label: "Credited this month",
+            value: formatUSD(creditedThisMonth),
+            tone: "success",
+          },
+          {
+            key: "debited",
+            label: "Debited this month",
+            value: formatUSD(debitedThisMonth),
+            tone: "danger",
+          },
+        ]}
       />
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -215,36 +259,36 @@ function AdminWalletPage() {
               </div>
             ) : (
               entityId && (
-                <Table>
+                <Table className="text-[13px]">
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Description</TableHead>
-                      <TableHead className="text-right">Amount</TableHead>
-                      <TableHead className="text-right">Balance</TableHead>
+                      <TableHead className="h-9">Date</TableHead>
+                      <TableHead className="h-9">Type</TableHead>
+                      <TableHead className="h-9">Description</TableHead>
+                      <TableHead className="h-9 text-right">Amount</TableHead>
+                      <TableHead className="h-9 text-right">Balance</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {transactions.map((t) => (
-                      <TableRow key={t.id}>
-                        <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
+                      <TableRow key={t.id} className="hover:bg-accent/60">
+                        <TableCell className="whitespace-nowrap py-2.5 text-xs text-muted-foreground">
                           {formatDateTime(t.created_at)}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="py-2.5">
                           <TxnTypeBadge type={t.type} />
                         </TableCell>
-                        <TableCell className="max-w-40 truncate text-sm">{t.description}</TableCell>
+                        <TableCell className="max-w-40 truncate py-2.5">{t.description}</TableCell>
                         <TableCell
                           className={
-                            "text-right tnum text-sm " +
+                            "py-2.5 text-right tnum " +
                             (t.type === "debit" ? "text-destructive" : "text-success")
                           }
                         >
                           {t.type === "debit" ? "−" : "+"}
                           {formatUSD(t.amount)}
                         </TableCell>
-                        <TableCell className="text-right tnum text-sm">
+                        <TableCell className="py-2.5 text-right tnum">
                           {formatUSD(t.balance_after)}
                         </TableCell>
                       </TableRow>
