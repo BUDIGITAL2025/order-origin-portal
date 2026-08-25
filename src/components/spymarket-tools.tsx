@@ -143,6 +143,34 @@ const fmtPrice = (price: number | null, currency: string | null): string =>
         maximumFractionDigits: 2,
       }).format(price);
 
+/** Copy-to-clipboard button used by the creative-angle lists (headlines, hooks, copies). */
+function CopyButton({ text, label = "Copy" }: { text: string; label?: string }) {
+  const [copied, setCopied] = React.useState(false);
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      className="h-7 shrink-0 rounded-full px-2.5 text-[11px]"
+      onClick={(e) => {
+        e.stopPropagation();
+        void navigator.clipboard?.writeText(text).then(() => {
+          setCopied(true);
+          window.setTimeout(() => setCopied(false), 1500);
+        });
+      }}
+    >
+      {copied ? (
+        <Check className="mr-1 h-3 w-3 text-primary" />
+      ) : (
+        <Copy className="mr-1 h-3 w-3" />
+      )}
+      {copied ? "Copied" : label}
+    </Button>
+  );
+}
+
+
 // ---------------------------------------------------------------------------
 // Learned per-endpoint pricing (spymarket_endpoint_costs via the server)
 // ---------------------------------------------------------------------------
