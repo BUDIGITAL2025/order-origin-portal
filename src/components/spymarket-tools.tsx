@@ -3787,7 +3787,6 @@ function AdsTab({
                 disabled={searching}
                 onClick={() => {
                   setPages([]);
-                  setPages([]);
                   go({
                     tab: "ads",
                     aq: search.trim() || undefined,
@@ -3795,6 +3794,12 @@ function AdsTab({
                     astat: status !== "active" ? status : undefined,
                     amed: mediaType || undefined,
                     asort: sortBy !== "longestRunning" ? sortBy : undefined,
+                    aview: view !== "all" ? view : undefined,
+                    armode: view === "bestRank" ? rankMode : undefined,
+                    arbasis: view === "bestRank" ? rankBasis : undefined,
+                    armax: view === "bestRank" ? maxRankValue : undefined,
+                    arwin: view === "gains" ? rankWindow : undefined,
+                    armin: view === "gains" ? minRankDelta : undefined,
                   });
                   void call.execute(buildInput(1));
                 }}
@@ -3804,7 +3809,7 @@ function AdsTab({
                 ) : (
                   <Search className="mr-2 h-4 w-4" />
                 )}
-                Search — {costLabel(costs, search.trim() ? "ads" : "ads/query", limit)}
+                Search — {costLabel(costs, adsEndpoint, limit)}
               </Button>
             </div>
           </div>
@@ -3813,6 +3818,7 @@ function AdsTab({
 
       <p className="text-xs text-muted-foreground">
         Reach/spend data covers EU &amp; UK ads only. Facebook platform only in public v1.
+        {view !== "all" && ` Sorted by ${effectiveSort}.`}
       </p>
 
       <CallFeedback
@@ -3825,6 +3831,63 @@ function AdsTab({
       {searching && pages.length === 0 && <LoadingRows rows={6} />}
 
       {allRows.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            size="sm"
+            variant={grouped ? "default" : "outline"}
+            className="rounded-full"
+            onClick={() => setGrouped((v) => !v)}
+          >
+            <Quote className="mr-1.5 h-3.5 w-3.5" />
+            Ad copies ({copyGroups.length})
+          </Button>
+          {grouped && (
+            <Select
+              value={copySort}
+              onValueChange={(v) => setCopySort(v as "usage" | "longestRunning")}
+            >
+              <SelectTrigger className="w-48 rounded-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="longestRunning">Longest running</SelectItem>
+                <SelectItem value="usage">Usage count</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
+          <span className="text-xs text-muted-foreground">
+            Grouped from the {allRows.length} ads already loaded — no extra credits.
+          </span>
+        </div>
+      )}
+
+      {grouped && copyGroups.length > 0 && (
+        <div className="space-y-2">
+          {copyGroups.map((g, i) => (
+            <div key={i} className="flex items-start gap-3 rounded-xl border p-3">
+              <div className="min-w-0 flex-1">
+                <p className="line-clamp-3 text-xs text-muted-foreground">{g.text}</p>
+                <p className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11px]">
+                  <Badge variant="secondary" className="rounded-full text-[10px]">
+                    used {fmtInt(g.usage)}×
+                  </Badge>
+                  <Badge variant="outline" className="rounded-full text-[10px]">
+                    {fmtInt(g.longestRunning)}d longest running
+                  </Badge>
+                  {g.brands.size > 0 && (
+                    <span className="truncate text-muted-foreground">
+                      {[...g.brands].slice(0, 3).join(", ")}
+                    </span>
+                  )}
+                </p>
+              </div>
+              <CopyButton text={g.text} />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {!grouped && allRows.length > 0 && (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {allRows.map((ad, i) => (
             <AdCard key={asStr(ad["id"]) ?? i} ad={ad} onOpen={setAdDetailId} />
@@ -3843,10 +3906,11 @@ function AdsTab({
             onClick={() => void call.execute(buildInput(pages.length + 1))}
           >
             {searching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-            Load more — {costLabel(costs, search.trim() ? "ads" : "ads/query", limit)}
+            Load more — {costLabel(costs, adsEndpoint, limit)}
           </Button>
         </div>
       )}
+
     </div>
   );
 }
