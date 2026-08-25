@@ -139,29 +139,30 @@ export function SimulatorPanel({ releases }: { releases: ReleaseRow[] }) {
   const blocked = data?.real_middleware_configured === true;
 
   return (
-    <Card className="mb-6 border-dashed">
+    <Card className="border-2 border-dashed border-warning/40 bg-warning/[0.04] shadow-none">
       <CardHeader className="pb-3">
         <CardTitle className="flex flex-wrap items-center gap-2 text-base">
-          <FlaskConical className="h-4 w-4 text-muted-foreground" />
+          <FlaskConical className="h-4 w-4 text-warning" />
           Simulator
-          <Badge variant="secondary" className="uppercase tracking-wide">
+          <span className="rounded-full border border-warning/50 bg-warning/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-warning">
             Test tooling
-          </Badge>
+          </span>
           {overrideOn ? <Badge>Releases → simulator</Badge> : null}
         </CardTitle>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs leading-relaxed text-muted-foreground">
           Emits real signed webhooks into our own receiver and accepts the outbound release call, so
           the full lifecycle can be proven without the middleware. All traffic is tagged{" "}
           <span className="font-mono">simulator=true</span> and ignored by the ops digest.
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid gap-2 text-xs sm:grid-cols-2">
+        <div className="grid gap-2 sm:grid-cols-2">
           <Fact label="Simulator token" value={data?.token_set ? "configured" : "missing"} />
           <Fact label="Webhook secret" value={data?.webhook_secret_set ? "configured" : "missing"} />
           <Fact label="Simulator URL" value={data?.simulator_url ?? "unknown app base URL"} mono />
           <Fact
             label="Test workspace"
+            mono
             value={
               data?.workspace
                 ? `${data.workspace.name ?? data.workspace.id.slice(0, 8)} · ${data.workspace.skus.length} SKU(s) · ${data.workspace.countries.join(", ")}`
@@ -170,16 +171,17 @@ export function SimulatorPanel({ releases }: { releases: ReleaseRow[] }) {
           />
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/60 p-3">
-          <div>
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/60 bg-card px-3.5 py-3">
+          <label htmlFor="sim-override" className="min-w-0 cursor-pointer">
             <div className="text-sm font-medium">Point releases at simulator</div>
             <div className="text-xs text-muted-foreground">
               {blocked
                 ? "Disabled: a real MIDDLEWARE_BASE_URL is configured."
                 : "Outbound release/reject calls go to the simulator so they flip to 'sent'."}
             </div>
-          </div>
+          </label>
           <Switch
+            id="sim-override"
             checked={overrideOn}
             disabled={blocked || busy === "override" || !data?.token_set}
             onCheckedChange={toggleOverride}
@@ -231,7 +233,7 @@ export function SimulatorPanel({ releases }: { releases: ReleaseRow[] }) {
           ) : null}
         </div>
 
-        <div className="rounded-xl border border-dashed border-border/60 p-3">
+        <div className="rounded-xl border border-border/60 bg-card p-3">
           <div className="text-sm font-medium">Pull queue (GET /orders)</div>
           <div className="mb-2 text-xs text-muted-foreground">
             Fake orders the simulator serves to the 5-minute poller. Queue one, then use “Sync now”
@@ -270,18 +272,32 @@ export function SimulatorPanel({ releases }: { releases: ReleaseRow[] }) {
         </div>
 
         {(data?.calls ?? []).length > 0 ? (
-          <div className="rounded-xl border border-border/60">
-            <div className="border-b border-border/60 px-3 py-2 text-xs font-medium">
-              Calls received by the simulator
+          <div className="overflow-hidden rounded-xl border border-border/60 bg-muted/30">
+            <div className="flex items-center justify-between border-b border-border/60 px-3 py-2">
+              <span className="metric-label">Calls received by the simulator</span>
+              <span className="font-mono text-[11px] text-muted-foreground tnum">
+                {(data?.calls ?? []).length}
+              </span>
             </div>
-            <div className="divide-y divide-border/60">
+            <div className="max-h-64 divide-y divide-border/40 overflow-y-auto">
               {(data?.calls ?? []).map((call) => (
-                <div key={call.id} className="flex flex-wrap gap-2 px-3 py-2 text-xs">
-                  <span className="text-muted-foreground">{formatDateTime(call.created_at)}</span>
-                  <Badge variant="outline">{call.action}</Badge>
-                  <span className="font-mono">{call.endpoint}</span>
+                <div
+                  key={call.id}
+                  className="flex items-center gap-2 px-3 py-1.5 font-mono text-[11px] leading-tight"
+                >
+                  <span className="shrink-0 text-muted-foreground tnum">
+                    {formatDateTime(call.created_at)}
+                  </span>
+                  <span className="shrink-0 rounded-full border border-primary/50 px-1.5 py-px text-[10px] text-primary">
+                    {call.action}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate text-foreground/80" title={call.endpoint}>
+                    {call.endpoint}
+                  </span>
                   {call.replay_count > 0 ? (
-                    <Badge variant="secondary">replayed ×{call.replay_count}</Badge>
+                    <span className="shrink-0 text-[10px] text-muted-foreground">
+                      replayed ×{call.replay_count}
+                    </span>
                   ) : null}
                 </div>
               ))}
@@ -295,9 +311,17 @@ export function SimulatorPanel({ releases }: { releases: ReleaseRow[] }) {
 
 function Fact({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
-    <div className="rounded-lg border border-border/60 px-3 py-2">
-      <div className="text-muted-foreground">{label}</div>
-      <div className={mono ? "break-all font-mono" : "break-words"}>{value}</div>
+    <div className="rounded-lg border border-border/60 bg-card px-3 py-2">
+      <div className="metric-label text-[10px]">{label}</div>
+      <div
+        className={
+          mono
+            ? "mt-0.5 break-all font-mono text-xs leading-snug"
+            : "mt-0.5 break-words text-xs leading-snug"
+        }
+      >
+        {value}
+      </div>
     </div>
   );
 }

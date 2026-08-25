@@ -2,7 +2,7 @@ import * as React from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, RefreshCw, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { EmptyState, PageHeader } from "@/components/app-shell";
 import { Badge } from "@/components/ui/badge";
@@ -89,24 +89,26 @@ function AdminIntegrationPage() {
   const status = data?.status;
 
   return (
-    <div>
+    <div className="space-y-6">
       <PageHeader
         title="Integration"
         description="Middleware (fulfilment engine) connection. Inbound events create shadow orders; the payment gate and emails are unchanged."
       />
 
-      <div className="mb-6 grid gap-3 sm:grid-cols-3">
-        <StatusCard label="Middleware base URL" ok={status?.base_url_set} />
-        <StatusCard label="Service token" ok={status?.service_token_set} />
-        <StatusCard label="Webhook secret" ok={status?.webhook_secret_set} />
-      </div>
-
+      <section>
+        <h2 className="metric-label mb-2">Configuration</h2>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <StatusCard label="Middleware base URL" ok={status?.base_url_set} />
+          <StatusCard label="Service token" ok={status?.service_token_set} />
+          <StatusCard label="Webhook secret" ok={status?.webhook_secret_set} />
+        </div>
+      </section>
 
       <SyncPanel />
 
       <SimulatorPanel releases={releases} />
 
-      <Card className="mb-6">
+      <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-base">Releases (middleware orders)</CardTitle>
         </CardHeader>
@@ -196,7 +198,7 @@ function AdminIntegrationPage() {
         </CardContent>
       </Card>
 
-      <Card className="mb-6">
+      <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-base">Inbound events (last 50)</CardTitle>
         </CardHeader>
@@ -320,16 +322,27 @@ function AdminIntegrationPage() {
 
 function StatusCard({ label, ok }: { label: string; ok?: boolean | undefined }) {
   return (
-    <Card>
-      <CardContent className="flex items-center gap-3 p-4">
+    <Card
+      className={
+        ok
+          ? "border-l-[3px] border-l-primary/70 shadow-none"
+          : "border-l-[3px] border-l-warning/70 shadow-none"
+      }
+    >
+      <CardContent className="flex items-start gap-2.5 px-3.5 py-3">
         {ok ? (
-          <CheckCircle2 className="h-5 w-5 text-primary" />
+          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
         ) : (
-          <XCircle className="h-5 w-5 text-muted-foreground" />
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
         )}
-        <div>
-          <div className="text-sm font-medium">{label}</div>
-          <div className="text-xs text-muted-foreground">{ok ? "Configured" : "Not set"}</div>
+        <div className="min-w-0">
+          <div className="metric-label leading-none">{label}</div>
+          <div className="mt-1.5 text-sm font-semibold leading-none">
+            {ok ? "Configured" : "Not set"}
+          </div>
+          {ok ? null : (
+            <div className="mt-1 text-xs text-muted-foreground">Set in secrets</div>
+          )}
         </div>
       </CardContent>
     </Card>

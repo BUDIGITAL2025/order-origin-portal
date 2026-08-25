@@ -63,17 +63,17 @@ export function SyncPanel() {
   const paths = data?.entry_paths ?? {};
 
   return (
-    <Card className="mb-6">
-      <CardHeader className="flex flex-row items-center justify-between gap-3 pb-2">
-        <div>
+    <Card>
+      <CardHeader className="flex flex-row items-start justify-between gap-4 border-b border-border/60 pb-3">
+        <div className="min-w-0">
           <CardTitle className="text-base">Order sync (pull)</CardTitle>
-          <p className="mt-1 text-xs text-muted-foreground">
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
             Redundancy path: polls the fulfilment engine every 5 minutes and only picks up what
             the webhook missed. {data?.connected_workspaces ?? 0} connected workspace(s) in scope —
             a healthy integration shows almost everything arriving by webhook.
           </p>
         </div>
-        <Button size="sm" disabled={busy !== null} onClick={() => run()}>
+        <Button size="sm" className="shrink-0" disabled={busy !== null} onClick={() => run()}>
           <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
           {busy === "all" ? "Syncing…" : "Sync now"}
         </Button>
@@ -99,46 +99,43 @@ export function SyncPanel() {
             <TableBody>
               {tenants.map((tenant) => (
                 <TableRow key={tenant.store_id} className="text-[13px]">
-                  <TableCell>
-                    <div className="font-medium">
+                  <TableCell className="py-2.5">
+                    <div className="font-medium leading-tight">
                       {(tenant.stores as { store_name?: string | null } | null)?.store_name ??
                         "Workspace"}
                     </div>
-                    <div className="font-mono text-xs text-muted-foreground">
+                    <div className="font-mono text-[11px] text-muted-foreground">
                       {tenant.tenant_id}
                     </div>
                   </TableCell>
-                  <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
+                  <TableCell className="whitespace-nowrap py-2.5 font-mono text-[11px] text-muted-foreground tnum">
                     {tenant.last_synced_at ? formatDateTime(tenant.last_synced_at) : "—"}
                     <div>
-                      last success:{" "}
-                      {tenant.last_success_at ? formatDateTime(tenant.last_success_at) : "—"}
+                      ok: {tenant.last_success_at ? formatDateTime(tenant.last_success_at) : "—"}
                     </div>
                   </TableCell>
-                  <TableCell>
-                    {tenant.orders_ingested}
-                    <div className="text-xs text-muted-foreground">
+                  <TableCell className="py-2.5 tnum">
+                    <span className="font-medium">{tenant.orders_ingested}</span>
+                    <div className="text-[11px] text-muted-foreground">
                       {(tenant.last_seen_order_ids ?? []).length} seen last cycle
                     </div>
                   </TableCell>
-                  <TableCell className="text-xs">
+                  <TableCell className="py-2.5">
                     {(() => {
                       const p = paths[tenant.tenant_id];
                       const pollCaught = p?.orders_poll ?? 0;
                       return (
-                        <div className="space-y-1">
-                          <div>
-                            Orders: <span className="font-medium">{p?.orders_webhook ?? 0}</span> via
-                            webhook ·{" "}
-                            <span className={pollCaught > 0 ? "font-medium text-destructive" : ""}>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <Chip label="orders">
+                            {p?.orders_webhook ?? 0} webhook ·{" "}
+                            <span className={pollCaught > 0 ? "font-semibold text-destructive" : ""}>
                               {pollCaught}
                             </span>{" "}
-                            caught by polling
-                          </div>
-                          <div className="text-muted-foreground">
-                            Tracking: {p?.tracking_webhook ?? 0} webhook · {p?.tracking_poll ?? 0}{" "}
                             polling
-                          </div>
+                          </Chip>
+                          <Chip label="tracking">
+                            {p?.tracking_webhook ?? 0} webhook · {p?.tracking_poll ?? 0} polling
+                          </Chip>
                           {pollCaught > 0 ? (
                             <Badge variant="destructive">Check webhook delivery</Badge>
                           ) : null}
@@ -146,18 +143,22 @@ export function SyncPanel() {
                       );
                     })()}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="py-2.5">
                     {tenant.consecutive_failures > 0 ? (
                       <div>
-                        <Badge variant="destructive">
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-destructive/40 bg-destructive/10 px-2 py-0.5 text-[11px] font-medium text-destructive">
+                          <span className="h-1.5 w-1.5 rounded-full bg-destructive" />
                           Failing ({tenant.consecutive_failures})
-                        </Badge>
-                        <div className="mt-1 max-w-md text-xs text-muted-foreground">
+                        </span>
+                        <div className="mt-1 max-w-md text-[11px] text-muted-foreground">
                           {tenant.last_error}
                         </div>
                       </div>
                     ) : (
-                      <Badge variant="outline">Healthy</Badge>
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/40 bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
+                        <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+                        Healthy
+                      </span>
                     )}
                   </TableCell>
                   <TableCell className="text-right">
@@ -178,5 +179,14 @@ export function SyncPanel() {
         )}
       </CardContent>
     </Card>
+  );
+}
+
+function Chip({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-muted/40 px-2 py-0.5 text-[11px] text-muted-foreground tnum">
+      <span className="metric-label text-[10px] leading-none">{label}</span>
+      <span className="text-foreground/80">{children}</span>
+    </span>
   );
 }
