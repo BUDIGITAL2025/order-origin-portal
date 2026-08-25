@@ -58,3 +58,39 @@ export const adminReplayIntegrationEvent = createServerFn({ method: "POST" })
     const { runStoredEvent } = await import("./middleware.server");
     return runStoredEvent(admin, event);
   });
+
+/** Admin: middleware-sourced orders and their outbound release state. */
+export const adminIntegrationReleases = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { requireAdmin, getAdminClient } = await import("./admin.server");
+    await requireAdmin(context.supabase, context.userId);
+    const admin = await getAdminClient();
+
+    const { data, error } = await admin
+      .from("orders")
+      .select(
+        "id, middleware_order_id, external_order_number, status, total_amount, release_status, release_sent_at, release_last_attempt_at, release_attempts, release_error, paid_at, created_at",
+      )
+      .eq("source", "middleware")
+      .order("created_at", { ascending: false })
+      .limit(50);
+    if (error) throw new Error(error.message);
+    return { releases: data ?? [] };
+  });
+
+/** Admin: manually re-send a stuck release/reject for one order. */
+export const adminRetryRelease = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ order_id: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { requireAdmin, getAdminClient } = await import("./admin.server");
+    await requireAdmin(context.supabase, context.userId);
+    const admin = await getAdminClient();
+    const { dispatchPendingReleases } = await import("./middleware.server");
+    const results = await dispatchPendingReleases(admin, {
+      orderIds: [data.order_id],
+      limit: 1,
+    });
+    return { result: results[0] ?? { order_id: data.order_id, status: "not_queued" } };
+  });
