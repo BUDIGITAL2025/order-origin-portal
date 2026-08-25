@@ -198,7 +198,7 @@ function AdminIntegrationPage() {
         </CardContent>
       </Card>
 
-      <Card className="mb-6">
+      <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-base">Inbound events (last 50)</CardTitle>
         </CardHeader>
