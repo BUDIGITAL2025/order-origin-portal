@@ -85,8 +85,40 @@ export const spymarketQueryShops = createServerFn({ method: "POST" })
         countries: z.array(z.string().length(2)).max(20).optional(),
         language: z.string().max(10).optional(),
         minTrustpilotRating: z.number().min(0).max(5).optional(),
+        // Growth rule builder — maps 1:1 onto the upstream
+        // PublicApiTrafficGrowthConditionDto / PublicApiAdsGrowthConditionDto
+        // arrays on POST /v1/shops/query (period + comparison + value).
+        trafficGrowth: z
+          .array(
+            z.object({
+              period: z.enum(["last30d", "last90d", "last180d"]),
+              comparison: z.enum(["greater", "lower"]),
+              value: z.number(),
+            }),
+          )
+          .max(4)
+          .optional(),
+        adsGrowth: z
+          .array(
+            z.object({
+              period: z.enum(["last7d", "last30d", "last90d"]),
+              comparison: z.enum(["greater", "lower"]),
+              value: z.number(),
+            }),
+          )
+          .max(4)
+          .optional(),
+        displayInTrending: z.boolean().optional(),
+        createdAfter: z.string().max(40).optional(),
         sortBy: z
-          .enum(["relevance", "monthlyVisits", "activeAds", "productsCount", "createdAt"])
+          .enum([
+            "relevance",
+            "monthlyVisits",
+            "activeAds",
+            "growth30d",
+            "productsCount",
+            "createdAt",
+          ])
           .default("monthlyVisits"),
         order: z.enum(["desc", "asc"]).default("desc"),
         limit: z.number().int().min(1).max(100).default(32),
@@ -154,6 +186,14 @@ export const spymarketQueryShops = createServerFn({ method: "POST" })
     if (includeCountries) body["creationCountries"] = includeCountries;
     if (data.language) body["languages"] = [data.language];
     if (data.minTrustpilotRating != null) body["minTrustpilotRating"] = data.minTrustpilotRating;
+    // Growth conditions: `operator` links a condition to the NEXT one, so the
+    // last rule of each array must not carry one (all rules are AND-ed).
+    const chain = <T extends { period: string; comparison: string; value: number }>(rules: T[]) =>
+      rules.map((r, i) => (i < rules.length - 1 ? { ...r, operator: "and" } : { ...r }));
+    if (data.trafficGrowth?.length) body["trafficGrowth"] = chain(data.trafficGrowth);
+    if (data.adsGrowth?.length) body["adsGrowth"] = chain(data.adsGrowth);
+    if (data.displayInTrending != null) body["displayInTrending"] = data.displayInTrending;
+    if (data.createdAfter) body["createdAfter"] = data.createdAfter;
     return mod.trendtrackCall({
       userId: context.userId,
       endpoint: "shops/query",
@@ -175,6 +215,10 @@ export const spymarketQueryShops = createServerFn({ method: "POST" })
           countries: includeCountries,
           language: data.language ?? null,
           minTrustpilotRating: data.minTrustpilotRating ?? null,
+          trafficGrowth: data.trafficGrowth ?? null,
+          adsGrowth: data.adsGrowth ?? null,
+          displayInTrending: data.displayInTrending ?? null,
+          createdAfter: data.createdAfter ?? null,
           sortBy: effectiveSortBy,
           order: data.order,
         },

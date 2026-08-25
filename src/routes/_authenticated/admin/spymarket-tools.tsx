@@ -40,6 +40,11 @@ export const Route = createFileRoute("/_authenticated/admin/spymarket-tools")({
     tp: str(search, "tp"),
     ssort: str(search, "ssort"),
     dtc: str(search, "dtc"),
+    // Growth rule builder + preset views
+    gr: str(search, "gr"),
+    trend: str(search, "trend"),
+    cafter: str(search, "cafter"),
+    pset: str(search, "pset"),
     // Ad library filters
     aq: str(search, "aq"),
     atyp: str(search, "atyp"),

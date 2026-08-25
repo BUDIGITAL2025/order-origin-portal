@@ -30,6 +30,8 @@ import {
   RefreshCw,
   Search,
   SlidersHorizontal,
+  Sparkles,
+  TrendingUp,
   Star,
   Store,
   Users,
@@ -761,6 +763,7 @@ const SHOP_SORTS = [
   { value: "relevance", label: "Best match" },
   { value: "monthlyVisits", label: "Most traffic" },
   { value: "activeAds", label: "Most ads" },
+  { value: "growth30d", label: "Fastest growing" },
   { value: "productsCount", label: "Biggest catalogue" },
   { value: "createdAt", label: "Newest" },
 ];
@@ -768,6 +771,96 @@ const SHOP_SORTS = [
 const VISITS_RANGE_MAX = 50_000_000;
 const ADS_RANGE_MAX = 500;
 const PRODUCTS_RANGE_MAX = 10_000;
+
+// ---------------------------------------------------------------------------
+// Growth rule builder
+//
+// Maps onto POST /v1/shops/query `trafficGrowth[]` / `adsGrowth[]`:
+//   { period, comparison: greater|lower, value: percentage }
+// Rising X% → comparison "greater", value +X. Falling X% → "lower", value −X.
+// Traffic windows: last30d | last90d | last180d.
+// Ads windows:     last7d  | last30d | last90d.
+// ---------------------------------------------------------------------------
+
+type GrowthMetric = "traffic" | "ads";
+type GrowthDirection = "rising" | "falling";
+
+interface GrowthRule {
+  metric: GrowthMetric;
+  direction: GrowthDirection;
+  /** Absolute percentage threshold, e.g. 30 → "at least 30%". */
+  percent: number;
+  /** Upstream period token, already valid for the chosen metric. */
+  period: string;
+}
+
+const TRAFFIC_WINDOWS = [
+  { value: "last30d", label: "1m" },
+  { value: "last90d", label: "3m" },
+  { value: "last180d", label: "6m" },
+];
+const ADS_WINDOWS = [
+  { value: "last7d", label: "7d" },
+  { value: "last30d", label: "1m" },
+  { value: "last90d", label: "3m" },
+];
+
+const windowsFor = (m: GrowthMetric) => (m === "traffic" ? TRAFFIC_WINDOWS : ADS_WINDOWS);
+const windowLabel = (r: GrowthRule) =>
+  windowsFor(r.metric).find((w) => w.value === r.period)?.label ?? r.period;
+
+const defaultRule = (metric: GrowthMetric): GrowthRule => ({
+  metric,
+  direction: "rising",
+  percent: 30,
+  period: metric === "traffic" ? "last30d" : "last30d",
+});
+
+/** "t:rising:30:last30d,a:rising:20:last7d" */
+function encodeRules(rules: GrowthRule[]): string | undefined {
+  if (rules.length === 0) return undefined;
+  return rules
+    .map((r) => `${r.metric === "traffic" ? "t" : "a"}:${r.direction}:${r.percent}:${r.period}`)
+    .join(",");
+}
+
+function decodeRules(raw: string | undefined): GrowthRule[] {
+  if (!raw) return [];
+  return raw
+    .split(",")
+    .map((chunk): GrowthRule | null => {
+      const [m, d, p, w] = chunk.split(":");
+      if (!m || !d || !p || !w) return null;
+      const metric: GrowthMetric = m === "a" ? "ads" : "traffic";
+      const percent = Number(p);
+      if (!Number.isFinite(percent)) return null;
+      if (!windowsFor(metric).some((x) => x.value === w)) return null;
+      return {
+        metric,
+        direction: d === "falling" ? "falling" : "rising",
+        percent: Math.abs(percent),
+        period: w,
+      };
+    })
+    .filter((r): r is GrowthRule => r !== null)
+    .slice(0, 4);
+}
+
+const ruleLabel = (r: GrowthRule) =>
+  `${r.metric === "traffic" ? "Traffic" : "Ads"} ${r.direction === "rising" ? "↑" : "↓"}${r.percent}% ${windowLabel(r)}`;
+
+/** Split rules into the two upstream condition arrays. */
+function rulesToConditions(rules: GrowthRule[]) {
+  const toCond = (r: GrowthRule) => ({
+    period: r.period,
+    comparison: r.direction === "rising" ? "greater" : "lower",
+    value: r.direction === "rising" ? r.percent : -r.percent,
+  });
+  return {
+    trafficGrowth: rules.filter((r) => r.metric === "traffic").map(toCond),
+    adsGrowth: rules.filter((r) => r.metric === "ads").map(toCond),
+  };
+}
 
 interface ShopsFilters {
   search: string;
@@ -787,6 +880,10 @@ interface ShopsFilters {
   language: string;
   trustpilot: string;
   sortBy: string;
+  rules: GrowthRule[];
+  trending: boolean;
+  createdAfter: string;
+  preset: string;
 }
 
 function shopsFiltersFromUrl(
@@ -812,6 +909,10 @@ function shopsFiltersFromUrl(
     language: url["lang"] ?? "",
     trustpilot: url["tp"] ?? "",
     sortBy: url["ssort"] ?? "monthlyVisits",
+    rules: decodeRules(url["gr"]),
+    trending: url["trend"] === "1",
+    createdAfter: url["cafter"] ?? "",
+    preset: url["pset"] ?? "",
   };
 }
 
@@ -837,8 +938,229 @@ function shopsUrlPatch(f: ShopsFilters): Record<string, string | undefined> {
     lang: f.language || undefined,
     tp: f.trustpilot || undefined,
     ssort: f.sortBy !== "monthlyVisits" ? f.sortBy : undefined,
+    gr: encodeRules(f.rules),
+    trend: f.trending ? "1" : undefined,
+    cafter: f.createdAfter || undefined,
+    pset: f.preset || undefined,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Preset views
+//
+// The public v1 API has no `preset` parameter (see docs/trendtrack-api-
+// reference.md → "Shop presets"), so each preset is a server-side filter+sort
+// recipe built from documented params only. Ad/Traffic peak have no upstream
+// peak field — they are approximated with growth + volume floors.
+// ---------------------------------------------------------------------------
+
+const daysAgoISO = (days: number) =>
+  new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10);
+
+interface ShopPreset {
+  id: string;
+  label: string;
+  hint: string;
+  patch: () => Partial<ShopsFilters>;
+}
+
+const SHOP_PRESETS: ShopPreset[] = [
+  {
+    id: "weekly-gems",
+    label: "Weekly Gems",
+    hint: "displayInTrending=true + createdAfter (last 180d) + ≥10k visits, sorted by growth30d.",
+    patch: () => ({
+      trending: true,
+      createdAfter: daysAgoISO(180),
+      minVisits: "10000",
+      maxVisits: "",
+      rules: [],
+      sortBy: "growth30d",
+    }),
+  },
+  {
+    id: "top-scaling",
+    label: "Top Scaling",
+    hint: "trafficGrowth ≥ +50% over last30d, sorted by growth30d.",
+    patch: () => ({
+      trending: false,
+      createdAfter: "",
+      rules: [{ metric: "traffic", direction: "rising", percent: 50, period: "last30d" }],
+      sortBy: "growth30d",
+    }),
+  },
+  {
+    id: "market-leaders",
+    label: "Market Leaders & DTC",
+    hint: "dtcRegion=all + ≥500k monthly visits, sorted by monthlyVisits.",
+    patch: () => ({
+      trending: false,
+      createdAfter: "",
+      rules: [],
+      dtcOnly: true,
+      minVisits: "500000",
+      sortBy: "monthlyVisits",
+    }),
+  },
+  {
+    id: "ad-peak",
+    label: "Ad Peak",
+    hint: "No peak field upstream — approximated with adsGrowth ≥ +30% over last7d and ≥50 active ads, sorted by activeAds.",
+    patch: () => ({
+      trending: false,
+      createdAfter: "",
+      rules: [{ metric: "ads", direction: "rising", percent: 30, period: "last7d" }],
+      minAds: "50",
+      maxAds: "",
+      adsWindow: "last7d",
+      sortBy: "activeAds",
+    }),
+  },
+  {
+    id: "traffic-peak",
+    label: "Traffic Peak",
+    hint: "No peak field upstream — approximated with trafficGrowth ≥ +100% over last90d and ≥100k visits, sorted by growth30d.",
+    patch: () => ({
+      trending: false,
+      createdAfter: "",
+      rules: [{ metric: "traffic", direction: "rising", percent: 100, period: "last90d" }],
+      minVisits: "100000",
+      maxVisits: "",
+      sortBy: "growth30d",
+    }),
+  },
+];
+
+/**
+ * Growth rule builder body: stackable rules, each one
+ * metric × direction × minimum % × window. Rules are AND-ed upstream.
+ */
+function GrowthRulesContent({
+  rules,
+  onChange,
+}: {
+  rules: GrowthRule[];
+  onChange: (rules: GrowthRule[]) => void;
+}) {
+  const patch = (i: number, p: Partial<GrowthRule>) =>
+    onChange(rules.map((r, idx) => (idx === i ? { ...r, ...p } : r)));
+
+  return (
+    <div className="space-y-3">
+      <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+        <TrendingUp className="h-3.5 w-3.5 text-primary" />
+        Find shops by trajectory — rules are combined with AND.
+      </p>
+
+      {rules.length === 0 && (
+        <p className="rounded-xl bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
+          No rule yet. Add one to filter by traffic or ad growth.
+        </p>
+      )}
+
+      {rules.map((r, i) => (
+        <div key={i} className="space-y-2 rounded-xl border p-2.5">
+          <div className="flex items-center gap-2">
+            <Select
+              value={r.metric}
+              onValueChange={(v) => {
+                const metric = v as GrowthMetric;
+                const period = windowsFor(metric).some((w) => w.value === r.period)
+                  ? r.period
+                  : defaultRule(metric).period;
+                patch(i, { metric, period });
+              }}
+            >
+              <SelectTrigger className="h-8 flex-1 rounded-full text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="traffic">Traffic</SelectItem>
+                <SelectItem value="ads">Active ads</SelectItem>
+              </SelectContent>
+            </Select>
+            <button
+              type="button"
+              onClick={() => onChange(rules.filter((_, idx) => idx !== i))}
+              className="text-[11px] text-muted-foreground underline underline-offset-2 hover:text-foreground"
+            >
+              Remove
+            </button>
+          </div>
+
+          {/* Direction toggle */}
+          <div className="grid grid-cols-2 gap-1 rounded-full bg-muted p-0.5">
+            {(["rising", "falling"] as GrowthDirection[]).map((d) => (
+              <button
+                key={d}
+                type="button"
+                onClick={() => patch(i, { direction: d })}
+                className={cn(
+                  "inline-flex h-7 items-center justify-center gap-1 rounded-full text-xs font-medium transition-colors",
+                  r.direction === d
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {d === "rising" ? (
+                  <ArrowUpRight className="h-3.5 w-3.5" />
+                ) : (
+                  <ArrowDownRight className="h-3.5 w-3.5" />
+                )}
+                {d === "rising" ? "Rising" : "Falling"}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Label className="whitespace-nowrap text-[11px] text-muted-foreground">
+              at least
+            </Label>
+            <div className="relative flex-1">
+              <Input
+                value={String(r.percent)}
+                inputMode="numeric"
+                onChange={(e) => {
+                  const n = Number(e.target.value.replace(/\D/g, ""));
+                  patch(i, { percent: Number.isFinite(n) ? n : 0 });
+                }}
+                className="h-8 rounded-full pr-6 text-xs"
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-muted-foreground">
+                %
+              </span>
+            </div>
+            <Select value={r.period} onValueChange={(v) => patch(i, { period: v })}>
+              <SelectTrigger className="h-8 w-20 rounded-full text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {windowsFor(r.metric).map((w) => (
+                  <SelectItem key={w.value} value={w.value}>
+                    {w.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      ))}
+
+      <Button
+        variant="outline"
+        size="sm"
+        className="w-full rounded-full"
+        disabled={rules.length >= 4}
+        onClick={() =>
+          onChange([...rules, defaultRule(rules.some((r) => r.metric === "traffic") ? "ads" : "traffic")])
+        }
+      >
+        Add rule
+      </Button>
+    </div>
+  );
+}
+
 
 /** "2024-03-12" → "1y 9m old". */
 function shopAge(createdAt: string | null): string | null {
@@ -1052,13 +1374,27 @@ function ShopsTab({
     staleTime: 24 * 60 * 60 * 1000,
   });
 
-  /** Commit a patch to state AND the URL (shareable filtered views). */
+  /**
+   * Commit a patch to state AND the URL (shareable filtered views).
+   * Any manual filter edit drops the active preset badge, unless the patch
+   * sets one itself.
+   */
   const apply = (patch: Partial<ShopsFilters>) => {
     setF((prev) => {
-      const next = { ...prev, ...patch };
+      const next = { ...prev, preset: "", ...patch };
       go(shopsUrlPatch(next));
       return next;
     });
+  };
+
+  /** One-click preset: apply the recipe, then run the (paid) search. */
+  const applyPreset = (preset: ShopPreset) => {
+    const next: ShopsFilters = { ...f, ...preset.patch(), preset: preset.id };
+    setF(next);
+    setSortTouched(true);
+    go(shopsUrlPatch(next));
+    setPages([]);
+    void call.execute(buildInput(0, next));
   };
 
   /** DTC toggle: commit to state + URL, re-run live when results are shown. */
@@ -1098,6 +1434,11 @@ function ShopsTab({
     if (filters.countriesInc.length > 0) input["countries"] = filters.countriesInc;
     if (filters.language) input["language"] = filters.language;
     if (filters.trustpilot) input["minTrustpilotRating"] = Number(filters.trustpilot);
+    const growth = rulesToConditions(filters.rules);
+    if (growth.trafficGrowth.length > 0) input["trafficGrowth"] = growth.trafficGrowth;
+    if (growth.adsGrowth.length > 0) input["adsGrowth"] = growth.adsGrowth;
+    if (filters.trending) input["displayInTrending"] = true;
+    if (filters.createdAfter) input["createdAfter"] = filters.createdAfter;
     return input;
   };
 
@@ -1131,7 +1472,8 @@ function ShopsTab({
       initialDomain ||
         url["sq"] || url["vmin"] || url["vmax"] || url["amin"] || url["amax"] ||
         url["pmin"] || url["pmax"] || url["plus"] || url["cat"] || url["cinc"] ||
-        url["lang"] || url["tp"] || url["ssort"],
+        url["lang"] || url["tp"] || url["ssort"] || url["gr"] || url["trend"] ||
+        url["cafter"] || url["pset"],
     );
     if (hadParams) void call.execute(buildInput(0));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1188,6 +1530,49 @@ function ShopsTab({
     <div className="space-y-4">
       <Card className="rounded-2xl">
         <CardContent className="space-y-3 p-4">
+          {/* Preset views — one click applies a documented filter+sort recipe
+              and runs the search. */}
+          <div className="flex flex-wrap items-center gap-2 border-b pb-3">
+            <span className="mr-1 inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <Sparkles className="h-3.5 w-3.5 text-primary" />
+              Presets
+            </span>
+            {SHOP_PRESETS.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                title={`${p.hint} Runs a paid search — ${costLabel(costs, "shops/query", limit)}.`}
+                disabled={searching}
+                onClick={() => applyPreset(p)}
+                aria-pressed={f.preset === p.id}
+                className={cn(
+                  "inline-flex h-8 items-center rounded-full border px-3 text-xs font-medium transition-colors disabled:opacity-60",
+                  f.preset === p.id
+                    ? "border-primary bg-primary/15 text-primary"
+                    : "border-border bg-card text-muted-foreground hover:border-foreground/20 hover:text-foreground",
+                )}
+              >
+                {p.label}
+              </button>
+            ))}
+            {f.preset !== "" && (
+              <button
+                type="button"
+                className="text-[11px] text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                onClick={() =>
+                  apply({
+                    preset: "",
+                    rules: [],
+                    trending: false,
+                    createdAfter: "",
+                  })
+                }
+              >
+                Clear preset
+              </button>
+            )}
+          </div>
+
           {/* Search row */}
           <div className="flex flex-wrap items-center gap-2">
             <div className="relative min-w-52 flex-1">
@@ -1270,6 +1655,26 @@ function ShopsTab({
           {/* Filter chips */}
           <div className="flex flex-wrap items-center gap-2">
             <SlidersHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
+
+            {/* Growth rule builder — the "find winners early" filter. */}
+            <FilterChip
+              label="Growth"
+              active={f.rules.length > 0}
+              display={
+                f.rules.length > 0
+                  ? f.rules.map((r) => ruleLabel(r)).join(" + ")
+                  : undefined
+              }
+              onApply={() => apply({})}
+              onClear={() => apply({ rules: [] })}
+              contentClassName="w-[24rem]"
+            >
+              <GrowthRulesContent
+                rules={f.rules}
+                onChange={(rules) => setF((p) => ({ ...p, rules, preset: "" }))}
+              />
+            </FilterChip>
+
             <FilterChip
               label="Traffic"
               active={Boolean(f.minVisits || f.maxVisits)}
