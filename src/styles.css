@@ -88,15 +88,16 @@
   --text-muted: #6b7280;
   --border: #e5e7e3;
 
-  --accent: #b4e600;
-  --accent-hover: #a2cf00;
+  /* Canonical brand accent — one exact value in both themes. */
+  --accent: #a2ff00;
+  --accent-hover: #8fe000;
   --accent-fg: #1a2000;
-  --ring: #7fa500;
+  --ring: #8fe000;
 
   --sidebar-bg: #1c2024;
   --sidebar-fg: #a8aeb4;
   --sidebar-fg-active: #ffffff;
-  --sidebar-active-bg: rgba(180, 230, 0, 0.12);
+  --sidebar-active-bg: rgba(162, 255, 0, 0.12);
 
   --success: #16a34a;
   --warning: #d97706;
