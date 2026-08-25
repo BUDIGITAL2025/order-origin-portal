@@ -89,24 +89,26 @@ function AdminIntegrationPage() {
   const status = data?.status;
 
   return (
-    <div>
+    <div className="space-y-6">
       <PageHeader
         title="Integration"
         description="Middleware (fulfilment engine) connection. Inbound events create shadow orders; the payment gate and emails are unchanged."
       />
 
-      <div className="mb-6 grid gap-3 sm:grid-cols-3">
-        <StatusCard label="Middleware base URL" ok={status?.base_url_set} />
-        <StatusCard label="Service token" ok={status?.service_token_set} />
-        <StatusCard label="Webhook secret" ok={status?.webhook_secret_set} />
-      </div>
-
+      <section>
+        <h2 className="metric-label mb-2">Configuration</h2>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <StatusCard label="Middleware base URL" ok={status?.base_url_set} />
+          <StatusCard label="Service token" ok={status?.service_token_set} />
+          <StatusCard label="Webhook secret" ok={status?.webhook_secret_set} />
+        </div>
+      </section>
 
       <SyncPanel />
 
       <SimulatorPanel releases={releases} />
 
-      <Card className="mb-6">
+      <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-base">Releases (middleware orders)</CardTitle>
         </CardHeader>
