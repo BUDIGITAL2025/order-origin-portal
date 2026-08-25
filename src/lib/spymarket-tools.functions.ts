@@ -85,8 +85,40 @@ export const spymarketQueryShops = createServerFn({ method: "POST" })
         countries: z.array(z.string().length(2)).max(20).optional(),
         language: z.string().max(10).optional(),
         minTrustpilotRating: z.number().min(0).max(5).optional(),
+        // Growth rule builder — maps 1:1 onto the upstream
+        // PublicApiTrafficGrowthConditionDto / PublicApiAdsGrowthConditionDto
+        // arrays on POST /v1/shops/query (period + comparison + value).
+        trafficGrowth: z
+          .array(
+            z.object({
+              period: z.enum(["last30d", "last90d", "last180d"]),
+              comparison: z.enum(["greater", "lower"]),
+              value: z.number(),
+            }),
+          )
+          .max(4)
+          .optional(),
+        adsGrowth: z
+          .array(
+            z.object({
+              period: z.enum(["last7d", "last30d", "last90d"]),
+              comparison: z.enum(["greater", "lower"]),
+              value: z.number(),
+            }),
+          )
+          .max(4)
+          .optional(),
+        displayInTrending: z.boolean().optional(),
+        createdAfter: z.string().max(40).optional(),
         sortBy: z
-          .enum(["relevance", "monthlyVisits", "activeAds", "productsCount", "createdAt"])
+          .enum([
+            "relevance",
+            "monthlyVisits",
+            "activeAds",
+            "growth30d",
+            "productsCount",
+            "createdAt",
+          ])
           .default("monthlyVisits"),
         order: z.enum(["desc", "asc"]).default("desc"),
         limit: z.number().int().min(1).max(100).default(32),
