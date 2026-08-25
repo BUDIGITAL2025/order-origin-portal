@@ -4375,8 +4375,8 @@ function AdDetailDialog({
   const getMedia = useServerFn(spymarketGetAdMediaUrl);
   const call = useMeteredCall(getAd as ServerFnLike);
   const reachCall = useMeteredCall(getReach as ServerFnLike);
-  const mediaCall = useMeteredCall(getMedia as ServerFnLike);
   const loadedForRef = React.useRef<string | null>(null);
+  const [lightbox, setLightbox] = React.useState(false);
 
   React.useEffect(() => {
     if (adId && loadedForRef.current !== adId) {
@@ -4384,6 +4384,7 @@ function AdDetailDialog({
       void call.execute({ adId });
     }
     if (!adId) loadedForRef.current = null;
+    setLightbox(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [adId]);
 
@@ -4400,14 +4401,10 @@ function AdDetailDialog({
   const mediaKind = asStr(media["type"]) ?? asStr(media["mediaType"]);
   const isVideo = mediaKind === "video";
   // Video MP4s already ship in the detail payload — the paid ads/media-url
-  // endpoint is only a fallback when no playable URL is present.
+  // endpoint only fires from the lightbox, on an explicit play/download click.
   const playableUrl = asStr(media["mediaUrl"]);
   const posterUrl = asStr(media["thumbnailUrl"]);
-  const fetchedMediaUrl =
-    mediaCall.state.kind === "ok"
-      ? asStr(asRec(asRec(mediaCall.state.result.data)["data"])["mediaUrl"]) ??
-        asStr(asRec(asRec(mediaCall.state.result.data)["data"])["url"])
-      : null;
+
 
   const reachPoints =
     reachCall.state.kind === "ok"
