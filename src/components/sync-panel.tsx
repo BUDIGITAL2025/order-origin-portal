@@ -63,17 +63,17 @@ export function SyncPanel() {
   const paths = data?.entry_paths ?? {};
 
   return (
-    <Card className="mb-6">
-      <CardHeader className="flex flex-row items-center justify-between gap-3 pb-2">
-        <div>
+    <Card>
+      <CardHeader className="flex flex-row items-start justify-between gap-4 border-b border-border/60 pb-3">
+        <div className="min-w-0">
           <CardTitle className="text-base">Order sync (pull)</CardTitle>
-          <p className="mt-1 text-xs text-muted-foreground">
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
             Redundancy path: polls the fulfilment engine every 5 minutes and only picks up what
             the webhook missed. {data?.connected_workspaces ?? 0} connected workspace(s) in scope —
             a healthy integration shows almost everything arriving by webhook.
           </p>
         </div>
-        <Button size="sm" disabled={busy !== null} onClick={() => run()}>
+        <Button size="sm" className="shrink-0" disabled={busy !== null} onClick={() => run()}>
           <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
           {busy === "all" ? "Syncing…" : "Sync now"}
         </Button>
