@@ -233,7 +233,7 @@ export function SimulatorPanel({ releases }: { releases: ReleaseRow[] }) {
           ) : null}
         </div>
 
-        <div className="rounded-xl border border-dashed border-border/60 p-3">
+        <div className="rounded-xl border border-border/60 bg-card p-3">
           <div className="text-sm font-medium">Pull queue (GET /orders)</div>
           <div className="mb-2 text-xs text-muted-foreground">
             Fake orders the simulator serves to the 5-minute poller. Queue one, then use “Sync now”
