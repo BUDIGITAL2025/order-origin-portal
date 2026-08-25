@@ -181,3 +181,12 @@ export function SyncPanel() {
     </Card>
   );
 }
+
+function Chip({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-muted/40 px-2 py-0.5 text-[11px] text-muted-foreground tnum">
+      <span className="metric-label text-[10px] leading-none">{label}</span>
+      <span className="text-foreground/80">{children}</span>
+    </span>
+  );
+}
