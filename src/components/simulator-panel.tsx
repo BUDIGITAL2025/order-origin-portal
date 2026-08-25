@@ -139,29 +139,30 @@ export function SimulatorPanel({ releases }: { releases: ReleaseRow[] }) {
   const blocked = data?.real_middleware_configured === true;
 
   return (
-    <Card className="mb-6 border-dashed">
+    <Card className="border-2 border-dashed border-warning/40 bg-warning/[0.04] shadow-none">
       <CardHeader className="pb-3">
         <CardTitle className="flex flex-wrap items-center gap-2 text-base">
-          <FlaskConical className="h-4 w-4 text-muted-foreground" />
+          <FlaskConical className="h-4 w-4 text-warning" />
           Simulator
-          <Badge variant="secondary" className="uppercase tracking-wide">
+          <span className="rounded-full border border-warning/50 bg-warning/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-warning">
             Test tooling
-          </Badge>
+          </span>
           {overrideOn ? <Badge>Releases → simulator</Badge> : null}
         </CardTitle>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs leading-relaxed text-muted-foreground">
           Emits real signed webhooks into our own receiver and accepts the outbound release call, so
           the full lifecycle can be proven without the middleware. All traffic is tagged{" "}
           <span className="font-mono">simulator=true</span> and ignored by the ops digest.
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid gap-2 text-xs sm:grid-cols-2">
+        <div className="grid gap-2 sm:grid-cols-2">
           <Fact label="Simulator token" value={data?.token_set ? "configured" : "missing"} />
           <Fact label="Webhook secret" value={data?.webhook_secret_set ? "configured" : "missing"} />
           <Fact label="Simulator URL" value={data?.simulator_url ?? "unknown app base URL"} mono />
           <Fact
             label="Test workspace"
+            mono
             value={
               data?.workspace
                 ? `${data.workspace.name ?? data.workspace.id.slice(0, 8)} · ${data.workspace.skus.length} SKU(s) · ${data.workspace.countries.join(", ")}`
@@ -170,16 +171,17 @@ export function SimulatorPanel({ releases }: { releases: ReleaseRow[] }) {
           />
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/60 p-3">
-          <div>
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/60 bg-card px-3.5 py-3">
+          <label htmlFor="sim-override" className="min-w-0 cursor-pointer">
             <div className="text-sm font-medium">Point releases at simulator</div>
             <div className="text-xs text-muted-foreground">
               {blocked
                 ? "Disabled: a real MIDDLEWARE_BASE_URL is configured."
                 : "Outbound release/reject calls go to the simulator so they flip to 'sent'."}
             </div>
-          </div>
+          </label>
           <Switch
+            id="sim-override"
             checked={overrideOn}
             disabled={blocked || busy === "override" || !data?.token_set}
             onCheckedChange={toggleOverride}
