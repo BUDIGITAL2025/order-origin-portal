@@ -1524,6 +1524,26 @@ function ShopsTab({
           {/* Filter chips */}
           <div className="flex flex-wrap items-center gap-2">
             <SlidersHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
+
+            {/* Growth rule builder — the "find winners early" filter. */}
+            <FilterChip
+              label="Growth"
+              active={f.rules.length > 0}
+              display={
+                f.rules.length > 0
+                  ? f.rules.map((r) => ruleLabel(r)).join(" + ")
+                  : undefined
+              }
+              onApply={() => apply({})}
+              onClear={() => apply({ rules: [] })}
+              contentClassName="w-[24rem]"
+            >
+              <GrowthRulesContent
+                rules={f.rules}
+                onChange={(rules) => setF((p) => ({ ...p, rules, preset: "" }))}
+              />
+            </FilterChip>
+
             <FilterChip
               label="Traffic"
               active={Boolean(f.minVisits || f.maxVisits)}
