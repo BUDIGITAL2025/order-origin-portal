@@ -438,7 +438,10 @@ export async function callMiddleware(
     body?: unknown;
     tenantId?: string | null;
     idempotencyKey: string;
+    headers?: Record<string, string>;
+    query?: Record<string, string>;
   },
+
 ): Promise<CallOutcome> {
   const target = await resolveOutboundTarget(admin);
   const { baseUrl, serviceToken, simulator } = target;
