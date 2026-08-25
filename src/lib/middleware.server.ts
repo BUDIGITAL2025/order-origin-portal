@@ -90,6 +90,7 @@ export async function logIntegrationCall(
     statusCode?: number | null;
     ok: boolean;
     error?: unknown;
+    simulator?: boolean;
   },
 ): Promise<void> {
   try {
@@ -107,6 +108,7 @@ export async function logIntegrationCall(
       status_code: args.statusCode ?? null,
       ok: args.ok,
       error: message?.slice(0, 1000) ?? null,
+      simulator: args.simulator ?? false,
     });
   } catch (e) {
     console.error("[middleware] failed to record integration call:", e);
