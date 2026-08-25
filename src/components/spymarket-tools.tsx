@@ -3817,9 +3817,21 @@ function AdCard({
             </div>
           )}
           {thumb && (
-            <div
+            <button
+              type="button"
+              title="Open large preview"
+              onClick={(e) => {
+                e.stopPropagation();
+                onPreview({
+                  adId,
+                  isVideo,
+                  thumbUrl: thumb,
+                  directUrl: asStr(media["mediaUrl"]),
+                  label: headline ?? name ?? "Creative preview",
+                });
+              }}
               className={cn(
-                "relative mx-auto w-full overflow-hidden rounded-xl bg-muted",
+                "group relative mx-auto block w-full overflow-hidden rounded-xl bg-muted",
                 isVideo ? "aspect-[9/16] max-h-80" : "aspect-square",
               )}
             >
@@ -3836,8 +3848,12 @@ function AdCard({
                   </div>
                 </div>
               )}
-            </div>
+              <span className="pointer-events-none absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-full bg-background/85 opacity-0 shadow-sm transition-opacity group-hover:opacity-100">
+                <Maximize2 className="h-3.5 w-3.5" />
+              </span>
+            </button>
           )}
+
           {(domain ?? headline ?? cta) && (
             <a
               href={landingUrl ?? "#"}
