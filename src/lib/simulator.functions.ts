@@ -7,17 +7,13 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
  * Every function verifies the admin role before touching the service role.
  */
 
-async function admin(context: { supabase: never; userId: string }) {
-  const { requireAdmin, getAdminClient } = await import("./admin.server");
-  await requireAdmin(context.supabase as never, context.userId);
-  return getAdminClient();
-}
-
 /** Status of the simulator: token, override state, and a simulatable workspace. */
 export const adminSimulatorStatus = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const db = await admin(context as never);
+    const { requireAdmin, getAdminClient } = await import("./admin.server");
+    await requireAdmin(context.supabase, context.userId);
+    const db = await getAdminClient();
     const sim = await import("./simulator.server");
     const { middlewareConfig } = await import("./middleware.server");
     const config = middlewareConfig();
@@ -57,7 +53,9 @@ export const adminSetSimulatorOverride = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ enabled: z.boolean() }).parse(input))
   .handler(async ({ data, context }) => {
-    const db = await admin(context as never);
+    const { requireAdmin, getAdminClient } = await import("./admin.server");
+    await requireAdmin(context.supabase, context.userId);
+    const db = await getAdminClient();
     const { setReleaseOverride } = await import("./simulator.server");
     await setReleaseOverride(db, data.enabled);
     return { enabled: data.enabled };
@@ -67,7 +65,9 @@ export const adminSetSimulatorOverride = createServerFn({ method: "POST" })
 export const adminSimulateOrder = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const db = await admin(context as never);
+    const { requireAdmin, getAdminClient } = await import("./admin.server");
+    await requireAdmin(context.supabase, context.userId);
+    const db = await getAdminClient();
     const { simulateOrderCreated } = await import("./simulator.server");
     return simulateOrderCreated(db);
   });
@@ -77,7 +77,9 @@ export const adminSimulateTracking = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ order_id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
-    const db = await admin(context as never);
+    const { requireAdmin, getAdminClient } = await import("./admin.server");
+    await requireAdmin(context.supabase, context.userId);
+    const db = await getAdminClient();
     const { simulateTracking } = await import("./simulator.server");
     return simulateTracking(db, data.order_id);
   });
@@ -94,7 +96,9 @@ export const adminSimulateOrderStatus = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
-    const db = await admin(context as never);
+    const { requireAdmin, getAdminClient } = await import("./admin.server");
+    await requireAdmin(context.supabase, context.userId);
+    const db = await getAdminClient();
     const { simulateOrderStatus } = await import("./simulator.server");
     return simulateOrderStatus(db, data.order_id, data.status);
   });
