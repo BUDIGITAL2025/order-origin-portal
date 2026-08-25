@@ -32,10 +32,10 @@ export type StatItem = {
   key: string;
   label: string;
   value: React.ReactNode;
-  tone?: StatTone;
-  active?: boolean;
-  onClick?: () => void;
-  hint?: string;
+  tone?: StatTone | undefined;
+  active?: boolean | undefined;
+  onClick?: (() => void) | undefined;
+  hint?: string | undefined;
 };
 
 /** Compact stat chips, clickable where they filter the table below. */
@@ -44,7 +44,7 @@ export function SummaryBar({
   className,
 }: {
   items: StatItem[];
-  className?: string;
+  className?: string | undefined;
 }) {
   return (
     <div
@@ -129,7 +129,7 @@ export function AdminSearch({
   value: string;
   onChange: (v: string) => void;
   placeholder: string;
-  className?: string;
+  className?: string | undefined;
 }) {
   return (
     <div className={cn("relative min-w-[200px] flex-1", className)}>
@@ -155,7 +155,7 @@ export function TableShell({
   className,
 }: {
   children: React.ReactNode;
-  className?: string;
+  className?: string | undefined;
 }) {
   return (
     <div
@@ -200,9 +200,9 @@ export function RowAction({
 }: {
   label: string;
   icon: React.ComponentType<{ className?: string }>;
-  onClick?: () => void;
-  disabled?: boolean;
-  tone?: "primary" | "danger";
+  onClick?: (() => void) | undefined;
+  disabled?: boolean | undefined;
+  tone?: "primary" | "danger" | undefined;
 }) {
   return (
     <TooltipProvider delayDuration={200}>
@@ -240,8 +240,8 @@ export function Chip({
   className,
 }: {
   children: React.ReactNode;
-  tone?: StatTone;
-  className?: string;
+  tone?: StatTone | undefined;
+  className?: string | undefined;
 }) {
   const tones: Record<StatTone, string> = {
     neutral: "border-border bg-muted/50 text-muted-foreground",
@@ -271,8 +271,8 @@ export function PanelHeader({
   actions,
 }: {
   title: string;
-  description?: string;
-  actions?: React.ReactNode;
+  description?: string | undefined;
+  actions?: React.ReactNode | undefined;
 }) {
   return (
     <div className="mb-3 flex flex-wrap items-end justify-between gap-2">

@@ -255,7 +255,7 @@ function AdminOrdersPage() {
                             <RowAction
                               label={order.tracking_number ? "Edit tracking" : "Add tracking"}
                               icon={Truck}
-                              {...(order.tracking_number ? {} : { tone: "primary" as const })}
+                              tone={order.tracking_number ? undefined : "primary"}
                               onClick={() => setTrackingOrder(order)}
                             />
                           </RowActions>
