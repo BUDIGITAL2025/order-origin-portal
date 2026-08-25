@@ -24,7 +24,7 @@ export const Route = createFileRoute("/api/public/cron/daily-digest")({
           const nowIso = new Date().toISOString();
 
           const staleReleaseCutoff = new Date(Date.now() - 6 * 3_600_000).toISOString();
-          const [webhooks, crons, quotes, errors, integration, releases] = await Promise.all([
+          const [webhooks, crons, quotes, errors, integration, releases, syncDown] = await Promise.all([
             supabaseAdmin
               .from("stripe_events")
               .select("stripe_event_id, event_type, error", { count: "exact" })
@@ -62,6 +62,14 @@ export const Route = createFileRoute("/api/public/cron/daily-digest")({
               .in("release_status", ["pending", "failed", "pending_reject"])
               .lt("created_at", staleReleaseCutoff)
               .limit(10),
+            supabaseAdmin
+              .from("middleware_sync_state")
+              .select("tenant_id, last_error, consecutive_failures, first_failure_at", {
+                count: "exact",
+              })
+              .gt("consecutive_failures", 0)
+              .lt("first_failure_at", new Date(Date.now() - 3_600_000).toISOString())
+              .limit(10),
           ]);
 
           const summary = {
@@ -71,6 +79,7 @@ export const Route = createFileRoute("/api/public/cron/daily-digest")({
             errors: errors.count ?? 0,
             failed_integration_events: integration.count ?? 0,
             stuck_releases: releases.count ?? 0,
+            tenants_sync_down: syncDown.count ?? 0,
           };
 
           const lines: string[] = [
@@ -102,6 +111,11 @@ export const Route = createFileRoute("/api/public/cron/daily-digest")({
             `Middleware releases stuck >6h: ${summary.stuck_releases}`,
             ...(releases.data ?? []).map(
               (r) => `  • ${r.middleware_order_id} (${r.release_status}): ${r.release_error ?? "no error recorded"}`,
+            ),
+            "",
+            `Tenants with order sync failing >1h: ${summary.tenants_sync_down}`,
+            ...(syncDown.data ?? []).map(
+              (t) => `  • tenant ${t.tenant_id} (${t.consecutive_failures} failures since ${t.first_failure_at}): ${t.last_error ?? "no error recorded"}`,
             ),
             "",
             "https://app.flysales.app/admin/integration",

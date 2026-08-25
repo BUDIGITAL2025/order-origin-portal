@@ -44,6 +44,7 @@ export const adminSimulatorStatus = createServerFn({ method: "GET" })
             countries: target.countries,
           }
         : null,
+      pull_queue: await sim.listSimulatorPullOrders(db),
       calls: calls.data ?? [],
     };
   });
