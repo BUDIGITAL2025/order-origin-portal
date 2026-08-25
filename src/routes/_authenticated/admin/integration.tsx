@@ -25,6 +25,7 @@ import {
   adminRetryRelease,
 } from "@/lib/integration.functions";
 import { SimulatorPanel } from "@/components/simulator-panel";
+import { SyncPanel } from "@/components/sync-panel";
 
 
 export const Route = createFileRoute("/_authenticated/admin/integration")({
@@ -100,6 +101,8 @@ function AdminIntegrationPage() {
         <StatusCard label="Webhook secret" ok={status?.webhook_secret_set} />
       </div>
 
+
+      <SyncPanel />
 
       <SimulatorPanel releases={releases} />
 

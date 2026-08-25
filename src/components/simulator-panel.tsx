@@ -18,6 +18,8 @@ import {
 import { friendlyError } from "@/lib/errors";
 import { formatDateTime } from "@/lib/format";
 import {
+  adminClearSimulatorPullQueue,
+  adminQueueSimulatorPullOrder,
   adminSetSimulatorOverride,
   adminSimulateOrder,
   adminSimulateTracking,
@@ -99,6 +101,35 @@ export function SimulatorPanel({ releases }: { releases: ReleaseRow[] }) {
       await refresh();
     } catch (err) {
       toast.error(friendlyError(err, "Could not simulate tracking"));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  const queuePullOrder = useServerFn(adminQueueSimulatorPullOrder);
+  const clearPullQueue = useServerFn(adminClearSimulatorPullQueue);
+
+  async function addPullOrder() {
+    setBusy("pull");
+    try {
+      const order = await queuePullOrder({});
+      toast.success(`Queued ${order.order_number} for the poller (${order.country})`);
+      await refresh();
+    } catch (err) {
+      toast.error(friendlyError(err, "Could not queue a pull order"));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function emptyPullQueue() {
+    setBusy("pull-clear");
+    try {
+      await clearPullQueue({});
+      toast.success("Pull queue emptied");
+      await refresh();
+    } catch (err) {
+      toast.error(friendlyError(err, "Could not clear the pull queue"));
     } finally {
       setBusy(null);
     }
@@ -197,6 +228,44 @@ export function SimulatorPanel({ releases }: { releases: ReleaseRow[] }) {
             >
               Open order
             </Link>
+          ) : null}
+        </div>
+
+        <div className="rounded-xl border border-dashed border-border/60 p-3">
+          <div className="text-sm font-medium">Pull queue (GET /orders)</div>
+          <div className="mb-2 text-xs text-muted-foreground">
+            Fake orders the simulator serves to the 5-minute poller. Queue one, then use “Sync now”
+            in the Order sync panel to watch it land in awaiting payment.
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button size="sm" variant="outline" disabled={busy === "pull"} onClick={addPullOrder}>
+              <PackagePlus className="mr-1.5 h-3.5 w-3.5" />
+              {busy === "pull" ? "Queueing…" : "Queue pull order"}
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={busy === "pull-clear" || (data?.pull_queue ?? []).length === 0}
+              onClick={emptyPullQueue}
+            >
+              {busy === "pull-clear" ? "Clearing…" : "Clear queue"}
+            </Button>
+            <span className="text-xs text-muted-foreground">
+              {(data?.pull_queue ?? []).length} queued
+            </span>
+          </div>
+          {(data?.pull_queue ?? []).length > 0 ? (
+            <div className="mt-2 space-y-1">
+              {(data?.pull_queue ?? []).map((order) => (
+                <div key={order.id} className="flex flex-wrap gap-2 text-xs">
+                  <span className="font-mono">{order.id}</span>
+                  <span className="text-muted-foreground">
+                    {order.status} · {order.country} ·{" "}
+                    {order.line_items.map((l) => `${l.sku}×${l.quantity}`).join(", ")}
+                  </span>
+                </div>
+              ))}
+            </div>
           ) : null}
         </div>
 
