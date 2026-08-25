@@ -322,16 +322,27 @@ function AdminIntegrationPage() {
 
 function StatusCard({ label, ok }: { label: string; ok?: boolean | undefined }) {
   return (
-    <Card>
-      <CardContent className="flex items-center gap-3 p-4">
+    <Card
+      className={
+        ok
+          ? "border-l-[3px] border-l-primary/70 shadow-none"
+          : "border-l-[3px] border-l-warning/70 shadow-none"
+      }
+    >
+      <CardContent className="flex items-start gap-2.5 px-3.5 py-3">
         {ok ? (
-          <CheckCircle2 className="h-5 w-5 text-primary" />
+          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
         ) : (
-          <XCircle className="h-5 w-5 text-muted-foreground" />
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
         )}
-        <div>
-          <div className="text-sm font-medium">{label}</div>
-          <div className="text-xs text-muted-foreground">{ok ? "Configured" : "Not set"}</div>
+        <div className="min-w-0">
+          <div className="metric-label leading-none">{label}</div>
+          <div className="mt-1.5 text-sm font-semibold leading-none">
+            {ok ? "Configured" : "Not set"}
+          </div>
+          {ok ? null : (
+            <div className="mt-1 text-xs text-muted-foreground">Set in secrets</div>
+          )}
         </div>
       </CardContent>
     </Card>
