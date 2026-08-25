@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Building2,
   ChevronDown,
+  LifeBuoy,
   ClipboardList,
   CreditCard,
   Download,
@@ -32,6 +33,7 @@ import logoAsset from "@/assets/flysales-logo-green.svg.asset.json";
 import { getOnboardingLinks } from "@/lib/onboarding.functions";
 import { getMyWallet } from "@/lib/wallet.functions";
 import { cn } from "@/lib/utils";
+import { SUPPORT_EMAIL, supportMailto } from "@/lib/support";
 import { PaymentTestModeBanner } from "@/components/PaymentTestModeBanner";
 import { LegalFooter } from "@/components/legal";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -116,9 +118,46 @@ const ADMIN_NAV: NavItem[] = [
 
 interface OnboardingStore {
   id: string;
+  store_name?: string | null;
   platform: string;
   store_url: string | null;
   integration_mode: string;
+}
+
+/**
+ * "Support" link pinned to the very bottom of the client sidebar. Opens a
+ * mailto to support@ with a subject naming the current workspace so we know
+ * who is writing. Claims stay in the in-portal flow; this is everything else.
+ */
+function SupportLink({ stores }: { stores: OnboardingStore[] }) {
+  const [currentId, setCurrentId] = React.useState<string | null>(null);
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => {
+    const read = () => setCurrentId(getCurrentStoreId());
+    read();
+    setMounted(true);
+    window.addEventListener(STORE_CHANGED_EVENT, read);
+    return () => window.removeEventListener(STORE_CHANGED_EVENT, read);
+  }, []);
+
+  const store = stores.find((s) => s.id === currentId) ?? stores[0] ?? null;
+  // Render a stable href on the server, refine once the workspace is known.
+  const href = mounted ? supportMailto(store?.store_name ?? null) : supportMailto(null);
+
+  return (
+    <div className="border-t border-sidebar-border p-3">
+      <a
+        href={href}
+        className="flex items-center gap-2.5 rounded-md px-3 py-2 text-sm text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+      >
+        <LifeBuoy className="h-4 w-4" />
+        <span className="flex-1">Support</span>
+      </a>
+      <p className="px-3 pt-1 text-[10px] leading-relaxed text-sidebar-foreground/60">
+        {SUPPORT_EMAIL}, answered within one business day.
+      </p>
+    </div>
+  );
 }
 
 /**
@@ -385,6 +424,7 @@ export function AppShell({
           ))}
         </nav>
         {role === "client" && <GetStartedSection stores={onboardingStores ?? []} />}
+        {role === "client" && <SupportLink stores={onboardingStores ?? []} />}
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
