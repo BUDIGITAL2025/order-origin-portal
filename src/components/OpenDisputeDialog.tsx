@@ -93,7 +93,7 @@ export function OpenDisputeDialog({
       return;
     }
     if (needsEvidence && files.length === 0) {
-      toast.error("Photo evidence is required for this dispute reason.");
+      toast.error("Photo evidence is required for this claim reason.");
       return;
     }
     setBusy(true);
@@ -117,12 +117,12 @@ export function OpenDisputeDialog({
           evidence_urls: paths,
         },
       });
-      toast.success("Dispute opened — our team will review it.");
+      toast.success("Claim opened. Our team reviews it and replies in the claim thread.");
       onOpenChange(false);
       onOpened();
       window.location.href = `/disputes/${result.dispute_id}`;
     } catch (e) {
-      toast.error(friendlyError(e, "Could not open dispute"));
+      toast.error(friendlyError(e, "Your claim was not opened. Try again in a moment."));
     } finally {
       setBusy(false);
     }
@@ -132,10 +132,11 @@ export function OpenDisputeDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Open a dispute</DialogTitle>
+          <DialogTitle>Open a claim</DialogTitle>
           <DialogDescription>
-            Disputes cover what happens between our supplier and delivery to
-            your customer.
+            Claims cover what happens between our supplier and delivery to your
+            customer. We resolve an approved claim with a wallet credit or a
+            reshipment.
           </DialogDescription>
         </DialogHeader>
 
@@ -146,7 +147,7 @@ export function OpenDisputeDialog({
             <li>Order delivered damaged</li>
             <li>Wrong product shipped by the supplier</li>
           </ul>
-          <p className="font-semibold">Not covered — your commercial risk</p>
+          <p className="font-semibold">Not covered (your commercial risk)</p>
           <ul className="list-disc pl-4 text-muted-foreground">
             <li>End-customer change of mind or returns</li>
             <li>Wrong address supplied by the end customer</li>
@@ -184,7 +185,7 @@ export function OpenDisputeDialog({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={4}
-              placeholder="What happened? Include tracking details if relevant."
+              placeholder="Describe what happened. Include tracking details if relevant."
             />
           </div>
 
@@ -212,7 +213,7 @@ export function OpenDisputeDialog({
               Cancel
             </Button>
             <Button onClick={submit} disabled={!reason || busy}>
-              {busy ? "Submitting…" : "Open dispute"}
+              {busy ? "Submitting…" : "Open claim"}
             </Button>
           </div>
         </div>

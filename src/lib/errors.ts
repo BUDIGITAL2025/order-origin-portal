@@ -13,11 +13,11 @@
  */
 
 const BARE_CODE_MESSAGES: Record<string, string> = {
-  STORE_NOT_FOUND: "Workspace not found — refresh the page and try again.",
-  ENTITY_NOT_FOUND: "Account not fully set up — contact support.",
+  STORE_NOT_FOUND: "Workspace not found. Refresh the page and try again.",
+  ENTITY_NOT_FOUND: "Account not fully set up. Contact support.",
   QUOTE_NOT_FOUND: "Quote not found.",
   ORDER_NOT_FOUND: "Order not found.",
-  DISPUTE_NOT_FOUND: "Dispute not found.",
+  DISPUTE_NOT_FOUND: "Claim not found.",
   BUNDLE_NOT_FOUND: "Bundle not found.",
   LINE_NOT_FOUND: "Quote line not found.",
   PRODUCT_NOT_FOUND: "Product not found.",
@@ -37,7 +37,7 @@ const BARE_CODE_MESSAGES: Record<string, string> = {
 const CODE_PREFIX_RE = /^([A-Z][A-Z0-9_]{2,}):\s*/;
 const BARE_CODE_RE = /^[A-Z][A-Z0-9_]{2,}$/;
 
-export function friendlyError(err: unknown, fallback = "Something went wrong"): string {
+export function friendlyError(err: unknown, fallback = "That did not go through. Nothing was charged. Try again in a moment."): string {
   const raw = err instanceof Error ? err.message : "";
   const message = raw.trim();
   if (!message) return fallback;

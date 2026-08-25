@@ -22,7 +22,7 @@ import { listMyDisputes } from "@/lib/disputes.functions";
 export const Route = createFileRoute("/_authenticated/_client/disputes")({
   head: () => ({
     meta: [
-      { title: "Disputes — FlySales" },
+      { title: "Claims — FlySales" },
       { name: "robots", content: "noindex" },
     ],
   }),
@@ -39,15 +39,15 @@ function DisputesPage() {
   return (
     <div>
       <PageHeader
-        title="Disputes"
-        description="Claims for orders that were never delivered, arrived damaged, or had the wrong product shipped by the supplier."
+        title="Claims"
+        description="Claims for orders that never arrived, arrived damaged, or shipped with the wrong product."
       />
       {isPending ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
       ) : !disputes || disputes.length === 0 ? (
         <EmptyState
-          title="No disputes"
-          hint="If an order is never delivered, arrives damaged, or the wrong product is shipped, open a dispute from the order's detail page."
+          title="No claims"
+          hint="If an order arrives damaged, wrong, or never arrives, open a claim here and we resolve it with a wallet credit or reshipment."
           action={{ label: "View orders", to: "/orders" }}
         />
       ) : (

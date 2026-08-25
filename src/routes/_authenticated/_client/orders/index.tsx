@@ -51,7 +51,7 @@ export const Route = createFileRoute("/_authenticated/_client/orders/")({
   head: () => ({
     meta: [
       { title: "Orders — FlySales" },
-      { name: "description", content: "Your orders, their payment status and receipts." },
+      { name: "description", content: "Your orders, with payment status, tracking and receipts." },
       { name: "robots", content: "noindex" },
     ],
   }),
@@ -79,7 +79,7 @@ const STATUS_LABELS: Record<StatusKey | "disputed", string> = {
   delivered: "Delivered",
   needs_review: "Needs review",
   cancelled: "Cancelled",
-  disputed: "Disputed",
+  disputed: "Claims",
 };
 
 /** Counter accents reuse the status token palette. */
@@ -100,7 +100,7 @@ const TABS = [
   { id: "in_transit", label: "In transit" },
   { id: "delivered", label: "Delivered" },
   { id: "needs_review", label: "Needs review" },
-  { id: "disputed", label: "Disputed" },
+  { id: "disputed", label: "Claims" },
 ] as const;
 type TabId = (typeof TABS)[number]["id"];
 
@@ -137,7 +137,7 @@ function CopyButton({ value, label }: { value: string; label: string }) {
       className="text-muted-foreground transition-colors hover:text-foreground"
       onClick={() => {
         void navigator.clipboard.writeText(value);
-        toast.success("Copied");
+        toast.success("Tracking number copied");
       }}
     >
       <Copy className="h-3.5 w-3.5" />
@@ -288,13 +288,13 @@ function OrdersPage() {
       });
       const skipped = selectedRows.length - result.settled.length;
       toast.success(
-        `${result.settled.length} order${result.settled.length === 1 ? "" : "s"} paid from your wallet` +
-          (skipped > 0 ? ` — ${skipped} were settled by another route and credited back` : ""),
+        `${result.settled.length} order${result.settled.length === 1 ? "" : "s"} paid from your wallet.` +
+          (skipped > 0 ? ` ${skipped} were already settled another way and credited back.` : ""),
       );
       setSelected(new Set());
       await queryClient.invalidateQueries();
     } catch (e) {
-      toast.error(friendlyError(e, "Payment failed"));
+      toast.error(friendlyError(e, "The payment did not complete. Your wallet was not debited."));
     } finally {
       setBusy(null);
     }
@@ -315,7 +315,7 @@ function OrdersPage() {
       if (!url) throw new Error("Stripe did not return a checkout URL");
       window.location.href = url;
     } catch (e) {
-      toast.error(friendlyError(e, "Could not start checkout"));
+      toast.error(friendlyError(e, "Checkout could not be opened. Nothing was charged."));
       setBusy(null);
     }
   }
@@ -353,7 +353,7 @@ function OrdersPage() {
     <div className={selectedRows.length > 0 ? "pb-24" : undefined}>
       <PageHeader
         title="Orders"
-        description="Every order in this workspace, its payment status and its payment receipt."
+        description="Every order in this workspace, with its status, tracking and receipt."
         actions={
           <>
             <Button variant="outline" size="sm" disabled={filtered.length === 0} onClick={exportCsv}>
@@ -374,9 +374,9 @@ function OrdersPage() {
       ) : rows.length === 0 ? (
         <EmptyState
           title="No orders yet"
-          hint="Orders appear here — synced from Shopify or created manually."
+          hint="When you place an order on a quoted product, it appears here with its status and tracking."
           icon={PackageSearch}
-          action={{ label: "Create order", to: "/orders/new" }}
+          action={{ label: "Browse my products", to: "/products" }}
         />
       ) : (
         <>
@@ -449,7 +449,7 @@ function OrdersPage() {
                   setSearch(e.target.value);
                   setPage(0);
                 }}
-                placeholder="Search order ref, customer or tracking"
+                placeholder="Search by order reference, customer or tracking"
                 className="h-9 rounded-full pl-9 text-[13px]"
               />
             </div>
@@ -538,7 +538,7 @@ function OrdersPage() {
                             <OrderStatusBadge status={order.status} />
                             {anyDisputeOrders.has(order.id) && (
                               <span className="rounded-full border border-destructive/25 bg-destructive/10 px-2 py-0.5 text-[11px] text-destructive">
-                                Disputed
+                                Claim open
                               </span>
                             )}
                           </div>
@@ -616,8 +616,8 @@ function OrdersPage() {
                                 variant="ghost"
                                 size="icon"
                                 className="h-7 w-7"
-                                aria-label="Open a dispute"
-                                title="Open a dispute"
+                                aria-label="Open a claim"
+                                title="Open a claim"
                                 onClick={() => setDisputeFor(order)}
                               >
                                 <ShieldAlert className="h-3.5 w-3.5" />
@@ -727,8 +727,9 @@ function OrdersPage() {
                 {selectedRows.length} order{selectedRows.length === 1 ? "" : "s"} selected
               </p>
               <p className="tnum text-xs text-muted-foreground">
-                Total {formatUSD(selectedTotal)}
-                {!walletCovers && ` — wallet balance ${formatUSD(balance)} does not cover this`}
+                {walletCovers
+                  ? `Pay ${formatUSD(selectedTotal)} from your wallet. Balance after: ${formatUSD(balance - selectedTotal)}.`
+                  : `Your balance does not cover this selection (${formatUSD(selectedTotal)} needed, ${formatUSD(balance)} available). Top up the difference to continue.`}
               </p>
             </div>
             <Button
@@ -739,6 +740,11 @@ function OrdersPage() {
             >
               Clear
             </Button>
+            {!walletCovers && (
+              <Button asChild variant="outline" size="sm">
+                <Link to="/billing">Top up</Link>
+              </Button>
+            )}
             <Button
               variant="outline"
               size="sm"
@@ -746,8 +752,8 @@ function OrdersPage() {
               disabled={!walletCovers || busy !== null}
               title={
                 walletCovers
-                  ? "Settle immediately from your wallet"
-                  : "Wallet balance is too low for this selection"
+                  ? "Pay these orders from your wallet balance"
+                  : "Your wallet balance does not cover this selection"
               }
             >
               {busy === "wallet" ? "Paying…" : "Pay from wallet"}
@@ -759,7 +765,7 @@ function OrdersPage() {
             >
               {busy === "card"
                 ? "Redirecting…"
-                : `Pay ${selectedRows.length} order${selectedRows.length === 1 ? "" : "s"} — ${formatUSD(selectedTotal)}`}
+                : `Pay by card: ${formatUSD(selectedTotal)}`}
             </Button>
           </div>
         </div>

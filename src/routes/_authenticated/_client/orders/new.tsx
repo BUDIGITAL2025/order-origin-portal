@@ -126,15 +126,15 @@ function NewOrderPage() {
     const errors = validateAddressFields(address);
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) {
-      toast.error("Fix the highlighted address fields");
+      toast.error("Fix the highlighted address fields.");
       return;
     }
     if (chosen.length === 0) {
-      toast.error("Add at least one product");
+      toast.error("Add at least one product.");
       return;
     }
     if (!allPriced) {
-      toast.error("Some products have no price for the destination country");
+      toast.error("Some products have no price for this destination country.");
       return;
     }
     setBusy(true);
@@ -157,14 +157,14 @@ function NewOrderPage() {
       });
       toast.success(
         result.order.status === "paid"
-          ? `Order ${result.order.external_order_number} created and paid from your wallet`
-          : `Order ${result.order.external_order_number} created — awaiting payment`,
+          ? `Order ${result.order.external_order_number} created and paid from your wallet.`
+          : `Order ${result.order.external_order_number} created. It is awaiting payment.`,
       );
       await queryClient.invalidateQueries({ queryKey: ["my-orders"] });
       await queryClient.invalidateQueries({ queryKey: ["my-wallet"] });
       await navigate({ to: "/orders/$id", params: { id: result.order.id } });
     } catch (err) {
-      toast.error(friendlyError(err, "Could not create the order"));
+      toast.error(friendlyError(err, "The order was not created and your wallet was not debited."));
     } finally {
       setBusy(false);
     }
@@ -186,7 +186,7 @@ function NewOrderPage() {
       </Link>
       <PageHeader
         title="Create order"
-        description={`Manual order in ${store.store_name ?? "your workspace"} — priced from your catalogue, paid from the shared wallet when it covers the total.`}
+        description={`Manual order in ${store.store_name ?? "your workspace"}, priced from your catalogue and paid from your wallet when the balance covers the total.`}
       />
 
       <form onSubmit={submitOrder} className="space-y-6">

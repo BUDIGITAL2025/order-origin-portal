@@ -84,7 +84,7 @@ function SuspendedBanner() {
         <span className="font-medium">Your account is suspended.</span>{" "}
         <span className="text-muted-foreground">
           New quotes, orders and payments are paused. Orders already paid continue to fulfilment,
-          and you can still track them and open disputes. Contact your account manager to
+          and you can still track them and open claims. Contact your account manager to
           reactivate your account.
         </span>
       </p>
@@ -112,9 +112,9 @@ function TermsAcceptanceBanner() {
     try {
       await callAccept({});
       await queryClient.invalidateQueries({ queryKey: ["my-context"] });
-      toast.success("Thanks — Terms of Service accepted.");
+      toast.success("Terms of Service accepted.");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not record acceptance");
+      toast.error(err instanceof Error ? err.message : "Your acceptance was not recorded. Try again.");
     } finally {
       setBusy(false);
     }
@@ -165,9 +165,9 @@ function CompleteProfile() {
       const source = getSignupSource();
       await callCompleteSignup({ data: { ...values, ...(source ? { signup_source: source } : {}) } });
       await queryClient.invalidateQueries({ queryKey: ["my-context"] });
-      toast.success("Profile saved — welcome to FlySales.");
+      toast.success("Profile saved.");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not save profile");
+      toast.error(err instanceof Error ? err.message : "Your profile was not saved. Try again.");
       setPhase("form");
     } finally {
       setBusy(false);

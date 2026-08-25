@@ -81,7 +81,7 @@ function OrderDetailPage() {
         )}
         {canDispute && (
           <Button size="sm" variant="outline" onClick={() => setDisputeOpen(true)}>
-            Open a dispute
+            Open a claim
           </Button>
         )}
       </div>
@@ -162,9 +162,9 @@ function OrderDetailPage() {
           </div>
 
           <div className="rounded-2xl border border-border bg-card p-6">
-            <h2 className="mb-2 text-base font-semibold">Disputes</h2>
+            <h2 className="mb-2 text-base font-semibold">Claims</h2>
             {disputes.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No disputes on this order.</p>
+              <p className="text-sm text-muted-foreground">No claims on this order.</p>
             ) : (
               <ul className="space-y-2">
                 {disputes.map((d) => (

@@ -111,9 +111,9 @@ function MyQuoteDetailPage() {
       setNamingLineId(null);
       setProductName("");
       if (r.accepted > 0) {
-        toast.success("Variant accepted — it's now in your product catalogue.");
+        toast.success("Variant accepted. It is now in your product catalogue.");
       } else {
-        toast.success("Response saved.");
+        toast.success("Your response was saved.");
       }
       void queryClient.invalidateQueries({ queryKey: ["my-quote", id] });
       void queryClient.invalidateQueries({ queryKey: ["my-quotes"] });

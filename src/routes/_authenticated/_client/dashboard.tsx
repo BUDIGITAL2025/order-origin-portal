@@ -158,7 +158,7 @@ function DashboardPage() {
                 <MiniSparkline values={walletSeries} height={34} className="h-9" />
               </div>
               <div className="mt-3 flex items-center justify-between gap-2">
-                <p className="text-xs text-muted-foreground">Funds available for orders</p>
+                <p className="text-xs text-muted-foreground">Prepaid funds in USD, used to pay for orders</p>
                 <Button asChild size="sm" className="gap-1">
                   <Link to="/billing">
                     <Plus className="h-3.5 w-3.5" /> Top up
@@ -256,8 +256,8 @@ function DashboardPage() {
           </div>
           {quota != null && quotesUsed >= quota && (
             <p className="mt-3 text-xs font-medium text-warning">
-              Monthly allowance reached — upgrade to Unlimited (${PLANS.unlimited.priceUsd}/month)
-              for uncapped quote requests from the{" "}
+              Monthly allowance reached. Upgrade to Unlimited (${PLANS.unlimited.priceUsd}/month)
+              for unlimited quote requests from the{" "}
               <Link to="/quotes/new" className="underline">
                 quote form
               </Link>
@@ -276,7 +276,7 @@ function DashboardPage() {
             <div className="flex items-start gap-2.5">
               <RefreshCcw className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
               <div>
-                <p className="text-sm font-medium">Never run out of funds</p>
+                <p className="text-sm font-medium">Keep your wallet funded</p>
                 <p className="mt-0.5 text-xs text-muted-foreground">
                   Your wallet was credited. Auto top-up charges your saved card once
                   your balance drops below a threshold you choose.
@@ -322,7 +322,7 @@ function DashboardPage() {
                 <EmptyState
                   icon={ClipboardList}
                   title="No quote requests yet"
-                  hint="Submit your first product link and we come back with a price."
+                  hint="Paste a product link and get a firm price per variant and country within 48 hours."
                   action={{ label: "Request a quote", to: "/quotes/new" }}
                 />
               </div>
@@ -376,7 +376,7 @@ function DashboardPage() {
                 <EmptyState
                   icon={Wallet}
                   title="No transactions yet"
-                  hint="Top up your wallet to pay for orders — credits and debits show up here."
+                  hint="Top up your wallet to pay for orders. Every credit and debit appears here."
                   action={{ label: "Top up wallet", to: "/billing" }}
                 />
               </div>
@@ -438,14 +438,14 @@ function OnboardingCard({
   const steps = [
     {
       title: "Add company details",
-      description: "Legal name, country and VAT — they appear on your payment receipts.",
+      description: "Legal name, country and VAT. These appear on your receipts.",
       done: Boolean(entity?.vat_number),
       to: "/billing",
       cta: "Complete details",
     },
     {
       title: "Add your first workspace",
-      description: "Manual mode works from day one — connect your Shopify store later, when you are ready.",
+      description: "Manual mode works from day one. Connect your Shopify store later, when you are ready.",
       done: hasStore,
       to: "/workspaces/new",
       cta: "Add workspace",
@@ -453,8 +453,8 @@ function OnboardingCard({
     {
       title: "Request your first quote",
       description: hasQuote
-        ? "Quote requested — our sourcing team is on it."
-        : "Paste a product URL and we source it for you.",
+        ? "Quote request sent. Our sourcing team is on it."
+        : "Paste a product link and we source it for you.",
       done: hasQuote,
       to: "/quotes/new",
       cta: "Request a quote",

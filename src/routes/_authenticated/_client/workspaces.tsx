@@ -46,7 +46,7 @@ function WorkspacesPage() {
     <div>
       <PageHeader
         title="Workspaces"
-        description="Each workspace has its own catalogue, quotes, orders and subscription. Your wallet is shared across all of them."
+        description="Each workspace has its own catalogue, quote requests, orders and plan. Your wallet is shared across all of them."
         actions={
           <Button asChild size="sm">
             <Link to="/workspaces/new">Add workspace</Link>
@@ -178,10 +178,10 @@ function ConnectShopifyForm({ storeId }: { storeId: string }) {
     setBusy(true);
     try {
       await callConnect({ data: parsed.data });
-      toast.success("Shopify connected — this workspace is now active.");
+      toast.success("Shopify connected. This workspace is now active.");
       await queryClient.invalidateQueries({ queryKey: ["my-context"] });
     } catch (err) {
-      toast.error(friendlyError(err, "Could not connect"));
+      toast.error(friendlyError(err, "Shopify was not connected. Check the domain and try again."));
     } finally {
       setBusy(false);
     }

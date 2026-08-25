@@ -58,10 +58,10 @@ const CLIENT_NAV: NavItem[] = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/workspaces", label: "Workspaces", icon: Store },
   { to: "/quotes/new", label: "Request a quote", icon: FilePlus2 },
-  { to: "/quotes", label: "My quotes", icon: ClipboardList },
-  { to: "/products", label: "My products", icon: Package },
+  { to: "/quotes", label: "Quote requests", icon: ClipboardList },
+  { to: "/products", label: "Products", icon: Package },
   { to: "/orders", label: "Orders", icon: ShoppingCart },
-  { to: "/disputes", label: "Disputes", icon: ShieldAlert },
+  { to: "/disputes", label: "Claims", icon: ShieldAlert },
   { to: "/wallet", label: "Wallet", icon: Wallet },
   { to: "/billing", label: "Billing", icon: CreditCard },
   { to: "/documents", label: "Receipts", icon: FileText },
@@ -91,7 +91,7 @@ function PastDueBanner() {
   if (status !== "past_due") return null;
   return (
     <div className="w-full border-b border-destructive/30 bg-destructive/10 px-4 py-2 text-center text-sm text-destructive">
-      Your last subscription payment failed — Stripe retries automatically.{" "}
+      Your last subscription payment failed and we retry it automatically.{" "}
       <Link to="/billing" className="font-medium underline">
         Update your card
       </Link>{" "}

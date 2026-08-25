@@ -104,7 +104,7 @@ function NewQuotePageInner() {
   const { sub } = Route.useSearch();
   useEffect(() => {
     if (sub === "success") {
-      toast.success("Subscription received — it activates as soon as the payment confirms.");
+      toast.success("Subscription received. Your plan activates as soon as the payment confirms.");
       void queryClient.invalidateQueries({ queryKey: ["my-context"] });
       const poll = setInterval(
         () => void queryClient.invalidateQueries({ queryKey: ["my-context"] }),
@@ -118,7 +118,7 @@ function NewQuotePageInner() {
       };
     }
     if (sub === "cancel") {
-      toast.info("Checkout canceled — nothing was charged.");
+      toast.info("Checkout cancelled. Nothing was charged.");
       void navigate({ to: "/quotes/new", replace: true, search: {} });
     }
     return undefined;
@@ -319,7 +319,7 @@ function NewQuotePageInner() {
         } catch (err) {
           const raw = err instanceof Error ? err.message : "";
           if (raw.includes("used all")) setQuotaBlocked(true);
-          failures.push(friendlyError(err, "Submission failed"));
+          failures.push(friendlyError(err, "Your quote request was not submitted."));
         }
       }
       return { createdIds, failures };
@@ -359,7 +359,7 @@ function NewQuotePageInner() {
       <div className="max-w-2xl">
         <PageHeader
           title="Request a quote"
-          description="Send us a product link and we'll come back with a price, MOQ and lead time."
+          description="Paste a product link and get a firm price per variant and country within 48 hours."
         />
         <Card>
           <CardContent className="p-8 text-sm text-muted-foreground">Loading…</CardContent>
@@ -373,7 +373,7 @@ function NewQuotePageInner() {
       <div className="max-w-2xl">
         <PageHeader
           title="Request a quote"
-          description="Send us a product link and we'll come back with a price, MOQ and lead time."
+          description="Paste a product link and get a firm price per variant and country within 48 hours."
         />
         <Card>
           <CardContent className="flex flex-col items-start gap-3 p-8">
@@ -386,9 +386,8 @@ function NewQuotePageInner() {
             </p>
             <p className="text-sm text-muted-foreground">
               Upgrade to {PLANS.unlimited.label} for ${PLANS.unlimited.priceUsd}/month and send
-              unlimited quote requests. You'll go through secure checkout on the Billing
-              page and your plan changes as soon as the payment confirms — your request
-              has not been submitted; resubmit it after upgrading.
+              unlimited quote requests. Your plan changes as soon as the payment confirms.
+              This request was not submitted, so send it again after upgrading.
             </p>
             <div className="flex gap-2">
               <Button asChild size="sm">
@@ -412,17 +411,17 @@ function NewQuotePageInner() {
       <div className="max-w-2xl">
         <PageHeader
           title="Request a quote"
-          description="Send us a product link and we'll come back with a price, MOQ and lead time."
+          description="Paste a product link and get a firm price per variant and country within 48 hours."
         />
         <Card className="border-primary/40">
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-base">
               <ArrowUpCircle className="h-5 w-5 text-primary" />
-              Pick a plan to request quotes
+              Quote requests need an active plan
             </CardTitle>
             <CardDescription>
-              Quote requests are part of a workspace subscription — no shop connection needed.
-              Subscribe and you'll land back here, ready to send your first request.
+              Pick one and send your first request in minutes. No shop connection needed,
+              and you land back here once the payment confirms.
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3 sm:grid-cols-2">
@@ -469,8 +468,8 @@ function NewQuotePageInner() {
             ))}
             {subscribeError && (
               <p className="text-sm text-destructive sm:col-span-2">
-                Could not start checkout: {subscribeError}. If this keeps happening, contact
-                support.
+                Checkout could not be opened ({subscribeError}). Nothing was charged. Try
+                again, or contact support if it keeps happening.
               </p>
             )}
           </CardContent>
@@ -485,7 +484,7 @@ function NewQuotePageInner() {
     <div>
       <PageHeader
         title="Request a quote"
-        description="Send us a product link and we'll come back with a price, MOQ and lead time."
+        description="Paste a product link and get a firm price per variant and country within 48 hours."
       />
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,360px)]">
         <div>

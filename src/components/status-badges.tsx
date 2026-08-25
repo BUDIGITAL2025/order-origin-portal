@@ -12,7 +12,7 @@ const QUOTE_STYLES: Record<QuoteStatus, string> = {
 };
 
 const QUOTE_LABELS: Record<QuoteStatus, string> = {
-  submitted: "Submitted",
+  submitted: "Received",
   sourcing: "Sourcing",
   quoted: "Quoted",
   closed: "Closed",

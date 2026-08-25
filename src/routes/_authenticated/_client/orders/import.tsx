@@ -292,15 +292,15 @@ function ImportOrdersPage() {
       });
       const paid = result.orders.filter((o) => o.status === "paid").length;
       toast.success(
-        `${result.orders.length} order${result.orders.length === 1 ? "" : "s"} imported` +
-          (paid > 0 ? ` — ${paid} paid from your wallet` : ""),
+        `${result.orders.length} order${result.orders.length === 1 ? "" : "s"} imported.` +
+          (paid > 0 ? ` ${paid} paid from your wallet.` : ""),
       );
       await queryClient.invalidateQueries({ queryKey: ["my-orders"] });
       await queryClient.invalidateQueries({ queryKey: ["my-wallet"] });
       await navigate({ to: "/orders" });
     } catch (err) {
       // All-or-nothing: the DB rolled the whole import back.
-      toast.error(friendlyError(err, "Import failed — nothing was imported"));
+      toast.error(friendlyError(err, "The import did not run. No orders were created and your wallet was not debited."));
     } finally {
       setBusy(false);
     }
@@ -316,7 +316,7 @@ function ImportOrdersPage() {
       </Link>
       <PageHeader
         title="Import orders"
-        description="Bulk-create manual orders from a CSV. Every order is validated first; if any group fails, nothing is imported."
+        description="Create manual orders from a CSV. Every order is validated first, and if any group fails nothing is imported."
       />
 
       <Card className="mb-6">
