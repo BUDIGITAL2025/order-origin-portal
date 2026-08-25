@@ -1241,13 +1241,27 @@ function ShopsTab({
     staleTime: 24 * 60 * 60 * 1000,
   });
 
-  /** Commit a patch to state AND the URL (shareable filtered views). */
+  /**
+   * Commit a patch to state AND the URL (shareable filtered views).
+   * Any manual filter edit drops the active preset badge, unless the patch
+   * sets one itself.
+   */
   const apply = (patch: Partial<ShopsFilters>) => {
     setF((prev) => {
-      const next = { ...prev, ...patch };
+      const next = { ...prev, preset: "", ...patch };
       go(shopsUrlPatch(next));
       return next;
     });
+  };
+
+  /** One-click preset: apply the recipe, then run the (paid) search. */
+  const applyPreset = (preset: ShopPreset) => {
+    const next: ShopsFilters = { ...f, ...preset.patch(), preset: preset.id };
+    setF(next);
+    setSortTouched(true);
+    go(shopsUrlPatch(next));
+    setPages([]);
+    void call.execute(buildInput(0, next));
   };
 
   /** DTC toggle: commit to state + URL, re-run live when results are shown. */
