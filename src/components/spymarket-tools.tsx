@@ -3479,11 +3479,13 @@ function CreativeLightbox({
   const getMedia = useServerFn(spymarketGetAdMediaUrl);
   const mediaCall = useMeteredCall(getMedia as ServerFnLike);
   const [downloading, setDownloading] = React.useState(false);
+  const [pendingDownload, setPendingDownload] = React.useState(false);
 
   // Reset the fetched URL whenever a different creative opens.
   const key = target?.adId ?? "";
   React.useEffect(() => {
-    mediaCall.reset?.();
+    mediaCall.reset();
+    setPendingDownload(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
 
@@ -3493,29 +3495,37 @@ function CreativeLightbox({
         asStr(asRec(asRec(mediaCall.state.result.data)["data"])["url"]))
       : null;
 
-  if (!target) return null;
-  const isVideo = target.isVideo;
-  const playable = target.directUrl ?? fetchedUrl;
-  const still = target.thumbUrl ?? target.directUrl ?? fetchedUrl;
+  const isVideo = target?.isVideo ?? false;
+  const playable = target?.directUrl ?? fetchedUrl;
+  const still = target?.thumbUrl ?? target?.directUrl ?? fetchedUrl;
   const ext = isVideo ? "mp4" : (still?.split("?")[0]?.match(/\.(jpe?g|png|webp)$/i)?.[1] ?? "jpg");
-  const filename = `spymarket-${target.adId ?? "creative"}.${ext}`;
+  const filename = `spymarket-${target?.adId ?? "creative"}.${ext}`;
+
+  // A download that had to buy a fresh media URL completes here, once the
+  // metered call (including any overage confirmation) has settled.
+  React.useEffect(() => {
+    if (!pendingDownload || !fetchedUrl) return;
+    setPendingDownload(false);
+    setDownloading(true);
+    void saveRemoteFile(fetchedUrl, filename).finally(() => setDownloading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingDownload, fetchedUrl]);
+
+  if (!target) return null;
 
   const download = async () => {
-    setDownloading(true);
-    try {
-      let url = isVideo ? playable : (target.directUrl ?? fetchedUrl ?? target.thumbUrl);
-      if (!url && target.adId) {
-        const res = await mediaCall.execute({ adId: target.adId });
-        const rec = asRec(res);
-        url =
-          asStr(asRec(asRec(rec["data"])["data"])["mediaUrl"]) ??
-          asStr(asRec(asRec(rec["data"])["data"])["url"]);
-      }
-      if (url) await saveRemoteFile(url, filename);
-    } finally {
+    const url = isVideo ? playable : (target.directUrl ?? fetchedUrl ?? target.thumbUrl);
+    if (url) {
+      setDownloading(true);
+      await saveRemoteFile(url, filename);
       setDownloading(false);
+      return;
     }
+    if (!target.adId) return;
+    setPendingDownload(true);
+    void mediaCall.execute({ adId: target.adId });
   };
+
 
   const mediaCost = costLabel(costs, "ads/media-url", 1);
   const needsFetch = isVideo ? playable == null : target.directUrl == null && fetchedUrl == null;
