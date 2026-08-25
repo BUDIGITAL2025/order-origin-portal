@@ -1,10 +1,22 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Truck } from "lucide-react";
 import { toast } from "sonner";
-import { PageHeader } from "@/components/app-shell";
+import { EmptyState, PageHeader } from "@/components/app-shell";
 import { OrderStatusBadge } from "@/components/documents-ui";
+import {
+  AdminSearch,
+  FilterTabs,
+  RowAction,
+  RowActions,
+  SummaryBar,
+  TableShell,
+  ToolBar,
+  Value,
+  type StatTone,
+} from "@/components/admin-ui";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -40,6 +52,30 @@ export const Route = createFileRoute("/_authenticated/admin/orders")({
 
 type AdminOrder = Awaited<ReturnType<typeof adminListOrders>>["orders"][number];
 
+const SUMMARY = [
+  { key: "awaiting_payment", label: "Awaiting payment", tone: "warning" },
+  { key: "processing", label: "Processing", tone: "info" },
+  { key: "shipped", label: "Shipped", tone: "info" },
+  { key: "needs_review", label: "Needs review", tone: "warning" },
+  { key: "disputed", label: "Disputed", tone: "danger" },
+] as const satisfies readonly { key: string; label: string; tone: StatTone }[];
+
+const TABS = [
+  { id: "all", label: "All" },
+  { id: "awaiting_payment", label: "Awaiting payment" },
+  { id: "in_transit", label: "In transit" },
+  { id: "delivered", label: "Delivered" },
+  { id: "needs_review", label: "Needs review" },
+] as const;
+type TabId = (typeof TABS)[number]["id"];
+
+function workspaceOf(order: AdminOrder) {
+  return order.stores as {
+    store_name?: string | null;
+    entities?: { legal_name?: string | null } | null;
+  } | null;
+}
+
 function AdminOrdersPage() {
   const fetchOrders = useServerFn(adminListOrders);
   const { data, isPending } = useQuery({
@@ -47,6 +83,51 @@ function AdminOrdersPage() {
     queryFn: fetchOrders,
   });
   const [trackingOrder, setTrackingOrder] = useState<AdminOrder | null>(null);
+  const [tab, setTab] = useState<TabId>("all");
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+
+  const rows = useMemo(() => data?.orders ?? [], [data]);
+
+  const counts = useMemo(() => {
+    const base: Record<string, number> = {
+      awaiting_payment: 0,
+      processing: 0,
+      shipped: 0,
+      needs_review: 0,
+      disputed: 0,
+    };
+    for (const o of rows) {
+      if (o.status in base) base[o.status] = (base[o.status] ?? 0) + 1;
+      if (o.status === "disputed") base["disputed"] = (base["disputed"] ?? 0) + 1;
+    }
+    return base;
+  }, [rows]);
+
+  const filtered = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    let list = rows;
+    if (tab === "awaiting_payment") list = list.filter((o) => o.status === "awaiting_payment");
+    else if (tab === "in_transit")
+      list = list.filter((o) => o.status === "processing" || o.status === "shipped");
+    else if (tab === "delivered") list = list.filter((o) => o.status === "delivered");
+    else if (tab === "needs_review") list = list.filter((o) => o.status === "needs_review");
+    if (statusFilter) list = list.filter((o) => o.status === statusFilter);
+    if (term) {
+      list = list.filter((o) =>
+        [
+          o.external_order_number ?? o.id,
+          workspaceOf(o)?.store_name ?? "",
+          workspaceOf(o)?.entities?.legal_name ?? "",
+          o.tracking_number ?? "",
+        ]
+          .join(" ")
+          .toLowerCase()
+          .includes(term),
+      );
+    }
+    return list;
+  }, [rows, tab, statusFilter, search]);
 
   return (
     <div>
@@ -54,66 +135,127 @@ function AdminOrdersPage() {
         title="Orders"
         description="Every workspace order. Add tracking here — the client is emailed the first time tracking appears."
       />
+
       {isPending ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
+      ) : rows.length === 0 ? (
+        <EmptyState
+          title="No orders yet"
+          hint="Orders appear here as clients place them, from a connected workspace or a manual import."
+        />
       ) : (
-        <div className="rounded-lg border border-border bg-card">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Order</TableHead>
-                <TableHead>Workspace</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Total</TableHead>
-                <TableHead>Tracking</TableHead>
-                <TableHead className="text-right">Action</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {(data?.orders ?? []).map((order) => {
-                const store = order.stores as {
-                  store_name?: string | null;
-                  entities?: { legal_name?: string | null } | null;
-                } | null;
-                return (
-                  <TableRow key={order.id}>
-                    <TableCell className="tnum text-xs font-medium">
-                      {order.external_order_number ?? order.id.slice(0, 8)}
-                    </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
-                      {store?.store_name ?? "—"}
-                      {store?.entities?.legal_name ? ` · ${store.entities.legal_name}` : ""}
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
-                      {formatDateTime(order.created_at)}
-                    </TableCell>
-                    <TableCell>
-                      <OrderStatusBadge status={order.status} />
-                    </TableCell>
-                    <TableCell className="text-right tnum text-sm">
-                      {order.total_amount != null ? formatUSD(order.total_amount) : "—"}
-                    </TableCell>
-                    <TableCell className="text-xs">
-                      {order.tracking_number ? (
-                        <span className="tnum">
-                          {order.tracking_carrier}: {order.tracking_number}
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button size="sm" variant="outline" onClick={() => setTrackingOrder(order)}>
-                        {order.tracking_number ? "Edit tracking" : "Add tracking"}
-                      </Button>
+        <>
+          <SummaryBar
+            items={SUMMARY.map((s) => ({
+              key: s.key,
+              label: s.label,
+              value: counts[s.key] ?? 0,
+              tone: s.tone,
+              active: statusFilter === s.key,
+              onClick: () => {
+                setTab("all");
+                setStatusFilter((cur) => (cur === s.key ? null : s.key));
+              },
+            }))}
+          />
+
+          <ToolBar>
+            <FilterTabs
+              tabs={TABS}
+              value={statusFilter ? ("all" as TabId) : tab}
+              onChange={(id) => {
+                setTab(id);
+                setStatusFilter(null);
+              }}
+            />
+            <AdminSearch
+              value={search}
+              onChange={setSearch}
+              placeholder="Search by order reference, workspace or tracking"
+            />
+          </ToolBar>
+
+          <TableShell>
+            <Table className="text-[13px]">
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="h-9">Order</TableHead>
+                  <TableHead className="h-9">Workspace</TableHead>
+                  <TableHead className="h-9">Status</TableHead>
+                  <TableHead className="h-9 text-right">Total</TableHead>
+                  <TableHead className="h-9">Tracking</TableHead>
+                  <TableHead className="h-9">Date</TableHead>
+                  <TableHead className="h-9 text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filtered.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="py-10 text-center text-muted-foreground">
+                      No orders match this filter.
                     </TableCell>
                   </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </div>
+                ) : (
+                  filtered.map((order) => {
+                    const store = workspaceOf(order);
+                    return (
+                      <TableRow key={order.id} className="hover:bg-accent/60">
+                        <TableCell className="py-2.5 font-mono text-xs font-medium">
+                          {order.external_order_number ?? order.id.slice(0, 8)}
+                        </TableCell>
+                        <TableCell className="py-2.5">
+                          <span className="block max-w-[200px] truncate">
+                            <Value>{store?.store_name}</Value>
+                          </span>
+                          {store?.entities?.legal_name && (
+                            <span className="block max-w-[200px] truncate text-xs text-muted-foreground">
+                              {store.entities.legal_name}
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell className="py-2.5">
+                          <OrderStatusBadge status={order.status} />
+                        </TableCell>
+                        <TableCell className="tnum py-2.5 text-right">
+                          {order.total_amount != null ? formatUSD(order.total_amount) : <Value>{null}</Value>}
+                        </TableCell>
+                        <TableCell className="py-2.5">
+                          {order.tracking_number ? (
+                            <>
+                              <span className="block max-w-[140px] truncate font-mono text-xs">
+                                {order.tracking_number}
+                              </span>
+                              {order.tracking_carrier && (
+                                <span className="text-xs text-muted-foreground">
+                                  {order.tracking_carrier}
+                                </span>
+                              )}
+                            </>
+                          ) : (
+                            <Value>{null}</Value>
+                          )}
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap py-2.5 text-xs text-muted-foreground">
+                          {formatDateTime(order.created_at)}
+                        </TableCell>
+                        <TableCell className="py-2.5">
+                          <RowActions>
+                            <RowAction
+                              label={order.tracking_number ? "Edit tracking" : "Add tracking"}
+                              icon={Truck}
+                              tone={order.tracking_number ? undefined : "primary"}
+                              onClick={() => setTrackingOrder(order)}
+                            />
+                          </RowActions>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </TableShell>
+        </>
       )}
       <TrackingDialog order={trackingOrder} onClose={() => setTrackingOrder(null)} />
     </div>
