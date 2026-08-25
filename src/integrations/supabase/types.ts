@@ -450,6 +450,7 @@ export type Database = {
       integration_events: {
         Row: {
           created_at: string
+          entry_path: string
           error: string | null
           event_id: string
           event_type: string
@@ -462,6 +463,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          entry_path?: string
           error?: string | null
           event_id: string
           event_type: string
@@ -474,6 +476,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          entry_path?: string
           error?: string | null
           event_id?: string
           event_type?: string
