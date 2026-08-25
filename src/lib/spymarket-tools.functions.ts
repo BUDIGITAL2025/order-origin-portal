@@ -186,6 +186,14 @@ export const spymarketQueryShops = createServerFn({ method: "POST" })
     if (includeCountries) body["creationCountries"] = includeCountries;
     if (data.language) body["languages"] = [data.language];
     if (data.minTrustpilotRating != null) body["minTrustpilotRating"] = data.minTrustpilotRating;
+    // Growth conditions: `operator` links a condition to the NEXT one, so the
+    // last rule of each array must not carry one (all rules are AND-ed).
+    const chain = <T extends { period: string; comparison: string; value: number }>(rules: T[]) =>
+      rules.map((r, i) => (i < rules.length - 1 ? { ...r, operator: "and" } : { ...r }));
+    if (data.trafficGrowth?.length) body["trafficGrowth"] = chain(data.trafficGrowth);
+    if (data.adsGrowth?.length) body["adsGrowth"] = chain(data.adsGrowth);
+    if (data.displayInTrending != null) body["displayInTrending"] = data.displayInTrending;
+    if (data.createdAfter) body["createdAfter"] = data.createdAfter;
     return mod.trendtrackCall({
       userId: context.userId,
       endpoint: "shops/query",
