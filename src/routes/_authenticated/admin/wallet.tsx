@@ -5,7 +5,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { EmptyState, PageHeader } from "@/components/app-shell";
 import { TxnTypeBadge } from "@/components/status-badges";
-import { SummaryBar, TableShell } from "@/components/admin-ui";
+import { SummaryBar } from "@/components/admin-ui";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
