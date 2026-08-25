@@ -20,8 +20,11 @@ import { friendlyError } from "@/lib/errors";
 import { formatDateTime } from "@/lib/format";
 import {
   adminIntegrationOverview,
+  adminIntegrationReleases,
   adminReplayIntegrationEvent,
+  adminRetryRelease,
 } from "@/lib/integration.functions";
+import { formatUsd } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/admin/integration")({
   head: () => ({
@@ -59,6 +62,28 @@ function AdminIntegrationPage() {
     }
   }
 
+  const fetchReleases = useServerFn(adminIntegrationReleases);
+  const retryRelease = useServerFn(adminRetryRelease);
+  const { data: releaseData } = useQuery({
+    queryKey: ["admin-integration-releases"],
+    queryFn: () => fetchReleases({}),
+  });
+
+  async function retry(orderId: string) {
+    setBusy(orderId);
+    try {
+      const { result } = await retryRelease({ data: { order_id: orderId } });
+      toast.success(`Release ${result.status}`);
+      await queryClient.invalidateQueries({ queryKey: ["admin-integration-releases"] });
+      await queryClient.invalidateQueries({ queryKey: ["admin-integration"] });
+    } catch (err) {
+      toast.error(friendlyError(err, "Could not retry release"));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  const releases = releaseData?.releases ?? [];
   const status = data?.status;
 
   return (
@@ -73,6 +98,97 @@ function AdminIntegrationPage() {
         <StatusCard label="Service token" ok={status?.service_token_set} />
         <StatusCard label="Webhook secret" ok={status?.webhook_secret_set} />
       </div>
+
+
+      <Card className="mb-6">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Releases (middleware orders)</CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          {releases.length === 0 ? (
+            <EmptyState
+              title="No middleware orders yet"
+              hint="Once a middleware order is paid, its release signal appears here."
+            />
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Order</TableHead>
+                  <TableHead>Order state</TableHead>
+                  <TableHead>Release</TableHead>
+                  <TableHead>Last attempt</TableHead>
+                  <TableHead className="text-right">Action</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {releases.map((order) => {
+                  const queued =
+                    order.release_status === "pending" ||
+                    order.release_status === "failed" ||
+                    order.release_status === "skipped_unconfigured" ||
+                    order.release_status === "pending_reject";
+                  return (
+                    <TableRow key={order.id} className="text-[13px]">
+                      <TableCell>
+                        <div className="font-medium">
+                          {order.external_order_number ?? order.id.slice(0, 8)}
+                        </div>
+                        <div className="font-mono text-xs text-muted-foreground">
+                          {order.middleware_order_id ?? "—"}
+                        </div>
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        {order.status}
+                        <div className="text-xs text-muted-foreground">
+                          {order.total_amount === null ? "—" : formatUsd(order.total_amount)}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={
+                            order.release_status === "sent" || order.release_status === "rejected"
+                              ? "outline"
+                              : order.release_status === "failed"
+                                ? "destructive"
+                                : "secondary"
+                          }
+                        >
+                          {order.release_status ?? "not queued"}
+                        </Badge>
+                        {order.release_error ? (
+                          <div className="mt-1 max-w-md text-xs text-muted-foreground">
+                            {order.release_error}
+                          </div>
+                        ) : null}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
+                        {order.release_last_attempt_at
+                          ? formatDateTime(order.release_last_attempt_at)
+                          : "—"}
+                        {order.release_attempts > 0 ? ` · ${order.release_attempts} try(s)` : ""}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {queued ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={busy === order.id}
+                            onClick={() => retry(order.id)}
+                          >
+                            <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
+                            {busy === order.id ? "Sending…" : "Retry release"}
+                          </Button>
+                        ) : null}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
 
       <Card className="mb-6">
         <CardHeader className="pb-2">
