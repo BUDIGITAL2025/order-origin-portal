@@ -98,7 +98,7 @@ function AdminEntitiesPage() {
         items={[
           { key: "entities", label: "Entities", value: all.length, tone: "primary" },
           { key: "workspaces", label: "Workspaces", value: workspaceCount },
-          { key: "connected", label: "Connected", value: connectedCount, tone: "success" },
+          { key: "connected", label: "Automatic mode", value: connectedCount, tone: "success" },
           { key: "suspended", label: "Suspended", value: suspendedCount, tone: "danger" },
         ]}
       />
