@@ -1031,6 +1031,137 @@ const SHOP_PRESETS: ShopPreset[] = [
   },
 ];
 
+/**
+ * Growth rule builder body: stackable rules, each one
+ * metric × direction × minimum % × window. Rules are AND-ed upstream.
+ */
+function GrowthRulesContent({
+  rules,
+  onChange,
+}: {
+  rules: GrowthRule[];
+  onChange: (rules: GrowthRule[]) => void;
+}) {
+  const patch = (i: number, p: Partial<GrowthRule>) =>
+    onChange(rules.map((r, idx) => (idx === i ? { ...r, ...p } : r)));
+
+  return (
+    <div className="space-y-3">
+      <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+        <TrendingUp className="h-3.5 w-3.5 text-primary" />
+        Find shops by trajectory — rules are combined with AND.
+      </p>
+
+      {rules.length === 0 && (
+        <p className="rounded-xl bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
+          No rule yet. Add one to filter by traffic or ad growth.
+        </p>
+      )}
+
+      {rules.map((r, i) => (
+        <div key={i} className="space-y-2 rounded-xl border p-2.5">
+          <div className="flex items-center gap-2">
+            <Select
+              value={r.metric}
+              onValueChange={(v) => {
+                const metric = v as GrowthMetric;
+                const period = windowsFor(metric).some((w) => w.value === r.period)
+                  ? r.period
+                  : defaultRule(metric).period;
+                patch(i, { metric, period });
+              }}
+            >
+              <SelectTrigger className="h-8 flex-1 rounded-full text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="traffic">Traffic</SelectItem>
+                <SelectItem value="ads">Active ads</SelectItem>
+              </SelectContent>
+            </Select>
+            <button
+              type="button"
+              onClick={() => onChange(rules.filter((_, idx) => idx !== i))}
+              className="text-[11px] text-muted-foreground underline underline-offset-2 hover:text-foreground"
+            >
+              Remove
+            </button>
+          </div>
+
+          {/* Direction toggle */}
+          <div className="grid grid-cols-2 gap-1 rounded-full bg-muted p-0.5">
+            {(["rising", "falling"] as GrowthDirection[]).map((d) => (
+              <button
+                key={d}
+                type="button"
+                onClick={() => patch(i, { direction: d })}
+                className={cn(
+                  "inline-flex h-7 items-center justify-center gap-1 rounded-full text-xs font-medium transition-colors",
+                  r.direction === d
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {d === "rising" ? (
+                  <ArrowUpRight className="h-3.5 w-3.5" />
+                ) : (
+                  <ArrowDownRight className="h-3.5 w-3.5" />
+                )}
+                {d === "rising" ? "Rising" : "Falling"}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Label className="whitespace-nowrap text-[11px] text-muted-foreground">
+              at least
+            </Label>
+            <div className="relative flex-1">
+              <Input
+                value={String(r.percent)}
+                inputMode="numeric"
+                onChange={(e) => {
+                  const n = Number(e.target.value.replace(/\D/g, ""));
+                  patch(i, { percent: Number.isFinite(n) ? n : 0 });
+                }}
+                className="h-8 rounded-full pr-6 text-xs"
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-muted-foreground">
+                %
+              </span>
+            </div>
+            <Select value={r.period} onValueChange={(v) => patch(i, { period: v })}>
+              <SelectTrigger className="h-8 w-20 rounded-full text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {windowsFor(r.metric).map((w) => (
+                  <SelectItem key={w.value} value={w.value}>
+                    {w.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      ))}
+
+      <Button
+        variant="outline"
+        size="sm"
+        className="w-full rounded-full"
+        disabled={rules.length >= 4}
+        onClick={() =>
+          onChange([...rules, defaultRule(rules.some((r) => r.metric === "traffic") ? "ads" : "traffic")])
+        }
+      >
+        Add rule
+      </Button>
+    </div>
+  );
+}
+
+
 /** "2024-03-12" → "1y 9m old". */
 function shopAge(createdAt: string | null): string | null {
   if (!createdAt) return null;
