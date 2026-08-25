@@ -28,6 +28,8 @@ export async function sendEmail(args: {
   to: string;
   subject: string;
   text: string;
+  /** Branded HTML part; falls back to the escaped text when omitted. */
+  html?: string;
   replyTo?: string;
 }): Promise<{ sent: boolean; id?: string; error?: string }> {
   const apiKey = process.env["RESEND_API_KEY"]?.trim();
@@ -53,7 +55,7 @@ export async function sendEmail(args: {
         to: [args.to],
         subject: args.subject,
         text: args.text,
-        html: htmlFromText(args.text),
+        html: args.html ?? htmlFromText(args.text),
         ...(args.replyTo ? { reply_to: args.replyTo } : {}),
       }),
     });
@@ -82,7 +84,7 @@ export async function sendEmail(args: {
  */
 export async function sendClientEmail(
   admin: Admin,
-  args: { clientId: string; subject: string; text: string },
+  args: { clientId: string; subject: string; text: string; html?: string },
 ): Promise<void> {
   try {
     const { data, error } = await admin.auth.admin.getUserById(args.clientId);
@@ -91,7 +93,12 @@ export async function sendClientEmail(
       console.warn("[email] no address for account", args.clientId);
       return;
     }
-    await sendEmail({ to, subject: args.subject, text: args.text });
+    await sendEmail({
+      to,
+      subject: args.subject,
+      text: args.text,
+      ...(args.html ? { html: args.html } : {}),
+    });
   } catch (e) {
     console.error("[email] client send failed:", e);
   }
