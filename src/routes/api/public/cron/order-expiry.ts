@@ -145,6 +145,13 @@ export const Route = createFileRoute("/api/public/cron/order-expiry")({
             summary.cancelled += 1;
           }
 
+          // Middleware-sourced cancellations queue a reject (the DB trigger
+          // sets pending_reject, and never after a release was sent).
+          {
+            const { dispatchPendingReleases } = await import("@/lib/middleware.server");
+            await dispatchPendingReleases(supabaseAdmin, { limit: 50 });
+          }
+
           // Quote SLA sweep: stamp open requests that breached their 48h
           // sourcing target and record a notification (admins read all).
           summary.quote_sla_breached = await flagBreachedQuotes(supabaseAdmin);
