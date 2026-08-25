@@ -11,25 +11,44 @@ import { createFileRoute } from "@tanstack/react-router";
  * respects Idempotency-Key: a repeat returns the first response, flagged
  * replayed.
  */
+/** Shared gate: no admin session here — this route IS the middleware target. */
+async function guard(request: Request): Promise<Response | null> {
+  const token = process.env["MIDDLEWARE_SIMULATOR_TOKEN"]?.trim();
+  const realBase = process.env["MIDDLEWARE_BASE_URL"]?.trim();
+  if (realBase && realBase !== "REPLACE_ME" && !realBase.includes("/middleware/simulator")) {
+    return new Response("Simulator disabled: real middleware configured", { status: 403 });
+  }
+  if (!token) return new Response("Simulator not configured", { status: 503 });
+  const provided = /^Bearer ([^\s,]+)$/.exec(request.headers.get("authorization") ?? "")?.[1];
+  const { createHash, timingSafeEqual } = await import("node:crypto");
+  const digest = (v: string) => createHash("sha256").update(v, "utf8").digest();
+  if (!provided || !timingSafeEqual(digest(provided), digest(token))) {
+    return new Response("Unauthorized", { status: 401 });
+  }
+  return null;
+}
+
 export const Route = createFileRoute("/api/public/middleware/simulator/$")({
   server: {
     handlers: {
-      POST: async ({ request, params }) => {
-        const token = process.env["MIDDLEWARE_SIMULATOR_TOKEN"]?.trim();
-        const realBase = process.env["MIDDLEWARE_BASE_URL"]?.trim();
-        if (realBase && realBase !== "REPLACE_ME" && !realBase.includes("/middleware/simulator")) {
-          return new Response("Simulator disabled: real middleware configured", { status: 403 });
-        }
-        if (!token) {
-          return new Response("Simulator not configured", { status: 503 });
-        }
+      // Phase 4 — the pull door: serves the fake order list the poller reads.
+      GET: async ({ request }) => {
+        const denied = await guard(request);
+        if (denied) return denied;
 
-        const provided = /^Bearer ([^\s,]+)$/.exec(request.headers.get("authorization") ?? "")?.[1];
-        const { createHash, timingSafeEqual } = await import("node:crypto");
-        const digest = (v: string) => createHash("sha256").update(v, "utf8").digest();
-        if (!provided || !timingSafeEqual(digest(provided), digest(token))) {
-          return new Response("Unauthorized", { status: 401 });
-        }
+        const url = new URL(request.url);
+        const tenantId =
+          request.headers.get(process.env["MIDDLEWARE_TENANT_HEADER"]?.trim() || "x-tenant-id") ??
+          url.searchParams.get("tenant_id");
+
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        const { listSimulatorPullOrders } = await import("@/lib/simulator.server");
+        const orders = await listSimulatorPullOrders(supabaseAdmin, tenantId);
+        return Response.json({ simulator: true, orders });
+      },
+      POST: async ({ request, params }) => {
+        const denied = await guard(request);
+        if (denied) return denied;
 
         const path = `/${params._splat ?? ""}`;
         const action = path.endsWith("/reject")
