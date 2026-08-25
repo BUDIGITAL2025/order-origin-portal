@@ -90,6 +90,7 @@ export async function logIntegrationCall(
     statusCode?: number | null;
     ok: boolean;
     error?: unknown;
+    simulator?: boolean;
   },
 ): Promise<void> {
   try {
@@ -107,6 +108,7 @@ export async function logIntegrationCall(
       status_code: args.statusCode ?? null,
       ok: args.ok,
       error: message?.slice(0, 1000) ?? null,
+      simulator: args.simulator ?? false,
     });
   } catch (e) {
     console.error("[middleware] failed to record integration call:", e);
@@ -177,6 +179,7 @@ export const inboundEnvelopeSchema = z.object({
   event_id: z.string().trim().min(1).max(200),
   event_type: z.string().trim().min(1).max(120),
   tenant_id: z.string().trim().max(120).optional().nullable(),
+  simulator: z.boolean().optional(),
 });
 
 /** Raised for an unknown tenant: recorded on the event, still ACKed with 200. */
@@ -380,6 +383,34 @@ export type CallOutcome =
  * Idempotency-Key, 10s timeout, every attempt audited in integration_calls.
  * Carries identifiers only — never amounts or balances.
  */
+/**
+ * Where a release actually goes. The real middleware always wins; the Phase 3
+ * simulator only takes over when no real base URL is configured and an admin
+ * turned the override on (test tooling).
+ */
+export async function resolveOutboundTarget(admin: Admin): Promise<{
+  baseUrl: string | null;
+  serviceToken: string | null;
+  simulator: boolean;
+}> {
+  const { baseUrl, serviceToken } = middlewareConfig();
+  const {
+    isSimulatorUrl,
+    releaseOverrideEnabled,
+    simulatorBaseUrl,
+    simulatorToken,
+  } = await import("./simulator.server");
+
+  if (baseUrl && !isSimulatorUrl(baseUrl)) {
+    return { baseUrl, serviceToken, simulator: false };
+  }
+  if (await releaseOverrideEnabled(admin)) {
+    const simBase = baseUrl && isSimulatorUrl(baseUrl) ? baseUrl : await simulatorBaseUrl(admin);
+    return { baseUrl: simBase, serviceToken: simulatorToken(), simulator: true };
+  }
+  return { baseUrl, serviceToken, simulator: false };
+}
+
 export async function callMiddleware(
   admin: Admin,
   args: {
@@ -390,7 +421,8 @@ export async function callMiddleware(
     idempotencyKey: string;
   },
 ): Promise<CallOutcome> {
-  const { baseUrl, serviceToken } = middlewareConfig();
+  const target = await resolveOutboundTarget(admin);
+  const { baseUrl, serviceToken, simulator } = target;
   const method = args.method ?? "POST";
 
   if (!baseUrl || !serviceToken) {
@@ -405,6 +437,7 @@ export async function callMiddleware(
       statusCode: null,
       ok: false,
       error: "skipped_unconfigured",
+      simulator,
     });
     return { ok: false, skipped: true };
   }
@@ -431,6 +464,7 @@ export async function callMiddleware(
       statusCode: response.status,
       ok: response.ok,
       error: response.ok ? null : text || `HTTP ${response.status}`,
+      simulator,
     });
     if (!response.ok) {
       return { ok: false, status: response.status, error: text || `HTTP ${response.status}` };
@@ -445,6 +479,7 @@ export async function callMiddleware(
       statusCode: null,
       ok: false,
       error,
+      simulator,
     });
     return { ok: false, status: null, error };
   } finally {

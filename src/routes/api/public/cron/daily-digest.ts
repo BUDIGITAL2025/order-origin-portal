@@ -51,6 +51,7 @@ export const Route = createFileRoute("/api/public/cron/daily-digest")({
             supabaseAdmin
               .from("integration_events")
               .select("event_id, event_type, tenant_id, error", { count: "exact" })
+              .eq("simulator", false)
               .not("error", "is", null)
               .gte("created_at", since)
               .limit(10),
