@@ -67,7 +67,7 @@ function AdminEntitiesPage() {
   const all = entities ?? [];
   const workspaceCount = all.reduce((acc, e) => acc + e.stores.length, 0);
   const connectedCount = all.reduce(
-    (acc, e) => acc + e.stores.filter((s) => s.integration_mode === "connected").length,
+    (acc, e) => acc + e.stores.filter((s) => s.integration_mode === "automatic").length,
     0,
   );
   const suspendedCount = all.filter((e) => e.status === "suspended").length;
