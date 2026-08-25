@@ -131,6 +131,12 @@ function AdminProductsPage() {
         },
       }),
   });
+  // Summary counts always read the unfiltered set so the chips stay stable.
+  const { data: allData } = useQuery({
+    queryKey: ["admin-products", "all", "all"],
+    queryFn: () => fetchProducts({ data: {} }),
+  });
+  const allProducts = (allData?.products ?? []) as unknown as Product[];
 
   const products = (data?.products ?? []) as unknown as Product[];
   const prices = (data?.prices ?? []) as BundlePrice[];
