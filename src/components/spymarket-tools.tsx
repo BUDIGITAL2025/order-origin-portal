@@ -1339,7 +1339,8 @@ function ShopsTab({
       initialDomain ||
         url["sq"] || url["vmin"] || url["vmax"] || url["amin"] || url["amax"] ||
         url["pmin"] || url["pmax"] || url["plus"] || url["cat"] || url["cinc"] ||
-        url["lang"] || url["tp"] || url["ssort"],
+        url["lang"] || url["tp"] || url["ssort"] || url["gr"] || url["trend"] ||
+        url["cafter"] || url["pset"],
     );
     if (hadParams) void call.execute(buildInput(0));
     // eslint-disable-next-line react-hooks/exhaustive-deps
