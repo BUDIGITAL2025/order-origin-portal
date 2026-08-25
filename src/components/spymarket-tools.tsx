@@ -2552,13 +2552,29 @@ function ShopDetailTab({
   shopId,
   go,
   costs,
+  backTab,
+  autoLoad,
+  contextDomain,
 }: {
   shopId?: string | undefined;
   go: SpyMarketToolsProps["go"];
   costs?: EndpointCosts | undefined;
+  backTab?: string | undefined;
+  autoLoad?: boolean | undefined;
+  contextDomain?: string | undefined;
 }) {
   const getShop = useServerFn(spymarketGetShop);
-  const call = useMeteredCall(getShop as ServerFnLike);
+  // Cached per shop: revisiting a shop already loaded this session is free.
+  const call = useMeteredCall(getShop as ServerFnLike, shopId ? `shop:${shopId}` : undefined);
+
+  // One-click entry: load immediately when arriving with ?auto=1.
+  const autoRef = React.useRef(false);
+  React.useEffect(() => {
+    if (!shopId || !autoLoad || autoRef.current) return;
+    autoRef.current = true;
+    if (call.state.kind === "idle") void call.execute({ shopId });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shopId, autoLoad]);
 
   if (!shopId) {
     return (
