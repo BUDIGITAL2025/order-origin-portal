@@ -159,6 +159,16 @@ function AdminProductsPage() {
     onError: (err) => toast.error(err.message),
   });
 
+  const term = search.trim().toLowerCase();
+  const rows = products.filter((p) => {
+    if (!term) return true;
+    return [p.product_name, p.sku, p.variant_label ?? "", p.profiles?.company_name ?? ""]
+      .join(" ")
+      .toLowerCase()
+      .includes(term);
+  });
+  const countBy = (fn: (p: Product) => boolean) => products.filter(fn).length;
+
   return (
     <div>
       <PageHeader
@@ -166,71 +176,98 @@ function AdminProductsPage() {
         description="Every product across all clients — accepted quote variants and client bundles."
       />
 
-      <div className="mb-4 flex flex-wrap items-center gap-4">
-        <div className="flex flex-wrap gap-1.5">
-          <Button size="sm" variant={!statusFilter ? "default" : "outline"} onClick={() => setStatusFilter(null)}>
-            All statuses
-          </Button>
-          {STATUS_FILTERS.map((s) => (
-            <Button
-              key={s}
-              size="sm"
-              variant={statusFilter === s ? "default" : "outline"}
-              onClick={() => setStatusFilter(s)}
-            >
-              {s.replace("_", " ")}
-            </Button>
-          ))}
+      <SummaryBar
+        className="lg:grid-cols-4"
+        items={[
+          {
+            key: "active",
+            label: "Active",
+            value: countBy((p) => p.status === "active"),
+            tone: "success",
+            active: statusFilter === "active",
+            onClick: () => setStatusFilter(statusFilter === "active" ? null : "active"),
+          },
+          {
+            key: "needs_review",
+            label: "Needs review",
+            value: countBy((p) => p.status === "needs_review"),
+            tone: "warning",
+            active: statusFilter === "needs_review",
+            onClick: () => setStatusFilter(statusFilter === "needs_review" ? null : "needs_review"),
+          },
+          {
+            key: "discontinued",
+            label: "Discontinued",
+            value: countBy((p) => p.status === "discontinued"),
+            active: statusFilter === "discontinued",
+            onClick: () =>
+              setStatusFilter(statusFilter === "discontinued" ? null : "discontinued"),
+          },
+          {
+            key: "push_failed",
+            label: "Push failed",
+            value: countBy((p) => p.push_status === "failed"),
+            tone: "danger",
+          },
+        ]}
+      />
+
+      <ToolBar>
+        <div className="flex flex-wrap items-center gap-2">
+          <FilterTabs
+            tabs={STATUS_TABS}
+            value={(statusFilter ?? "all") as StatusTab}
+            onChange={(id) => setStatusFilter(id === "all" ? null : id)}
+          />
+          <FilterTabs
+            tabs={TYPE_TABS}
+            value={(typeFilter ?? "all") as TypeTab}
+            onChange={(id) => setTypeFilter(id === "all" ? null : id)}
+          />
         </div>
-        <div className="flex flex-wrap gap-1.5">
-          <Button size="sm" variant={!typeFilter ? "default" : "outline"} onClick={() => setTypeFilter(null)}>
-            All types
-          </Button>
-          {TYPE_FILTERS.map((t) => (
-            <Button
-              key={t}
-              size="sm"
-              variant={typeFilter === t ? "default" : "outline"}
-              onClick={() => setTypeFilter(t)}
-            >
-              {t}
-            </Button>
-          ))}
-        </div>
-      </div>
+        <AdminSearch
+          value={search}
+          onChange={setSearch}
+          placeholder="Search by product, SKU or client"
+        />
+      </ToolBar>
 
       {isPending ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
-      ) : products.length === 0 ? (
+      ) : rows.length === 0 ? (
         <EmptyState title="No products" hint="Products appear when clients accept quote lines or create bundles." />
       ) : (
-        <div className="rounded-lg border border-border bg-card">
-          <Table>
+        <TableShell>
+          <Table className="text-[13px]">
             <TableHeader>
               <TableRow>
-                <TableHead>Client</TableHead>
-                <TableHead>Product</TableHead>
-                <TableHead>SKU</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead className="text-right">Price</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Push</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead />
+                <TableHead className="h-9">Client</TableHead>
+                <TableHead className="h-9">Product</TableHead>
+                <TableHead className="h-9">SKU</TableHead>
+                <TableHead className="h-9">Type</TableHead>
+                <TableHead className="h-9 text-right">Price</TableHead>
+                <TableHead className="h-9">Status</TableHead>
+                <TableHead className="h-9">Push</TableHead>
+                <TableHead className="h-9">Created</TableHead>
+                <TableHead className="h-9 text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {products.map((p) => {
+              {rows.map((p) => {
                 const isBundle = p.product_type === "bundle";
                 const bundlePrices = isBundle ? (priceByBundle.get(p.id) ?? []) : [];
                 const simplePrices = priceByProduct.get(p.id) ?? [];
                 return (
-                  <TableRow key={p.id}>
-                    <TableCell className="text-sm">{p.profiles?.company_name ?? "—"}</TableCell>
-                    <TableCell>
-                      <div className="text-sm font-medium">{p.product_name}</div>
+                  <TableRow key={p.id} className="hover:bg-accent/60">
+                    <TableCell className="max-w-40 truncate py-2.5">
+                      <Value>{p.profiles?.company_name}</Value>
+                    </TableCell>
+                    <TableCell className="max-w-56 py-2.5">
+                      <div className="truncate font-medium">{p.product_name}</div>
                       {p.variant_label && (
-                        <div className="text-xs text-muted-foreground">{p.variant_label}</div>
+                        <div className="truncate text-xs text-muted-foreground">
+                          {p.variant_label}
+                        </div>
                       )}
                       {isBundle && (
                         <div className="text-xs text-muted-foreground">
@@ -238,17 +275,19 @@ function AdminProductsPage() {
                         </div>
                       )}
                     </TableCell>
-                    <TableCell className="tnum text-xs text-muted-foreground">{p.sku}</TableCell>
-                    <TableCell>
+                    <TableCell className="py-2.5 font-mono text-xs text-muted-foreground">
+                      {p.sku}
+                    </TableCell>
+                    <TableCell className="py-2.5">
                       <ProductTypeBadge type={p.product_type} />
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="py-2.5 text-right">
                       <div className="flex flex-wrap justify-end gap-1">
                         {isBundle
                           ? bundlePrices.map((r) => (
                               <span
                                 key={r.country_code}
-                                className="inline-flex items-center gap-1 rounded-md bg-muted/60 px-1.5 py-0.5 tnum text-xs"
+                                className="tnum inline-flex items-center gap-1 rounded-md bg-muted/60 px-1.5 py-0.5 text-xs"
                                 title={`Calculated ${formatUSD(r.calculated_price ?? 0)}${p.price_override != null ? ` · override ${formatUSD(p.price_override)}` : ""}`}
                               >
                                 <span className="font-semibold">{r.country_code}</span>
@@ -258,37 +297,33 @@ function AdminProductsPage() {
                           : simplePrices.map((r) => (
                               <span
                                 key={r.country_code}
-                                className="inline-flex items-center gap-1 rounded-md bg-muted/60 px-1.5 py-0.5 tnum text-xs"
+                                className="tnum inline-flex items-center gap-1 rounded-md bg-muted/60 px-1.5 py-0.5 text-xs"
                               >
                                 <span className="font-semibold">{r.country_code}</span>
                                 {r.unit_price != null ? formatUSD(r.unit_price) : "—"}
                                 {r.lead_time_days != null && (
-                                  <span className="text-muted-foreground">· {r.lead_time_days}d</span>
+                                  <span className="text-muted-foreground">
+                                    · {r.lead_time_days}d
+                                  </span>
                                 )}
                               </span>
                             ))}
-                        {(isBundle ? bundlePrices : simplePrices).length === 0 && (
-                          <span className="text-sm text-muted-foreground">—</span>
-                        )}
+                        {(isBundle ? bundlePrices : simplePrices).length === 0 && <EmptyCell />}
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="py-2.5">
                       <ProductStatusBadge status={p.status} />
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="py-2.5">
                       <div className="flex items-center gap-1.5">
                         <PushStatusBadge status={p.push_status} />
                         {p.push_status === "failed" && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7"
-                            title={p.push_error ?? "Retry push"}
+                          <RowAction
+                            label={p.push_error ?? "Retry push"}
+                            icon={RefreshCw}
                             disabled={retry.isPending}
                             onClick={() => retry.mutate(p.id)}
-                          >
-                            <RefreshCw className="h-3.5 w-3.5" />
-                          </Button>
+                          />
                         )}
                       </div>
                       {p.push_status === "failed" && p.push_error && (
@@ -297,53 +332,52 @@ function AdminProductsPage() {
                         </div>
                       )}
                     </TableCell>
-                    <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
+                    <TableCell className="whitespace-nowrap py-2.5 text-xs text-muted-foreground">
                       {formatDate(p.created_at)}
                     </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
+                    <TableCell className="py-2.5">
+                      <RowActions>
                         {isBundle && (
-                          <Button
-                            variant="outline"
-                            size="sm"
+                          <RowAction
+                            label="Set price override"
+                            icon={Tag}
                             onClick={() => {
                               setOverrideValue(
                                 p.price_override != null ? String(p.price_override) : "",
                               );
                               setOverrideFor(p);
                             }}
-                          >
-                            Override
-                          </Button>
+                          />
                         )}
                         {p.status !== "discontinued" ? (
-                          <Button
-                            variant="ghost"
-                            size="sm"
+                          <RowAction
+                            label="Discontinue"
+                            icon={Ban}
+                            tone="danger"
                             disabled={setStatus.isPending}
-                            onClick={() => setStatus.mutate({ productId: p.id, status: "discontinued" })}
-                          >
-                            Discontinue
-                          </Button>
+                            onClick={() =>
+                              setStatus.mutate({ productId: p.id, status: "discontinued" })
+                            }
+                          />
                         ) : (
-                          <Button
-                            variant="ghost"
-                            size="sm"
+                          <RowAction
+                            label="Reactivate"
+                            icon={RotateCcw}
+                            tone="primary"
                             disabled={setStatus.isPending}
                             onClick={() => setStatus.mutate({ productId: p.id, status: "active" })}
-                          >
-                            Reactivate
-                          </Button>
+                          />
                         )}
-                      </div>
+                      </RowActions>
                     </TableCell>
                   </TableRow>
                 );
               })}
             </TableBody>
           </Table>
-        </div>
+        </TableShell>
       )}
+
 
       <Dialog open={overrideFor != null} onOpenChange={(open) => !open && setOverrideFor(null)}>
         <DialogContent>
