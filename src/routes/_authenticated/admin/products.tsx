@@ -201,7 +201,7 @@ function AdminProductsPage() {
       .toLowerCase()
       .includes(term);
   });
-  const countBy = (fn: (p: Product) => boolean) => products.filter(fn).length;
+  const countBy = (fn: (p: Product) => boolean) => allProducts.filter(fn).length;
 
   return (
     <div>
