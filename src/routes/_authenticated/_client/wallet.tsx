@@ -57,7 +57,7 @@ function WalletPage() {
             {isPending ? "…" : formatUSD(data?.balance ?? 0)}
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
-            Balance is derived from the ledger — every entry below is final.
+            Your prepaid funds in USD, used to pay for orders. Every entry below is final.
           </p>
         </CardContent>
       </Card>
@@ -65,7 +65,11 @@ function WalletPage() {
       {isPending ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
       ) : transactions.length === 0 ? (
-        <EmptyState title="No transactions yet" hint="Credits and debits will appear here." />
+        <EmptyState
+          title="No transactions yet"
+          hint="Your wallet ledger lives here. Every top-up, order payment and credit appears in this list."
+          action={{ label: "Top up", to: "/billing" }}
+        />
       ) : (
         <div className="rounded-lg border border-border bg-card">
           <Table>

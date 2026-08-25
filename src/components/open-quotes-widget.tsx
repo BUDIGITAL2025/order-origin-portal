@@ -48,7 +48,7 @@ export function OpenQuotesWidget({
       <CardHeader className="flex-row items-center justify-between pb-3">
         <CardTitle className="flex items-center gap-2 text-sm font-semibold">
           <ClipboardList className="h-4 w-4 text-muted-foreground" />
-          Open quotations
+          Open quote requests
         </CardTitle>
         {quotes.length > MAX_ROWS && (
           <Button asChild variant="ghost" size="sm" className="gap-1 text-xs">
@@ -64,15 +64,15 @@ export function OpenQuotesWidget({
             {subscribed ? (
               <EmptyState
                 icon={PackageSearch}
-                title="No open quotations"
-                hint="Paste a product URL and our sourcing team comes back with per-variant pricing."
+                title="No open quote requests"
+                hint="Paste a product link and get a firm price per variant and country within 48 hours."
                 action={{ label: "Request a quote", to: "/quotes/new" }}
               />
             ) : (
               <EmptyState
                 icon={Sparkles}
-                title="Start sourcing with a plan"
-                hint="Quote requests are included in every plan — pick one and send your first product link."
+                title="Quote requests need an active plan"
+                hint="Pick a plan and send your first request in minutes."
                 action={{ label: "Choose a plan", to: "/billing" }}
               />
             )}
@@ -125,7 +125,7 @@ export function OpenQuotesWidget({
 function TimeLeftCell({ quote, now }: { quote: OpenQuoteRow; now: number }) {
   // Quoted: the action moved to the client — no timer.
   if (quote.status === "quoted") {
-    return <Badge className="whitespace-nowrap">Quoted — review</Badge>;
+    return <Badge className="whitespace-nowrap">Ready to review</Badge>;
   }
   if (!isQuoteOpenForSla(quote.status) || !quote.quote_due_at) {
     return <span className="text-xs text-muted-foreground">—</span>;
@@ -134,7 +134,7 @@ function TimeLeftCell({ quote, now }: { quote: OpenQuoteRow; now: number }) {
   if (remaining <= 0) {
     return (
       <span className="whitespace-nowrap text-xs font-medium text-warning">
-        In progress — taking longer than usual
+        In progress, taking longer than usual
       </span>
     );
   }

@@ -23,11 +23,19 @@ const STATUS_STYLES: Record<DisputeStatus, string> = {
   closed: "bg-muted text-muted-foreground border-border",
 };
 
+const STATUS_LABELS: Record<DisputeStatus, string> = {
+  open: "Open",
+  investigating: "Under review",
+  approved: "Approved",
+  rejected: "Not approved",
+  closed: "Closed",
+};
+
 export function DisputeStatusBadge({ status }: { status: string }) {
   const key = (status in STATUS_STYLES ? status : "closed") as DisputeStatus;
   return (
-    <Badge variant="outline" className={cn("font-normal capitalize", STATUS_STYLES[key])}>
-      {status}
+    <Badge variant="outline" className={cn("font-normal", STATUS_STYLES[key])}>
+      {STATUS_LABELS[key]}
     </Badge>
   );
 }
@@ -51,10 +59,10 @@ export function DisputeResolutionNote({
   if (!resolution) return null;
   const text =
     resolution === "wallet_credit"
-      ? `Resolved — ${formatUSD(Number(creditAmount ?? 0))} credited to your wallet`
+      ? `Resolved. ${formatUSD(Number(creditAmount ?? 0))} credited to your wallet.`
       : resolution === "reshipped"
-        ? "Resolved — a reshipment is on the way"
-        : "Resolved — rejected";
+        ? "Resolved. A reshipment is on the way."
+        : "Reviewed. This claim was not approved.";
   return <p className="text-sm font-medium">{text}</p>;
 }
 
@@ -88,7 +96,7 @@ export function DisputeThread({
       setBody("");
       onPosted();
     } catch (e) {
-      toast.error(friendlyError(e, "Message failed"));
+      toast.error(friendlyError(e, "Your message was not sent. Try again."));
     } finally {
       setBusy(false);
     }

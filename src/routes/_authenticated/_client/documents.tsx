@@ -43,7 +43,7 @@ export const Route = createFileRoute("/_authenticated/_client/documents")({
       {
         name: "description",
         content:
-          "Your payment receipts — proof of payment for every order, top-up and subscription charge.",
+          "Proof of payment for every order payment, wallet top-up and subscription charge.",
       },
       { name: "robots", content: "noindex" },
     ],
@@ -157,7 +157,7 @@ function DocumentsPage() {
     <div>
       <PageHeader
         title="Payment receipts"
-        description="Proof of payment for your accountant — issued automatically for every paid order, wallet top-up and subscription charge. These are not tax invoices."
+        description="Proof of payment for your accountant, issued automatically for every paid order, wallet top-up and subscription charge. These are not tax invoices."
       />
 
       {/* 1. Prepaid summary — money already paid and money available. */}
@@ -193,7 +193,7 @@ function DocumentsPage() {
             </Button>
           </div>
           <p className="mt-2 text-xs text-muted-foreground">
-            Prepaid credit — orders are debited from this balance.
+            Prepaid credit in USD. Orders are paid from this balance.
           </p>
         </div>
       </div>
@@ -203,8 +203,9 @@ function DocumentsPage() {
       ) : documents.length === 0 ? (
         <EmptyState
           title="No receipts yet"
-          hint="A payment receipt is issued automatically each time a payment is confirmed."
+          hint="Your payment records live here. Every top-up and order payment generates a receipt you can download."
           icon={Receipt}
+          action={{ label: "Top up", to: "/billing" }}
         />
       ) : (
         <>

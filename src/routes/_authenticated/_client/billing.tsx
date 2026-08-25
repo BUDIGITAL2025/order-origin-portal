@@ -152,12 +152,12 @@ function BillingPage() {
   const { sub, topup } = Route.useSearch();
   useEffect(() => {
     if (sub === "success") {
-      toast.success("Subscription received — it activates as soon as the payment confirms.");
+      toast.success("Subscription received. Your plan activates as soon as the payment confirms.");
     } else if (sub === "cancel") {
-      toast.info("Checkout canceled — nothing was charged.");
+      toast.info("Checkout cancelled. Nothing was charged.");
     }
     if (topup === "done") {
-      toast.success("Top-up received — your balance updates as soon as the payment confirms.");
+      toast.success("Top-up received. Your balance updates as soon as the payment confirms.");
     }
     if (sub || topup) {
       void navigate({ to: "/billing", replace: true, search: {} });
@@ -185,7 +185,7 @@ function BillingPage() {
 
   const subscribe = useMutation({
     mutationFn: async (plan: "basic" | "unlimited") => {
-      if (!environment) throw new Error("Payments are not configured for this build");
+      if (!environment) throw new Error("Payments are not available in this environment yet.");
       // No workspace yet → the server creates a draft workspace and attaches
       // the subscription to it; nothing for the client to set up first.
       const result = await callSubscribe({
@@ -207,7 +207,7 @@ function BillingPage() {
 
   const change = useMutation({
     mutationFn: async (plan: "basic" | "unlimited") => {
-      if (!environment) throw new Error("Payments are not configured for this build");
+      if (!environment) throw new Error("Payments are not available in this environment yet.");
       if (!storeId) throw new Error("No workspace selected");
       const result = await callChangePlan({ data: { plan, environment, storeId } });
       if ("error" in result) throw new Error(result.error);
@@ -216,8 +216,8 @@ function BillingPage() {
     onSuccess: async (r) => {
       toast.success(
         r.applied === "immediate"
-          ? "Plan upgraded — you're now on Unlimited."
-          : "Downgrade scheduled — it takes effect at the end of the current billing period.",
+          ? "Plan upgraded. You are now on Unlimited."
+          : "Downgrade scheduled. It takes effect at the end of the current billing period.",
       );
       await invalidate();
     },
@@ -227,14 +227,14 @@ function BillingPage() {
   const callCancelPending = useServerFn(cancelPendingPlanChange);
   const keepPlan = useMutation({
     mutationFn: async () => {
-      if (!environment) throw new Error("Payments are not configured for this build");
+      if (!environment) throw new Error("Payments are not available in this environment yet.");
       if (!storeId) throw new Error("No workspace selected");
       const result = await callCancelPending({ data: { storeId, environment } });
       if ("error" in result) throw new Error(result.error);
       return result;
     },
     onSuccess: async () => {
-      toast.success("Scheduled change cancelled — you keep your current plan.");
+      toast.success("Scheduled change cancelled. You keep your current plan.");
       await invalidate();
     },
     onError: (e) => toast.error(e.message),
@@ -245,10 +245,10 @@ function BillingPage() {
       const threshold = autoThreshold === "" ? null : Number(autoThreshold);
       const amount = autoAmount === "" ? null : Number(autoAmount);
       if (autoEnabled && (threshold == null || amount == null)) {
-        throw new Error("Set both a threshold and an amount");
+        throw new Error("Set both a threshold and an amount.");
       }
       if (autoEnabled && (amount ?? 0) < TOPUP_MIN) {
-        throw new Error(`Auto top-up amount must be at least $${TOPUP_MIN}`);
+        throw new Error(`The auto top-up amount must be at least $${TOPUP_MIN}.`);
       }
       if (!storeId) throw new Error("No workspace selected");
       return callSaveAuto({ data: { enabled: autoEnabled, threshold, amount, storeId } });
@@ -268,11 +268,11 @@ function BillingPage() {
 
   const openTopup = (amount: number) => {
     if (!environment) {
-      toast.error("Payments are not configured for this build");
+      toast.error("Payments are not available in this environment yet.");
       return;
     }
     if (!Number.isFinite(amount) || amount < TOPUP_MIN) {
-      toast.error(`Minimum top-up is $${TOPUP_MIN}`);
+      toast.error(`The minimum top-up is $${TOPUP_MIN}.`);
       return;
     }
     setTopupAmount(amount);
@@ -284,8 +284,8 @@ function BillingPage() {
         <PageHeader title="Billing" description="Plan, wallet and payment settings." />
         <Card>
           <CardContent className="p-6 text-sm text-muted-foreground">
-            Payments are not configured for this build yet. Complete Stripe go-live to
-            enable checkout.
+            Card payments are not available in this environment yet. Your wallet balance
+            and existing orders are unaffected.
           </CardContent>
         </Card>
       </div>
@@ -336,8 +336,8 @@ function BillingPage() {
 
       {subStatus === "past_due" && (
         <div className="mb-6 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm">
-          Your last subscription payment failed. Stripe retries automatically — make sure
-          your saved card is up to date to keep your plan.
+          Your last subscription payment failed and we retry it automatically. Keep your
+          saved card up to date to keep your plan.
         </div>
       )}
 
@@ -370,8 +370,7 @@ function BillingPage() {
               <SubStatusBadge status={subStatus} />
             </div>
             <CardDescription>
-              State changes are applied when the payment confirms — never by just
-              visiting checkout.
+              Changes apply when the payment confirms, not when you open checkout.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -395,7 +394,7 @@ function BillingPage() {
 
             {feeWaived ? (
               <p className="rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
-                Your plan is managed by FlySales — no payment is collected.
+                Your plan is managed by FlySales. No payment is collected.
               </p>
             ) : !hasActiveSub ? (
               <div className="flex flex-wrap gap-2">
@@ -404,13 +403,13 @@ function BillingPage() {
                   disabled={subscribe.isPending}
                   onClick={() => subscribe.mutate("basic")}
                 >
-                  Subscribe — Basic ${PLANS.basic.priceUsd}/mo
+                  Subscribe to Basic (${PLANS.basic.priceUsd}/mo)
                 </Button>
                 <Button
                   disabled={subscribe.isPending}
                   onClick={() => subscribe.mutate("unlimited")}
                 >
-                  {subscribe.isPending ? "Redirecting…" : `Subscribe — Unlimited $${PLANS.unlimited.priceUsd}/mo`}
+                  {subscribe.isPending ? "Redirecting…" : `Subscribe to Unlimited ($${PLANS.unlimited.priceUsd}/mo)`}
                 </Button>
               </div>
             ) : store?.pending_plan_change ? (
@@ -443,7 +442,7 @@ function BillingPage() {
               >
                 {change.isPending
                   ? "Upgrading…"
-                  : `Upgrade to Unlimited — $${PLANS.unlimited.priceUsd}/mo (prorated today)`}
+                  : `Upgrade to Unlimited ($${PLANS.unlimited.priceUsd}/mo, prorated today)`}
               </Button>
             ) : (
               <Button
@@ -453,7 +452,7 @@ function BillingPage() {
               >
                 {change.isPending
                   ? "Scheduling…"
-                  : `Downgrade to Basic $${PLANS.basic.priceUsd}/mo (at period end)`}
+                  : `Downgrade to Basic ($${PLANS.basic.priceUsd}/mo, at period end)`}
               </Button>
             )}
           </CardContent>
@@ -467,8 +466,8 @@ function BillingPage() {
               <Wallet className="h-4 w-4" /> Wallet
             </CardTitle>
             <CardDescription>
-              Your prepaid balance funds fulfilment. Top-ups are credited when the
-              payment confirms.
+              Top up in USD to prepay for orders. The funds stay yours until an order is
+              paid, and are credited as soon as the payment confirms.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -565,7 +564,7 @@ function BillingPage() {
                   {data.paymentMethod.expYear})
                 </span>
               ) : (
-                "none yet — make a card top-up first and we'll keep it on file."
+                "none yet. Make a card top-up and we keep the card on file."
               )}
             </div>
             <Button
@@ -593,8 +592,8 @@ function BillingPage() {
         </h2>
         {documents.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            No receipts yet — one is issued automatically for every top-up, order
-            payment and subscription charge.
+            No receipts yet. One is issued for every top-up, order payment and
+            subscription charge.
           </p>
         ) : (
           <div className="rounded-lg border border-border bg-card">
@@ -645,7 +644,7 @@ function BillingPage() {
         <h2 className="mb-3 text-sm font-semibold">Billing history</h2>
         {transactions.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            No transactions yet — top-ups and refunds appear here.
+            No transactions yet. Top-ups, order payments and refunds appear here.
           </p>
         ) : (
           <div className="rounded-lg border border-border bg-card">
@@ -750,7 +749,7 @@ function EntityDetailsCard({
       await queryClient.invalidateQueries({ queryKey: ["my-context"] });
       toast.success("Company details saved.");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not save company details");
+      toast.error(err instanceof Error ? err.message : "Your company details were not saved. Try again.");
     } finally {
       setBusy(false);
     }

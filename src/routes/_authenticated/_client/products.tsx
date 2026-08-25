@@ -99,7 +99,7 @@ function CopySku({ sku }: { sku: string }) {
         variant="ghost"
         size="icon"
         className="h-6 w-6"
-        title="Copy SKU — your shop must use this exact SKU for order matching"
+        title="Copy SKU. Your shop must use this exact SKU so orders match."
         onClick={async () => {
           await navigator.clipboard.writeText(sku);
           setCopied(true);
@@ -347,8 +347,8 @@ function MyProductsPageInner() {
   return (
     <div>
       <PageHeader
-        title="My products"
-        description="Your sellable catalogue, priced per country. Orders match on the FlySales SKU — use these exact SKUs in your Shopify store or manual orders."
+        title="Products"
+        description="Your sellable catalogue, priced per country. Orders match on the FlySales SKU, so use these exact SKUs in your Shopify store and in manual orders."
         actions={
           <Dialog open={dialog != null} onOpenChange={(open) => !open && setDialog(null)}>
             <Button
@@ -380,7 +380,7 @@ function MyProductsPageInner() {
       ) : products.length === 0 ? (
         <EmptyState
           title="No products yet"
-          hint="Accept a quote to add your first product."
+          hint="Your catalogue lives here. A product appears once you accept a price on a quote request, ready to sell and to order."
           action={{ label: "View quotes", to: "/quotes" }}
         />
       ) : (

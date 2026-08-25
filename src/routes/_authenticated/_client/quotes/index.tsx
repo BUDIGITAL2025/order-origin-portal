@@ -18,7 +18,7 @@ import { listMyQuotes } from "@/lib/quotes.functions";
 export const Route = createFileRoute("/_authenticated/_client/quotes/")({
   head: () => ({
     meta: [
-      { title: "My quotes — FlySales" },
+      { title: "Quote requests — FlySales" },
       { name: "robots", content: "noindex" },
     ],
   }),
@@ -37,8 +37,8 @@ function MyQuotesPageInner() {
   return (
     <div>
       <PageHeader
-        title="My quotes"
-        description="Every sourcing request you've sent us."
+        title="Quote requests"
+        description="Every quote request you have sent, with its status and validity."
         actions={
           <Button asChild size="sm">
             <Link to="/quotes/new">Request a quote</Link>
@@ -51,7 +51,7 @@ function MyQuotesPageInner() {
       ) : quotes.length === 0 ? (
         <EmptyState
           title="No quote requests yet"
-          hint="Send us a product link and we'll come back with per-variant pricing."
+          hint="Paste a product link and get a firm price per variant and country within 48 hours."
           action={{ label: "Request a quote", to: "/quotes/new" }}
         />
       ) : (
@@ -88,7 +88,7 @@ function MyQuotesPageInner() {
                   <TableCell className="text-right">
                     <Button asChild size="sm" variant={q.status === "quoted" ? "default" : "outline"}>
                       <Link to="/quotes/$id" params={{ id: q.id }}>
-                        {q.status === "quoted" ? "Review & respond" : "Open"}
+                        {q.status === "quoted" ? "Review prices" : "Open"}
                       </Link>
                     </Button>
                   </TableCell>

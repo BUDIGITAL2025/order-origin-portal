@@ -86,7 +86,7 @@ export function useDocumentDownload() {
         const { url } = await getUrl({ data: { id } });
         window.open(url, "_blank", "noopener");
       } catch (e) {
-        toast.error(friendlyError(e, "Could not download the receipt"));
+        toast.error(friendlyError(e, "The receipt could not be downloaded. Try again in a moment."));
       } finally {
         setDownloadingId(null);
       }

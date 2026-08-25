@@ -15,7 +15,7 @@ import { getMyDispute } from "@/lib/disputes.functions";
 export const Route = createFileRoute("/_authenticated/_client/disputes/$id")({
   head: () => ({
     meta: [
-      { title: "Dispute — FlySales" },
+      { title: "Claim — FlySales" },
       { name: "robots", content: "noindex" },
     ],
   }),
@@ -35,7 +35,7 @@ function DisputeDetailPage() {
   if (error || !data) {
     return (
       <p className="text-sm text-muted-foreground">
-        {error instanceof Error ? error.message : "Dispute not found."}
+        {error instanceof Error ? error.message : "Claim not found."}
       </p>
     );
   }
@@ -54,10 +54,10 @@ function DisputeDetailPage() {
         to="/disputes"
         className="mb-2 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
       >
-        <ArrowLeft className="h-3.5 w-3.5" /> All disputes
+        <ArrowLeft className="h-3.5 w-3.5" /> All claims
       </Link>
       <PageHeader
-        title={`Dispute — order ${order?.external_order_number ?? dispute.order_id.slice(0, 8)}`}
+        title={`Claim on order ${order?.external_order_number ?? dispute.order_id.slice(0, 8)}`}
         description={`Opened ${formatDateTime(dispute.created_at)}`}
       />
 
@@ -71,7 +71,7 @@ function DisputeDetailPage() {
               </span>
               {order?.total_amount != null && (
                 <span className="tnum text-sm text-muted-foreground">
-                  order total {formatUSD(order.total_amount)}
+                  Order total {formatUSD(order.total_amount)}
                 </span>
               )}
             </div>
@@ -113,7 +113,7 @@ function DisputeDetailPage() {
                 <a key={e.path} href={e.url} target="_blank" rel="noreferrer">
                   <img
                     src={e.url}
-                    alt="Dispute evidence"
+                    alt="Claim evidence"
                     className="aspect-square w-full rounded-lg border border-border object-cover"
                   />
                 </a>

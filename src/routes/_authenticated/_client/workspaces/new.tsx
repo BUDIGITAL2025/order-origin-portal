@@ -49,10 +49,10 @@ function NewStorePage() {
     try {
       await callAddMyStore({ data: parsed.data });
       await queryClient.invalidateQueries({ queryKey: ["my-context"] });
-      toast.success("Workspace added — our team will review it.");
+      toast.success("Workspace added. Our team reviews it shortly.");
       await navigate({ to: "/dashboard" });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not add workspace");
+      toast.error(err instanceof Error ? err.message : "The workspace was not added. Try again.");
     } finally {
       setBusy(false);
     }
