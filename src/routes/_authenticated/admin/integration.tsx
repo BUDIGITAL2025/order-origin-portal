@@ -17,14 +17,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { friendlyError } from "@/lib/errors";
-import { formatDateTime } from "@/lib/format";
+import { formatDateTime, formatUSD } from "@/lib/format";
 import {
   adminIntegrationOverview,
   adminIntegrationReleases,
   adminReplayIntegrationEvent,
   adminRetryRelease,
 } from "@/lib/integration.functions";
-import { formatUsd } from "@/lib/format";
+
 
 export const Route = createFileRoute("/_authenticated/admin/integration")({
   head: () => ({
@@ -141,7 +141,7 @@ function AdminIntegrationPage() {
                       <TableCell className="whitespace-nowrap">
                         {order.status}
                         <div className="text-xs text-muted-foreground">
-                          {order.total_amount === null ? "—" : formatUsd(order.total_amount)}
+                          {order.total_amount === null ? "—" : formatUSD(order.total_amount)}
                         </div>
                       </TableCell>
                       <TableCell>
