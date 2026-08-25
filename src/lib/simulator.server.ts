@@ -30,6 +30,14 @@ function envOrNull(name: string): string | null {
 
 /** Absolute base URL of this app, needed for self-directed calls. */
 export async function appBaseUrl(admin: Admin): Promise<string | null> {
+  // A stored override exists only for local end-to-end testing of the
+  // simulator itself; production always resolves from APP_BASE_URL.
+  const { data: override } = await admin
+    .from("internal_settings")
+    .select("value")
+    .eq("key", "simulator_self_base_url")
+    .maybeSingle();
+  if (override?.value) return stripSlash(override.value);
   const fromEnv = envOrNull("APP_BASE_URL");
   if (fromEnv) return stripSlash(fromEnv);
   const { data } = await admin
