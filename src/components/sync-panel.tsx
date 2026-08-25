@@ -60,6 +60,7 @@ export function SyncPanel() {
   }
 
   const tenants = data?.tenants ?? [];
+  const paths = data?.entry_paths ?? {};
 
   return (
     <Card className="mb-6">
@@ -67,8 +68,9 @@ export function SyncPanel() {
         <div>
           <CardTitle className="text-base">Order sync (pull)</CardTitle>
           <p className="mt-1 text-xs text-muted-foreground">
-            Polls the fulfilment engine every 5 minutes. {data?.connected_workspaces ?? 0}{" "}
-            connected workspace(s) in scope.
+            Redundancy path: polls the fulfilment engine every 5 minutes and only picks up what
+            the webhook missed. {data?.connected_workspaces ?? 0} connected workspace(s) in scope —
+            a healthy integration shows almost everything arriving by webhook.
           </p>
         </div>
         <Button size="sm" disabled={busy !== null} onClick={() => run()}>
@@ -89,6 +91,7 @@ export function SyncPanel() {
                 <TableHead>Workspace / tenant</TableHead>
                 <TableHead>Last sync</TableHead>
                 <TableHead>Orders ingested</TableHead>
+                <TableHead>Entry path</TableHead>
                 <TableHead>State</TableHead>
                 <TableHead className="text-right">Action</TableHead>
               </TableRow>
@@ -117,6 +120,31 @@ export function SyncPanel() {
                     <div className="text-xs text-muted-foreground">
                       {(tenant.last_seen_order_ids ?? []).length} seen last cycle
                     </div>
+                  </TableCell>
+                  <TableCell className="text-xs">
+                    {(() => {
+                      const p = paths[tenant.tenant_id];
+                      const pollCaught = p?.orders_poll ?? 0;
+                      return (
+                        <div className="space-y-1">
+                          <div>
+                            Orders: <span className="font-medium">{p?.orders_webhook ?? 0}</span> via
+                            webhook ·{" "}
+                            <span className={pollCaught > 0 ? "font-medium text-destructive" : ""}>
+                              {pollCaught}
+                            </span>{" "}
+                            caught by polling
+                          </div>
+                          <div className="text-muted-foreground">
+                            Tracking: {p?.tracking_webhook ?? 0} webhook · {p?.tracking_poll ?? 0}{" "}
+                            polling
+                          </div>
+                          {pollCaught > 0 ? (
+                            <Badge variant="destructive">Check webhook delivery</Badge>
+                          ) : null}
+                        </div>
+                      );
+                    })()}
                   </TableCell>
                   <TableCell>
                     {tenant.consecutive_failures > 0 ? (
