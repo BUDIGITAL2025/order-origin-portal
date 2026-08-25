@@ -2866,6 +2866,13 @@ function ShopDetailTab({
 
           <ShopOnDemand shopId={shopId} go={go} costs={costs} />
 
+          <ShopCreativeAngles
+            shopId={shopId}
+            domain={asStr(shop["domain"])}
+            name={asStr(shop["name"])}
+          />
+
+
           <RawJson data={shop} />
         </>
       )}
