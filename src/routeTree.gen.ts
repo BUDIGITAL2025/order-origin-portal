@@ -51,6 +51,7 @@ import { Route as ApiPublicCronAutoTopupRouteImport } from './routes/api/public/
 import { Route as ApiPublicCronDailyDigestRouteImport } from './routes/api/public/cron/daily-digest'
 import { Route as ApiPublicCronDocumentsSweepRouteImport } from './routes/api/public/cron/documents-sweep'
 import { Route as ApiPublicCronOrderExpiryRouteImport } from './routes/api/public/cron/order-expiry'
+import { Route as ApiPublicMiddlewareWebhookRouteImport } from './routes/api/public/middleware/webhook'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
 
 const IndexRoute = IndexRouteImport.update({
@@ -293,6 +294,12 @@ const ApiPublicCronOrderExpiryRoute =
     path: '/api/public/cron/order-expiry',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicMiddlewareWebhookRoute =
+  ApiPublicMiddlewareWebhookRouteImport.update({
+    id: '/api/public/middleware/webhook',
+    path: '/api/public/middleware/webhook',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicPaymentsWebhookRoute =
   ApiPublicPaymentsWebhookRouteImport.update({
     id: '/api/public/payments/webhook',
@@ -338,6 +345,7 @@ export interface FileRoutesByFullPath {
   '/api/public/cron/daily-digest': typeof ApiPublicCronDailyDigestRoute
   '/api/public/cron/documents-sweep': typeof ApiPublicCronDocumentsSweepRoute
   '/api/public/cron/order-expiry': typeof ApiPublicCronOrderExpiryRoute
+  '/api/public/middleware/webhook': typeof ApiPublicMiddlewareWebhookRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/orders/': typeof AuthenticatedClientOrdersIndexRoute
   '/quotes/': typeof AuthenticatedClientQuotesIndexRoute
@@ -381,6 +389,7 @@ export interface FileRoutesByTo {
   '/api/public/cron/daily-digest': typeof ApiPublicCronDailyDigestRoute
   '/api/public/cron/documents-sweep': typeof ApiPublicCronDocumentsSweepRoute
   '/api/public/cron/order-expiry': typeof ApiPublicCronOrderExpiryRoute
+  '/api/public/middleware/webhook': typeof ApiPublicMiddlewareWebhookRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/orders': typeof AuthenticatedClientOrdersIndexRoute
   '/quotes': typeof AuthenticatedClientQuotesIndexRoute
@@ -427,6 +436,7 @@ export interface FileRoutesById {
   '/api/public/cron/daily-digest': typeof ApiPublicCronDailyDigestRoute
   '/api/public/cron/documents-sweep': typeof ApiPublicCronDocumentsSweepRoute
   '/api/public/cron/order-expiry': typeof ApiPublicCronOrderExpiryRoute
+  '/api/public/middleware/webhook': typeof ApiPublicMiddlewareWebhookRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/_authenticated/_client/orders/': typeof AuthenticatedClientOrdersIndexRoute
   '/_authenticated/_client/quotes/': typeof AuthenticatedClientQuotesIndexRoute
@@ -472,6 +482,7 @@ export interface FileRouteTypes {
     | '/api/public/cron/daily-digest'
     | '/api/public/cron/documents-sweep'
     | '/api/public/cron/order-expiry'
+    | '/api/public/middleware/webhook'
     | '/api/public/payments/webhook'
     | '/orders/'
     | '/quotes/'
@@ -515,6 +526,7 @@ export interface FileRouteTypes {
     | '/api/public/cron/daily-digest'
     | '/api/public/cron/documents-sweep'
     | '/api/public/cron/order-expiry'
+    | '/api/public/middleware/webhook'
     | '/api/public/payments/webhook'
     | '/orders'
     | '/quotes'
@@ -560,6 +572,7 @@ export interface FileRouteTypes {
     | '/api/public/cron/daily-digest'
     | '/api/public/cron/documents-sweep'
     | '/api/public/cron/order-expiry'
+    | '/api/public/middleware/webhook'
     | '/api/public/payments/webhook'
     | '/_authenticated/_client/orders/'
     | '/_authenticated/_client/quotes/'
@@ -577,6 +590,7 @@ export interface RootRouteChildren {
   ApiPublicCronDailyDigestRoute: typeof ApiPublicCronDailyDigestRoute
   ApiPublicCronDocumentsSweepRoute: typeof ApiPublicCronDocumentsSweepRoute
   ApiPublicCronOrderExpiryRoute: typeof ApiPublicCronOrderExpiryRoute
+  ApiPublicMiddlewareWebhookRoute: typeof ApiPublicMiddlewareWebhookRoute
   ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
 }
 
@@ -876,6 +890,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCronOrderExpiryRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/middleware/webhook': {
+      id: '/api/public/middleware/webhook'
+      path: '/api/public/middleware/webhook'
+      fullPath: '/api/public/middleware/webhook'
+      preLoaderRoute: typeof ApiPublicMiddlewareWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/payments/webhook': {
       id: '/api/public/payments/webhook'
       path: '/api/public/payments/webhook'
@@ -1027,6 +1048,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicCronDailyDigestRoute: ApiPublicCronDailyDigestRoute,
   ApiPublicCronDocumentsSweepRoute: ApiPublicCronDocumentsSweepRoute,
   ApiPublicCronOrderExpiryRoute: ApiPublicCronOrderExpiryRoute,
+  ApiPublicMiddlewareWebhookRoute: ApiPublicMiddlewareWebhookRoute,
   ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
 }
 export const routeTree = rootRouteImport
