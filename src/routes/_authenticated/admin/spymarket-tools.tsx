@@ -22,6 +22,11 @@ export const Route = createFileRoute("/_authenticated/admin/spymarket-tools")({
     tab: str(search, "tab") ?? "lookup",
     shopId: str(search, "shopId"),
     domain: str(search, "domain"),
+    // Active shop context (persists across tabs) + where "Back" returns to.
+    shop: str(search, "shop"),
+    shopName: str(search, "shopName"),
+    from: str(search, "from"),
+    auto: str(search, "auto"),
     // Shop explorer filters
     sq: str(search, "sq"),
     st: str(search, "st"),
@@ -80,10 +85,15 @@ function AdminSpyMarketToolsPage() {
         shopId={search.shopId}
         domain={search.domain}
         search={search}
-        go={(patch) =>
+        /**
+         * Filter tweaks replace the current entry (no history spam); tab and
+         * shop-context changes push, so the browser back button walks between
+         * searches and details naturally.
+         */
+        go={(patch, opts) =>
           void navigate({
             search: (prev) => ({ ...prev, ...patch }),
-            replace: true,
+            replace: opts?.push ? false : true,
           })
         }
       />
