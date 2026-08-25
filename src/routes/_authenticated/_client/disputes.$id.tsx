@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft } from "lucide-react";
+import { SUPPORT_EMAIL } from "@/lib/support";
 import { PageHeader } from "@/components/app-shell";
 import {
   DisputeReasonLabel,
@@ -60,6 +61,14 @@ function DisputeDetailPage() {
         title={`Claim on order ${order?.external_order_number ?? dispute.order_id.slice(0, 8)}`}
         description={`Opened ${formatDateTime(dispute.created_at)}`}
       />
+      <p className="mb-4 text-xs text-muted-foreground">
+        Reply in the thread below to keep this claim moving. For anything unrelated to a claim,
+        write to{" "}
+        <a href={`mailto:${SUPPORT_EMAIL}`} className="underline underline-offset-4">
+          {SUPPORT_EMAIL}
+        </a>
+        .
+      </p>
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">

@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { BrandLogo } from "@/components/brand-logo";
 import { MARKETING_URL } from "@/lib/config";
+import { SUPPORT_EMAIL } from "@/lib/support";
 
 /** Shared chrome for the public legal pages (/terms, /privacy). */
 export function LegalLayout({
@@ -47,6 +48,13 @@ export function LegalFooter({ className }: { className?: string }) {
         <Link to="/privacy" className="underline-offset-4 hover:text-foreground hover:underline">
           Privacy Policy
         </Link>
+        <span aria-hidden>·</span>
+        <a
+          href={`mailto:${SUPPORT_EMAIL}`}
+          className="underline-offset-4 hover:text-foreground hover:underline"
+        >
+          {SUPPORT_EMAIL}
+        </a>
       </div>
     </footer>
   );

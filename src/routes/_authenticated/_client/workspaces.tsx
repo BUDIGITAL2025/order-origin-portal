@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { STILL_STUCK } from "@/lib/support";
 import { friendlyError } from "@/lib/errors";
 import { planLabel } from "@/lib/plans";
 import { connectMyStore } from "@/lib/profiles.functions";
@@ -181,7 +182,7 @@ function ConnectShopifyForm({ storeId }: { storeId: string }) {
       toast.success("Shopify connected. This workspace is now active.");
       await queryClient.invalidateQueries({ queryKey: ["my-context"] });
     } catch (err) {
-      toast.error(friendlyError(err, "Shopify was not connected. Check the domain and try again."));
+      toast.error(friendlyError(err, `Shopify was not connected. Check the domain and try again. ${STILL_STUCK}`));
     } finally {
       setBusy(false);
     }
