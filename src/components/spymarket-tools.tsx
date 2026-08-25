@@ -3311,8 +3311,37 @@ function AdCard({ ad, onOpen }: { ad: Rec; onOpen: (id: string) => void }) {
       </div>
 
       {/* Z2 — badges */}
-      {(days != null || (duplicates != null && duplicates > 0)) && (
+      {(days != null ||
+        (duplicates != null && duplicates > 0) ||
+        currentRank != null ||
+        (rankDelta != null && rankDelta !== 0)) && (
         <div className="flex flex-wrap items-center gap-1.5 px-3 pt-2">
+          {currentRank != null && (
+            <Badge className="gap-1 rounded-full bg-primary/15 text-[10px] text-primary hover:bg-primary/15">
+              <Trophy className="h-3 w-3" />
+              rank {fmtInt(currentRank)}
+              {rankTotal != null && rankTotal > 0 ? `/${fmtInt(rankTotal)}` : ""}
+            </Badge>
+          )}
+          {rankDelta != null && rankDelta !== 0 && (
+            <Badge
+              variant="outline"
+              className={cn(
+                "gap-1 rounded-full text-[10px]",
+                rankDelta > 0 ? "text-primary" : "text-destructive",
+              )}
+            >
+              {rankDelta > 0 ? (
+                <ArrowUpRight className="h-3 w-3" />
+              ) : (
+                <ArrowDownRight className="h-3 w-3" />
+              )}
+              {fmtInt(Math.abs(rankDelta))} ranks
+              {improvementPct != null && improvementPct !== 0
+                ? ` · ${fmtPct(improvementPct > 1 || improvementPct < -1 ? improvementPct / 100 : improvementPct)}`
+                : ""}
+            </Badge>
+          )}
           {days != null && (
             <Badge variant="secondary" className="gap-1.5 rounded-full text-[10px]">
               <span
@@ -3331,6 +3360,7 @@ function AdCard({ ad, onOpen }: { ad: Rec; onOpen: (id: string) => void }) {
           )}
         </div>
       )}
+
 
       {/* Z3 — FB-style page header */}
       {name && (
