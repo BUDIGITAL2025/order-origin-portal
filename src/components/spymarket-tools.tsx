@@ -2626,6 +2626,13 @@ function ShopDetailTab({
 
   return (
     <div className="space-y-4">
+      <BackBar
+        backTab={backTab}
+        go={go}
+        trail={
+          asStr(shop?.["name"]) ?? domain ?? contextDomain ?? "Shop"
+        }
+      />
       {call.state.kind === "idle" && (
         <Card className="rounded-2xl">
           <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
