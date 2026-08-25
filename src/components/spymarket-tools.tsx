@@ -4314,14 +4314,28 @@ function AdsTab({
       )}
 
       {!grouped && allRows.length > 0 && (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {allRows.map((ad, i) => (
-            <AdCard key={asStr(ad["id"]) ?? i} ad={ad} onOpen={setAdDetailId} />
-          ))}
-        </div>
+        <>
+          <p className="text-[11px] text-muted-foreground">
+            For competitive research only. Study angles and structure — do not reuse
+            competitors&apos; media as your own.
+          </p>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {allRows.map((ad, i) => (
+              <AdCard
+                key={asStr(ad["id"]) ?? i}
+                ad={ad}
+                onOpen={setAdDetailId}
+                onPreview={setPreview}
+              />
+            ))}
+          </div>
+        </>
       )}
 
+      <CreativeLightbox target={preview} costs={costs} onClose={() => setPreview(null)} />
+
       <AdDetailDialog adId={adDetailId} costs={costs} onClose={() => setAdDetailId(null)} />
+
 
       {pages.length > 0 && (pages[pages.length - 1]?.length ?? 0) >= limit && (
         <div className="flex justify-center">
