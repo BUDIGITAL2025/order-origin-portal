@@ -84,7 +84,7 @@ function AdminIntegrationPage() {
           ) : (data?.events ?? []).length === 0 ? (
             <EmptyState
               title="No events yet"
-              description="Signed middleware events will appear here as soon as they arrive."
+              hint="Signed middleware events will appear here as soon as they arrive."
             />
           ) : (
             <Table>
@@ -154,7 +154,7 @@ function AdminIntegrationPage() {
         </CardHeader>
         <CardContent className="p-0">
           {(data?.calls ?? []).length === 0 ? (
-            <EmptyState title="No calls yet" description="Inbound and outbound traffic is audited here." />
+            <EmptyState title="No calls yet" hint="Inbound and outbound traffic is audited here." />
           ) : (
             <Table>
               <TableHeader>
@@ -196,7 +196,7 @@ function AdminIntegrationPage() {
   );
 }
 
-function StatusCard({ label, ok }: { label: string; ok?: boolean }) {
+function StatusCard({ label, ok }: { label: string; ok?: boolean | undefined }) {
   return (
     <Card>
       <CardContent className="flex items-center gap-3 p-4">

@@ -30,6 +30,7 @@ import { Route as AuthenticatedAdminClientsRouteImport } from './routes/_authent
 import { Route as AuthenticatedAdminDisputesRouteImport } from './routes/_authenticated/admin/disputes'
 import { Route as AuthenticatedAdminDocumentsRouteImport } from './routes/_authenticated/admin/documents'
 import { Route as AuthenticatedAdminEntitiesRouteImport } from './routes/_authenticated/admin/entities'
+import { Route as AuthenticatedAdminIntegrationRouteImport } from './routes/_authenticated/admin/integration'
 import { Route as AuthenticatedAdminOrdersRouteImport } from './routes/_authenticated/admin/orders'
 import { Route as AuthenticatedAdminProductsRouteImport } from './routes/_authenticated/admin/products'
 import { Route as AuthenticatedAdminSpymarketRouteImport } from './routes/_authenticated/admin/spymarket'
@@ -167,6 +168,12 @@ const AuthenticatedAdminEntitiesRoute =
   AuthenticatedAdminEntitiesRouteImport.update({
     id: '/entities',
     path: '/entities',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminIntegrationRoute =
+  AuthenticatedAdminIntegrationRouteImport.update({
+    id: '/integration',
+    path: '/integration',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 const AuthenticatedAdminOrdersRoute =
@@ -327,6 +334,7 @@ export interface FileRoutesByFullPath {
   '/admin/disputes': typeof AuthenticatedAdminDisputesRouteWithChildren
   '/admin/documents': typeof AuthenticatedAdminDocumentsRoute
   '/admin/entities': typeof AuthenticatedAdminEntitiesRoute
+  '/admin/integration': typeof AuthenticatedAdminIntegrationRoute
   '/admin/orders': typeof AuthenticatedAdminOrdersRoute
   '/admin/products': typeof AuthenticatedAdminProductsRoute
   '/admin/spymarket': typeof AuthenticatedAdminSpymarketRoute
@@ -371,6 +379,7 @@ export interface FileRoutesByTo {
   '/admin/disputes': typeof AuthenticatedAdminDisputesRouteWithChildren
   '/admin/documents': typeof AuthenticatedAdminDocumentsRoute
   '/admin/entities': typeof AuthenticatedAdminEntitiesRoute
+  '/admin/integration': typeof AuthenticatedAdminIntegrationRoute
   '/admin/orders': typeof AuthenticatedAdminOrdersRoute
   '/admin/products': typeof AuthenticatedAdminProductsRoute
   '/admin/spymarket': typeof AuthenticatedAdminSpymarketRoute
@@ -418,6 +427,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/disputes': typeof AuthenticatedAdminDisputesRouteWithChildren
   '/_authenticated/admin/documents': typeof AuthenticatedAdminDocumentsRoute
   '/_authenticated/admin/entities': typeof AuthenticatedAdminEntitiesRoute
+  '/_authenticated/admin/integration': typeof AuthenticatedAdminIntegrationRoute
   '/_authenticated/admin/orders': typeof AuthenticatedAdminOrdersRoute
   '/_authenticated/admin/products': typeof AuthenticatedAdminProductsRoute
   '/_authenticated/admin/spymarket': typeof AuthenticatedAdminSpymarketRoute
@@ -464,6 +474,7 @@ export interface FileRouteTypes {
     | '/admin/disputes'
     | '/admin/documents'
     | '/admin/entities'
+    | '/admin/integration'
     | '/admin/orders'
     | '/admin/products'
     | '/admin/spymarket'
@@ -508,6 +519,7 @@ export interface FileRouteTypes {
     | '/admin/disputes'
     | '/admin/documents'
     | '/admin/entities'
+    | '/admin/integration'
     | '/admin/orders'
     | '/admin/products'
     | '/admin/spymarket'
@@ -554,6 +566,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/disputes'
     | '/_authenticated/admin/documents'
     | '/_authenticated/admin/entities'
+    | '/_authenticated/admin/integration'
     | '/_authenticated/admin/orders'
     | '/_authenticated/admin/products'
     | '/_authenticated/admin/spymarket'
@@ -741,6 +754,13 @@ declare module '@tanstack/react-router' {
       path: '/entities'
       fullPath: '/admin/entities'
       preLoaderRoute: typeof AuthenticatedAdminEntitiesRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/integration': {
+      id: '/_authenticated/admin/integration'
+      path: '/integration'
+      fullPath: '/admin/integration'
+      preLoaderRoute: typeof AuthenticatedAdminIntegrationRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/admin/orders': {
@@ -996,6 +1016,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminDisputesRoute: typeof AuthenticatedAdminDisputesRouteWithChildren
   AuthenticatedAdminDocumentsRoute: typeof AuthenticatedAdminDocumentsRoute
   AuthenticatedAdminEntitiesRoute: typeof AuthenticatedAdminEntitiesRoute
+  AuthenticatedAdminIntegrationRoute: typeof AuthenticatedAdminIntegrationRoute
   AuthenticatedAdminOrdersRoute: typeof AuthenticatedAdminOrdersRoute
   AuthenticatedAdminProductsRoute: typeof AuthenticatedAdminProductsRoute
   AuthenticatedAdminSpymarketRoute: typeof AuthenticatedAdminSpymarketRoute
@@ -1010,6 +1031,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminDisputesRoute: AuthenticatedAdminDisputesRouteWithChildren,
   AuthenticatedAdminDocumentsRoute: AuthenticatedAdminDocumentsRoute,
   AuthenticatedAdminEntitiesRoute: AuthenticatedAdminEntitiesRoute,
+  AuthenticatedAdminIntegrationRoute: AuthenticatedAdminIntegrationRoute,
   AuthenticatedAdminOrdersRoute: AuthenticatedAdminOrdersRoute,
   AuthenticatedAdminProductsRoute: AuthenticatedAdminProductsRoute,
   AuthenticatedAdminSpymarketRoute: AuthenticatedAdminSpymarketRoute,
