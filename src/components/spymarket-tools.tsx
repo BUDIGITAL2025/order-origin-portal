@@ -30,6 +30,8 @@ import {
   RefreshCw,
   Search,
   SlidersHorizontal,
+  Sparkles,
+  TrendingUp,
   Star,
   Store,
   Users,
