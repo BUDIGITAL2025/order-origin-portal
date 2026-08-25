@@ -51,6 +51,14 @@ export const Route = createFileRoute("/_authenticated/admin/spymarket-tools")({
     astat: str(search, "astat"),
     amed: str(search, "amed"),
     asort: str(search, "asort"),
+    // Ad rank / growth-rank views
+    aview: str(search, "aview"),
+    armode: str(search, "armode"),
+    arbasis: str(search, "arbasis"),
+    armax: str(search, "armax"),
+    arwin: str(search, "arwin"),
+    armin: str(search, "armin"),
+
   }),
   head: () => ({
     meta: [
