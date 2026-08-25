@@ -3684,22 +3684,91 @@ function AdsTab({
             </Select>
           </div>
 
-          <div className="space-y-1.5">
-            <Label>Sort by</Label>
-            <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="rounded-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="longestRunning">Longest running</SelectItem>
-                <SelectItem value="reach">Reach</SelectItem>
-                <SelectItem value="reachDelta7d">Reach Δ 7d</SelectItem>
-                <SelectItem value="reachDelta30d">Reach Δ 30d</SelectItem>
-                <SelectItem value="newest">Newest</SelectItem>
-                <SelectItem value="relevance">Relevance</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          {view === "all" && (
+            <div className="space-y-1.5">
+              <Label>Sort by</Label>
+              <Select value={sortBy} onValueChange={setSortBy}>
+                <SelectTrigger className="rounded-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="longestRunning">Longest running</SelectItem>
+                  <SelectItem value="reach">Reach</SelectItem>
+                  <SelectItem value="reachDelta7d">Reach Δ 7d</SelectItem>
+                  <SelectItem value="reachDelta30d">Reach Δ 30d</SelectItem>
+                  <SelectItem value="newest">Newest</SelectItem>
+                  <SelectItem value="relevance">Relevance</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {view === "bestRank" && (
+            <>
+              <div className="space-y-1.5">
+                <Label>Rank mode</Label>
+                <Select value={rankMode} onValueChange={setRankMode}>
+                  <SelectTrigger className="rounded-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="rank">Absolute rank</SelectItem>
+                    <SelectItem value="percentile">Top percentile</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>
+                  {rankMode === "percentile" ? "Top X% of ads" : "Best rank ≤"}
+                </Label>
+                <div className="flex gap-2">
+                  <Input
+                    value={maxRankValue}
+                    onChange={(e) => setMaxRankValue(e.target.value.replace(/[^\d]/g, ""))}
+                    inputMode="numeric"
+                    className="w-20 rounded-full"
+                  />
+                  <Select value={rankBasis} onValueChange={setRankBasis}>
+                    <SelectTrigger className="rounded-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="current">Current</SelectItem>
+                      <SelectItem value="alltime">All-time</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </>
+          )}
+
+          {view === "gains" && (
+            <>
+              <div className="space-y-1.5">
+                <Label>Window</Label>
+                <Select value={rankWindow} onValueChange={setRankWindow}>
+                  <SelectTrigger className="rounded-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="7d">Last 7 days</SelectItem>
+                    <SelectItem value="14d">Last 14 days</SelectItem>
+                    <SelectItem value="30d">Last 30 days</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Min rank gain</Label>
+                <Input
+                  value={minRankDelta}
+                  onChange={(e) => setMinRankDelta(e.target.value.replace(/[^\d]/g, ""))}
+                  inputMode="numeric"
+                  className="rounded-full"
+                />
+              </div>
+            </>
+          )}
+
 
           <div className="space-y-1.5">
             <Label>Page size</Label>
