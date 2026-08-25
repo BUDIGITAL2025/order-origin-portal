@@ -3257,6 +3257,17 @@ function AdCard({ ad, onOpen }: { ad: Rec; onOpen: (id: string) => void }) {
   const logo = asStr(advertiser["logoUrl"]);
   const liveAds = asNum(advertiser["liveAdsCount"]) ?? asNum(advertiser["activeAds"]);
 
+  // Rank block — POST /v1/ads/query returns rank.currentRank / rankDelta /
+  // improvementPct. Rank HISTORY is not exposed by the API, so we only ever
+  // show the current position and its delta, never a rank-over-time chart.
+  const rank = asRec(ad["rank"]);
+  const currentRank = asNum(rank["currentRank"]);
+  const rankTotal = asNum(advertiser["totalAdsCount"]) ?? asNum(advertiser["adsCount"]) ?? liveAds;
+  const rankDelta = asNum(rank["rankDelta"]);
+  const improvementPct = asNum(rank["improvementPct"]);
+
+
+
   const [expanded, setExpanded] = React.useState(false);
   const [saved, setSaved] = React.useState(false);
   React.useEffect(() => {
