@@ -4436,46 +4436,63 @@ function AdDetailDialog({
 
         {ad && (
           <div className="space-y-4">
-            {/* Media */}
-            {isVideo ? (
-              (playableUrl ?? fetchedMediaUrl) ? (
-                <video
-                  src={playableUrl ?? fetchedMediaUrl ?? ""}
-                  poster={posterUrl ?? undefined}
-                  controls
-                  className="w-full rounded-xl border"
-                />
-              ) : (
-                <div className="flex items-center gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="rounded-full"
-                    disabled={mediaCall.state.kind === "loading"}
-                    onClick={() => adId && void mediaCall.execute({ adId })}
-                  >
-                    {mediaCall.state.kind === "loading" ? (
-                      <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <Play className="mr-2 h-3.5 w-3.5" />
-                    )}
-                    Load video — {costLabel(costs, "ads/media-url", 1)}
-                  </Button>
-                  <CallFeedback
-                    state={mediaCall.state}
-                    onConfirm={mediaCall.confirm}
-                    onCancel={mediaCall.cancelConfirm}
-                    onRetry={mediaCall.retry}
+            {/* Media — the large preview / download surface never fires a paid
+                call on render; it opens the lightbox, which meters explicitly. */}
+            {(posterUrl ?? playableUrl) && (
+              <div className="space-y-2">
+                {isVideo && playableUrl ? (
+                  <video
+                    src={playableUrl}
+                    poster={posterUrl ?? undefined}
+                    controls
+                    className="w-full rounded-xl border"
                   />
-                </div>
-              )
-            ) : (posterUrl ?? playableUrl) ? (
-              <img
-                src={posterUrl ?? playableUrl ?? ""}
-                alt="Ad creative"
-                className="max-h-72 w-full rounded-xl border object-contain"
+                ) : (
+                  <button
+                    type="button"
+                    className="group relative mx-auto block w-full overflow-hidden rounded-xl border"
+                    onClick={() => setLightbox(true)}
+                  >
+                    <img
+                      src={posterUrl ?? playableUrl ?? ""}
+                      alt="Ad creative"
+                      className="max-h-72 w-full object-contain"
+                    />
+                    {isVideo && (
+                      <span className="pointer-events-none absolute inset-0 grid place-items-center">
+                        <span className="grid h-11 w-11 place-items-center rounded-full bg-background/85 shadow-md">
+                          <Play className="ml-0.5 h-4 w-4 fill-foreground text-foreground" />
+                        </span>
+                      </span>
+                    )}
+                  </button>
+                )}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="rounded-full"
+                  onClick={() => setLightbox(true)}
+                >
+                  <Maximize2 className="mr-2 h-3.5 w-3.5" />
+                  Large preview &amp; download
+                </Button>
+              </div>
+            )}
+
+            {lightbox && (
+              <CreativeLightbox
+                target={{
+                  adId,
+                  isVideo,
+                  thumbUrl: posterUrl,
+                  directUrl: playableUrl,
+                  label: asStr(content["title"]) ?? asStr(advertiser["name"]) ?? "Creative preview",
+                }}
+                costs={costs}
+                onClose={() => setLightbox(false)}
               />
-            ) : null}
+            )}
+
 
             {/* Copy */}
             <div className="space-y-1.5">
