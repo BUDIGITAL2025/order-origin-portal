@@ -369,7 +369,26 @@ export async function runStoredEvent(
 export const MIDDLEWARE_PATHS = {
   approve: "/api/admin/orders/{id}/approve",
   reject: "/api/admin/orders/{id}/reject",
+  /** Phase 4 (pull): order list polled by the middleware-order-sync cron. */
+  orders: "/api/admin/orders",
 } as const;
+
+/**
+ * How the middleware expects the tenant to be selected on an admin call.
+ * Configurable because the spec is not final: header (default), query param,
+ * or nothing at all (token already scopes the tenant).
+ */
+export function tenantSelector(tenantId: string | null): {
+  headers: Record<string, string>;
+  query: Record<string, string>;
+} {
+  const mode = (process.env["MIDDLEWARE_TENANT_MODE"]?.trim() || "header").toLowerCase();
+  if (!tenantId || mode === "none") return { headers: {}, query: {} };
+  if (mode === "query") return { headers: {}, query: { tenant_id: tenantId } };
+  const header = process.env["MIDDLEWARE_TENANT_HEADER"]?.trim() || "X-Tenant-ID";
+  return { headers: { [header]: tenantId }, query: {} };
+}
+
 
 const CALL_TIMEOUT_MS = 10_000;
 
@@ -419,7 +438,10 @@ export async function callMiddleware(
     body?: unknown;
     tenantId?: string | null;
     idempotencyKey: string;
+    headers?: Record<string, string>;
+    query?: Record<string, string>;
   },
+
 ): Promise<CallOutcome> {
   const target = await resolveOutboundTarget(admin);
   const { baseUrl, serviceToken, simulator } = target;
@@ -442,7 +464,8 @@ export async function callMiddleware(
     return { ok: false, skipped: true };
   }
 
-  const url = `${baseUrl.replace(/\/+$/, "")}${args.endpoint}`;
+  const queryString = new URLSearchParams(args.query ?? {}).toString();
+  const url = `${baseUrl.replace(/\/+$/, "")}${args.endpoint}${queryString ? `?${queryString}` : ""}`;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), CALL_TIMEOUT_MS);
   try {
@@ -452,7 +475,9 @@ export async function callMiddleware(
         Authorization: `Bearer ${serviceToken}`,
         "Idempotency-Key": args.idempotencyKey,
         "Content-Type": "application/json",
+        ...(args.headers ?? {}),
       },
+
       ...(args.body === undefined ? {} : { body: JSON.stringify(args.body) }),
       signal: controller.signal,
     });

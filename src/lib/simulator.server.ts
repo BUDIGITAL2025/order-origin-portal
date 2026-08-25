@@ -300,3 +300,100 @@ export async function simulateOrderStatus(
   });
   return { event_id: eventId };
 }
+
+// ============= Phase 4: serving the PULL order list =============
+
+const PULL_QUEUE_KEY = "simulator_pull_orders";
+
+/** A fake order in the middleware's (loosely typed) response shape. */
+export type SimulatorPullOrder = {
+  id: string;
+  order_number: string;
+  tenant_id: string;
+  status: string;
+  country: string;
+  line_items: { sku: string; quantity: number }[];
+  customer: { name: string; city: string; postal_code: string };
+  tracking?: { number: string; carrier: string };
+  created_at: string;
+};
+
+export async function listSimulatorPullOrders(
+  admin: Admin,
+  tenantId?: string | null,
+): Promise<SimulatorPullOrder[]> {
+  const { data } = await admin
+    .from("internal_settings")
+    .select("value")
+    .eq("key", PULL_QUEUE_KEY)
+    .maybeSingle();
+  let parsed: unknown = [];
+  try {
+    parsed = data?.value ? JSON.parse(data.value) : [];
+  } catch {
+    parsed = [];
+  }
+  const orders = Array.isArray(parsed) ? (parsed as SimulatorPullOrder[]) : [];
+  return tenantId ? orders.filter((o) => o.tenant_id === tenantId) : orders;
+}
+
+async function writePullQueue(admin: Admin, orders: SimulatorPullOrder[]): Promise<void> {
+  const { error } = await admin.from("internal_settings").upsert(
+    {
+      key: PULL_QUEUE_KEY,
+      value: JSON.stringify(orders.slice(-20)),
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "key" },
+  );
+  if (error) throw new Error(error.message);
+}
+
+/** Adds one realistic fake order to the list the simulator serves on GET. */
+export async function queueSimulatorPullOrder(admin: Admin): Promise<SimulatorPullOrder> {
+  const target = await findSimulatableWorkspace(admin);
+  if (!target?.store.middleware_tenant_id) {
+    throw new Error(
+      "No workspace with a middleware tenant id and priced products was found. Connect a tenant id and accept a quote first.",
+    );
+  }
+  const skuPool = [...target.skus].sort(() => Math.random() - 0.5);
+  const lineCount = Math.min(skuPool.length, Math.random() < 0.5 ? 1 : 2);
+  const id = randomRef("SIMPULL");
+  const order: SimulatorPullOrder = {
+    id,
+    order_number: randomRef("SIMPULL-REF"),
+    tenant_id: target.store.middleware_tenant_id,
+    status: "pending",
+    country: target.countries[Math.floor(Math.random() * target.countries.length)] ?? "US",
+    line_items: skuPool.slice(0, lineCount).map((sku) => ({
+      sku,
+      quantity: Math.floor(Math.random() * 3) + 1,
+    })),
+    customer: { name: "Simulator Buyer", city: "Lisbon", postal_code: "1000-001" },
+    created_at: new Date().toISOString(),
+  };
+  const existing = await listSimulatorPullOrders(admin);
+  await writePullQueue(admin, [...existing, order]);
+  return order;
+}
+
+/** Marks a queued fake order shipped with tracking, so the poller picks it up. */
+export async function setSimulatorPullTracking(
+  admin: Admin,
+  middlewareOrderId: string,
+): Promise<{ tracking_number: string; tracking_carrier: string }> {
+  const orders = await listSimulatorPullOrders(admin);
+  const match = orders.find((o) => o.id === middlewareOrderId);
+  if (!match) throw new Error("That order is not in the simulator pull queue.");
+  const carrier = CARRIERS[Math.floor(Math.random() * CARRIERS.length)] as string;
+  const number = `SIMTRK${Math.floor(Math.random() * 9_000_000_000 + 1_000_000_000)}`;
+  match.status = "shipped";
+  match.tracking = { number, carrier };
+  await writePullQueue(admin, orders);
+  return { tracking_number: number, tracking_carrier: carrier };
+}
+
+export async function clearSimulatorPullQueue(admin: Admin): Promise<void> {
+  await writePullQueue(admin, []);
+}
