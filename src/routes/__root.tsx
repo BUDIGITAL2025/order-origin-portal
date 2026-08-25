@@ -120,7 +120,7 @@ function RootShell({ children }: { children: ReactNode }) {
         <script
           dangerouslySetInnerHTML={{
             __html:
-              '(function(){try{var t=localStorage.getItem("flysales:theme");if(t==="dark"||(!t&&window.matchMedia("(prefers-color-scheme: dark)").matches)){document.documentElement.classList.add("dark")}}catch(e){}})()',
+              '(function(){try{if(localStorage.getItem("flysales:theme")==="dark"){document.documentElement.classList.add("dark")}}catch(e){}})()',
           }}
         />
         <HeadContent />

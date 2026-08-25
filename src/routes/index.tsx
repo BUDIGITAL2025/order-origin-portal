@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useHydrated } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { BrandLogo } from "@/components/brand-logo";
-import { LegalFooter } from "@/components/legal";
+
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { MARKETING_URL } from "@/lib/config";
