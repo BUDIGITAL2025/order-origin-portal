@@ -27,7 +27,7 @@ export const Route = createFileRoute("/api/public/cron/middleware-order-sync")({
           const results = await syncAllTenants(supabaseAdmin);
           return {
             tenants: results.length,
-            ok: results.filter((r) => r.ok).length,
+            succeeded: results.filter((r) => r.ok).length,
             failed: results.filter((r) => !r.ok).length,
             ingested: results.reduce((sum, r) => sum + r.ingested, 0),
             updated: results.reduce((sum, r) => sum + r.updated, 0),
