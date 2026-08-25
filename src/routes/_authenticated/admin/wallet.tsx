@@ -85,11 +85,54 @@ function AdminWalletPage() {
 
   const transactions = walletData?.transactions ?? [];
 
+  // Summary covers the selected entity's current calendar month.
+  const now = new Date();
+  const thisMonth = transactions.filter((t) => {
+    const d = new Date(t.created_at);
+    return d.getUTCMonth() === now.getUTCMonth() && d.getUTCFullYear() === now.getUTCFullYear();
+  });
+  const adjustmentsThisMonth = thisMonth.filter((t) => t.type === "adjustment");
+  const creditedThisMonth = thisMonth
+    .filter((t) => t.type !== "debit")
+    .reduce((acc, t) => acc + Number(t.amount ?? 0), 0);
+  const debitedThisMonth = thisMonth
+    .filter((t) => t.type === "debit")
+    .reduce((acc, t) => acc + Number(t.amount ?? 0), 0);
+
   return (
     <div>
       <PageHeader
         title="Wallet adjustments"
         description="Manual credits and debits. Every entry is written to the append-only ledger."
+      />
+
+      <SummaryBar
+        className="lg:grid-cols-4"
+        items={[
+          {
+            key: "balance",
+            label: "Current balance",
+            value: entityId && walletData ? formatUSD(walletData.balance) : "—",
+            tone: "primary",
+          },
+          {
+            key: "adjustments",
+            label: "Adjustments this month",
+            value: adjustmentsThisMonth.length,
+          },
+          {
+            key: "credited",
+            label: "Credited this month",
+            value: formatUSD(creditedThisMonth),
+            tone: "success",
+          },
+          {
+            key: "debited",
+            label: "Debited this month",
+            value: formatUSD(debitedThisMonth),
+            tone: "danger",
+          },
+        ]}
       />
 
       <div className="grid gap-6 lg:grid-cols-2">
