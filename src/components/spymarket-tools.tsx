@@ -4261,7 +4261,9 @@ function AdsTab({
   // An active shop context pre-fills the search; it never fires a paid call.
   const scopeDomain = url["shop"];
   const [search, setSearch] = React.useState(url["aq"] ?? scopeDomain ?? "");
-  const [searchType, setSearchType] = React.useState(url["atyp"] ?? "adCopy");
+  const [searchType, setSearchType] = React.useState(
+    url["atyp"] ?? (!url["aq"] && scopeDomain ? "domain" : "adCopy"),
+  );
   const [status, setStatus] = React.useState(url["astat"] ?? "active");
   const [mediaType, setMediaType] = React.useState(url["amed"] ?? "");
   const [sortBy, setSortBy] = React.useState(url["asort"] ?? "longestRunning");
