@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { SUPPORT_EMAIL } from "@/lib/support";
 import { useHydrated } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { BrandLogo } from "@/components/brand-logo";
@@ -117,6 +118,13 @@ function LandingPage() {
             <Link to="/privacy" className="underline-offset-4 hover:text-entry-fg hover:underline">
               Privacy Policy
             </Link>
+            <span aria-hidden>·</span>
+            <a
+              href={`mailto:${SUPPORT_EMAIL}`}
+              className="underline-offset-4 hover:text-entry-fg hover:underline"
+            >
+              {SUPPORT_EMAIL}
+            </a>
           </div>
         </div>
       </footer>
