@@ -3570,10 +3570,71 @@ function AdsTab({
   const searching = call.state.kind === "loading";
   const allRows = pages.flat();
 
+  // Ad-copy depth: group the rows we already paid for by their copy text.
+  // Usage = number of indexed ads sharing the copy (plus their duplicates);
+  // longest-running = the highest daysRunning among them. No extra credits.
+  const copyGroups = React.useMemo(() => {
+    const map = new Map<
+      string,
+      { text: string; usage: number; longestRunning: number; brands: Set<string>; adId: string | null }
+    >();
+    for (const ad of allRows) {
+      const text = asStr(asRec(ad["content"])["body"]);
+      if (!text) continue;
+      const key = asStr(asRec(ad["content"])["adCopyHash"]) ?? text.trim().toLowerCase();
+      const entry = map.get(key) ?? {
+        text,
+        usage: 0,
+        longestRunning: 0,
+        brands: new Set<string>(),
+        adId: asStr(ad["id"]),
+      };
+      entry.usage += 1 + (asNum(asRec(ad["metrics"])["duplicates"]) ?? 0);
+      entry.longestRunning = Math.max(entry.longestRunning, asNum(ad["daysRunning"]) ?? 0);
+      const brand = asStr(asRec(ad["advertiser"])["name"]);
+      if (brand) entry.brands.add(brand);
+      map.set(key, entry);
+    }
+    const list = [...map.values()];
+    list.sort((a, b) =>
+      copySort === "usage" ? b.usage - a.usage : b.longestRunning - a.longestRunning,
+    );
+    return list;
+  }, [allRows, copySort]);
+
+  const AD_VIEWS = [
+    { id: "all", label: "All ads", icon: Search },
+    { id: "bestRank", label: "Best rank", icon: Trophy },
+    { id: "gains", label: "Biggest rank gains", icon: TrendingUp },
+  ] as const;
+
   return (
     <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-2">
+        {AD_VIEWS.map((v) => {
+          const Icon = v.icon;
+          return (
+            <Button
+              key={v.id}
+              size="sm"
+              variant={view === v.id ? "default" : "outline"}
+              className="rounded-full"
+              onClick={() => setView(v.id)}
+            >
+              <Icon className="mr-1.5 h-3.5 w-3.5" />
+              {v.label}
+            </Button>
+          );
+        })}
+        <span className="text-xs text-muted-foreground">
+          Rank views use the advanced ads query · rank history is not available in the API, so
+          only current rank and its delta are shown.
+        </span>
+      </div>
+
       <Card className="rounded-2xl">
         <CardContent className="grid gap-4 p-4 sm:grid-cols-2 lg:grid-cols-6">
+
           <div className="space-y-1.5 lg:col-span-2">
             <Label>Search ad copy or brand</Label>
             <div className="flex gap-2">
