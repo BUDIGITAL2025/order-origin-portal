@@ -2754,8 +2754,8 @@ function ShopDetailTab({
             </Section>
           )}
 
-          {/* TikTok presence */}
-          {(asStr(tiktok["handle"]) || asNum(tiktok["followers"]) != null) && (
+          {/* TikTok presence — collapses to one muted line when the payload is empty */}
+          {asStr(tiktok["handle"]) || asNum(tiktok["followers"]) != null ? (
             <Section title="TikTok" icon={<Eye className="h-4 w-4 text-primary" />} defaultOpen={false}>
               <div className="grid grid-cols-2 gap-2 text-center sm:grid-cols-4">
                 {(
@@ -2788,16 +2788,25 @@ function ShopDetailTab({
                 )}
               </div>
             </Section>
+          ) : (
+            <p className="px-1 text-xs text-muted-foreground">No TikTok data for this shop.</p>
           )}
 
           {/* Latest ads */}
-          {latestAds.length > 0 && (
+          {latestAds.length > 0 ? (
             <Section title="Latest ads" icon={<Megaphone className="h-4 w-4 text-primary" />} defaultOpen={false}>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
                 {latestAds.slice(0, 12).map((ad, i) => {
                   const media = asRec(ad["media"]);
                   const thumb = asStr(media["thumbnailUrl"]);
                   const adId = asStr(ad["id"]);
+                  const content = asRec(ad["content"]);
+                  const copy =
+                    asStr(content["body"]) ??
+                    asStr(content["text"]) ??
+                    asStr(content["headline"]) ??
+                    asStr(content["title"]) ??
+                    null;
                   return (
                     <button
                       key={adId ?? i}
@@ -2814,13 +2823,16 @@ function ShopDetailTab({
                           loading="lazy"
                         />
                       ) : (
-                        <div className="flex aspect-square items-center justify-center bg-muted">
-                          <Megaphone className="h-5 w-5 text-muted-foreground" />
+                        /* No thumbnail in the payload: the ad copy is more useful than an icon */
+                        <div className="flex aspect-square w-full items-start bg-muted/60 p-2">
+                          <p className="line-clamp-5 text-[11px] leading-snug text-muted-foreground">
+                            {copy ? copy.slice(0, 80) : "No creative preview"}
+                          </p>
                         </div>
                       )}
                       <div className="p-2">
                         <p className="truncate text-xs text-muted-foreground">
-                          {asStr(asRec(ad["content"])["title"]) ?? "View ad"}
+                          {asStr(content["title"]) ?? "View ad"}
                         </p>
                       </div>
                     </button>
@@ -2828,7 +2840,10 @@ function ShopDetailTab({
                 })}
               </div>
             </Section>
+          ) : (
+            <p className="px-1 text-xs text-muted-foreground">No recent creatives returned.</p>
           )}
+
 
           {/* Similar shops — already in the payload, free */}
           {similarShops.length > 0 && (
