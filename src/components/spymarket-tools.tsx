@@ -19,6 +19,9 @@ import {
   ChevronUp,
   Copy,
   Database,
+  Download,
+  Maximize2,
+
   ExternalLink,
   Eye,
   FlaskConical,
