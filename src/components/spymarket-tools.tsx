@@ -3947,6 +3947,8 @@ function AdsTab({
   const [limit, setLimit] = React.useState(24);
   const [pages, setPages] = React.useState<Rec[][]>([]);
   const [adDetailId, setAdDetailId] = React.useState<string | null>(null);
+  const [preview, setPreview] = React.useState<CreativeTarget | null>(null);
+
 
   const numOr = (raw: string, fallback: number) => {
     const n = Number(raw.replace(/[^\d.]/g, ""));
