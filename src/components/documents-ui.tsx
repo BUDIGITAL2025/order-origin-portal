@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { getDocumentDownloadUrl } from "@/lib/documents.functions";
+import { STILL_STUCK } from "@/lib/support";
 import { friendlyError } from "@/lib/errors";
 
 // ---------- Badges ----------
@@ -86,7 +87,7 @@ export function useDocumentDownload() {
         const { url } = await getUrl({ data: { id } });
         window.open(url, "_blank", "noopener");
       } catch (e) {
-        toast.error(friendlyError(e, "The receipt could not be downloaded. Try again in a moment."));
+        toast.error(friendlyError(e, `The receipt could not be downloaded. Try again in a moment. ${STILL_STUCK}`));
       } finally {
         setDownloadingId(null);
       }

@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { openDispute } from "@/lib/disputes.functions";
+import { STILL_STUCK } from "@/lib/support";
 import { friendlyError } from "@/lib/errors";
 
 type DisputeReason = "not_delivered" | "damaged" | "wrong_product";
@@ -122,7 +123,7 @@ export function OpenDisputeDialog({
       onOpened();
       window.location.href = `/disputes/${result.dispute_id}`;
     } catch (e) {
-      toast.error(friendlyError(e, "Your claim was not opened. Try again in a moment."));
+      toast.error(friendlyError(e, `Your claim was not opened. Try again in a moment. ${STILL_STUCK}`));
     } finally {
       setBusy(false);
     }
