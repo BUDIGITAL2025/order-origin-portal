@@ -156,6 +156,22 @@
   color: var(--text-muted);
 }
 
+/* Public entry page canvas — deep near-black with a touch of vertical depth. */
+@utility entry-canvas {
+  background-color: var(--entry-bg);
+  background-image: linear-gradient(180deg, var(--entry-bg) 0%, var(--entry-bg-end) 100%);
+  color: var(--entry-fg);
+}
+
+/* Low-opacity lime halo behind the headline. */
+@utility entry-glow {
+  background-image: radial-gradient(
+    50% 50% at 50% 45%,
+    color-mix(in oklab, var(--entry-accent) 6%, transparent) 0%,
+    transparent 70%
+  );
+}
+
 @layer base {
   * {
     border-color: var(--color-border);
