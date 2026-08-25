@@ -95,10 +95,18 @@ export const Route = createFileRoute("/api/public/cron/order-expiry")({
               });
               const accountId = accountIdOf(order);
               if (accountId) {
+                const { paymentReminderEmail } = await import(
+                  "@/lib/email-templates.server"
+                );
                 await sendClientEmail(supabaseAdmin, {
                   clientId: accountId,
-                  subject: `Payment reminder — order ${label}`,
-                  text: body,
+                  ...paymentReminderEmail({
+                    orderLabel: label,
+                    amount: Number(order.total_amount ?? 0),
+                    hours: step.hours,
+                    autoCancelDays: AUTO_CANCEL_DAYS,
+                    orderId: order.id,
+                  }),
                 });
               }
               summary[`reminder_${step.hours}` as keyof typeof summary] += 1;
@@ -136,10 +144,17 @@ export const Route = createFileRoute("/api/public/cron/order-expiry")({
             });
             const accountId = accountIdOf(order);
             if (accountId) {
+              const { orderCancelledEmail } = await import(
+                "@/lib/email-templates.server"
+              );
               await sendClientEmail(supabaseAdmin, {
                 clientId: accountId,
-                subject: `Order ${label} cancelled`,
-                text: body,
+                ...orderCancelledEmail({
+                  orderLabel: label,
+                  amount: Number(order.total_amount ?? 0),
+                  autoCancelDays: AUTO_CANCEL_DAYS,
+                  orderId: order.id,
+                }),
               });
             }
             summary.cancelled += 1;

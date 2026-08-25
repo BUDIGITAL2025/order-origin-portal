@@ -176,10 +176,15 @@ export const adminSetOrderTracking = createServerFn({ method: "POST" })
           .select("id");
         if (claimed && claimed.length > 0) {
           const { sendClientEmail } = await import("./email.server");
+          const { orderShippedEmail } = await import("./email-templates.server");
           await sendClientEmail(admin, {
             clientId: accountId,
-            subject: `Your order ${order.external_order_number ?? ""} has shipped`,
-            text: `Order ${order.external_order_number ?? order.id} is on its way.\nCarrier: ${data.tracking_carrier}\nTracking: ${data.tracking_number}`,
+            ...orderShippedEmail({
+              orderLabel: order.external_order_number ?? order.id.slice(0, 8),
+              carrier: data.tracking_carrier,
+              trackingNumber: data.tracking_number,
+              orderId: order.id,
+            }),
           });
         }
       }

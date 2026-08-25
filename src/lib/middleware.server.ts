@@ -320,10 +320,15 @@ async function handleTrackingUpdated(admin: Admin, payload: unknown) {
         .select("id");
       if (claimed && claimed.length > 0) {
         const { sendClientEmail } = await import("./email.server");
+        const { orderShippedEmail } = await import("./email-templates.server");
         await sendClientEmail(admin, {
           clientId: accountId,
-          subject: `Your order ${order.external_order_number ?? ""} has shipped`,
-          text: `Order ${order.external_order_number ?? order.id} is on its way.\nCarrier: ${parsed.order.tracking_carrier}\nTracking: ${parsed.order.tracking_number}`,
+          ...orderShippedEmail({
+            orderLabel: order.external_order_number ?? order.id.slice(0, 8),
+            carrier: parsed.order.tracking_carrier ?? "Carrier",
+            trackingNumber: parsed.order.tracking_number ?? "",
+            orderId: order.id,
+          }),
         });
       }
     }

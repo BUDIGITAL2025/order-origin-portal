@@ -242,10 +242,16 @@ export const adminResolveDispute = createServerFn({ method: "POST" })
         .eq("id", entityId)
         .maybeSingle();
       if (entity?.account_id) {
+        const { claimResolvedEmail } = await import("./email-templates.server");
         await sendClientEmail(admin, {
           clientId: entity.account_id,
-          subject: `Dispute update — order ${orderNumber}`,
-          text: body,
+          ...claimResolvedEmail({
+            orderLabel: orderNumber,
+            resolution: data.resolution,
+            creditAmount: data.credit_amount ?? null,
+            clientMessage: data.client_message ?? null,
+            disputeId: data.dispute_id,
+          }),
         });
       }
     }
