@@ -259,40 +259,42 @@ function AdminWalletPage() {
               </div>
             ) : (
               entityId && (
-                <Table>
+                <Table className="text-[13px]">
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Description</TableHead>
-                      <TableHead className="text-right">Amount</TableHead>
-                      <TableHead className="text-right">Balance</TableHead>
+                      <TableHead className="h-9">Date</TableHead>
+                      <TableHead className="h-9">Type</TableHead>
+                      <TableHead className="h-9">Description</TableHead>
+                      <TableHead className="h-9 text-right">Amount</TableHead>
+                      <TableHead className="h-9 text-right">Balance</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {transactions.map((t) => (
-                      <TableRow key={t.id}>
-                        <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
+                      <TableRow key={t.id} className="hover:bg-accent/60">
+                        <TableCell className="whitespace-nowrap py-2.5 text-xs text-muted-foreground">
                           {formatDateTime(t.created_at)}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="py-2.5">
                           <TxnTypeBadge type={t.type} />
                         </TableCell>
-                        <TableCell className="max-w-40 truncate text-sm">{t.description}</TableCell>
+                        <TableCell className="max-w-40 truncate py-2.5">{t.description}</TableCell>
                         <TableCell
                           className={
-                            "text-right tnum text-sm " +
+                            "py-2.5 text-right tnum " +
                             (t.type === "debit" ? "text-destructive" : "text-success")
                           }
                         >
                           {t.type === "debit" ? "−" : "+"}
                           {formatUSD(t.amount)}
                         </TableCell>
-                        <TableCell className="text-right tnum text-sm">
+                        <TableCell className="py-2.5 text-right tnum">
                           {formatUSD(t.balance_after)}
                         </TableCell>
                       </TableRow>
                     ))}
+                  </TableBody>
+                </Table>
                   </TableBody>
                 </Table>
               )
