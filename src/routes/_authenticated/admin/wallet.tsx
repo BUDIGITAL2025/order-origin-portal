@@ -295,8 +295,6 @@ function AdminWalletPage() {
                     ))}
                   </TableBody>
                 </Table>
-                  </TableBody>
-                </Table>
               )
             )}
           </CardContent>
