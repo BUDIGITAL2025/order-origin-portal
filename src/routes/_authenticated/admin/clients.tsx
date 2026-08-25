@@ -61,8 +61,18 @@ export const Route = createFileRoute("/_authenticated/admin/clients")({
   component: AdminClientsPage,
 });
 
+const STATUS_TABS = [
+  { id: "all", label: "All" },
+  { id: "active", label: "Active" },
+  { id: "pending", label: "Pending" },
+  { id: "suspended", label: "Suspended" },
+] as const;
+type StatusTab = (typeof STATUS_TABS)[number]["id"];
+
 function AdminClientsPage() {
   const queryClient = useQueryClient();
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
   const fetchClients = useServerFn(adminListClients);
   const callSetStatus = useServerFn(adminSetClientStatus);
   const callSetPlan = useServerFn(adminSetPlan);
