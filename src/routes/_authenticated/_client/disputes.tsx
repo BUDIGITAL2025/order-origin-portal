@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
+import { SUPPORT_EMAIL } from "@/lib/support";
 import { EmptyState, PageHeader } from "@/components/app-shell";
 import { OrderStatusBadge, type OrderStatus } from "@/components/documents-ui";
 import {
@@ -42,6 +43,14 @@ function DisputesPage() {
         title="Claims"
         description="Claims for orders that never arrived, arrived damaged, or shipped with the wrong product."
       />
+      <p className="mb-4 text-xs text-muted-foreground">
+        Claims are handled here in the portal, so evidence, decisions and credits stay on one
+        thread. For anything else, write to{" "}
+        <a href={`mailto:${SUPPORT_EMAIL}`} className="underline underline-offset-4">
+          {SUPPORT_EMAIL}
+        </a>
+        .
+      </p>
       {isPending ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
       ) : !disputes || disputes.length === 0 ? (

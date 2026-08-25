@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { openDispute } from "@/lib/disputes.functions";
-import { STILL_STUCK } from "@/lib/support";
+import { STILL_STUCK, SUPPORT_EMAIL } from "@/lib/support";
 import { friendlyError } from "@/lib/errors";
 
 type DisputeReason = "not_delivered" | "damaged" | "wrong_product";
@@ -208,6 +208,15 @@ export function OpenDisputeDialog({
               </p>
             </div>
           )}
+
+          <p className="text-xs text-muted-foreground">
+            Claims run through the portal, so the thread keeps every message and decision. For
+            anything that is not a claim, write to{" "}
+            <a href={`mailto:${SUPPORT_EMAIL}`} className="underline underline-offset-4">
+              {SUPPORT_EMAIL}
+            </a>
+            .
+          </p>
 
           <div className="flex justify-end gap-2 pt-1">
             <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
