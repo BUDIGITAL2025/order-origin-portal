@@ -94,3 +94,48 @@ export const adminRetryRelease = createServerFn({ method: "POST" })
     });
     return { result: results[0] ?? { order_id: data.order_id, status: "not_queued" } };
   });
+
+/** Admin: Phase 4 pull-sync state per tenant. */
+export const adminSyncOverview = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { requireAdmin, getAdminClient } = await import("./admin.server");
+    await requireAdmin(context.supabase, context.userId);
+    const admin = await getAdminClient();
+
+    const { data, error } = await admin
+      .from("middleware_sync_state")
+      .select(
+        "store_id, tenant_id, last_synced_at, last_success_at, orders_ingested, last_error, consecutive_failures, first_failure_at, last_seen_order_ids, stores(store_name)",
+      )
+      .order("last_synced_at", { ascending: false, nullsFirst: false })
+      .limit(50);
+    if (error) throw new Error(error.message);
+
+    const { count } = await admin
+      .from("stores")
+      .select("id", { count: "exact", head: true })
+      .not("middleware_tenant_id", "is", null)
+      .eq("integration_mode", "automatic")
+      .eq("status", "active");
+
+    return { tenants: data ?? [], connected_workspaces: count ?? 0 };
+  });
+
+/** Admin: run the pull sync immediately (all tenants, or one workspace). */
+export const adminSyncNow = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z.object({ store_id: z.string().uuid().optional() }).parse(input ?? {}),
+  )
+  .handler(async ({ data, context }) => {
+    const { requireAdmin, getAdminClient } = await import("./admin.server");
+    await requireAdmin(context.supabase, context.userId);
+    const admin = await getAdminClient();
+    const { syncAllTenants } = await import("./middleware-sync.server");
+    const results = await syncAllTenants(
+      admin,
+      data.store_id ? { storeIds: [data.store_id] } : undefined,
+    );
+    return { results };
+  });

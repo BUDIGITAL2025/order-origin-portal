@@ -102,3 +102,46 @@ export const adminSimulateOrderStatus = createServerFn({ method: "POST" })
     const { simulateOrderStatus } = await import("./simulator.server");
     return simulateOrderStatus(db, data.order_id, data.status);
   });
+
+/** Queue a fake order for the simulator's GET /orders list (pull loop). */
+export const adminQueueSimulatorPullOrder = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { requireAdmin, getAdminClient } = await import("./admin.server");
+    await requireAdmin(context.supabase, context.userId);
+    const db = await getAdminClient();
+    const { queueSimulatorPullOrder } = await import("./simulator.server");
+    const order = await queueSimulatorPullOrder(db);
+    return {
+      id: order.id,
+      order_number: order.order_number,
+      country: order.country,
+      lines: order.line_items,
+    };
+  });
+
+/** Mark a queued fake order shipped with tracking, for the poller to pick up. */
+export const adminSimulatePullTracking = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z.object({ middleware_order_id: z.string().min(1).max(200) }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { requireAdmin, getAdminClient } = await import("./admin.server");
+    await requireAdmin(context.supabase, context.userId);
+    const db = await getAdminClient();
+    const { setSimulatorPullTracking } = await import("./simulator.server");
+    return setSimulatorPullTracking(db, data.middleware_order_id);
+  });
+
+/** Empty the simulator's pull queue (test cleanup). */
+export const adminClearSimulatorPullQueue = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { requireAdmin, getAdminClient } = await import("./admin.server");
+    await requireAdmin(context.supabase, context.userId);
+    const db = await getAdminClient();
+    const { clearSimulatorPullQueue } = await import("./simulator.server");
+    await clearSimulatorPullQueue(db);
+    return { cleared: true };
+  });
