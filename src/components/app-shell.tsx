@@ -15,6 +15,7 @@ import {
   LayoutDashboard,
   LogOut,
   Package,
+  Plug,
   ShieldAlert,
   ShoppingCart,
   Sparkles,
@@ -108,6 +109,7 @@ const ADMIN_NAV: NavItem[] = [
   { to: "/admin/entities", label: "Entities & workspaces", icon: Building2 },
   { to: "/admin/wallet", label: "Wallet adjustments", icon: Wallet },
   { to: "/admin/documents", label: "Receipts", icon: FileText },
+  { to: "/admin/integration", label: "Integration", icon: Plug },
   { to: "/admin/spymarket", label: "SpyMarket waitlist", icon: Telescope },
   { to: "/admin/spymarket-tools", label: "SpyMarket tools", icon: FlaskConical, badge: "New" },
 ];
