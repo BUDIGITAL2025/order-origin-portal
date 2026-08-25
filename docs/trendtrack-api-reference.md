@@ -4,6 +4,107 @@ Source: `https://api.trendtrack.io/v1/openapi.json` (fetched 2026-08-25, OpenAPI
 
 Billing note: the spec carries no machine-readable price extension. Credit cost is stated in endpoint/response descriptions and is reproduced per endpoint below ("Metered" = charges credits, usually 1 per returned row; "Free" = no credit charge documented).
 
+## Capability map — TrendTrack UI vs API vs our usage
+
+Legend: **USED** = our gateway already sends/reads it · **AVAILABLE** = API supports it, we don't use it yet · **NOT IN API** = no public v1 equivalent.
+
+Our current surface (`src/lib/spymarket-tools.functions.ts`): `GET /v1/lookup` (free typeahead), `POST /v1/shops/query`, `GET /v1/shops/{id}` + `/products` `/advertisers` `/tiktok/library` `/similar` `/socials/history` `/emails`, `GET /v1/ads` and `POST /v1/ads/query`, `GET /v1/ads/{id}` `/reach-history` `/media-url`, `POST /v1/emails/query`, `GET /v1/emails/{id}`.
+
+### Shop list filters (`POST /v1/shops/query`)
+
+| UI filter | API param | Status |
+|---|---|---|
+| Traffic | `minMonthlyVisits` / `maxMonthlyVisits`; sort `sortBy=monthlyVisits` | USED |
+| Traffic Growth (rising/falling, min %, 1m/3m/6m) | `trafficGrowth[]` = `{period: last30d\|last90d\|last180d, comparison, value, operator}`; sort `growth30d` | AVAILABLE |
+| Products count | `minProductsCount` / `maxProductsCount` | USED (min only, and forced to ≥1 by the DTC toggle) |
+| Shop Origin | `creationCountries[]` / `excludeCreationCountries[]` | USED (include only) |
+| Visitor Country | `mainMarketCountries[]`, `marketCountries[]`, `excludeMarketCountries[]` | AVAILABLE — we currently map the country picker to *creation* country, not visitor market |
+| Niche | `categoryIds[]` (facets: `GET /v1/facets/categories`) | USED (single id) |
+| Creation Date | `createdAfter` / `createdBefore`; sort `createdAt` | AVAILABLE |
+| Language | `languages[]` | USED (single) |
+| Currency | `currencies[]` | AVAILABLE |
+| Shopify Theme | `themeIds[]` (facets: `GET /v1/facets/themes`) | AVAILABLE |
+| Shopify App | `shopifyAppIds[]` / `excludeShopifyAppIds[]` (facets: `GET /v1/facets/shopify-apps`) | AVAILABLE |
+| Pixels | `pixelIds[]` / `excludePixelIds[]` (facets: `GET /v1/facets/pixels`, `/v1/facets/technologies`) | AVAILABLE |
+| Socials | partial: `hasTikTok`, `minTikTokFollowers`/`max`, `minTikTokActiveAds`, `minTikTokTotalPosts`; sorts `tiktokFollowers`, `tiktokActiveAds`, `tiktokTotalPosts`, `tiktokAvgActiveAds7d/30d` | AVAILABLE (TikTok only) — no IG/FB/YouTube follower filters: NOT IN API as filters (they exist as detail fields via `GET /v1/shops/{id}/socials/history`) |
+| Shopify Plan | `isShopifyPlus` (boolean) only | USED — granular plan tiers (Basic/Grow/Advanced) NOT IN API |
+| Trustpilot | `minTrustpilotRating`/`max`, `minTrustpilotReviewCount`/`max` | USED (rating min only) |
+| — extra, no UI equivalent surfaced | `minEstimatedRevenue`/`max`, `minBestSellerPrice`/`max`, `adsGrowth[]`, `pageReachGrowth[]`, `adReachGrowth[]`, `displayInTrending`, `dtcRegion` (`all\|us\|eu`), `minActiveAds`/`max` + `adsTimePeriod` | `dtcRegion`, `minActiveAds`, `adsTimePeriod` USED; rest AVAILABLE |
+
+### Shop presets
+
+No preset/named-view parameter exists in public v1 (`preset`, `weekly gems`, `peak` appear nowhere in the spec). They must be reproduced as filter+sort recipes:
+
+| Preset | Reproduce with | Status |
+|---|---|---|
+| Weekly Gems | `displayInTrending=true` + `createdAfter` (recent) + modest `minMonthlyVisits` + `sortBy=growth30d` | NOT IN API as a preset; AVAILABLE as a recipe |
+| Top Scaling | `trafficGrowth[{period:last30d, comparison:gt, value:X}]` or `adsGrowth[]`, `sortBy=growth30d` | recipe AVAILABLE |
+| Market Leaders & DTC Brands | `dtcRegion=all\|us\|eu` + high `minMonthlyVisits`, `sortBy=monthlyVisits` | partly USED (`dtcRegion`) |
+| Shop's Ad Peak | no peak field; approximate from `GET /v1/shops/{id}` → `advertising.history` (client-side max) | NOT IN API as filter |
+| Shop's Traffic Peak | approximate from `traffic.history` on shop detail | NOT IN API as filter |
+
+### Shop detail tabs (`GET /v1/shops/{shopId}` + sub-routes)
+
+| UI element | API | Status |
+|---|---|---|
+| Similar Shops | `GET /v1/shops/{identifier}/similar`; also `similarShops` on detail | USED |
+| Meta Ads (count) | detail `advertising.activeAds`, `advertising.summary`; ads via `POST /v1/ads/query` with `searchType=website\|domain` | count USED; per-shop ad list AVAILABLE |
+| TikTok (count) | `GET /v1/shops/{shopId}/tiktok/library` (metered, 1 credit/item); `tiktok` block on summary/detail | USED |
+| Google Ads (count) | `googleAds` on shop summary; `POST /v1/google-ads/query` + facets `/networks` `/countries` `/categories` | AVAILABLE (we never call google-ads) |
+| Emails (count) | `GET /v1/shops/{shopId}/emails`, `GET /v1/shops/{shopId}/emails/stats` | list USED; `/emails/stats` AVAILABLE |
+| Best-sellers with rank | `catalog.bestSellers` on detail; `GET /v1/shops/{shopId}/products?sortBy=popularity` | USED |
+| Pixels detected | `technology.pixels` | AVAILABLE (returned to us, not all surfaced in UI) |
+| Shopify apps detected | `technology.apps`, `technology.theme` | AVAILABLE |
+| Traffic over time | `traffic.history`, plus `growth30d/90d/180d`, `mainMarkets` | USED (history charted) |
+| Live ads over time | `advertising.history` | USED |
+| Visitor countries | `traffic.topCountries` | USED |
+| Targeted countries | `advertising.topCountries`, `advertising.adsCountryStats`; per-ad `audience.targetedCountries` | USED |
+| Social follower history | `GET /v1/shops/{shopId}/socials/history?period=week&days=N` | USED |
+
+### Ad Library filters (`GET /v1/ads`, `POST /v1/ads/query`)
+
+| UI filter | API param | Status |
+|---|---|---|
+| Status | `status` = `active\|inactive\|all` | USED |
+| Ad Creation Date | `createdAfter` / `createdBefore`, `adsTimePeriod` (`last24h\|last7d\|last30d`), `minDate`/`maxDate` | AVAILABLE |
+| Last Seen | `minLastSeenDate` / `maxLastSeenDate` | AVAILABLE |
+| Days Running | `minDaysRunning` / `maxDaysRunning`; sort `longestRunning` | sort USED, range AVAILABLE |
+| Media Type | `mediaType` = `image\|video\|carousel` | USED |
+| CTA | `cta[]` | AVAILABLE |
+| Country | `adCountries` (distribution), `mainCountries[]` (EU/UK transparency only), `creationCountry` | AVAILABLE |
+| Language | `adLanguage[]` (also shop-level `languages[]`) | AVAILABLE |
+| Duplicates | `minDuplicates` / `maxDuplicates`; sort `mostDuplicates` | AVAILABLE |
+| Ad Rank | `adRankMode` (`percentile\|rank`), `adRankBasis` (`current\|alltime`), `maxAdRankValue`, `maxAdOrder`; sort `adOrder` | AVAILABLE |
+| Growth Rank | `growthRank` (OR-groups of `{period, direction, minChange, unit}`), `rankDeltaWindow` (`7d\|14d\|30d`), `minRankDelta`; sorts `rankDelta7d/14d/30d` | AVAILABLE |
+| Landing page | `landingPages[]`; facets `GET /v1/ads/facets/landing-pages` (1 credit per distinct URL) | AVAILABLE |
+| Ad copy | `search[]` with `searchType=adCopy` + `keywordMode` (`any\|all`), `adCopyHashes[]` | search USED; hashes/keywordMode AVAILABLE |
+| Partners | `partners` (bool), `partnerIds[]`; flag `hasPartnerBadge` | AVAILABLE |
+| Video Duration | `minVideoDuration` / `maxVideoDuration` | AVAILABLE |
+| Ad Copy Length | `minDescriptionLength` / `maxDescriptionLength` | AVAILABLE |
+| — extra | `minReach`/`maxReach`, `sex`, `minAge`/`maxAge`, `spender` (`big-spender\|rising-star\|brandtracker`), shop-level `minTraffic`, `minAds`, `themes[]`, `pixels[]`, `shopifyApps[]`, `currencies[]`, `categoryIds[]`, `platforms[]` | AVAILABLE |
+
+Note: our current `spymarketSearchAds` sends only `search/searchType/status/mediaType/sortBy/limit/page` — every other ad filter above is unused.
+
+### Ad card fields (`PublicApiAdSummaryDto`)
+
+| UI field | API field | Status |
+|---|---|---|
+| Performance rank % | `rank.currentRank`, `rank.improvementPct`, `rank.rankDelta`, `rank.positionInPage` | AVAILABLE (returned, only partly shown) |
+| Impression level (Low/High) | `flags.isLowReach` (+ `metrics.reach` / `aggregatedReach`); EU impression ranges via `GET /v1/ads/{id}` and `/reach-history` | partly USED |
+| Days running | `daysRunning`, `firstSeenAt`, `lastSeenAt` | USED |
+| Spend/day | `metrics.estimatedSpend` (EU transparency ranges; no explicit per-day field) | AVAILABLE — a literal "spend/day" number is NOT IN API, derive as `estimatedSpend / daysRunning` |
+| Advertiser ad-count | `advertiser` block; `GET /v1/advertisers/{id}` and `/advertisers/{id}/ads` | AVAILABLE (we never call `/advertisers`) |
+| Reach | `metrics.reach`, `aggregatedReach`, `reachDelta1d/7d/30d`; history `GET /v1/ads/{adId}/reach-history` | USED |
+
+### Whole domains we never touch
+
+`advertisers` (list/query/detail/ads), `google-ads` (query + 3 facet routes), `brandtrackers` (35+ routes: hooks, transcripts, headlines, creatives, partners, media-mix, demography, timeline, testing, time-series, overview), `favorites` (ads/shops/emails + folders + sharing), `workspace` analytics (`top-ads`, `hooks`, `ad-copies`, `landing-pages`, `scaling-ads`, `media-mix`), `facets` (categories, shopify-apps, technologies, pixels, themes — all free and needed to power the filters above), `GET /v1/usage`, `GET /v1/me`, `GET /v1/system/freshness`, `GET /v1/lookup/facebook-shop`, `POST /v1/ads/{id}/share`, `GET /v1/tiktok/library*` (global, we only use the per-shop variant).
+
+Cheapest immediate wins: the five **free** `/v1/facets/*` routes (would make Niche/Theme/App/Pixel filters real dropdowns instead of raw ids) and free `GET /v1/usage` (real remaining-credit display instead of our own log estimate).
+
+
+---
+
 ## Table of contents
 
 - [Ads](#ads)
