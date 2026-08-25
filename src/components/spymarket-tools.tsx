@@ -2886,7 +2886,214 @@ function ShopDetailTab({
   );
 }
 
+/**
+ * Creative angles for a tracked brand. The headline / hook analytics live on
+ * the brandtracker routes, so we first resolve the shop into a workspace
+ * brandtracker id (free list call) and only then load a tab on demand.
+ * Both brandtracker routes are free per the API reference — the resolve step
+ * and each tab are labelled as such before they run.
+ */
+function ShopCreativeAngles({
+  shopId,
+  domain,
+  name,
+}: {
+  shopId: string;
+  domain: string | null;
+  name: string | null;
+}) {
+  const listTrackers = useServerFn(spymarketListBrandtrackers);
+  const getInsights = useServerFn(spymarketGetBrandtrackerInsights);
+  const resolveCall = useMeteredCall(listTrackers as ServerFnLike);
+  const insightsCall = useMeteredCall(getInsights as ServerFnLike);
+
+  const [trackerId, setTrackerId] = React.useState<string | null>(null);
+  const [resolved, setResolved] = React.useState(false);
+  const [activeKind, setActiveKind] = React.useState<"headlines" | "hooks" | null>(null);
+  const [sortBy, setSortBy] = React.useState<"usageCount" | "longestRunning">("usageCount");
+  const [data, setData] = React.useState<Record<string, ToolOk<unknown>>>({});
+
+  React.useEffect(() => {
+    if (resolveCall.state.kind !== "ok") return;
+    const rows = dataRows(resolveCall.state.result.data);
+    const match =
+      rows.find((r) => asStr(r["websiteId"]) === shopId) ??
+      (domain
+        ? rows.find((r) => asStr(r["domain"])?.toLowerCase() === domain.toLowerCase())
+        : undefined) ??
+      rows[0];
+    setTrackerId(match ? asStr(match["id"]) : null);
+    setResolved(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resolveCall.state]);
+
+  const cacheKey = `${activeKind}:${sortBy}`;
+  React.useEffect(() => {
+    if (insightsCall.state.kind === "ok" && activeKind && !data[cacheKey]) {
+      const result = insightsCall.state.result;
+      setData((prev) => ({ ...prev, [cacheKey]: result }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [insightsCall.state]);
+
+  const openKind = async (kind: "headlines" | "hooks", nextSort = sortBy) => {
+    setActiveKind(kind);
+    setSortBy(nextSort);
+    if (data[`${kind}:${nextSort}`] || !trackerId) return;
+    await insightsCall.execute({
+      brandtrackerId: trackerId,
+      kind,
+      sortBy: nextSort,
+      timePeriod: "last30d",
+      limit: 25,
+    });
+  };
+
+  const loaded = activeKind ? data[cacheKey] : undefined;
+  const rows = loaded ? dataRows(loaded.data) : [];
+
+  return (
+    <Card className="rounded-2xl">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm font-medium">Creative angles</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {!resolved && (
+          <div className="space-y-3">
+            <p className="text-xs text-muted-foreground">
+              Headlines and hooks come from the brand tracker for {name ?? domain ?? "this shop"}.
+              Resolving the tracker is free.
+            </p>
+            <Button
+              size="sm"
+              className="rounded-full"
+              disabled={resolveCall.state.kind === "loading"}
+              onClick={() => void resolveCall.execute({ name: name ?? domain ?? undefined })}
+            >
+              {resolveCall.state.kind === "loading" ? (
+                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+              )}
+              Find brand tracker — free
+            </Button>
+            <CallFeedback
+              state={resolveCall.state}
+              onConfirm={resolveCall.confirm}
+              onCancel={resolveCall.cancelConfirm}
+              onRetry={resolveCall.retry}
+            />
+          </div>
+        )}
+
+        {resolved && !trackerId && (
+          <p className="text-sm text-muted-foreground">
+            This shop has no brand tracker in the workspace, so headline and hook analytics
+            aren&apos;t available for it.
+          </p>
+        )}
+
+        {trackerId && (
+          <>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                size="sm"
+                variant={activeKind === "headlines" ? "default" : "outline"}
+                className="rounded-full"
+                disabled={insightsCall.state.kind === "loading"}
+                onClick={() => void openKind("headlines")}
+              >
+                <Heading className="mr-1.5 h-3.5 w-3.5" />
+                Headlines — free
+              </Button>
+              <Button
+                size="sm"
+                variant={activeKind === "hooks" ? "default" : "outline"}
+                className="rounded-full"
+                disabled={insightsCall.state.kind === "loading"}
+                onClick={() => void openKind("hooks")}
+              >
+                <Quote className="mr-1.5 h-3.5 w-3.5" />
+                Hooks &amp; scripts — free
+              </Button>
+              {activeKind && (
+                <Select
+                  value={sortBy}
+                  onValueChange={(v) =>
+                    void openKind(activeKind, v as "usageCount" | "longestRunning")
+                  }
+                >
+                  <SelectTrigger className="w-44 rounded-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="usageCount">Most used</SelectItem>
+                    <SelectItem value="longestRunning">Longest running</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+
+            <CallFeedback
+              state={insightsCall.state}
+              onConfirm={insightsCall.confirm}
+              onCancel={insightsCall.cancelConfirm}
+              onRetry={insightsCall.retry}
+            />
+            {activeKind && insightsCall.state.kind === "loading" && !loaded && (
+              <LoadingRows rows={3} />
+            )}
+
+            {loaded && (
+              <div className="space-y-2">
+                {rows.map((r, i) => {
+                  const text = asStr(r["headline"]) ?? asStr(r["hook"]) ?? "";
+                  if (!text) return null;
+                  const usage = asNum(r["usageCount"]);
+                  const longest = asNum(r["longestRunning"]);
+                  const impressions = asNum(r["totalImpressions"]);
+                  return (
+                    <div key={i} className="flex items-start gap-3 rounded-xl border p-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs">{text}</p>
+                        <p className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                          {usage != null && (
+                            <Badge variant="secondary" className="rounded-full text-[10px]">
+                              used {fmtInt(usage)}×
+                            </Badge>
+                          )}
+                          {longest != null && (
+                            <Badge variant="outline" className="rounded-full text-[10px]">
+                              {fmtInt(longest)}d longest running
+                            </Badge>
+                          )}
+                          {impressions != null && impressions > 0 && (
+                            <Badge variant="outline" className="rounded-full text-[10px]">
+                              {fmtCompact(impressions)} reach
+                            </Badge>
+                          )}
+                        </p>
+                      </div>
+                      <CopyButton text={text} />
+                    </div>
+                  );
+                })}
+                {rows.length === 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    No {activeKind} recorded for this brand tracker in the last 30 days.
+                  </p>
+                )}
+              </div>
+            )}
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 /** On-demand sections below a shop profile — each loads only when opened. */
+
 function ShopOnDemand({
   shopId,
   go,
