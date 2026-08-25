@@ -1397,6 +1397,49 @@ function ShopsTab({
     <div className="space-y-4">
       <Card className="rounded-2xl">
         <CardContent className="space-y-3 p-4">
+          {/* Preset views — one click applies a documented filter+sort recipe
+              and runs the search. */}
+          <div className="flex flex-wrap items-center gap-2 border-b pb-3">
+            <span className="mr-1 inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <Sparkles className="h-3.5 w-3.5 text-primary" />
+              Presets
+            </span>
+            {SHOP_PRESETS.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                title={`${p.hint} Runs a paid search — ${costLabel(costs, "shops/query", limit)}.`}
+                disabled={searching}
+                onClick={() => applyPreset(p)}
+                aria-pressed={f.preset === p.id}
+                className={cn(
+                  "inline-flex h-8 items-center rounded-full border px-3 text-xs font-medium transition-colors disabled:opacity-60",
+                  f.preset === p.id
+                    ? "border-primary bg-primary/15 text-primary"
+                    : "border-border bg-card text-muted-foreground hover:border-foreground/20 hover:text-foreground",
+                )}
+              >
+                {p.label}
+              </button>
+            ))}
+            {f.preset !== "" && (
+              <button
+                type="button"
+                className="text-[11px] text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                onClick={() =>
+                  apply({
+                    preset: "",
+                    rules: [],
+                    trending: false,
+                    createdAfter: "",
+                  })
+                }
+              >
+                Clear preset
+              </button>
+            )}
+          </div>
+
           {/* Search row */}
           <div className="flex flex-wrap items-center gap-2">
             <div className="relative min-w-52 flex-1">
