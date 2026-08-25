@@ -19,6 +19,9 @@ import {
   ChevronUp,
   Copy,
   Database,
+  Download,
+  Maximize2,
+
   ExternalLink,
   Eye,
   FlaskConical,
@@ -3428,6 +3431,187 @@ function readSavedAds(): string[] {
   }
 }
 
+/** Creative shown in the large preview / download surface. */
+type CreativeTarget = {
+  adId: string | null;
+  isVideo: boolean;
+  /** Poster / static image already present in the payload (free). */
+  thumbUrl: string | null;
+  /** Playable or full-res URL already present in the payload (free). */
+  directUrl: string | null;
+  label?: string | null;
+};
+
+/** Saves a remote media file locally, falling back to a new tab if CORS blocks the fetch. */
+async function saveRemoteFile(url: string, filename: string) {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(String(res.status));
+    const blob = await res.blob();
+    const href = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = href;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.setTimeout(() => URL.revokeObjectURL(href), 4000);
+  } catch {
+    // Cross-origin CDNs may refuse the fetch — open it so the user can save manually.
+    window.open(url, "_blank", "noopener");
+  }
+}
+
+/**
+ * Large creative preview. Media that already ships in the ad payload renders
+ * for free; the metered ads/media-url call only ever fires from an explicit
+ * click (play a video with no URL, or download), never on render.
+ */
+function CreativeLightbox({
+  target,
+  costs,
+  onClose,
+}: {
+  target: CreativeTarget | null;
+  costs?: EndpointCosts | undefined;
+  onClose: () => void;
+}) {
+  const getMedia = useServerFn(spymarketGetAdMediaUrl);
+  const mediaCall = useMeteredCall(getMedia as ServerFnLike);
+  const [downloading, setDownloading] = React.useState(false);
+  const [pendingDownload, setPendingDownload] = React.useState(false);
+
+  // Reset the fetched URL whenever a different creative opens.
+  const key = target?.adId ?? "";
+  React.useEffect(() => {
+    mediaCall.reset();
+    setPendingDownload(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+
+  const fetchedUrl =
+    mediaCall.state.kind === "ok"
+      ? (asStr(asRec(asRec(mediaCall.state.result.data)["data"])["mediaUrl"]) ??
+        asStr(asRec(asRec(mediaCall.state.result.data)["data"])["url"]))
+      : null;
+
+  const isVideo = target?.isVideo ?? false;
+  const playable = target?.directUrl ?? fetchedUrl;
+  const still = target?.thumbUrl ?? target?.directUrl ?? fetchedUrl;
+  const ext = isVideo ? "mp4" : (still?.split("?")[0]?.match(/\.(jpe?g|png|webp)$/i)?.[1] ?? "jpg");
+  const filename = `spymarket-${target?.adId ?? "creative"}.${ext}`;
+
+  // A download that had to buy a fresh media URL completes here, once the
+  // metered call (including any overage confirmation) has settled.
+  React.useEffect(() => {
+    if (!pendingDownload || !fetchedUrl) return;
+    setPendingDownload(false);
+    setDownloading(true);
+    void saveRemoteFile(fetchedUrl, filename).finally(() => setDownloading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingDownload, fetchedUrl]);
+
+  if (!target) return null;
+
+  const download = async () => {
+    const url = isVideo ? playable : (target.directUrl ?? fetchedUrl ?? target.thumbUrl);
+    if (url) {
+      setDownloading(true);
+      await saveRemoteFile(url, filename);
+      setDownloading(false);
+      return;
+    }
+    if (!target.adId) return;
+    setPendingDownload(true);
+    void mediaCall.execute({ adId: target.adId });
+  };
+
+
+  const mediaCost = costLabel(costs, "ads/media-url", 1);
+  const needsFetch = isVideo ? playable == null : target.directUrl == null && fetchedUrl == null;
+
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-h-[92vh] max-w-3xl overflow-y-auto rounded-2xl">
+        <DialogHeader>
+          <DialogTitle className="text-base">{target.label ?? "Creative preview"}</DialogTitle>
+        </DialogHeader>
+
+        <div className="grid place-items-center rounded-xl bg-muted/50 p-2">
+          {isVideo && playable ? (
+            <video
+              src={playable}
+              poster={target.thumbUrl ?? undefined}
+              controls
+              autoPlay
+              className="max-h-[65vh] w-auto rounded-lg"
+            />
+          ) : isVideo ? (
+            <div className="flex w-full flex-col items-center gap-3 py-6">
+              {target.thumbUrl && (
+                <img
+                  src={target.thumbUrl}
+                  alt="Ad creative"
+                  className="max-h-[45vh] rounded-lg object-contain"
+                />
+              )}
+              <Button
+                className="rounded-full"
+                disabled={mediaCall.state.kind === "loading" || !target.adId}
+                onClick={() => target.adId && void mediaCall.execute({ adId: target.adId })}
+              >
+                {mediaCall.state.kind === "loading" ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Play className="mr-2 h-4 w-4" />
+                )}
+                Play video — {mediaCost}
+              </Button>
+            </div>
+          ) : still ? (
+            <img
+              src={still}
+              alt="Ad creative"
+              className="max-h-[70vh] w-auto rounded-lg object-contain"
+            />
+          ) : (
+            <p className="py-10 text-sm text-muted-foreground">No creative available.</p>
+          )}
+        </div>
+
+        <CallFeedback
+          state={mediaCall.state}
+          onConfirm={mediaCall.confirm}
+          onCancel={mediaCall.cancelConfirm}
+          onRetry={mediaCall.retry}
+        />
+
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            className="rounded-full"
+            disabled={downloading || mediaCall.state.kind === "loading"}
+            onClick={() => void download()}
+          >
+            {downloading ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Download className="mr-2 h-4 w-4" />
+            )}
+            Download {isVideo ? "MP4" : ext.toUpperCase()}
+            {needsFetch ? ` — ${mediaCost}` : " — free"}
+          </Button>
+          <p className="text-[11px] text-muted-foreground">
+            For competitive research only. Study angles and structure — do not reuse
+            competitors&apos; media as your own.
+          </p>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+
 /**
  * 5-zone ad card. Zones render only when their data exists:
  *  Z1 data strip — EU/UK reach & spend with target flags, or a muted
@@ -3439,7 +3623,16 @@ function readSavedAds(): string[] {
  *     (domain / headline / CTA).
  *  Z5 footer — outline Save (local) + solid View details.
  */
-function AdCard({ ad, onOpen }: { ad: Rec; onOpen: (id: string) => void }) {
+function AdCard({
+  ad,
+  onOpen,
+  onPreview,
+}: {
+  ad: Rec;
+  onOpen: (id: string) => void;
+  onPreview: (target: CreativeTarget) => void;
+}) {
+
   const media = asRec(ad["media"]);
   const content = asRec(ad["content"]);
   const metrics = asRec(ad["metrics"]);
@@ -3624,9 +3817,21 @@ function AdCard({ ad, onOpen }: { ad: Rec; onOpen: (id: string) => void }) {
             </div>
           )}
           {thumb && (
-            <div
+            <button
+              type="button"
+              title="Open large preview"
+              onClick={(e) => {
+                e.stopPropagation();
+                onPreview({
+                  adId,
+                  isVideo,
+                  thumbUrl: thumb,
+                  directUrl: asStr(media["mediaUrl"]),
+                  label: headline ?? name ?? "Creative preview",
+                });
+              }}
               className={cn(
-                "relative mx-auto w-full overflow-hidden rounded-xl bg-muted",
+                "group relative mx-auto block w-full overflow-hidden rounded-xl bg-muted",
                 isVideo ? "aspect-[9/16] max-h-80" : "aspect-square",
               )}
             >
@@ -3643,8 +3848,12 @@ function AdCard({ ad, onOpen }: { ad: Rec; onOpen: (id: string) => void }) {
                   </div>
                 </div>
               )}
-            </div>
+              <span className="pointer-events-none absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-full bg-background/85 opacity-0 shadow-sm transition-opacity group-hover:opacity-100">
+                <Maximize2 className="h-3.5 w-3.5" />
+              </span>
+            </button>
           )}
+
           {(domain ?? headline ?? cta) && (
             <a
               href={landingUrl ?? "#"}
@@ -3738,6 +3947,8 @@ function AdsTab({
   const [limit, setLimit] = React.useState(24);
   const [pages, setPages] = React.useState<Rec[][]>([]);
   const [adDetailId, setAdDetailId] = React.useState<string | null>(null);
+  const [preview, setPreview] = React.useState<CreativeTarget | null>(null);
+
 
   const numOr = (raw: string, fallback: number) => {
     const n = Number(raw.replace(/[^\d.]/g, ""));
@@ -4105,14 +4316,28 @@ function AdsTab({
       )}
 
       {!grouped && allRows.length > 0 && (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {allRows.map((ad, i) => (
-            <AdCard key={asStr(ad["id"]) ?? i} ad={ad} onOpen={setAdDetailId} />
-          ))}
-        </div>
+        <>
+          <p className="text-[11px] text-muted-foreground">
+            For competitive research only. Study angles and structure — do not reuse
+            competitors&apos; media as your own.
+          </p>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {allRows.map((ad, i) => (
+              <AdCard
+                key={asStr(ad["id"]) ?? i}
+                ad={ad}
+                onOpen={setAdDetailId}
+                onPreview={setPreview}
+              />
+            ))}
+          </div>
+        </>
       )}
 
+      <CreativeLightbox target={preview} costs={costs} onClose={() => setPreview(null)} />
+
       <AdDetailDialog adId={adDetailId} costs={costs} onClose={() => setAdDetailId(null)} />
+
 
       {pages.length > 0 && (pages[pages.length - 1]?.length ?? 0) >= limit && (
         <div className="flex justify-center">
@@ -4150,8 +4375,8 @@ function AdDetailDialog({
   const getMedia = useServerFn(spymarketGetAdMediaUrl);
   const call = useMeteredCall(getAd as ServerFnLike);
   const reachCall = useMeteredCall(getReach as ServerFnLike);
-  const mediaCall = useMeteredCall(getMedia as ServerFnLike);
   const loadedForRef = React.useRef<string | null>(null);
+  const [lightbox, setLightbox] = React.useState(false);
 
   React.useEffect(() => {
     if (adId && loadedForRef.current !== adId) {
@@ -4159,6 +4384,7 @@ function AdDetailDialog({
       void call.execute({ adId });
     }
     if (!adId) loadedForRef.current = null;
+    setLightbox(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [adId]);
 
@@ -4175,14 +4401,10 @@ function AdDetailDialog({
   const mediaKind = asStr(media["type"]) ?? asStr(media["mediaType"]);
   const isVideo = mediaKind === "video";
   // Video MP4s already ship in the detail payload — the paid ads/media-url
-  // endpoint is only a fallback when no playable URL is present.
+  // endpoint only fires from the lightbox, on an explicit play/download click.
   const playableUrl = asStr(media["mediaUrl"]);
   const posterUrl = asStr(media["thumbnailUrl"]);
-  const fetchedMediaUrl =
-    mediaCall.state.kind === "ok"
-      ? asStr(asRec(asRec(mediaCall.state.result.data)["data"])["mediaUrl"]) ??
-        asStr(asRec(asRec(mediaCall.state.result.data)["data"])["url"])
-      : null;
+
 
   const reachPoints =
     reachCall.state.kind === "ok"
@@ -4211,46 +4433,63 @@ function AdDetailDialog({
 
         {ad && (
           <div className="space-y-4">
-            {/* Media */}
-            {isVideo ? (
-              (playableUrl ?? fetchedMediaUrl) ? (
-                <video
-                  src={playableUrl ?? fetchedMediaUrl ?? ""}
-                  poster={posterUrl ?? undefined}
-                  controls
-                  className="w-full rounded-xl border"
-                />
-              ) : (
-                <div className="flex items-center gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="rounded-full"
-                    disabled={mediaCall.state.kind === "loading"}
-                    onClick={() => adId && void mediaCall.execute({ adId })}
-                  >
-                    {mediaCall.state.kind === "loading" ? (
-                      <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <Play className="mr-2 h-3.5 w-3.5" />
-                    )}
-                    Load video — {costLabel(costs, "ads/media-url", 1)}
-                  </Button>
-                  <CallFeedback
-                    state={mediaCall.state}
-                    onConfirm={mediaCall.confirm}
-                    onCancel={mediaCall.cancelConfirm}
-                    onRetry={mediaCall.retry}
+            {/* Media — the large preview / download surface never fires a paid
+                call on render; it opens the lightbox, which meters explicitly. */}
+            {(posterUrl ?? playableUrl) && (
+              <div className="space-y-2">
+                {isVideo && playableUrl ? (
+                  <video
+                    src={playableUrl}
+                    poster={posterUrl ?? undefined}
+                    controls
+                    className="w-full rounded-xl border"
                   />
-                </div>
-              )
-            ) : (posterUrl ?? playableUrl) ? (
-              <img
-                src={posterUrl ?? playableUrl ?? ""}
-                alt="Ad creative"
-                className="max-h-72 w-full rounded-xl border object-contain"
+                ) : (
+                  <button
+                    type="button"
+                    className="group relative mx-auto block w-full overflow-hidden rounded-xl border"
+                    onClick={() => setLightbox(true)}
+                  >
+                    <img
+                      src={posterUrl ?? playableUrl ?? ""}
+                      alt="Ad creative"
+                      className="max-h-72 w-full object-contain"
+                    />
+                    {isVideo && (
+                      <span className="pointer-events-none absolute inset-0 grid place-items-center">
+                        <span className="grid h-11 w-11 place-items-center rounded-full bg-background/85 shadow-md">
+                          <Play className="ml-0.5 h-4 w-4 fill-foreground text-foreground" />
+                        </span>
+                      </span>
+                    )}
+                  </button>
+                )}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="rounded-full"
+                  onClick={() => setLightbox(true)}
+                >
+                  <Maximize2 className="mr-2 h-3.5 w-3.5" />
+                  Large preview &amp; download
+                </Button>
+              </div>
+            )}
+
+            {lightbox && (
+              <CreativeLightbox
+                target={{
+                  adId,
+                  isVideo,
+                  thumbUrl: posterUrl,
+                  directUrl: playableUrl,
+                  label: asStr(content["title"]) ?? asStr(advertiser["name"]) ?? "Creative preview",
+                }}
+                costs={costs}
+                onClose={() => setLightbox(false)}
               />
-            ) : null}
+            )}
+
 
             {/* Copy */}
             <div className="space-y-1.5">
