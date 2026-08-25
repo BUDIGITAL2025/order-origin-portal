@@ -14,19 +14,23 @@ import {
   ArrowUpRight,
   Bookmark,
   BookmarkCheck,
+  Check,
   ChevronDown,
   ChevronUp,
+  Copy,
   Database,
   ExternalLink,
   Eye,
   FlaskConical,
   Globe,
+  Heading,
   LineChart,
   Loader2,
   Mail,
   Megaphone,
   Package,
   Play,
+  Quote,
   RefreshCw,
   Search,
   SlidersHorizontal,
@@ -34,6 +38,7 @@ import {
   TrendingUp,
   Star,
   Store,
+  Trophy,
   Users,
   Wallet,
 } from "lucide-react";
@@ -43,15 +48,18 @@ import {
   spymarketGetAd,
   spymarketGetAdMediaUrl,
   spymarketGetAdReachHistory,
+  spymarketGetBrandtrackerInsights,
   spymarketGetEmail,
   spymarketGetShop,
   spymarketGetShopTab,
   spymarketGetUsageDashboard,
+  spymarketListBrandtrackers,
   spymarketLookup,
   spymarketQueryEmails,
   spymarketQueryShops,
   spymarketSearchAds,
 } from "@/lib/spymarket-tools.functions";
+
 import type { ToolOk, ToolResult } from "@/lib/spymarket-tools.server";
 import { cn } from "@/lib/utils";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -134,6 +142,34 @@ const fmtPrice = (price: number | null, currency: string | null): string =>
         currency: currency ?? "USD",
         maximumFractionDigits: 2,
       }).format(price);
+
+/** Copy-to-clipboard button used by the creative-angle lists (headlines, hooks, copies). */
+function CopyButton({ text, label = "Copy" }: { text: string; label?: string }) {
+  const [copied, setCopied] = React.useState(false);
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      className="h-7 shrink-0 rounded-full px-2.5 text-[11px]"
+      onClick={(e) => {
+        e.stopPropagation();
+        void navigator.clipboard?.writeText(text).then(() => {
+          setCopied(true);
+          window.setTimeout(() => setCopied(false), 1500);
+        });
+      }}
+    >
+      {copied ? (
+        <Check className="mr-1 h-3 w-3 text-primary" />
+      ) : (
+        <Copy className="mr-1 h-3 w-3" />
+      )}
+      {copied ? "Copied" : label}
+    </Button>
+  );
+}
+
 
 // ---------------------------------------------------------------------------
 // Learned per-endpoint pricing (spymarket_endpoint_costs via the server)
@@ -2830,6 +2866,13 @@ function ShopDetailTab({
 
           <ShopOnDemand shopId={shopId} go={go} costs={costs} />
 
+          <ShopCreativeAngles
+            shopId={shopId}
+            domain={asStr(shop["domain"])}
+            name={asStr(shop["name"])}
+          />
+
+
           <RawJson data={shop} />
         </>
       )}
@@ -2843,7 +2886,214 @@ function ShopDetailTab({
   );
 }
 
+/**
+ * Creative angles for a tracked brand. The headline / hook analytics live on
+ * the brandtracker routes, so we first resolve the shop into a workspace
+ * brandtracker id (free list call) and only then load a tab on demand.
+ * Both brandtracker routes are free per the API reference — the resolve step
+ * and each tab are labelled as such before they run.
+ */
+function ShopCreativeAngles({
+  shopId,
+  domain,
+  name,
+}: {
+  shopId: string;
+  domain: string | null;
+  name: string | null;
+}) {
+  const listTrackers = useServerFn(spymarketListBrandtrackers);
+  const getInsights = useServerFn(spymarketGetBrandtrackerInsights);
+  const resolveCall = useMeteredCall(listTrackers as ServerFnLike);
+  const insightsCall = useMeteredCall(getInsights as ServerFnLike);
+
+  const [trackerId, setTrackerId] = React.useState<string | null>(null);
+  const [resolved, setResolved] = React.useState(false);
+  const [activeKind, setActiveKind] = React.useState<"headlines" | "hooks" | null>(null);
+  const [sortBy, setSortBy] = React.useState<"usageCount" | "longestRunning">("usageCount");
+  const [data, setData] = React.useState<Record<string, ToolOk<unknown>>>({});
+
+  React.useEffect(() => {
+    if (resolveCall.state.kind !== "ok") return;
+    const rows = dataRows(resolveCall.state.result.data);
+    const match =
+      rows.find((r) => asStr(r["websiteId"]) === shopId) ??
+      (domain
+        ? rows.find((r) => asStr(r["domain"])?.toLowerCase() === domain.toLowerCase())
+        : undefined) ??
+      rows[0];
+    setTrackerId(match ? asStr(match["id"]) : null);
+    setResolved(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resolveCall.state]);
+
+  const cacheKey = `${activeKind}:${sortBy}`;
+  React.useEffect(() => {
+    if (insightsCall.state.kind === "ok" && activeKind && !data[cacheKey]) {
+      const result = insightsCall.state.result;
+      setData((prev) => ({ ...prev, [cacheKey]: result }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [insightsCall.state]);
+
+  const openKind = async (kind: "headlines" | "hooks", nextSort = sortBy) => {
+    setActiveKind(kind);
+    setSortBy(nextSort);
+    if (data[`${kind}:${nextSort}`] || !trackerId) return;
+    await insightsCall.execute({
+      brandtrackerId: trackerId,
+      kind,
+      sortBy: nextSort,
+      timePeriod: "last30d",
+      limit: 25,
+    });
+  };
+
+  const loaded = activeKind ? data[cacheKey] : undefined;
+  const rows = loaded ? dataRows(loaded.data) : [];
+
+  return (
+    <Card className="rounded-2xl">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm font-medium">Creative angles</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {!resolved && (
+          <div className="space-y-3">
+            <p className="text-xs text-muted-foreground">
+              Headlines and hooks come from the brand tracker for {name ?? domain ?? "this shop"}.
+              Resolving the tracker is free.
+            </p>
+            <Button
+              size="sm"
+              className="rounded-full"
+              disabled={resolveCall.state.kind === "loading"}
+              onClick={() => void resolveCall.execute({ name: name ?? domain ?? undefined })}
+            >
+              {resolveCall.state.kind === "loading" ? (
+                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+              )}
+              Find brand tracker — free
+            </Button>
+            <CallFeedback
+              state={resolveCall.state}
+              onConfirm={resolveCall.confirm}
+              onCancel={resolveCall.cancelConfirm}
+              onRetry={resolveCall.retry}
+            />
+          </div>
+        )}
+
+        {resolved && !trackerId && (
+          <p className="text-sm text-muted-foreground">
+            This shop has no brand tracker in the workspace, so headline and hook analytics
+            aren&apos;t available for it.
+          </p>
+        )}
+
+        {trackerId && (
+          <>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                size="sm"
+                variant={activeKind === "headlines" ? "default" : "outline"}
+                className="rounded-full"
+                disabled={insightsCall.state.kind === "loading"}
+                onClick={() => void openKind("headlines")}
+              >
+                <Heading className="mr-1.5 h-3.5 w-3.5" />
+                Headlines — free
+              </Button>
+              <Button
+                size="sm"
+                variant={activeKind === "hooks" ? "default" : "outline"}
+                className="rounded-full"
+                disabled={insightsCall.state.kind === "loading"}
+                onClick={() => void openKind("hooks")}
+              >
+                <Quote className="mr-1.5 h-3.5 w-3.5" />
+                Hooks &amp; scripts — free
+              </Button>
+              {activeKind && (
+                <Select
+                  value={sortBy}
+                  onValueChange={(v) =>
+                    void openKind(activeKind, v as "usageCount" | "longestRunning")
+                  }
+                >
+                  <SelectTrigger className="w-44 rounded-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="usageCount">Most used</SelectItem>
+                    <SelectItem value="longestRunning">Longest running</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+
+            <CallFeedback
+              state={insightsCall.state}
+              onConfirm={insightsCall.confirm}
+              onCancel={insightsCall.cancelConfirm}
+              onRetry={insightsCall.retry}
+            />
+            {activeKind && insightsCall.state.kind === "loading" && !loaded && (
+              <LoadingRows rows={3} />
+            )}
+
+            {loaded && (
+              <div className="space-y-2">
+                {rows.map((r, i) => {
+                  const text = asStr(r["headline"]) ?? asStr(r["hook"]) ?? "";
+                  if (!text) return null;
+                  const usage = asNum(r["usageCount"]);
+                  const longest = asNum(r["longestRunning"]);
+                  const impressions = asNum(r["totalImpressions"]);
+                  return (
+                    <div key={i} className="flex items-start gap-3 rounded-xl border p-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs">{text}</p>
+                        <p className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                          {usage != null && (
+                            <Badge variant="secondary" className="rounded-full text-[10px]">
+                              used {fmtInt(usage)}×
+                            </Badge>
+                          )}
+                          {longest != null && (
+                            <Badge variant="outline" className="rounded-full text-[10px]">
+                              {fmtInt(longest)}d longest running
+                            </Badge>
+                          )}
+                          {impressions != null && impressions > 0 && (
+                            <Badge variant="outline" className="rounded-full text-[10px]">
+                              {fmtCompact(impressions)} reach
+                            </Badge>
+                          )}
+                        </p>
+                      </div>
+                      <CopyButton text={text} />
+                    </div>
+                  );
+                })}
+                {rows.length === 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    No {activeKind} recorded for this brand tracker in the last 30 days.
+                  </p>
+                )}
+              </div>
+            )}
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 /** On-demand sections below a shop profile — each loads only when opened. */
+
 function ShopOnDemand({
   shopId,
   go,
@@ -3221,6 +3471,17 @@ function AdCard({ ad, onOpen }: { ad: Rec; onOpen: (id: string) => void }) {
   const logo = asStr(advertiser["logoUrl"]);
   const liveAds = asNum(advertiser["liveAdsCount"]) ?? asNum(advertiser["activeAds"]);
 
+  // Rank block — POST /v1/ads/query returns rank.currentRank / rankDelta /
+  // improvementPct. Rank HISTORY is not exposed by the API, so we only ever
+  // show the current position and its delta, never a rank-over-time chart.
+  const rank = asRec(ad["rank"]);
+  const currentRank = asNum(rank["currentRank"]);
+  const rankTotal = asNum(advertiser["totalAdsCount"]) ?? asNum(advertiser["adsCount"]) ?? liveAds;
+  const rankDelta = asNum(rank["rankDelta"]);
+  const improvementPct = asNum(rank["improvementPct"]);
+
+
+
   const [expanded, setExpanded] = React.useState(false);
   const [saved, setSaved] = React.useState(false);
   React.useEffect(() => {
@@ -3264,8 +3525,37 @@ function AdCard({ ad, onOpen }: { ad: Rec; onOpen: (id: string) => void }) {
       </div>
 
       {/* Z2 — badges */}
-      {(days != null || (duplicates != null && duplicates > 0)) && (
+      {(days != null ||
+        (duplicates != null && duplicates > 0) ||
+        currentRank != null ||
+        (rankDelta != null && rankDelta !== 0)) && (
         <div className="flex flex-wrap items-center gap-1.5 px-3 pt-2">
+          {currentRank != null && (
+            <Badge className="gap-1 rounded-full bg-primary/15 text-[10px] text-primary hover:bg-primary/15">
+              <Trophy className="h-3 w-3" />
+              rank {fmtInt(currentRank)}
+              {rankTotal != null && rankTotal > 0 ? `/${fmtInt(rankTotal)}` : ""}
+            </Badge>
+          )}
+          {rankDelta != null && rankDelta !== 0 && (
+            <Badge
+              variant="outline"
+              className={cn(
+                "gap-1 rounded-full text-[10px]",
+                rankDelta > 0 ? "text-primary" : "text-destructive",
+              )}
+            >
+              {rankDelta > 0 ? (
+                <ArrowUpRight className="h-3 w-3" />
+              ) : (
+                <ArrowDownRight className="h-3 w-3" />
+              )}
+              {fmtInt(Math.abs(rankDelta))} ranks
+              {improvementPct != null && improvementPct !== 0
+                ? ` · ${fmtPct(improvementPct > 1 || improvementPct < -1 ? improvementPct / 100 : improvementPct)}`
+                : ""}
+            </Badge>
+          )}
           {days != null && (
             <Badge variant="secondary" className="gap-1.5 rounded-full text-[10px]">
               <span
@@ -3284,6 +3574,7 @@ function AdCard({ ad, onOpen }: { ad: Rec; onOpen: (id: string) => void }) {
           )}
         </div>
       )}
+
 
       {/* Z3 — FB-style page header */}
       {name && (
@@ -3434,18 +3725,54 @@ function AdsTab({
   const [status, setStatus] = React.useState(url["astat"] ?? "active");
   const [mediaType, setMediaType] = React.useState(url["amed"] ?? "");
   const [sortBy, setSortBy] = React.useState(url["asort"] ?? "longestRunning");
+  // Rank views (POST /v1/ads/query only): "all" = no rank params,
+  // "bestRank" = adRankMode/adRankBasis/maxAdRankValue, "gains" = growthRank.
+  const [view, setView] = React.useState(url["aview"] ?? "all");
+  const [rankMode, setRankMode] = React.useState(url["armode"] ?? "rank");
+  const [rankBasis, setRankBasis] = React.useState(url["arbasis"] ?? "current");
+  const [maxRankValue, setMaxRankValue] = React.useState(url["armax"] ?? "50");
+  const [rankWindow, setRankWindow] = React.useState(url["arwin"] ?? "7d");
+  const [minRankDelta, setMinRankDelta] = React.useState(url["armin"] ?? "25");
+  const [grouped, setGrouped] = React.useState(false);
+  const [copySort, setCopySort] = React.useState<"usage" | "longestRunning">("longestRunning");
   const [limit, setLimit] = React.useState(24);
   const [pages, setPages] = React.useState<Rec[][]>([]);
   const [adDetailId, setAdDetailId] = React.useState<string | null>(null);
+
+  const numOr = (raw: string, fallback: number) => {
+    const n = Number(raw.replace(/[^\d.]/g, ""));
+    return Number.isFinite(n) && n > 0 ? n : fallback;
+  };
+
+  const effectiveSort =
+    view === "bestRank" ? "adOrder" : view === "gains" ? `rankDelta${rankWindow}` : sortBy;
+  // Rank views always take the advanced POST route, which is priced separately.
+  const adsEndpoint = search.trim() && view === "all" ? "ads" : "ads/query";
+
 
   const buildInput = (page: number): Record<string, unknown> => ({
     ...(search.trim() ? { search: search.trim(), searchType } : {}),
     status,
     ...(mediaType ? { mediaType } : {}),
-    sortBy,
+    sortBy: effectiveSort,
+    ...(view === "bestRank"
+      ? {
+          adRankMode: rankMode,
+          adRankBasis: rankBasis,
+          maxAdRankValue: numOr(maxRankValue, 50),
+        }
+      : {}),
+    ...(view === "gains"
+      ? {
+          growthRankDirection: "up",
+          rankDeltaWindow: rankWindow,
+          minRankDelta: Math.round(numOr(minRankDelta, 25)),
+        }
+      : {}),
     limit,
     page,
   });
+
 
   const lastResultRef = React.useRef<ToolOk<unknown> | null>(null);
   React.useEffect(() => {
@@ -3460,10 +3787,71 @@ function AdsTab({
   const searching = call.state.kind === "loading";
   const allRows = pages.flat();
 
+  // Ad-copy depth: group the rows we already paid for by their copy text.
+  // Usage = number of indexed ads sharing the copy (plus their duplicates);
+  // longest-running = the highest daysRunning among them. No extra credits.
+  const copyGroups = React.useMemo(() => {
+    const map = new Map<
+      string,
+      { text: string; usage: number; longestRunning: number; brands: Set<string>; adId: string | null }
+    >();
+    for (const ad of allRows) {
+      const text = asStr(asRec(ad["content"])["body"]);
+      if (!text) continue;
+      const key = asStr(asRec(ad["content"])["adCopyHash"]) ?? text.trim().toLowerCase();
+      const entry = map.get(key) ?? {
+        text,
+        usage: 0,
+        longestRunning: 0,
+        brands: new Set<string>(),
+        adId: asStr(ad["id"]),
+      };
+      entry.usage += 1 + (asNum(asRec(ad["metrics"])["duplicates"]) ?? 0);
+      entry.longestRunning = Math.max(entry.longestRunning, asNum(ad["daysRunning"]) ?? 0);
+      const brand = asStr(asRec(ad["advertiser"])["name"]);
+      if (brand) entry.brands.add(brand);
+      map.set(key, entry);
+    }
+    const list = [...map.values()];
+    list.sort((a, b) =>
+      copySort === "usage" ? b.usage - a.usage : b.longestRunning - a.longestRunning,
+    );
+    return list;
+  }, [allRows, copySort]);
+
+  const AD_VIEWS = [
+    { id: "all", label: "All ads", icon: Search },
+    { id: "bestRank", label: "Best rank", icon: Trophy },
+    { id: "gains", label: "Biggest rank gains", icon: TrendingUp },
+  ] as const;
+
   return (
     <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-2">
+        {AD_VIEWS.map((v) => {
+          const Icon = v.icon;
+          return (
+            <Button
+              key={v.id}
+              size="sm"
+              variant={view === v.id ? "default" : "outline"}
+              className="rounded-full"
+              onClick={() => setView(v.id)}
+            >
+              <Icon className="mr-1.5 h-3.5 w-3.5" />
+              {v.label}
+            </Button>
+          );
+        })}
+        <span className="text-xs text-muted-foreground">
+          Rank views use the advanced ads query · rank history is not available in the API, so
+          only current rank and its delta are shown.
+        </span>
+      </div>
+
       <Card className="rounded-2xl">
         <CardContent className="grid gap-4 p-4 sm:grid-cols-2 lg:grid-cols-6">
+
           <div className="space-y-1.5 lg:col-span-2">
             <Label>Search ad copy or brand</Label>
             <div className="flex gap-2">
@@ -3513,22 +3901,91 @@ function AdsTab({
             </Select>
           </div>
 
-          <div className="space-y-1.5">
-            <Label>Sort by</Label>
-            <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="rounded-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="longestRunning">Longest running</SelectItem>
-                <SelectItem value="reach">Reach</SelectItem>
-                <SelectItem value="reachDelta7d">Reach Δ 7d</SelectItem>
-                <SelectItem value="reachDelta30d">Reach Δ 30d</SelectItem>
-                <SelectItem value="newest">Newest</SelectItem>
-                <SelectItem value="relevance">Relevance</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          {view === "all" && (
+            <div className="space-y-1.5">
+              <Label>Sort by</Label>
+              <Select value={sortBy} onValueChange={setSortBy}>
+                <SelectTrigger className="rounded-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="longestRunning">Longest running</SelectItem>
+                  <SelectItem value="reach">Reach</SelectItem>
+                  <SelectItem value="reachDelta7d">Reach Δ 7d</SelectItem>
+                  <SelectItem value="reachDelta30d">Reach Δ 30d</SelectItem>
+                  <SelectItem value="newest">Newest</SelectItem>
+                  <SelectItem value="relevance">Relevance</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {view === "bestRank" && (
+            <>
+              <div className="space-y-1.5">
+                <Label>Rank mode</Label>
+                <Select value={rankMode} onValueChange={setRankMode}>
+                  <SelectTrigger className="rounded-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="rank">Absolute rank</SelectItem>
+                    <SelectItem value="percentile">Top percentile</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>
+                  {rankMode === "percentile" ? "Top X% of ads" : "Best rank ≤"}
+                </Label>
+                <div className="flex gap-2">
+                  <Input
+                    value={maxRankValue}
+                    onChange={(e) => setMaxRankValue(e.target.value.replace(/[^\d]/g, ""))}
+                    inputMode="numeric"
+                    className="w-20 rounded-full"
+                  />
+                  <Select value={rankBasis} onValueChange={setRankBasis}>
+                    <SelectTrigger className="rounded-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="current">Current</SelectItem>
+                      <SelectItem value="alltime">All-time</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </>
+          )}
+
+          {view === "gains" && (
+            <>
+              <div className="space-y-1.5">
+                <Label>Window</Label>
+                <Select value={rankWindow} onValueChange={setRankWindow}>
+                  <SelectTrigger className="rounded-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="7d">Last 7 days</SelectItem>
+                    <SelectItem value="14d">Last 14 days</SelectItem>
+                    <SelectItem value="30d">Last 30 days</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Min rank gain</Label>
+                <Input
+                  value={minRankDelta}
+                  onChange={(e) => setMinRankDelta(e.target.value.replace(/[^\d]/g, ""))}
+                  inputMode="numeric"
+                  className="rounded-full"
+                />
+              </div>
+            </>
+          )}
+
 
           <div className="space-y-1.5">
             <Label>Page size</Label>
@@ -3547,7 +4004,6 @@ function AdsTab({
                 disabled={searching}
                 onClick={() => {
                   setPages([]);
-                  setPages([]);
                   go({
                     tab: "ads",
                     aq: search.trim() || undefined,
@@ -3555,6 +4011,12 @@ function AdsTab({
                     astat: status !== "active" ? status : undefined,
                     amed: mediaType || undefined,
                     asort: sortBy !== "longestRunning" ? sortBy : undefined,
+                    aview: view !== "all" ? view : undefined,
+                    armode: view === "bestRank" ? rankMode : undefined,
+                    arbasis: view === "bestRank" ? rankBasis : undefined,
+                    armax: view === "bestRank" ? maxRankValue : undefined,
+                    arwin: view === "gains" ? rankWindow : undefined,
+                    armin: view === "gains" ? minRankDelta : undefined,
                   });
                   void call.execute(buildInput(1));
                 }}
@@ -3564,7 +4026,7 @@ function AdsTab({
                 ) : (
                   <Search className="mr-2 h-4 w-4" />
                 )}
-                Search — {costLabel(costs, search.trim() ? "ads" : "ads/query", limit)}
+                Search — {costLabel(costs, adsEndpoint, limit)}
               </Button>
             </div>
           </div>
@@ -3573,6 +4035,7 @@ function AdsTab({
 
       <p className="text-xs text-muted-foreground">
         Reach/spend data covers EU &amp; UK ads only. Facebook platform only in public v1.
+        {view !== "all" && ` Sorted by ${effectiveSort}.`}
       </p>
 
       <CallFeedback
@@ -3585,6 +4048,63 @@ function AdsTab({
       {searching && pages.length === 0 && <LoadingRows rows={6} />}
 
       {allRows.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            size="sm"
+            variant={grouped ? "default" : "outline"}
+            className="rounded-full"
+            onClick={() => setGrouped((v) => !v)}
+          >
+            <Quote className="mr-1.5 h-3.5 w-3.5" />
+            Ad copies ({copyGroups.length})
+          </Button>
+          {grouped && (
+            <Select
+              value={copySort}
+              onValueChange={(v) => setCopySort(v as "usage" | "longestRunning")}
+            >
+              <SelectTrigger className="w-48 rounded-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="longestRunning">Longest running</SelectItem>
+                <SelectItem value="usage">Usage count</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
+          <span className="text-xs text-muted-foreground">
+            Grouped from the {allRows.length} ads already loaded — no extra credits.
+          </span>
+        </div>
+      )}
+
+      {grouped && copyGroups.length > 0 && (
+        <div className="space-y-2">
+          {copyGroups.map((g, i) => (
+            <div key={i} className="flex items-start gap-3 rounded-xl border p-3">
+              <div className="min-w-0 flex-1">
+                <p className="line-clamp-3 text-xs text-muted-foreground">{g.text}</p>
+                <p className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11px]">
+                  <Badge variant="secondary" className="rounded-full text-[10px]">
+                    used {fmtInt(g.usage)}×
+                  </Badge>
+                  <Badge variant="outline" className="rounded-full text-[10px]">
+                    {fmtInt(g.longestRunning)}d longest running
+                  </Badge>
+                  {g.brands.size > 0 && (
+                    <span className="truncate text-muted-foreground">
+                      {[...g.brands].slice(0, 3).join(", ")}
+                    </span>
+                  )}
+                </p>
+              </div>
+              <CopyButton text={g.text} />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {!grouped && allRows.length > 0 && (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {allRows.map((ad, i) => (
             <AdCard key={asStr(ad["id"]) ?? i} ad={ad} onOpen={setAdDetailId} />
@@ -3603,10 +4123,11 @@ function AdsTab({
             onClick={() => void call.execute(buildInput(pages.length + 1))}
           >
             {searching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-            Load more — {costLabel(costs, search.trim() ? "ads" : "ads/query", limit)}
+            Load more — {costLabel(costs, adsEndpoint, limit)}
           </Button>
         </div>
       )}
+
     </div>
   );
 }

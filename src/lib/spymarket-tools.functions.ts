@@ -445,8 +445,28 @@ export const spymarketSearchAds = createServerFn({ method: "POST" })
         status: z.enum(["active", "inactive", "all"]).default("active"),
         mediaType: z.enum(["image", "video", "carousel"]).optional(),
         sortBy: z
-          .enum(["relevance", "newest", "longestRunning", "reach", "reachDelta7d", "reachDelta30d"])
+          .enum([
+            "relevance",
+            "newest",
+            "longestRunning",
+            "reach",
+            "reachDelta7d",
+            "reachDelta30d",
+            // Rank surfaces — POST /v1/ads/query only.
+            "adOrder",
+            "rankDelta7d",
+            "rankDelta14d",
+            "rankDelta30d",
+          ])
           .default("longestRunning"),
+        // Ad Rank filter (POST /v1/ads/query: adRankMode / adRankBasis / maxAdRankValue).
+        adRankMode: z.enum(["percentile", "rank"]).optional(),
+        adRankBasis: z.enum(["current", "alltime"]).optional(),
+        maxAdRankValue: z.number().min(0).optional(),
+        // Biggest rank gains (growthRank OR-groups + rankDeltaWindow + minRankDelta).
+        growthRankDirection: z.enum(["up", "down"]).optional(),
+        rankDeltaWindow: z.enum(["7d", "14d", "30d"]).optional(),
+        minRankDelta: z.number().int().min(0).optional(),
         limit: z.number().int().min(1).max(100).default(24),
         page: z.number().int().min(1).default(1),
         confirmOverage: z.boolean().optional(),
@@ -457,16 +477,32 @@ export const spymarketSearchAds = createServerFn({ method: "POST" })
     const { requireAdmin } = await import("./admin.server");
     await requireAdmin(context.supabase, context.userId);
     const mod = await import("./spymarket-tools.server");
+    const usesRank =
+      data.adRankMode != null ||
+      data.maxAdRankValue != null ||
+      data.growthRankDirection != null ||
+      data.minRankDelta != null ||
+      data.rankDeltaWindow != null ||
+      data.sortBy === "adOrder" ||
+      data.sortBy.startsWith("rankDelta");
     const summary = {
       search: data.search ?? null,
       searchType: data.searchType,
       status: data.status,
       mediaType: data.mediaType ?? null,
       sortBy: data.sortBy,
+      adRankMode: data.adRankMode ?? null,
+      adRankBasis: data.adRankBasis ?? null,
+      maxAdRankValue: data.maxAdRankValue ?? null,
+      growthRankDirection: data.growthRankDirection ?? null,
+      rankDeltaWindow: data.rankDeltaWindow ?? null,
+      minRankDelta: data.minRankDelta ?? null,
       limit: data.limit,
       page: data.page,
     };
-    if (data.search) {
+    // The lightweight GET /v1/ads listing has no rank parameters, so any rank
+    // filter/sort forces the advanced POST route (search is optional there).
+    if (data.search && !usesRank) {
       // GET /v1/ads — the lightweight listing; search is required there.
       return mod.trendtrackCall({
         userId: context.userId,
@@ -487,24 +523,137 @@ export const spymarketSearchAds = createServerFn({ method: "POST" })
       });
     }
     // POST /v1/ads/query — advanced listing without a required text search.
+    const body: Record<string, unknown> = {
+      status: data.status,
+      mediaType: data.mediaType,
+      sortBy: data.sortBy,
+      order: "desc",
+      limit: data.limit,
+      page: data.page,
+    };
+    // /ads/query takes `search` as an ARRAY of terms (unlike /shops/query).
+    if (data.search) {
+      body["search"] = [data.search];
+      body["searchType"] = data.searchType;
+    }
+    if (data.adRankMode) body["adRankMode"] = data.adRankMode;
+    if (data.adRankMode || data.maxAdRankValue != null) {
+      body["adRankBasis"] = data.adRankBasis ?? "current";
+    }
+    if (data.maxAdRankValue != null) body["maxAdRankValue"] = data.maxAdRankValue;
+    if (data.growthRankDirection) {
+      // Directions are ORed upstream; grouping/period/unit are accepted for
+      // forward compatibility, the enforced bound is minRankDelta.
+      body["growthRank"] = {
+        anyOf: [
+          {
+            all: [
+              {
+                direction: data.growthRankDirection,
+                period: data.rankDeltaWindow ?? "7d",
+                minChange: data.minRankDelta ?? 0,
+                unit: "rank",
+              },
+            ],
+          },
+        ],
+      };
+    }
+    if (data.rankDeltaWindow) body["rankDeltaWindow"] = data.rankDeltaWindow;
+    if (data.minRankDelta != null) body["minRankDelta"] = data.minRankDelta;
     return mod.trendtrackCall({
       userId: context.userId,
       endpoint: "ads/query",
       path: "/ads/query",
       method: "POST",
-      body: {
-        status: data.status,
-        mediaType: data.mediaType,
-        sortBy: data.sortBy,
-        order: "desc",
-        limit: data.limit,
-        page: data.page,
-      },
+      body,
       summary,
       estimatedCost: data.limit,
       confirmOverage: data.confirmOverage,
     });
   });
+
+/**
+ * Free: workspace brandtrackers (GET /v1/brandtrackers). Used to resolve a
+ * shop into a brandtracker id so the headline / hook tabs can open.
+ */
+export const spymarketListBrandtrackers = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({ name: z.string().trim().max(120).optional() }).parse(input ?? {}),
+  )
+  .handler(async ({ data, context }) => {
+    const { requireAdmin } = await import("./admin.server");
+    await requireAdmin(context.supabase, context.userId);
+    const mod = await import("./spymarket-tools.server");
+    return mod.trendtrackCall({
+      userId: context.userId,
+      endpoint: "brandtrackers",
+      path: "/brandtrackers",
+      query: { limit: 100, name: data.name || undefined },
+      summary: { name: data.name ?? null },
+      estimatedCost: 0,
+      metered: false,
+      cacheable: true,
+    });
+  });
+
+/**
+ * Free (per the API reference): brandtracker creative-angle analytics —
+ * headlines, hooks/scripts and grouped ad copies.
+ */
+export const spymarketGetBrandtrackerInsights = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        brandtrackerId: z.string().min(1),
+        kind: z.enum(["headlines", "hooks", "transcripts", "ad-copies"]),
+        timePeriod: z
+          .enum(["live", "last24h", "last3d", "last7d", "last30d", "last3m", "last6m", "last1y"])
+          .default("last30d"),
+        sortBy: z
+          .enum(["usageCount", "longestRunning", "totalImpressions", "firstUsedAt", "lastUsedAt"])
+          .default("usageCount"),
+        limit: z.number().int().min(1).max(50).default(25),
+        page: z.number().int().min(1).default(1),
+        confirmOverage: z.boolean().optional(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { requireAdmin } = await import("./admin.server");
+    await requireAdmin(context.supabase, context.userId);
+    const mod = await import("./spymarket-tools.server");
+    // headlines / ad-copies only accept usageCount | longestRunning.
+    const restricted = data.kind === "headlines" || data.kind === "ad-copies";
+    const sortBy =
+      restricted && data.sortBy !== "longestRunning" ? "usageCount" : data.sortBy;
+    return mod.trendtrackCall({
+      userId: context.userId,
+      endpoint: `brandtrackers/${data.kind}`,
+      path: `/brandtrackers/${encodeURIComponent(data.brandtrackerId)}/${data.kind}`,
+      query: {
+        timePeriod: data.timePeriod,
+        sortBy,
+        order: "desc",
+        limit: data.limit,
+        page: data.page,
+      },
+      summary: {
+        brandtrackerId: data.brandtrackerId,
+        kind: data.kind,
+        timePeriod: data.timePeriod,
+        sortBy,
+        limit: data.limit,
+      },
+      estimatedCost: 0,
+      metered: false,
+      cacheable: true,
+      confirmOverage: data.confirmOverage,
+    });
+  });
+
 
 /** Free: our own usage dashboard (reads our log, not their API). */
 export const spymarketGetUsageDashboard = createServerFn({ method: "GET" })
