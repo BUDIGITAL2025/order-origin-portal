@@ -3431,6 +3431,177 @@ function readSavedAds(): string[] {
   }
 }
 
+/** Creative shown in the large preview / download surface. */
+type CreativeTarget = {
+  adId: string | null;
+  isVideo: boolean;
+  /** Poster / static image already present in the payload (free). */
+  thumbUrl: string | null;
+  /** Playable or full-res URL already present in the payload (free). */
+  directUrl: string | null;
+  label?: string | null;
+};
+
+/** Saves a remote media file locally, falling back to a new tab if CORS blocks the fetch. */
+async function saveRemoteFile(url: string, filename: string) {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(String(res.status));
+    const blob = await res.blob();
+    const href = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = href;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.setTimeout(() => URL.revokeObjectURL(href), 4000);
+  } catch {
+    // Cross-origin CDNs may refuse the fetch — open it so the user can save manually.
+    window.open(url, "_blank", "noopener");
+  }
+}
+
+/**
+ * Large creative preview. Media that already ships in the ad payload renders
+ * for free; the metered ads/media-url call only ever fires from an explicit
+ * click (play a video with no URL, or download), never on render.
+ */
+function CreativeLightbox({
+  target,
+  costs,
+  onClose,
+}: {
+  target: CreativeTarget | null;
+  costs?: EndpointCosts | undefined;
+  onClose: () => void;
+}) {
+  const getMedia = useServerFn(spymarketGetAdMediaUrl);
+  const mediaCall = useMeteredCall(getMedia as ServerFnLike);
+  const [downloading, setDownloading] = React.useState(false);
+
+  // Reset the fetched URL whenever a different creative opens.
+  const key = target?.adId ?? "";
+  React.useEffect(() => {
+    mediaCall.reset?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+
+  const fetchedUrl =
+    mediaCall.state.kind === "ok"
+      ? (asStr(asRec(asRec(mediaCall.state.result.data)["data"])["mediaUrl"]) ??
+        asStr(asRec(asRec(mediaCall.state.result.data)["data"])["url"]))
+      : null;
+
+  if (!target) return null;
+  const isVideo = target.isVideo;
+  const playable = target.directUrl ?? fetchedUrl;
+  const still = target.thumbUrl ?? target.directUrl ?? fetchedUrl;
+  const ext = isVideo ? "mp4" : (still?.split("?")[0]?.match(/\.(jpe?g|png|webp)$/i)?.[1] ?? "jpg");
+  const filename = `spymarket-${target.adId ?? "creative"}.${ext}`;
+
+  const download = async () => {
+    setDownloading(true);
+    try {
+      let url = isVideo ? playable : (target.directUrl ?? fetchedUrl ?? target.thumbUrl);
+      if (!url && target.adId) {
+        const res = await mediaCall.execute({ adId: target.adId });
+        const rec = asRec(res);
+        url =
+          asStr(asRec(asRec(rec["data"])["data"])["mediaUrl"]) ??
+          asStr(asRec(asRec(rec["data"])["data"])["url"]);
+      }
+      if (url) await saveRemoteFile(url, filename);
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const mediaCost = costLabel(costs, "ads/media-url", 1);
+  const needsFetch = isVideo ? playable == null : target.directUrl == null && fetchedUrl == null;
+
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-h-[92vh] max-w-3xl overflow-y-auto rounded-2xl">
+        <DialogHeader>
+          <DialogTitle className="text-base">{target.label ?? "Creative preview"}</DialogTitle>
+        </DialogHeader>
+
+        <div className="grid place-items-center rounded-xl bg-muted/50 p-2">
+          {isVideo && playable ? (
+            <video
+              src={playable}
+              poster={target.thumbUrl ?? undefined}
+              controls
+              autoPlay
+              className="max-h-[65vh] w-auto rounded-lg"
+            />
+          ) : isVideo ? (
+            <div className="flex w-full flex-col items-center gap-3 py-6">
+              {target.thumbUrl && (
+                <img
+                  src={target.thumbUrl}
+                  alt="Ad creative"
+                  className="max-h-[45vh] rounded-lg object-contain"
+                />
+              )}
+              <Button
+                className="rounded-full"
+                disabled={mediaCall.state.kind === "loading" || !target.adId}
+                onClick={() => target.adId && void mediaCall.execute({ adId: target.adId })}
+              >
+                {mediaCall.state.kind === "loading" ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Play className="mr-2 h-4 w-4" />
+                )}
+                Play video — {mediaCost}
+              </Button>
+            </div>
+          ) : still ? (
+            <img
+              src={still}
+              alt="Ad creative"
+              className="max-h-[70vh] w-auto rounded-lg object-contain"
+            />
+          ) : (
+            <p className="py-10 text-sm text-muted-foreground">No creative available.</p>
+          )}
+        </div>
+
+        <CallFeedback
+          state={mediaCall.state}
+          onConfirm={mediaCall.confirm}
+          onCancel={mediaCall.cancelConfirm}
+          onRetry={mediaCall.retry}
+        />
+
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            className="rounded-full"
+            disabled={downloading || mediaCall.state.kind === "loading"}
+            onClick={() => void download()}
+          >
+            {downloading ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Download className="mr-2 h-4 w-4" />
+            )}
+            Download {isVideo ? "MP4" : ext.toUpperCase()}
+            {needsFetch ? ` — ${mediaCost}` : " — free"}
+          </Button>
+          <p className="text-[11px] text-muted-foreground">
+            For competitive research only. Study angles and structure — do not reuse
+            competitors&apos; media as your own.
+          </p>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+
 /**
  * 5-zone ad card. Zones render only when their data exists:
  *  Z1 data strip — EU/UK reach & spend with target flags, or a muted
