@@ -94,6 +94,21 @@ type CountryPrice = {
 const STATUS_FILTERS = ["active", "needs_review", "discontinued"] as const;
 const TYPE_FILTERS = ["simple", "bundle"] as const;
 
+const STATUS_TABS = [
+  { id: "all", label: "All statuses" },
+  { id: "active", label: "Active" },
+  { id: "needs_review", label: "Needs review" },
+  { id: "discontinued", label: "Discontinued" },
+] as const;
+type StatusTab = (typeof STATUS_TABS)[number]["id"];
+
+const TYPE_TABS = [
+  { id: "all", label: "All types" },
+  { id: "simple", label: "Simple" },
+  { id: "bundle", label: "Bundle" },
+] as const;
+type TypeTab = (typeof TYPE_TABS)[number]["id"];
+
 function AdminProductsPage() {
   const queryClient = useQueryClient();
   const fetchProducts = useServerFn(adminListProducts);
@@ -103,6 +118,8 @@ function AdminProductsPage() {
 
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+
 
   const { data, isPending } = useQuery({
     queryKey: ["admin-products", statusFilter ?? "all", typeFilter ?? "all"],
