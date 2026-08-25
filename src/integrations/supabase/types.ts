@@ -504,6 +504,59 @@ export type Database = {
         }
         Relationships: []
       }
+      middleware_sync_state: {
+        Row: {
+          consecutive_failures: number
+          created_at: string
+          first_failure_at: string | null
+          last_error: string | null
+          last_seen_order_ids: string[]
+          last_success_at: string | null
+          last_synced_at: string | null
+          orders_ingested: number
+          sample_logged: boolean
+          store_id: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          consecutive_failures?: number
+          created_at?: string
+          first_failure_at?: string | null
+          last_error?: string | null
+          last_seen_order_ids?: string[]
+          last_success_at?: string | null
+          last_synced_at?: string | null
+          orders_ingested?: number
+          sample_logged?: boolean
+          store_id: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          consecutive_failures?: number
+          created_at?: string
+          first_failure_at?: string | null
+          last_error?: string | null
+          last_seen_order_ids?: string[]
+          last_success_at?: string | null
+          last_synced_at?: string | null
+          orders_ingested?: number
+          sample_logged?: boolean
+          store_id?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "middleware_sync_state_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: true
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           body: string
