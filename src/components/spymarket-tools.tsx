@@ -4256,9 +4256,11 @@ function AdsTab({
   go: SpyMarketToolsProps["go"];
 }) {
   const searchAds = useServerFn(spymarketSearchAds);
-  const call = useMeteredCall(searchAds as ServerFnLike);
+  const call = useMeteredCall(searchAds as ServerFnLike, "ads");
 
-  const [search, setSearch] = React.useState(url["aq"] ?? "");
+  // An active shop context pre-fills the search; it never fires a paid call.
+  const scopeDomain = url["shop"];
+  const [search, setSearch] = React.useState(url["aq"] ?? scopeDomain ?? "");
   const [searchType, setSearchType] = React.useState(url["atyp"] ?? "adCopy");
   const [status, setStatus] = React.useState(url["astat"] ?? "active");
   const [mediaType, setMediaType] = React.useState(url["amed"] ?? "");
