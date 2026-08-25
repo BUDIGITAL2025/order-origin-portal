@@ -1,11 +1,26 @@
+import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { CheckCircle2, RefreshCw, Settings2, UserCheck, UserX } from "lucide-react";
 import { toast } from "sonner";
 import { EmptyState, PageHeader } from "@/components/app-shell";
 import { ProfileStatusBadge, ProvisioningBadge, TierBadge } from "@/components/status-badges";
+import {
+  AdminSearch,
+  Chip,
+  FilterTabs,
+  RowAction,
+  RowActions,
+  SummaryBar,
+  TableShell,
+  ToolBar,
+  Value,
+} from "@/components/admin-ui";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Switch } from "@/components/ui/switch";
 import {
   Select,
@@ -46,8 +61,18 @@ export const Route = createFileRoute("/_authenticated/admin/clients")({
   component: AdminClientsPage,
 });
 
+const STATUS_TABS = [
+  { id: "all", label: "All" },
+  { id: "active", label: "Active" },
+  { id: "pending", label: "Pending" },
+  { id: "suspended", label: "Suspended" },
+] as const;
+type StatusTab = (typeof STATUS_TABS)[number]["id"];
+
 function AdminClientsPage() {
   const queryClient = useQueryClient();
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
   const fetchClients = useServerFn(adminListClients);
   const callSetStatus = useServerFn(adminSetClientStatus);
   const callSetPlan = useServerFn(adminSetPlan);
