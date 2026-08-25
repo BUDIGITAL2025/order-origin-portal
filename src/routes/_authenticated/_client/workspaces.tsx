@@ -112,7 +112,7 @@ function WorkspaceCard({ store }: { store: CtxStore }) {
                 {store.store_name ?? store.store_url ?? "Workspace"}
               </CardTitle>
               <CardDescription className="text-xs">
-                {store.store_url ?? "Manual mode — no shop connected"}
+                {store.store_url ?? "Manual mode, no shop connected"}
               </CardDescription>
             </div>
           </div>

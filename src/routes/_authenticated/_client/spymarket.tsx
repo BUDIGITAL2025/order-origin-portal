@@ -129,11 +129,11 @@ function SpyMarketPage() {
           <div>
             <p className="text-sm font-medium">
               SpyMarket {activePlanRow.name} is active
-              {subscription?.status === "past_due" ? " — payment failed" : ""}.
+              {subscription?.status === "past_due" ? ", payment failed" : ""}.
             </p>
             <p className="mt-0.5 text-xs text-muted-foreground">
               {subscription?.status === "past_due"
-                ? "Update your payment method to keep your plan — contact support and we'll sort it out."
+                ? "Update your payment method to keep your plan. Contact support and we sort it out."
                 : subscription?.cancel_at_period_end
                   ? `Cancels on ${subscription.current_period_end ?? "the end of the period"}.`
                   : `Your access is switched on at launch. ${
