@@ -3532,6 +3532,9 @@ function AdsTab({
 
   const effectiveSort =
     view === "bestRank" ? "adOrder" : view === "gains" ? `rankDelta${rankWindow}` : sortBy;
+  // Rank views always take the advanced POST route, which is priced separately.
+  const adsEndpoint = search.trim() && view === "all" ? "ads" : "ads/query";
+
 
   const buildInput = (page: number): Record<string, unknown> => ({
     ...(search.trim() ? { search: search.trim(), searchType } : {}),
