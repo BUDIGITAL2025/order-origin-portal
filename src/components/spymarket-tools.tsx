@@ -3511,18 +3511,51 @@ function AdsTab({
   const [status, setStatus] = React.useState(url["astat"] ?? "active");
   const [mediaType, setMediaType] = React.useState(url["amed"] ?? "");
   const [sortBy, setSortBy] = React.useState(url["asort"] ?? "longestRunning");
+  // Rank views (POST /v1/ads/query only): "all" = no rank params,
+  // "bestRank" = adRankMode/adRankBasis/maxAdRankValue, "gains" = growthRank.
+  const [view, setView] = React.useState(url["aview"] ?? "all");
+  const [rankMode, setRankMode] = React.useState(url["armode"] ?? "rank");
+  const [rankBasis, setRankBasis] = React.useState(url["arbasis"] ?? "current");
+  const [maxRankValue, setMaxRankValue] = React.useState(url["armax"] ?? "50");
+  const [rankWindow, setRankWindow] = React.useState(url["arwin"] ?? "7d");
+  const [minRankDelta, setMinRankDelta] = React.useState(url["armin"] ?? "25");
+  const [grouped, setGrouped] = React.useState(false);
+  const [copySort, setCopySort] = React.useState<"usage" | "longestRunning">("longestRunning");
   const [limit, setLimit] = React.useState(24);
   const [pages, setPages] = React.useState<Rec[][]>([]);
   const [adDetailId, setAdDetailId] = React.useState<string | null>(null);
+
+  const numOr = (raw: string, fallback: number) => {
+    const n = Number(raw.replace(/[^\d.]/g, ""));
+    return Number.isFinite(n) && n > 0 ? n : fallback;
+  };
+
+  const effectiveSort =
+    view === "bestRank" ? "adOrder" : view === "gains" ? `rankDelta${rankWindow}` : sortBy;
 
   const buildInput = (page: number): Record<string, unknown> => ({
     ...(search.trim() ? { search: search.trim(), searchType } : {}),
     status,
     ...(mediaType ? { mediaType } : {}),
-    sortBy,
+    sortBy: effectiveSort,
+    ...(view === "bestRank"
+      ? {
+          adRankMode: rankMode,
+          adRankBasis: rankBasis,
+          maxAdRankValue: numOr(maxRankValue, 50),
+        }
+      : {}),
+    ...(view === "gains"
+      ? {
+          growthRankDirection: "up",
+          rankDeltaWindow: rankWindow,
+          minRankDelta: Math.round(numOr(minRankDelta, 25)),
+        }
+      : {}),
     limit,
     page,
   });
+
 
   const lastResultRef = React.useRef<ToolOk<unknown> | null>(null);
   React.useEffect(() => {
