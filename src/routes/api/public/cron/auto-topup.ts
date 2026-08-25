@@ -106,16 +106,26 @@ export const Route = createFileRoute("/api/public/cron/auto-topup")({
                   console.error("auto top-up receipt failed:", creditTxn.id, e);
                 }
                 // Settle orders waiting on funds for this entity.
-                const { error: releaseError } = await supabaseAdmin.rpc(
-                  "release_awaiting_payment_orders",
-                  { p_entity_id: entity.id },
-                );
+                const { data: releasedRows, error: releaseError } =
+                  await supabaseAdmin.rpc("release_awaiting_payment_orders", {
+                    p_entity_id: entity.id,
+                  });
                 if (releaseError) {
                   console.error(
                     "release_awaiting_payment_orders failed:",
                     releaseError.message,
                   );
                 }
+                // Middleware release for orders this auto top-up paid.
+                const { releaseAfterPayment } = await import(
+                  "@/lib/middleware.server"
+                );
+                await releaseAfterPayment(
+                  supabaseAdmin,
+                  (
+                    (releasedRows ?? []) as Array<{ order_id: string }>
+                  ).map((o) => o.order_id),
+                );
               }
               results.push({ entity: entity.id, status: "credited" });
             } else {
