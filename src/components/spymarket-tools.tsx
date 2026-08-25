@@ -5121,7 +5121,9 @@ function EmailsTab({
     page,
   });
 
-  const lastResultRef = React.useRef<ToolOk<unknown> | null>(null);
+  const lastResultRef = React.useRef<ToolOk<unknown> | null>(
+    call.state.kind === "ok" ? call.state.result : null,
+  );
   React.useEffect(() => {
     if (call.state.kind === "ok" && call.state.result !== lastResultRef.current) {
       lastResultRef.current = call.state.result;
