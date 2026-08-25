@@ -334,16 +334,10 @@ export async function syncSubscriptionFromStripe(
     const accountId = await accountIdForEntity(admin, store.entity_id);
     if (accountId) {
       // Cancellation restricts new work; it never breaks work in flight.
+      const { subscriptionCancelledEmail } = await import("./email-templates.server");
       await sendClientEmail(admin, {
         clientId: accountId,
-        subject: "Your FlySales subscription cancellation",
-        text: [
-          "Your subscription cancellation is confirmed.",
-          periodEndDate
-            ? `Your plan stays active until ${periodEndDate}.`
-            : "Your plan stays active until the end of the current billing period.",
-          "Your product catalogue and any open orders are unaffected, and your wallet balance remains yours.",
-        ].join("\n"),
+        ...subscriptionCancelledEmail({ periodEndDate: periodEndDate ?? null }),
       });
     }
   }
@@ -520,22 +514,19 @@ export async function handleWalletTopup(
   }
 
   const balance = await getWalletBalance(admin, entityId);
-  const lines = [
-    `Amount credited: $${(pi.amount_received / 100).toFixed(2)}`,
-    `New balance: $${balance.toFixed(2)}`,
-  ];
-  if (released.length > 0) {
-    lines.push("", "Orders released by this top-up:");
-    for (const o of released) {
-      lines.push(`- Order ${o.order_id} — $${Number(o.amount).toFixed(2)}`);
-    }
-  }
   const accountId = await accountIdForEntity(admin, entityId);
   if (accountId) {
+    const { walletToppedUpEmail } = await import("./email-templates.server");
     await sendClientEmail(admin, {
       clientId: accountId,
-      subject: "Your FlySales wallet was topped up",
-      text: lines.join("\n"),
+      ...walletToppedUpEmail({
+        credited: pi.amount_received / 100,
+        balance,
+        released: released.map((o) => ({
+          label: o.order_id.slice(0, 8),
+          amount: Number(o.amount),
+        })),
+      }),
     });
   }
 }
@@ -692,10 +683,15 @@ export async function handleOrderBatchPayment(
   });
   const accountId = await accountIdForEntity(admin, entityId);
   if (accountId) {
+    const { batchPaymentEmail } = await import("./email-templates.server");
     await sendClientEmail(admin, {
       clientId: accountId,
-      subject: "Your FlySales batch payment",
-      text: body,
+      ...batchPaymentEmail({
+        settledCount: settledIds.length,
+        settledSum,
+        leftover,
+        skippedCount,
+      }),
     });
   }
 }
@@ -769,16 +765,14 @@ export async function processStripeEvent(
         }
         const accountId = await accountIdForEntity(admin, store.entity_id);
         if (accountId) {
+          const { subscriptionActiveEmail } = await import("./email-templates.server");
           await sendClientEmail(admin, {
             clientId: accountId,
-            subject: `Your FlySales ${planLabel(plan)} subscription is active`,
-            text: [
-              `Plan: ${planLabel(plan)} — $${PLANS[plan].priceUsd}/month`,
-              nextBilling ? `Next billing date: ${nextBilling}` : null,
-              "Your new plan's quota applies immediately.",
-            ]
-              .filter(Boolean)
-              .join("\n"),
+            ...subscriptionActiveEmail({
+              planLabel: planLabel(plan),
+              priceUsd: PLANS[plan].priceUsd,
+              nextBilling: nextBilling ?? null,
+            }),
           });
         }
       } else if (kind === "spymarket_subscription") {
@@ -794,13 +788,12 @@ export async function processStripeEvent(
         const accountId = meta(session)["flysales_user_id"];
         const plan = meta(session)["plan"] ?? "starter";
         if (accountId) {
+          const { spymarketActiveEmail } = await import("./email-templates.server");
           await sendClientEmail(admin, {
             clientId: accountId,
-            subject: "Your SpyMarket subscription is active",
-            text: [
-              `Plan: SpyMarket ${plan.charAt(0).toUpperCase() + plan.slice(1)}`,
-              "Billing has started. We'll email you the moment SpyMarket goes live and your access is switched on.",
-            ].join("\n"),
+            ...spymarketActiveEmail({
+              planLabel: plan.charAt(0).toUpperCase() + plan.slice(1),
+            }),
           });
         }
       } else if (kind === "wallet_topup") {
@@ -893,10 +886,10 @@ export async function processStripeEvent(
         });
         const accountId = await accountIdForEntity(admin, store.entity_id);
         if (accountId) {
+          const { paymentFailedEmail } = await import("./email-templates.server");
           await sendClientEmail(admin, {
             clientId: accountId,
-            subject: "We could not charge your card",
-            text: "Your last FlySales subscription payment failed. Stripe will retry automatically over the next few days — please update your payment method from the Billing page to keep your plan.",
+            ...paymentFailedEmail(),
           });
         }
       }
