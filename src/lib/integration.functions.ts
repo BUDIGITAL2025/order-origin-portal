@@ -119,7 +119,36 @@ export const adminSyncOverview = createServerFn({ method: "GET" })
       .eq("integration_mode", "automatic")
       .eq("status", "active");
 
-    return { tenants: data ?? [], connected_workspaces: count ?? 0 };
+    // Reconciliation: orders that came in on the fast path (webhook push) vs
+    // ones the redundancy poller had to catch. Healthy = ~all webhook, ~0 poll.
+    const { data: pathRows, error: pathError } = await admin
+      .from("integration_events")
+      .select("tenant_id, event_type, entry_path")
+      .in("event_type", ["order.created", "tracking.updated"])
+      .limit(5000);
+    if (pathError) throw new Error(pathError.message);
+
+    const byTenant: Record<
+      string,
+      { orders_webhook: number; orders_poll: number; tracking_webhook: number; tracking_poll: number }
+    > = {};
+    for (const row of pathRows ?? []) {
+      const key = row.tenant_id ?? "unknown";
+      const bucket = (byTenant[key] ??= {
+        orders_webhook: 0,
+        orders_poll: 0,
+        tracking_webhook: 0,
+        tracking_poll: 0,
+      });
+      const poll = row.entry_path === "poll";
+      if (row.event_type === "order.created") {
+        if (poll) bucket.orders_poll += 1;
+        else bucket.orders_webhook += 1;
+      } else if (poll) bucket.tracking_poll += 1;
+      else bucket.tracking_webhook += 1;
+    }
+
+    return { tenants: data ?? [], connected_workspaces: count ?? 0, entry_paths: byTenant };
   });
 
 /** Admin: run the pull sync immediately (all tenants, or one workspace). */

@@ -233,28 +233,44 @@ async function handleOrderUpdated(admin: Admin, payload: unknown) {
 
   const { data: existing, error: readError } = await admin
     .from("orders")
-    .select("id, status")
+    .select(
+      "id, status, external_order_number, destination_country, shipped_at, delivered_at, cancelled_at",
+    )
     .eq("middleware_order_id", parsed.order.middleware_order_id)
     .maybeSingle();
   if (readError) throw new Error(readError.message);
   if (!existing) throw new Error(`No shadow order for ${parsed.order.middleware_order_id}`);
 
   // Deliberately narrow: never touches payment_method, paid_at or totals.
+  // Strictly value-based so the same event arriving twice — push first, poll
+  // second, or the reverse — writes nothing the second time.
   const update: Database["public"]["Tables"]["orders"]["Update"] = {};
-  if (parsed.order.status) update["status"] = parsed.order.status;
-  if (parsed.order.status === "shipped") update["shipped_at"] = new Date().toISOString();
-  if (parsed.order.status === "delivered") update["delivered_at"] = new Date().toISOString();
-  if (parsed.order.status === "cancelled") update["cancelled_at"] = new Date().toISOString();
-  if (parsed.order.external_ref) update["external_order_number"] = parsed.order.external_ref;
-  if (parsed.order.destination_country) {
+  const statusChanged =
+    !!parsed.order.status &&
+    parsed.order.status !== existing.status &&
+    // Never downgrade an unpaid order out of its payment gate.
+    existing.status !== "awaiting_payment";
+  if (statusChanged && parsed.order.status) update["status"] = parsed.order.status;
+  // Lifecycle stamps are set once: a repeat of the same status must not move them.
+  if (statusChanged && parsed.order.status === "shipped" && !existing.shipped_at) {
+    update["shipped_at"] = new Date().toISOString();
+  }
+  if (statusChanged && parsed.order.status === "delivered" && !existing.delivered_at) {
+    update["delivered_at"] = new Date().toISOString();
+  }
+  if (statusChanged && parsed.order.status === "cancelled" && !existing.cancelled_at) {
+    update["cancelled_at"] = new Date().toISOString();
+  }
+  if (parsed.order.external_ref && parsed.order.external_ref !== existing.external_order_number) {
+    update["external_order_number"] = parsed.order.external_ref;
+  }
+  if (
+    parsed.order.destination_country &&
+    parsed.order.destination_country !== existing.destination_country
+  ) {
     update["destination_country"] = parsed.order.destination_country;
   }
   if (Object.keys(update).length === 0) return { order_id: existing.id, changed: false };
-
-  // Never downgrade an unpaid order out of its payment gate.
-  if (existing.status === "awaiting_payment" && parsed.order.status) {
-    delete update["status"];
-  }
   const { error } = await admin.from("orders").update(update).eq("id", existing.id);
   if (error) throw new Error(error.message);
   return { order_id: existing.id, changed: true };
@@ -267,7 +283,7 @@ async function handleTrackingUpdated(admin: Admin, payload: unknown) {
   const { data: order, error: readError } = await admin
     .from("orders")
     .select(
-      "id, external_order_number, status, tracking_number, tracking_notified_at, stores(entities(account_id))",
+      "id, external_order_number, status, tracking_number, tracking_carrier, tracking_notified_at, stores(entities(account_id))",
     )
     .eq("middleware_order_id", parsed.order.middleware_order_id)
     .maybeSingle();
@@ -275,13 +291,20 @@ async function handleTrackingUpdated(admin: Admin, payload: unknown) {
   if (!order) throw new Error(`No shadow order for ${parsed.order.middleware_order_id}`);
 
   const firstTracking = !order.tracking_number;
-  const update: Database["public"]["Tables"]["orders"]["Update"] = {
-    tracking_number: parsed.order.tracking_number,
-    tracking_carrier: parsed.order.tracking_carrier,
-  };
+  // Same tracking arriving twice (push then poll, or a replay) is a no-op:
+  // we only write when a value actually differs.
+  const update: Database["public"]["Tables"]["orders"]["Update"] = {};
+  if (parsed.order.tracking_number !== order.tracking_number) {
+    update["tracking_number"] = parsed.order.tracking_number;
+  }
+  if (parsed.order.tracking_carrier !== order.tracking_carrier) {
+    update["tracking_carrier"] = parsed.order.tracking_carrier;
+  }
   if (order.status === "paid" || order.status === "processing") update["status"] = "shipped";
-  const { error } = await admin.from("orders").update(update).eq("id", order.id);
-  if (error) throw new Error(error.message);
+  if (Object.keys(update).length > 0) {
+    const { error } = await admin.from("orders").update(update).eq("id", order.id);
+    if (error) throw new Error(error.message);
+  }
 
   // Same atomic claim as the admin path: at most one tracking email ever.
   if (firstTracking && !order.tracking_notified_at) {

@@ -256,6 +256,7 @@ async function storeSampleEvent(
       signature_valid: true,
       processed_at: new Date().toISOString(),
       simulator: false,
+      entry_path: "poll",
     });
   } catch (e) {
     console.error("[middleware:sync] failed to store raw sample:", e);
@@ -277,6 +278,7 @@ async function landNeedsReview(
       signature_valid: true,
       error: `Missing: ${args.mapped.missing.join(", ")}`,
       simulator: false,
+      entry_path: "poll",
     });
     return false;
   }
@@ -301,8 +303,46 @@ async function landNeedsReview(
     signature_valid: true,
     error: `Missing: ${args.mapped.missing.join(", ")}`,
     simulator: false,
+    entry_path: "poll",
   });
   return true;
+}
+
+/**
+ * Records that the poller — not the webhook — was the entry door for a change.
+ * A rising number of these rows means push delivery is failing, so the daily
+ * digest and the admin panel both count them. Idempotent on event_id: the
+ * deterministic id means a repeated cycle updates nothing new.
+ */
+async function recordPollEvent(
+  admin: Admin,
+  args: {
+    eventId: string;
+    eventType: string;
+    tenantId: string;
+    payload: unknown;
+    error?: string;
+  },
+): Promise<void> {
+  try {
+    const { error } = await admin.from("integration_events").upsert(
+      {
+        event_id: args.eventId,
+        event_type: args.eventType,
+        tenant_id: args.tenantId,
+        payload: redactRawOrder(args.payload) as never,
+        signature_valid: true,
+        simulator: false,
+        entry_path: "poll",
+        processed_at: new Date().toISOString(),
+        ...(args.error ? { error: args.error.slice(0, 1000) } : {}),
+      },
+      { onConflict: "event_id", ignoreDuplicates: true },
+    );
+    if (error) throw new Error(error.message);
+  } catch (e) {
+    console.error("[middleware:sync] failed to record poll event:", e);
+  }
 }
 
 /** Polls one tenant's order list and reconciles it with our shadow orders. */
@@ -405,6 +445,12 @@ export async function syncTenant(
             customer: mapped.customer,
           },
         });
+        await recordPollEvent(admin, {
+          eventId: `pull-${mapped.middleware_order_id}`,
+          eventType: "order.created",
+          tenantId,
+          payload: raw,
+        });
         base.ingested += 1;
         continue;
       }
@@ -417,6 +463,12 @@ export async function syncTenant(
           tenant_id: tenantId,
           order: { middleware_order_id: mapped.middleware_order_id, status: mapped.status },
         });
+        await recordPollEvent(admin, {
+          eventId: `pull-status-${mapped.middleware_order_id}-${mapped.status}`,
+          eventType: "order.updated",
+          tenantId,
+          payload: { middleware_order_id: mapped.middleware_order_id, status: mapped.status },
+        });
         changed = true;
       }
       if (mapped.tracking && mapped.tracking.number !== existing.tracking_number) {
@@ -424,6 +476,16 @@ export async function syncTenant(
           event_id: `pull-tracking-${mapped.middleware_order_id}`,
           tenant_id: tenantId,
           order: {
+            middleware_order_id: mapped.middleware_order_id,
+            tracking_number: mapped.tracking.number,
+            tracking_carrier: mapped.tracking.carrier,
+          },
+        });
+        await recordPollEvent(admin, {
+          eventId: `pull-tracking-${mapped.middleware_order_id}-${mapped.tracking.number}`,
+          eventType: "tracking.updated",
+          tenantId,
+          payload: {
             middleware_order_id: mapped.middleware_order_id,
             tracking_number: mapped.tracking.number,
             tracking_carrier: mapped.tracking.carrier,

@@ -24,7 +24,7 @@ export const Route = createFileRoute("/api/public/cron/daily-digest")({
           const nowIso = new Date().toISOString();
 
           const staleReleaseCutoff = new Date(Date.now() - 6 * 3_600_000).toISOString();
-          const [webhooks, crons, quotes, errors, integration, releases, syncDown] = await Promise.all([
+          const [webhooks, crons, quotes, errors, integration, releases, pollCaught, syncDown] = await Promise.all([
             supabaseAdmin
               .from("stripe_events")
               .select("stripe_event_id, event_type, error", { count: "exact" })
@@ -63,6 +63,13 @@ export const Route = createFileRoute("/api/public/cron/daily-digest")({
               .lt("created_at", staleReleaseCutoff)
               .limit(10),
             supabaseAdmin
+              .from("integration_events")
+              .select("id", { count: "exact", head: true })
+              .eq("entry_path", "poll")
+              .eq("event_type", "order.created")
+              .eq("simulator", false)
+              .gte("created_at", since),
+            supabaseAdmin
               .from("middleware_sync_state")
               .select("tenant_id, last_error, consecutive_failures, first_failure_at", {
                 count: "exact",
@@ -79,6 +86,7 @@ export const Route = createFileRoute("/api/public/cron/daily-digest")({
             errors: errors.count ?? 0,
             failed_integration_events: integration.count ?? 0,
             stuck_releases: releases.count ?? 0,
+            orders_caught_by_polling: pollCaught.count ?? 0,
             tenants_sync_down: syncDown.count ?? 0,
           };
 
@@ -113,6 +121,11 @@ export const Route = createFileRoute("/api/public/cron/daily-digest")({
               (r) => `  • ${r.middleware_order_id} (${r.release_status}): ${r.release_error ?? "no error recorded"}`,
             ),
             "",
+            ...(summary.orders_caught_by_polling > 0
+              ? [
+                  `${summary.orders_caught_by_polling} orders caught by polling fallback — check webhook delivery`,
+                ]
+              : []),
             `Tenants with order sync failing >1h: ${summary.tenants_sync_down}`,
             ...(syncDown.data ?? []).map(
               (t) => `  • tenant ${t.tenant_id} (${t.consecutive_failures} failures since ${t.first_failure_at}): ${t.last_error ?? "no error recorded"}`,

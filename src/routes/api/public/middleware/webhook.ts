@@ -77,6 +77,7 @@ export const Route = createFileRoute("/api/public/middleware/webhook")({
           payload: parsedBody as never,
           signature_valid: true,
           simulator,
+          entry_path: "webhook",
         });
         if (insertError) {
           // Unique violation => concurrent delivery of the same event.
