@@ -55,6 +55,7 @@ import { Route as ApiPublicCronMiddlewareRetryRouteImport } from './routes/api/p
 import { Route as ApiPublicCronOrderExpiryRouteImport } from './routes/api/public/cron/order-expiry'
 import { Route as ApiPublicMiddlewareWebhookRouteImport } from './routes/api/public/middleware/webhook'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
+import { Route as ApiPublicMiddlewareSimulatorSplatRouteImport } from './routes/api/public/middleware/simulator/$'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -320,6 +321,12 @@ const ApiPublicPaymentsWebhookRoute =
     path: '/api/public/payments/webhook',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicMiddlewareSimulatorSplatRoute =
+  ApiPublicMiddlewareSimulatorSplatRouteImport.update({
+    id: '/api/public/middleware/simulator/$',
+    path: '/api/public/middleware/simulator/$',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -366,6 +373,7 @@ export interface FileRoutesByFullPath {
   '/orders/': typeof AuthenticatedClientOrdersIndexRoute
   '/quotes/': typeof AuthenticatedClientQuotesIndexRoute
   '/admin/quotes/': typeof AuthenticatedAdminQuotesIndexRoute
+  '/api/public/middleware/simulator/$': typeof ApiPublicMiddlewareSimulatorSplatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -412,6 +420,7 @@ export interface FileRoutesByTo {
   '/orders': typeof AuthenticatedClientOrdersIndexRoute
   '/quotes': typeof AuthenticatedClientQuotesIndexRoute
   '/admin/quotes': typeof AuthenticatedAdminQuotesIndexRoute
+  '/api/public/middleware/simulator/$': typeof ApiPublicMiddlewareSimulatorSplatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -461,6 +470,7 @@ export interface FileRoutesById {
   '/_authenticated/_client/orders/': typeof AuthenticatedClientOrdersIndexRoute
   '/_authenticated/_client/quotes/': typeof AuthenticatedClientQuotesIndexRoute
   '/_authenticated/admin/quotes/': typeof AuthenticatedAdminQuotesIndexRoute
+  '/api/public/middleware/simulator/$': typeof ApiPublicMiddlewareSimulatorSplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -509,6 +519,7 @@ export interface FileRouteTypes {
     | '/orders/'
     | '/quotes/'
     | '/admin/quotes/'
+    | '/api/public/middleware/simulator/$'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -555,6 +566,7 @@ export interface FileRouteTypes {
     | '/orders'
     | '/quotes'
     | '/admin/quotes'
+    | '/api/public/middleware/simulator/$'
   id:
     | '__root__'
     | '/'
@@ -603,6 +615,7 @@ export interface FileRouteTypes {
     | '/_authenticated/_client/orders/'
     | '/_authenticated/_client/quotes/'
     | '/_authenticated/admin/quotes/'
+    | '/api/public/middleware/simulator/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -619,6 +632,7 @@ export interface RootRouteChildren {
   ApiPublicCronOrderExpiryRoute: typeof ApiPublicCronOrderExpiryRoute
   ApiPublicMiddlewareWebhookRoute: typeof ApiPublicMiddlewareWebhookRoute
   ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
+  ApiPublicMiddlewareSimulatorSplatRoute: typeof ApiPublicMiddlewareSimulatorSplatRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -945,6 +959,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicPaymentsWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/middleware/simulator/$': {
+      id: '/api/public/middleware/simulator/$'
+      path: '/api/public/middleware/simulator/$'
+      fullPath: '/api/public/middleware/simulator/$'
+      preLoaderRoute: typeof ApiPublicMiddlewareSimulatorSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -1094,6 +1115,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicCronOrderExpiryRoute: ApiPublicCronOrderExpiryRoute,
   ApiPublicMiddlewareWebhookRoute: ApiPublicMiddlewareWebhookRoute,
   ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
+  ApiPublicMiddlewareSimulatorSplatRoute:
+    ApiPublicMiddlewareSimulatorSplatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

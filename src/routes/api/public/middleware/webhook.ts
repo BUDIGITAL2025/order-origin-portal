@@ -56,6 +56,9 @@ export const Route = createFileRoute("/api/public/middleware/webhook")({
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const { event_id, event_type } = envelope.data;
         const tenantId = envelope.data.tenant_id ?? null;
+        // Test tooling: events emitted by the simulator are tagged so ops
+        // views and the daily digest can ignore them.
+        const simulator = envelope.data.simulator === true;
 
         // Idempotency: a replay is acknowledged without reprocessing.
         const { data: existing } = await supabaseAdmin
@@ -73,6 +76,7 @@ export const Route = createFileRoute("/api/public/middleware/webhook")({
           tenant_id: tenantId,
           payload: parsedBody as never,
           signature_valid: true,
+          simulator,
         });
         if (insertError) {
           // Unique violation => concurrent delivery of the same event.
@@ -97,6 +101,7 @@ export const Route = createFileRoute("/api/public/middleware/webhook")({
           statusCode: 200,
           ok: outcome.ok,
           error: outcome.error,
+          simulator,
         });
 
         // Always 200 once stored: retries would only replay a stored event.

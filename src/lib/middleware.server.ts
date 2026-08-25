@@ -179,6 +179,7 @@ export const inboundEnvelopeSchema = z.object({
   event_id: z.string().trim().min(1).max(200),
   event_type: z.string().trim().min(1).max(120),
   tenant_id: z.string().trim().max(120).optional().nullable(),
+  simulator: z.boolean().optional(),
 });
 
 /** Raised for an unknown tenant: recorded on the event, still ACKed with 200. */
