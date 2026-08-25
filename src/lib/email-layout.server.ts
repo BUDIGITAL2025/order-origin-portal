@@ -189,9 +189,9 @@ export function renderEmail(content: EmailContent): { html: string; text: string
             <a href="${base}/terms" style="color:${LINK};text-decoration:underline">Terms</a> &nbsp;·&nbsp;
             <a href="${base}/privacy" style="color:${LINK};text-decoration:underline">Privacy</a>
           </p>
-          <p style="margin:0;font-family:${FONT};font-size:12px;line-height:1.6;color:${MUTED}">Questions? Reply to this email or write to <a href="mailto:${esc(
+          <p style="margin:0;font-family:${FONT};font-size:12px;line-height:1.6;color:${MUTED}">Questions? Write to <a href="mailto:${esc(
             supportAddress(),
-          )}" style="color:${LINK};text-decoration:underline">${esc(supportAddress())}</a>.</p>
+          )}" style="color:${LINK};text-decoration:underline">${esc(supportAddress())}</a> — we answer within one business day.</p>
         </td>
       </tr>
     </table>
@@ -212,7 +212,7 @@ export function renderEmail(content: EmailContent): { html: string; text: string
     "FlySales — product sourcing and fulfilment for e-commerce operators",
     `Operated by ${legalName()}`,
     `${base}/dashboard · ${base}/terms · ${base}/privacy`,
-    `Questions? ${supportAddress()}`,
+    `Questions? Write to ${supportAddress()} — we answer within one business day.`,
   );
 
   return { html, text: textParts.join("\n") };
