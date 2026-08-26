@@ -4611,8 +4611,28 @@ function AdsTab({
 
       {searching && pages.length === 0 && <LoadingRows rows={6} />}
 
+      {scopeHost && fetchedRows.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            size="sm"
+            variant={onlyThisShop ? "default" : "outline"}
+            className="rounded-full"
+            onClick={() => setOnlyThisShop((v) => !v)}
+          >
+            <Store className="mr-1.5 h-3.5 w-3.5" />
+            Only {scopeHost}
+          </Button>
+          <span className="text-xs text-muted-foreground">
+            {onlyThisShop
+              ? `${offBrandCount} ad${offBrandCount === 1 ? "" : "s"} from other advertisers hidden — a text search also matches brands with the same name.`
+              : "Showing every advertiser matching the search, including other brands."}
+          </span>
+        </div>
+      )}
+
       {allRows.length > 0 && (
         <div className="flex flex-wrap items-center gap-2">
+
           <Button
             size="sm"
             variant={grouped ? "default" : "outline"}
