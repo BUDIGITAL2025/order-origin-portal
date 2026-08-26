@@ -4331,7 +4331,23 @@ function AdsTab({
   }, [call.state]);
 
   const searching = call.state.kind === "loading";
-  const allRows = pages.flat();
+  const fetchedRows = pages.flat();
+
+  // A text search for a brand name ("gato preto") also matches unrelated
+  // advertisers using the same words. When a shop is the active context we
+  // hide rows whose landing page is not that shop's domain — free, client-side.
+  const scopeHost = (scopeDomain ?? "").replace(/^https?:\/\//, "").replace(/^www\./, "").toLowerCase();
+  const [onlyThisShop, setOnlyThisShop] = React.useState(true);
+  const matchesScope = (ad: Rec) => {
+    const d = (asStr(asRec(ad["content"])["landingPageDomain"]) ?? "")
+      .replace(/^www\./, "")
+      .toLowerCase();
+    return d !== "" && (d === scopeHost || d.endsWith("." + scopeHost));
+  };
+  const offBrandCount = scopeHost ? fetchedRows.filter((r) => !matchesScope(r)).length : 0;
+  const allRows =
+    scopeHost && onlyThisShop ? fetchedRows.filter(matchesScope) : fetchedRows;
+
 
   // Ad-copy depth: group the rows we already paid for by their copy text.
   // Usage = number of indexed ads sharing the copy (plus their duplicates);
