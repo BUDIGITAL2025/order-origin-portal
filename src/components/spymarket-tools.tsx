@@ -4430,7 +4430,9 @@ function AdsTab({
                 <SelectContent>
                   <SelectItem value="adCopy">ad copy</SelectItem>
                   <SelectItem value="brand">brand</SelectItem>
+                  <SelectItem value="domain">shop domain</SelectItem>
                 </SelectContent>
+
               </Select>
             </div>
           </div>
