@@ -14,6 +14,8 @@ import { SpyMarketTools } from "@/components/spymarket-tools";
 
 const str = (search: Record<string, unknown>, key: string): string | undefined => {
   const v = search[key];
+  // Numeric-looking params (e.g. a numeric shop id) arrive parsed as numbers.
+  if (typeof v === "number" && Number.isFinite(v)) return String(v);
   return typeof v === "string" && v !== "" ? v : undefined;
 };
 
