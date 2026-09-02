@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.recompute_sku_velocity(uuid) FROM authenticated;

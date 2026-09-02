@@ -8,6 +8,7 @@ import {
   LifeBuoy,
   ClipboardList,
   CreditCard,
+  Factory,
   Download,
   ExternalLink,
   FilePlus2,
@@ -23,6 +24,7 @@ import {
 
   Store,
   Telescope,
+  Truck,
   Users,
   Wallet,
 } from "lucide-react";
@@ -63,6 +65,7 @@ const CLIENT_NAV: NavItem[] = [
   { to: "/quotes", label: "Quote requests", icon: ClipboardList },
   { to: "/products", label: "Products", icon: Package },
   { to: "/orders", label: "Orders", icon: ShoppingCart },
+  { to: "/inventory", label: "Inventory", icon: Truck },
   { to: "/disputes", label: "Claims", icon: ShieldAlert },
   { to: "/wallet", label: "Wallet", icon: Wallet },
   { to: "/billing", label: "Billing", icon: CreditCard },
@@ -106,6 +109,8 @@ const ADMIN_NAV: NavItem[] = [
   { to: "/admin/quotes", label: "Quote queue", icon: ClipboardList },
   { to: "/admin/orders", label: "Orders", icon: ShoppingCart },
   { to: "/admin/products", label: "Products", icon: Package },
+  { to: "/admin/inventory", label: "Inventory", icon: Truck },
+  { to: "/admin/suppliers", label: "Suppliers", icon: Factory },
   { to: "/admin/disputes", label: "Disputes", icon: ShieldAlert },
   { to: "/admin/clients", label: "Clients", icon: Users },
   { to: "/admin/entities", label: "Entities & workspaces", icon: Building2 },

@@ -32,7 +32,8 @@ export const Route = createFileRoute("/api/public/middleware/simulator/$")({
   server: {
     handlers: {
       // Phase 4 — the pull door: serves the fake order list the poller reads.
-      GET: async ({ request }) => {
+      // Phase 5 — the same door serves fake inventory levels.
+      GET: async ({ request, params }) => {
         const denied = await guard(request);
         if (denied) return denied;
 
@@ -42,6 +43,13 @@ export const Route = createFileRoute("/api/public/middleware/simulator/$")({
           url.searchParams.get("tenant_id");
 
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+        if ((params._splat ?? "").includes("inventory")) {
+          const { listSimulatorInventory } = await import("@/lib/simulator.server");
+          const inventory = await listSimulatorInventory(supabaseAdmin, tenantId);
+          return Response.json({ simulator: true, inventory });
+        }
+
         const { listSimulatorPullOrders } = await import("@/lib/simulator.server");
         const orders = await listSimulatorPullOrders(supabaseAdmin, tenantId);
         return Response.json({ simulator: true, orders });

@@ -27,9 +27,17 @@ import { friendlyError } from "@/lib/errors";
 export const Route = createFileRoute("/_authenticated/_client/quotes/new")({
   // Stripe substitutes {CHECKOUT_SESSION_ID} server-side; sub=success/cancel
   // is a display hint only — activation comes from the webhook.
-  validateSearch: (search: Record<string, unknown>): { sub?: string } => {
-    const sub = search["sub"];
-    return typeof sub === "string" ? { sub } : {};
+  // ?sku/&name/&qty arrive from the Inventory page's "Plan reorder" action.
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { sub?: string; sku?: string; name?: string; qty?: number } => {
+    const out: { sub?: string; sku?: string; name?: string; qty?: number } = {};
+    if (typeof search["sub"] === "string") out.sub = search["sub"];
+    if (typeof search["sku"] === "string") out.sku = search["sku"].slice(0, 120);
+    if (typeof search["name"] === "string") out.name = search["name"].slice(0, 200);
+    const qty = Number(search["qty"]);
+    if (Number.isFinite(qty) && qty > 0) out.qty = Math.floor(qty);
+    return out;
   },
   head: () => ({
     meta: [
@@ -101,7 +109,24 @@ function NewQuotePageInner() {
 
   // Return from Stripe checkout: sub=success/cancel. Activation arrives via
   // webhook — refresh the context so the paywall lifts as soon as it lands.
-  const { sub } = Route.useSearch();
+  const { sub, sku: reorderSku, name: reorderName, qty: reorderQty } = Route.useSearch();
+
+  // Reorder prefill: the first entry is named after the SKU and the notes
+  // carry the suggested quantity, so the sourcing brief arrives complete.
+  const reorderApplied = useRef(false);
+  useEffect(() => {
+    if (!reorderSku || reorderApplied.current) return;
+    reorderApplied.current = true;
+    const label = reorderName ? `${reorderName} (${reorderSku})` : reorderSku;
+    setEntries((prev) =>
+      prev.map((e, i) => (i === 0 ? { ...e, name: label, nameTouched: true } : e)),
+    );
+    setNotes(
+      (prev) =>
+        prev ||
+        `Reorder of existing SKU ${reorderSku}${reorderQty ? `. Suggested quantity: ${reorderQty} units` : ""}.`,
+    );
+  }, [reorderSku, reorderName, reorderQty]);
   useEffect(() => {
     if (sub === "success") {
       toast.success("Subscription received. Your plan activates as soon as the payment confirms.");
