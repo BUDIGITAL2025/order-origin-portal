@@ -18,8 +18,10 @@ import {
 import { friendlyError } from "@/lib/errors";
 import { formatDateTime } from "@/lib/format";
 import {
+  adminClearSimulatorInventory,
   adminClearSimulatorPullQueue,
   adminQueueSimulatorPullOrder,
+  adminSeedSimulatorInventory,
   adminSetSimulatorOverride,
   adminSimulateOrder,
   adminSimulateTracking,
@@ -130,6 +132,35 @@ export function SimulatorPanel({ releases }: { releases: ReleaseRow[] }) {
       await refresh();
     } catch (err) {
       toast.error(friendlyError(err, "Could not clear the pull queue"));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  const seedInventory = useServerFn(adminSeedSimulatorInventory);
+  const clearInventory = useServerFn(adminClearSimulatorInventory);
+
+  async function addFakeStock(tight: boolean) {
+    setBusy(tight ? "inv-tight" : "inv");
+    try {
+      const res = await seedInventory({ data: { tight } });
+      toast.success(`Seeded ${res.rows} stock rows for tenant ${res.tenant_id}`);
+      await refresh();
+    } catch (err) {
+      toast.error(friendlyError(err, "Could not seed fake stock"));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function emptyStock() {
+    setBusy("inv-clear");
+    try {
+      await clearInventory({});
+      toast.success("Fake stock cleared");
+      await refresh();
+    } catch (err) {
+      toast.error(friendlyError(err, "Could not clear fake stock"));
     } finally {
       setBusy(null);
     }
@@ -269,6 +300,43 @@ export function SimulatorPanel({ releases }: { releases: ReleaseRow[] }) {
               ))}
             </div>
           ) : null}
+        </div>
+
+        <div className="rounded-xl border border-border/60 bg-card p-3">
+          <div className="text-sm font-medium">Inventory (GET /inventory)</div>
+          <div className="mb-2 text-xs text-muted-foreground">
+            Fake stock levels the simulator serves to the inventory pass. “Tight stock” seeds low
+            quantities so a SKU with simulated order history lands in amber or red.
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={busy === "inv"}
+              onClick={() => void addFakeStock(false)}
+            >
+              {busy === "inv" ? "Seeding…" : "Seed healthy stock"}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={busy === "inv-tight"}
+              onClick={() => void addFakeStock(true)}
+            >
+              {busy === "inv-tight" ? "Seeding…" : "Seed tight stock"}
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={busy === "inv-clear" || (data?.inventory_rows ?? 0) === 0}
+              onClick={emptyStock}
+            >
+              {busy === "inv-clear" ? "Clearing…" : "Clear stock"}
+            </Button>
+            <span className="text-xs text-muted-foreground">
+              {data?.inventory_rows ?? 0} stock rows
+            </span>
+          </div>
         </div>
 
         {(data?.calls ?? []).length > 0 ? (
