@@ -1,130 +1,100 @@
-Build a read-only Inventory module in FlySales
+# Inventory & Reorders (Forecasting core) — Phase 5
 
-## Context
+Read-only consumption of middleware stock + our own order velocity, plus our planning fields (suppliers, lead times, safety margin), producing days-of-cover, a reorder-by date, a GREEN/AMBER/RED state, alerts and a "Plan reorder" path into the existing quote flow. Middleware stays the source of truth; we never write to it. No SpyMarket/TrendTrack involvement, no credits.
 
-FlySales currently has no inventory module. `products` holds catalogue SKUs, but there are no stock/quantity/warehouse columns and no inventory UI. Per `ARCHITECTURE.md`, the Operations Engine (Middleware/FastAPI) owns inventory; FlySales is meant to read it for display later. This plan implements that "later" display layer while keeping the middleware as the source of truth.
+## Verified current state
 
-## Goal
+- No inventory, stock, velocity or supplier tables exist. `products` columns are: id, quote_line_id, sku, product_name, variant_label, product_type, price_override, moq, status, middleware_product_id, push_status, push_error, created_at, store_id — no `supplier_id`, no lead-time overrides.
+- The pull path already exists: `syncTenant` / `syncAllTenants` in `src/lib/middleware-sync.server.ts`, driven by the `/api/public/cron/middleware-order-sync` route and a pg_cron job.
+- Outbound calls already go through `callMiddleware()` with bearer token, idempotency key and `integration_calls` auditing; paths live in `MIDDLEWARE_PATHS`.
+- The simulator (`src/lib/simulator.server.ts` + `/api/public/middleware/simulator/$`) already serves pull orders and tracking; it has no inventory mode.
+- Branded email builders live in `src/lib/email-templates.server.ts`, dispatched via `sendClientEmail`; the admin daily digest is `/api/public/cron/daily-digest`.
 
-Add a lightweight, read-only inventory display to both the client portal and admin console:
-- Pull stock levels from the middleware for each connected workspace.
-- Store them in a new `inventory_snapshots` table with proper RLS.
-- Render a searchable, low-stock-aware inventory page.
-- Keep all stock mutations in the middleware; FlySales never writes inventory changes.
+## Data model (new tables)
 
-## Out of scope
+- `inventory_snapshots` — append-only: `store_id`, `sku`, `location`, `quantity`, `captured_at`. Index on `(store_id, sku, captured_at desc)`. Latest row per (store, sku, location) is "current stock".
+- `sku_velocity` — one row per `(store_id, sku)`: `units_7d`, `units_30d`, `computed_at`.
+- `suppliers` — admin-only: `name`, `notes`, `default_production_lead_days`, `default_transit_lead_days`, `active`.
+- `products` gains: `supplier_id` (nullable FK), `production_lead_days`, `transit_lead_days`, `safety_margin_days` (all nullable overrides). Added to the product guard trigger so clients cannot write them.
+- `stores` gains workspace defaults: `default_production_lead_days` (14), `default_transit_lead_days` (21), `default_safety_margin_days` (7); admin-only via the store guard trigger.
 
-- Stock adjustments, reservations, or warehouse management.
-- Replacing the middleware as the inventory source of truth.
-- Real-time inventory; the first version uses periodic pull sync.
+Access rules:
+- Clients read `inventory_snapshots` and `sku_velocity` for their own workspaces only; no client writes (service-role/admin only).
+- `suppliers` is admin-only for read and write — clients never see supplier names, consistent with closed pricing.
+- Resolved lead days reach clients only through a server function that returns numbers, never the supplier row.
 
-## Technical plan
+## Data in
 
-### 1. Database schema
+Add `syncInventory(admin, store)` to the middleware layer:
+- New entries in `MIDDLEWARE_PATHS` for the inventory endpoint (path kept in one constant, tolerant list extraction like `extractOrderList`).
+- Called from the existing order-sync cron pass (every 5 min it already runs; inventory writes throttled to once per 30 min per tenant using `captured_at`), so no second scheduler is needed. If the middleware read fails, the tenant keeps its last snapshot and the UI shows a stale-data banner; nothing blocks.
+- Every call audited in `integration_calls` via `callMiddleware`.
 
-Create `public.inventory_snapshots`:
+Velocity is computed from our own shadow orders (`orders` + `order_items`, paid/processing/shipped/delivered within 7 and 30 days), not from the middleware — no extra calls. A `recompute_sku_velocity(store_id)` SQL function fills `sku_velocity`; the cron calls it per tenant after the inventory pass.
+
+Simulator gains an inventory mode: `GET {simulator}/api/admin/inventory` returns deterministic per-SKU stock across two fake locations for the simulated tenant, plus an admin control to set a specific SKU's quantity so an AMBER/RED case can be forced.
+
+## Resolution cascade
+
+Implemented once, in SQL, as `resolved_lead_times(store_id)` returning per SKU: `production_lead`, `transit_lead`, `safety_margin` and an origin letter for each (`P` product, `S` supplier, `W` workspace).
 
 ```text
-- id uuid primary key default gen_random_uuid()
-- store_id uuid not null references public.stores(id) on delete cascade
-- sku text not null
-- quantity_available numeric not null default 0
-- quantity_reserved numeric not null default 0
-- fetched_at timestamp with time zone not null
-- created_at timestamp with time zone not null default now()
-- updated_at timestamp with time zone not null default now()
+production_lead = product override -> supplier default -> workspace default
+transit_lead    = product override -> supplier default -> workspace default
+safety_margin   = product override -> workspace default
 ```
 
-Add a unique partial index on `(store_id, sku)` so each workspace/SKU has one current row.
+Because resolution is computed at read time from the supplier row, editing a supplier default instantly changes every linked SKU — no backfill job, no stale copies.
 
-RLS policies:
-- Authenticated users can `SELECT` rows belonging to their own stores.
-- Admins can `SELECT` all rows.
-- No `INSERT/UPDATE/DELETE` for authenticated; only `service_role` writes.
+## The math
 
-GRANT `SELECT` to `authenticated`, `ALL` to `service_role`.
+```text
+daily_velocity  = units_30d / 30, else units_7d / 7, else 0
+days_of_cover   = daily_velocity > 0 ? total_stock / daily_velocity : Infinity
+total_lead      = production_lead + transit_lead + safety_margin
+reorder_by_date = today + days_of_cover - total_lead
 
-### 2. Middleware contract
+GREEN  reorder_by more than 14 days away
+AMBER  reorder_by within 14 days
+RED    reorder_by today or in the past -> also show the gap:
+       gap_days = total_lead - days_of_cover  ("ordering today still means ~6 days out of stock")
+velocity 0 -> cover infinite, state "no recent sales", never alerts
+```
 
-Extend `src/lib/middleware.server.ts`:
+## UI
 
-- Add `inventory: "/api/admin/inventory"` to `MIDDLEWARE_PATHS`.
-- Define the expected response schema: an array of `{ sku, quantity_available, quantity_reserved }` keyed by tenant.
-- Add `syncInventoryForStore(admin, storeId)` that:
-  - Looks up the workspace's `middleware_tenant_id`.
-  - Calls `GET /api/admin/inventory` with the tenant selector and a stable idempotency key.
-  - Upserts rows into `inventory_snapshots` with `fetched_at = now()`.
-  - Logs the call in `integration_calls`.
-  - Returns counts synced/failed.
+Client page `/inventory` (sidebar entry between Products and Orders, shown when the workspace has inventory data):
+- Summary bar: SKUs tracked, green/amber/red counts, total units in stock, last synced.
+- Dense table sorted by urgency: product + SKU, total stock (expandable row showing per-location breakdown), velocity/day, days of cover, resolved lead days, reorder-by date, state chip.
+- Row action "Plan reorder": opens the quote flow prefilled for that SKU with suggested quantity = `daily_velocity x (total_lead + coverage target of 30 days)`.
+- Workspaces with no inventory data get an explainer state (what this page will show, why it is empty, how the workspace gets connected) — not an empty table.
 
-### 3. Sync cron + manual trigger
+Admin page `/admin/inventory` (admin console kit from `src/components/admin-ui.tsx`):
+- All workspaces, filterable, same columns plus the P/S/W origin indicator with tooltip on each resolved lead time, and a per-workspace sync action.
+- Admin suppliers page `/admin/suppliers`: CRUD list with name, lead defaults, active flag, and count of linked SKUs. Supplier assignment plus the product-level override fields live together in a drawer on the admin products page.
+- Admin workspace defaults (production/transit/safety) editable on the entities & workspaces page.
 
-- Add `src/routes/api/public/cron/inventory-sync.ts` secured with `LOVABLE_CRON_SECRET`.
-- The cron iterates over active, automatic-mode workspaces with a `middleware_tenant_id` and calls `syncInventoryForStore`.
-- Add server functions:
-  - `adminInventoryOverview` (admin only): list current snapshots per workspace.
-  - `adminSyncInventoryNow` (admin only): sync one workspace or all.
+Clients never see supplier names anywhere — only resolved day counts.
 
-### 4. Simulator support
+## Alerts
 
-Extend the middleware simulator so it can serve inventory data for end-to-end testing before the real middleware endpoint exists:
-- `GET /api/admin/inventory` returns deterministic stock levels for known SKUs and random stock for unknown ones.
-- This lets the cron and UI be verified without a real middleware connection.
+State transitions are tracked in a small `sku_alert_state` table (`store_id`, `sku`, `state`, `notified_at`). After each velocity/inventory pass:
+- A SKU entering AMBER or RED sends exactly one branded email to the workspace owner (new `inventoryReorderEmail` template) and records the new state.
+- No email while the state is unchanged; moving back to GREEN just resets the record so a later re-entry alerts again.
+- Each transition also contributes a line to the admin daily digest.
 
-### 5. Client UI
+## Guardrails
 
-Add `src/routes/_authenticated/_client/inventory.tsx`:
+- All middleware reads audited in `integration_calls`; failures are logged to `error_logs`, never thrown to the user.
+- Stale-data banner on both pages when the last successful capture is older than 2 hours, naming the last sync time.
+- No middleware writes anywhere in this module.
 
-- Page header: "Inventory" / "Stock levels from your connected workspace".
-- Summary cards: total SKUs tracked, low-stock count (available < 10), last synced at.
-- Search by SKU/product name.
-- Filter tabs: All / Low stock / Out of stock.
-- Dense table columns: SKU, product name (joined from `products`), available, reserved, last updated.
-- Empty state with a CTA to connect a workspace if none is automatic.
-- Add "Inventory" to `CLIENT_NAV` in `src/components/app-shell.tsx`, between Products and Orders.
+## Files
 
-### 6. Admin UI
+Create: migration for the tables/columns/functions, `src/lib/inventory.server.ts`, `src/lib/inventory.functions.ts`, `src/lib/suppliers.functions.ts`, `src/routes/_authenticated/_client/inventory.tsx`, `src/routes/_authenticated/admin/inventory.tsx`, `src/routes/_authenticated/admin/suppliers.tsx`.
 
-Add `src/routes/_authenticated/admin/inventory.tsx`:
-
-- Page header + summary bar (workspaces connected, SKUs tracked, low-stock SKUs, last global sync).
-- Table of workspaces with tenant ID, last sync time, SKU count, sync action per row.
-- "Sync all now" primary action.
-- Drill-down per workspace showing SKU-level snapshots.
-- Add "Inventory" to `ADMIN_NAV` in `src/components/app-shell.tsx`, between Products and Orders.
-
-### 7. Integration with existing pages
-
-- On the client Products page, add a small stock badge next to each SKU when a snapshot exists (optional polish, only if it does not clutter the current layout).
-
-### 8. Design system
-
-Use existing tokens and components:
-- Figtree font, electric lime `#A2FF00` accents, pill-shaped badges.
-- Shared `PageHeader`, `EmptyState`, table styling from `src/components/admin-ui.tsx` and `app-shell.tsx`.
-- No new color values; rely on `bg-card`, `text-muted-foreground`, `border-border`, `bg-primary/10`, etc.
-
-## Files to create / edit
-
-Create:
-- `supabase/migrations/<timestamp>_inventory_snapshots.sql`
-- `src/routes/api/public/cron/inventory-sync.ts`
-- `src/lib/inventory.server.ts`
-- `src/lib/inventory.functions.ts`
-- `src/routes/_authenticated/_client/inventory.tsx`
-- `src/routes/_authenticated/admin/inventory.tsx`
-
-Edit:
-- `src/lib/middleware.server.ts` (add path + sync function)
-- `src/lib/simulator.server.ts` (add inventory endpoint)
-- `src/components/app-shell.tsx` (nav items)
-- `src/routes/_authenticated/_client/products.tsx` (optional stock badge)
+Edit: `src/lib/middleware.server.ts` (inventory path + fetch), `src/lib/middleware-sync.server.ts` (inventory + velocity pass), `src/lib/simulator.server.ts` and the simulator route (inventory mode), `src/components/simulator-panel.tsx` (force a stock level), `src/lib/email-templates.server.ts` (reorder alert), `/api/public/cron/daily-digest` (digest lines), `src/components/app-shell.tsx` (nav), `src/lib/schemas.ts` (supplier/override/workspace-default schemas), admin products and entities pages.
 
 ## Verification
 
-- Typecheck passes (`bunx tsc --noEmit` or `tsgo`).
-- Migration applies cleanly.
-- Inventory sync cron returns 200 with a valid secret and writes rows.
-- Client inventory page renders snapshots and filters correctly.
-- Admin page can trigger a manual sync and sees updated counts.
-- No authenticated user can `INSERT/UPDATE/DELETE` `inventory_snapshots` directly.
+Using the simulator only: seed fake inventory + simulated orders for the test tenant, set a supplier default and override it at product level, then confirm the SKU resolves with a `P` origin on production lead, lands in AMBER with the expected reorder-by date, sends exactly one alert email, and sends none on a second pass with unchanged state.
