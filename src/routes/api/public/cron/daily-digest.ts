@@ -79,6 +79,16 @@ export const Route = createFileRoute("/api/public/cron/daily-digest")({
               .limit(10),
           ]);
 
+          // Phase 5 — inventory states currently sitting in amber/red.
+          const inventoryAlerts = await supabaseAdmin
+            .from("sku_alert_state")
+            .select("sku, state, updated_at", { count: "exact" })
+            .in("state", ["amber", "red"])
+            .order("state")
+            .limit(15);
+          const redCount = (inventoryAlerts.data ?? []).filter((s) => s.state === "red").length;
+          const amberCount = (inventoryAlerts.data ?? []).filter((s) => s.state === "amber").length;
+
           const summary = {
             failed_webhooks: webhooks.count ?? 0,
             failed_crons: crons.count ?? 0,
@@ -88,6 +98,8 @@ export const Route = createFileRoute("/api/public/cron/daily-digest")({
             stuck_releases: releases.count ?? 0,
             orders_caught_by_polling: pollCaught.count ?? 0,
             tenants_sync_down: syncDown.count ?? 0,
+            skus_red: redCount,
+            skus_amber: amberCount,
           };
 
           const lines: string[] = [
