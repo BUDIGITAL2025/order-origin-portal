@@ -9,7 +9,21 @@ import { AdminSearch, FilterTabs, PanelHeader, SummaryBar } from "@/components/a
 import { InventoryTable, type InventoryRow } from "@/components/inventory-table";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { getAdminInventory, syncInventoryNow } from "@/lib/inventory.functions";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  getAdminInventory,
+  setWorkspacePlanningDefaults,
+  syncInventoryNow,
+} from "@/lib/inventory.functions";
 import { PlanningDialog } from "@/components/planning-dialog";
 import { friendlyError } from "@/lib/errors";
 
@@ -37,6 +51,28 @@ function AdminInventoryPage() {
   const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("all");
   const [search, setSearch] = useState("");
   const [planningProductId, setPlanningProductId] = useState<string | null>(null);
+  const [defaultsFor, setDefaultsFor] = useState<
+    { storeId: string; production: number; transit: number; safety: number } | null
+  >(null);
+
+  const callDefaults = useServerFn(setWorkspacePlanningDefaults);
+  const saveDefaults = useMutation({
+    mutationFn: (d: NonNullable<typeof defaultsFor>) =>
+      callDefaults({
+        data: {
+          storeId: d.storeId,
+          default_production_lead_days: d.production,
+          default_transit_lead_days: d.transit,
+          default_safety_margin_days: d.safety,
+        },
+      }),
+    onSuccess: () => {
+      toast.success("Workspace defaults saved");
+      setDefaultsFor(null);
+      void queryClient.invalidateQueries({ queryKey: ["admin-inventory"] });
+    },
+    onError: (e) => toast.error(friendlyError(e)),
+  });
 
   const fetchInventory = useServerFn(getAdminInventory);
   const { data, isLoading, error } = useQuery({
@@ -137,6 +173,23 @@ function AdminInventoryPage() {
                 <PanelHeader
                   title={ws.store_name ?? "Unnamed workspace"}
                   description={`Tenant ${ws.tenant_id ?? "—"} · defaults ${ws.defaults.production}d production / ${ws.defaults.transit}d transit / ${ws.defaults.safety}d safety`}
+                  actions={
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="rounded-full"
+                      onClick={() =>
+                        setDefaultsFor({
+                          storeId: ws.store_id,
+                          production: ws.defaults.production ?? 0,
+                          transit: ws.defaults.transit ?? 0,
+                          safety: ws.defaults.safety ?? 0,
+                        })
+                      }
+                    >
+                      Edit defaults
+                    </Button>
+                  }
                 />
                 {ws.stale && (
                   <div className="mb-2 flex items-center gap-2 rounded-lg border border-warning/30 bg-warning/10 px-3 py-1.5 text-[12px] text-warning">
@@ -159,6 +212,70 @@ function AdminInventoryPage() {
           })}
         </div>
       )}
+
+      <Dialog open={defaultsFor !== null} onOpenChange={(open) => !open && setDefaultsFor(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Workspace planning defaults</DialogTitle>
+            <DialogDescription>
+              The bottom of the cascade — used whenever a SKU has no product override and no
+              supplier default.
+            </DialogDescription>
+          </DialogHeader>
+          {defaultsFor && (
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <Label htmlFor="w-prod">Production</Label>
+                <Input
+                  id="w-prod"
+                  type="number"
+                  min={0}
+                  value={defaultsFor.production}
+                  onChange={(e) =>
+                    setDefaultsFor({ ...defaultsFor, production: Number(e.target.value) })
+                  }
+                />
+              </div>
+              <div>
+                <Label htmlFor="w-transit">Transit</Label>
+                <Input
+                  id="w-transit"
+                  type="number"
+                  min={0}
+                  value={defaultsFor.transit}
+                  onChange={(e) =>
+                    setDefaultsFor({ ...defaultsFor, transit: Number(e.target.value) })
+                  }
+                />
+              </div>
+              <div>
+                <Label htmlFor="w-safety">Safety</Label>
+                <Input
+                  id="w-safety"
+                  type="number"
+                  min={0}
+                  value={defaultsFor.safety}
+                  onChange={(e) =>
+                    setDefaultsFor({ ...defaultsFor, safety: Number(e.target.value) })
+                  }
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" className="rounded-full" onClick={() => setDefaultsFor(null)}>
+              Cancel
+            </Button>
+            <Button
+              className="rounded-full"
+              disabled={saveDefaults.isPending}
+              onClick={() => defaultsFor && saveDefaults.mutate(defaultsFor)}
+            >
+              Save defaults
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <PlanningDialog
         productId={planningProductId}
