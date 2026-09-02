@@ -9,13 +9,7 @@ import { AdminSearch, FilterTabs, PanelHeader, SummaryBar } from "@/components/a
 import { InventoryTable, type InventoryRow } from "@/components/inventory-table";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  getAdminInventory,
-  getProductPlanning,
-  listSuppliers,
-  setProductPlanning,
-  syncInventoryNow,
-} from "@/lib/inventory.functions";
+import { getAdminInventory, syncInventoryNow } from "@/lib/inventory.functions";
 import { PlanningDialog } from "@/components/planning-dialog";
 import { friendlyError } from "@/lib/errors";
 
@@ -169,9 +163,6 @@ function AdminInventoryPage() {
       <PlanningDialog
         productId={planningProductId}
         onClose={() => setPlanningProductId(null)}
-        loadPlanning={getProductPlanning}
-        loadSuppliers={listSuppliers}
-        savePlanning={setProductPlanning}
       />
     </div>
   );

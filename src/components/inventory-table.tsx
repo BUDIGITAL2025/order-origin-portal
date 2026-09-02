@@ -85,10 +85,14 @@ export function InventoryTable({
   rows,
   showOrigin,
   onPlanReorder,
+  planLabel = "Plan reorder",
+  planIcon: PlanIcon = PackagePlus,
 }: {
   rows: InventoryRow[];
   showOrigin?: boolean | undefined;
   onPlanReorder?: ((row: InventoryRow) => void) | undefined;
+  planLabel?: string | undefined;
+  planIcon?: React.ComponentType<{ className?: string }> | undefined;
 }) {
   const [expanded, setExpanded] = React.useState<Set<string>>(new Set());
   const toggle = (sku: string) =>
@@ -187,8 +191,8 @@ export function InventoryTable({
                         className="h-7 rounded-full px-3 text-[12px]"
                         onClick={() => onPlanReorder(row)}
                       >
-                        <PackagePlus className="mr-1 h-3.5 w-3.5" />
-                        Plan reorder
+                        <PlanIcon className="mr-1 h-3.5 w-3.5" />
+                        {planLabel}
                       </Button>
                     ) : (
                       <EmptyCell label="No action" />
