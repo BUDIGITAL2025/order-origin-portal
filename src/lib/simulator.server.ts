@@ -397,3 +397,78 @@ export async function setSimulatorPullTracking(
 export async function clearSimulatorPullQueue(admin: Admin): Promise<void> {
   await writePullQueue(admin, []);
 }
+
+// ============= Phase 5: serving fake INVENTORY levels =============
+
+const INVENTORY_KEY = "simulator_inventory";
+
+export type SimulatorStockRow = {
+  sku: string;
+  location: string;
+  quantity: number;
+  tenant_id: string;
+};
+
+export async function listSimulatorInventory(
+  admin: Admin,
+  tenantId?: string | null,
+): Promise<SimulatorStockRow[]> {
+  const { data } = await admin
+    .from("internal_settings")
+    .select("value")
+    .eq("key", INVENTORY_KEY)
+    .maybeSingle();
+  let parsed: unknown = [];
+  try {
+    parsed = data?.value ? JSON.parse(data.value) : [];
+  } catch {
+    parsed = [];
+  }
+  const rows = Array.isArray(parsed) ? (parsed as SimulatorStockRow[]) : [];
+  return tenantId ? rows.filter((r) => r.tenant_id === tenantId) : rows;
+}
+
+async function writeSimulatorInventory(admin: Admin, rows: SimulatorStockRow[]): Promise<void> {
+  const { error } = await admin.from("internal_settings").upsert(
+    {
+      key: INVENTORY_KEY,
+      value: JSON.stringify(rows.slice(0, 500)),
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "key" },
+  );
+  if (error) throw new Error(error.message);
+}
+
+/**
+ * Seeds fake stock for every priced SKU of a simulatable workspace, spread
+ * over two locations. `tight` deliberately produces low cover so a SKU with
+ * simulated order history lands in AMBER/RED.
+ */
+export async function seedSimulatorInventory(
+  admin: Admin,
+  opts?: { tight?: boolean },
+): Promise<{ tenant_id: string; rows: number }> {
+  const target = await findSimulatableWorkspace(admin);
+  if (!target?.store.middleware_tenant_id) {
+    throw new Error(
+      "No workspace with a middleware tenant id and priced products was found. Connect a tenant id and accept a quote first.",
+    );
+  }
+  const tenantId = target.store.middleware_tenant_id;
+  const rows: SimulatorStockRow[] = [];
+  for (const sku of target.skus) {
+    const total = opts?.tight
+      ? Math.floor(Math.random() * 12) + 4
+      : Math.floor(Math.random() * 400) + 120;
+    const main = Math.ceil(total * 0.7);
+    rows.push({ sku, location: "EU-WH1", quantity: main, tenant_id: tenantId });
+    rows.push({ sku, location: "US-WH1", quantity: total - main, tenant_id: tenantId });
+  }
+  await writeSimulatorInventory(admin, rows);
+  return { tenant_id: tenantId, rows: rows.length };
+}
+
+export async function clearSimulatorInventory(admin: Admin): Promise<void> {
+  await writeSimulatorInventory(admin, []);
+}

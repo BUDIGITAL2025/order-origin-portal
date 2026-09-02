@@ -507,6 +507,44 @@ export type Database = {
         }
         Relationships: []
       }
+      inventory_snapshots: {
+        Row: {
+          captured_at: string
+          created_at: string
+          id: string
+          location: string
+          quantity: number
+          sku: string
+          store_id: string
+        }
+        Insert: {
+          captured_at?: string
+          created_at?: string
+          id?: string
+          location?: string
+          quantity?: number
+          sku: string
+          store_id: string
+        }
+        Update: {
+          captured_at?: string
+          created_at?: string
+          id?: string
+          location?: string
+          quantity?: number
+          sku?: string
+          store_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_snapshots_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       middleware_sync_state: {
         Row: {
           consecutive_failures: number
@@ -903,12 +941,16 @@ export type Database = {
           price_override: number | null
           product_name: string
           product_type: Database["public"]["Enums"]["product_type"]
+          production_lead_days: number | null
           push_error: string | null
           push_status: Database["public"]["Enums"]["push_status"]
           quote_line_id: string | null
+          safety_margin_days: number | null
           sku: string
           status: Database["public"]["Enums"]["product_status"]
           store_id: string
+          supplier_id: string | null
+          transit_lead_days: number | null
           variant_label: string | null
         }
         Insert: {
@@ -919,12 +961,16 @@ export type Database = {
           price_override?: number | null
           product_name: string
           product_type?: Database["public"]["Enums"]["product_type"]
+          production_lead_days?: number | null
           push_error?: string | null
           push_status?: Database["public"]["Enums"]["push_status"]
           quote_line_id?: string | null
+          safety_margin_days?: number | null
           sku: string
           status?: Database["public"]["Enums"]["product_status"]
           store_id: string
+          supplier_id?: string | null
+          transit_lead_days?: number | null
           variant_label?: string | null
         }
         Update: {
@@ -935,12 +981,16 @@ export type Database = {
           price_override?: number | null
           product_name?: string
           product_type?: Database["public"]["Enums"]["product_type"]
+          production_lead_days?: number | null
           push_error?: string | null
           push_status?: Database["public"]["Enums"]["push_status"]
           quote_line_id?: string | null
+          safety_margin_days?: number | null
           sku?: string
           status?: Database["public"]["Enums"]["product_status"]
           store_id?: string
+          supplier_id?: string | null
+          transit_lead_days?: number | null
           variant_label?: string | null
         }
         Relationships: [
@@ -956,6 +1006,13 @@ export type Database = {
             columns: ["store_id"]
             isOneToOne: false
             referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
             referencedColumns: ["id"]
           },
         ]
@@ -1218,6 +1275,82 @@ export type Database = {
         }
         Relationships: []
       }
+      sku_alert_state: {
+        Row: {
+          created_at: string
+          id: string
+          notified_at: string | null
+          sku: string
+          state: string
+          store_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notified_at?: string | null
+          sku: string
+          state: string
+          store_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notified_at?: string | null
+          sku?: string
+          state?: string
+          store_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sku_alert_state_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sku_velocity: {
+        Row: {
+          computed_at: string
+          created_at: string
+          id: string
+          sku: string
+          store_id: string
+          units_30d: number
+          units_7d: number
+        }
+        Insert: {
+          computed_at?: string
+          created_at?: string
+          id?: string
+          sku: string
+          store_id: string
+          units_30d?: number
+          units_7d?: number
+        }
+        Update: {
+          computed_at?: string
+          created_at?: string
+          id?: string
+          sku?: string
+          store_id?: string
+          units_30d?: number
+          units_7d?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sku_velocity_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       spymarket_cache: {
         Row: {
           cache_key: string
@@ -1393,6 +1526,9 @@ export type Database = {
           approved_at: string | null
           avg_daily_units_30d: number
           created_at: string
+          default_production_lead_days: number
+          default_safety_margin_days: number
+          default_transit_lead_days: number
           entity_id: string
           fee_waived: boolean
           id: string
@@ -1421,6 +1557,9 @@ export type Database = {
           approved_at?: string | null
           avg_daily_units_30d?: number
           created_at?: string
+          default_production_lead_days?: number
+          default_safety_margin_days?: number
+          default_transit_lead_days?: number
           entity_id: string
           fee_waived?: boolean
           id?: string
@@ -1449,6 +1588,9 @@ export type Database = {
           approved_at?: string | null
           avg_daily_units_30d?: number
           created_at?: string
+          default_production_lead_days?: number
+          default_safety_margin_days?: number
+          default_transit_lead_days?: number
           entity_id?: string
           fee_waived?: boolean
           id?: string
@@ -1513,6 +1655,39 @@ export type Database = {
           payload?: Json | null
           processed_at?: string | null
           stripe_event_id?: string
+        }
+        Relationships: []
+      }
+      suppliers: {
+        Row: {
+          active: boolean
+          created_at: string
+          default_production_lead_days: number | null
+          default_transit_lead_days: number | null
+          id: string
+          name: string
+          notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          default_production_lead_days?: number | null
+          default_transit_lead_days?: number | null
+          id?: string
+          name: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          default_production_lead_days?: number | null
+          default_transit_lead_days?: number | null
+          id?: string
+          name?: string
+          notes?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
@@ -1753,6 +1928,9 @@ export type Database = {
           approved_at: string | null
           avg_daily_units_30d: number
           created_at: string
+          default_production_lead_days: number
+          default_safety_margin_days: number
+          default_transit_lead_days: number
           entity_id: string
           fee_waived: boolean
           id: string
@@ -1794,12 +1972,16 @@ export type Database = {
           price_override: number | null
           product_name: string
           product_type: Database["public"]["Enums"]["product_type"]
+          production_lead_days: number | null
           push_error: string | null
           push_status: Database["public"]["Enums"]["push_status"]
           quote_line_id: string | null
+          safety_margin_days: number | null
           sku: string
           status: Database["public"]["Enums"]["product_status"]
           store_id: string
+          supplier_id: string | null
+          transit_lead_days: number | null
           variant_label: string | null
         }
         SetofOptions: {
@@ -2096,6 +2278,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      recompute_sku_velocity: { Args: { p_store_id: string }; Returns: number }
       release_awaiting_payment_orders: {
         Args: { p_entity_id: string }
         Returns: {
@@ -2135,6 +2318,20 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      resolved_lead_times: {
+        Args: { p_store_id: string }
+        Returns: {
+          product_id: string
+          product_name: string
+          production_lead: number
+          production_origin: string
+          safety_margin: number
+          safety_origin: string
+          sku: string
+          transit_lead: number
+          transit_origin: string
+        }[]
       }
       respond_to_quote_lines: {
         Args: { p_decisions: Json; p_product_name: string; p_quote_id: string }
@@ -2190,12 +2387,16 @@ export type Database = {
           price_override: number | null
           product_name: string
           product_type: Database["public"]["Enums"]["product_type"]
+          production_lead_days: number | null
           push_error: string | null
           push_status: Database["public"]["Enums"]["push_status"]
           quote_line_id: string | null
+          safety_margin_days: number | null
           sku: string
           status: Database["public"]["Enums"]["product_status"]
           store_id: string
+          supplier_id: string | null
+          transit_lead_days: number | null
           variant_label: string | null
         }
         SetofOptions: {

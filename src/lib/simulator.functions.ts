@@ -45,6 +45,7 @@ export const adminSimulatorStatus = createServerFn({ method: "GET" })
           }
         : null,
       pull_queue: await sim.listSimulatorPullOrders(db),
+      inventory_rows: (await sim.listSimulatorInventory(db)).length,
       calls: calls.data ?? [],
     };
   });
@@ -144,5 +145,29 @@ export const adminClearSimulatorPullQueue = createServerFn({ method: "POST" })
     const db = await getAdminClient();
     const { clearSimulatorPullQueue } = await import("./simulator.server");
     await clearSimulatorPullQueue(db);
+    return { cleared: true };
+  });
+
+/** Seed fake stock levels for the simulatable workspace (Phase 5). */
+export const adminSeedSimulatorInventory = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ tight: z.boolean().optional() }).parse(input ?? {}))
+  .handler(async ({ data, context }) => {
+    const { requireAdmin, getAdminClient } = await import("./admin.server");
+    await requireAdmin(context.supabase, context.userId);
+    const db = await getAdminClient();
+    const { seedSimulatorInventory } = await import("./simulator.server");
+    return seedSimulatorInventory(db, data.tight ? { tight: true } : undefined);
+  });
+
+/** Empty the simulator's fake stock table (test cleanup). */
+export const adminClearSimulatorInventory = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { requireAdmin, getAdminClient } = await import("./admin.server");
+    await requireAdmin(context.supabase, context.userId);
+    const db = await getAdminClient();
+    const { clearSimulatorInventory } = await import("./simulator.server");
+    await clearSimulatorInventory(db);
     return { cleared: true };
   });

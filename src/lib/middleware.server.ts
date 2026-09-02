@@ -399,6 +399,8 @@ export const MIDDLEWARE_PATHS = {
   reject: "/api/admin/orders/{id}/reject",
   /** Phase 4 (pull): order list polled by the middleware-order-sync cron. */
   orders: "/api/admin/orders",
+  /** Phase 5 (pull): stock levels per SKU per location, read-only. */
+  inventory: "/api/admin/inventory",
 } as const;
 
 /**

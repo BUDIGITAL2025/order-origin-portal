@@ -25,6 +25,24 @@ export const Route = createFileRoute("/api/public/cron/middleware-order-sync")({
         const outcome = await runCronJob(supabaseAdmin, "middleware-order-sync", async () => {
           const { syncAllTenants } = await import("@/lib/middleware-sync.server");
           const results = await syncAllTenants(supabaseAdmin);
+
+          // Phase 5 — the inventory pass rides along, throttled to every 30
+          // minutes internally. It never fails the order sync.
+          let inventory = { tenants: 0, skus: 0, alerts: 0, failed: 0 };
+          try {
+            const { syncInventoryAllTenants } = await import("@/lib/inventory.server");
+            const inv = await syncInventoryAllTenants(supabaseAdmin);
+            inventory = {
+              tenants: inv.filter((r) => r.ok && !r.skipped).length,
+              skus: inv.reduce((sum, r) => sum + r.skus, 0),
+              alerts: inv.reduce((sum, r) => sum + r.alerts, 0),
+              failed: inv.filter((r) => !r.ok).length,
+            };
+          } catch (e) {
+            const { logAppError } = await import("@/lib/ops.server");
+            await logAppError(supabaseAdmin, { job: "inventory:sync", error: e });
+          }
+
           return {
             tenants: results.length,
             succeeded: results.filter((r) => r.ok).length,
@@ -32,6 +50,7 @@ export const Route = createFileRoute("/api/public/cron/middleware-order-sync")({
             ingested: results.reduce((sum, r) => sum + r.ingested, 0),
             updated: results.reduce((sum, r) => sum + r.updated, 0),
             needs_review: results.reduce((sum, r) => sum + r.needs_review, 0),
+            inventory,
           };
         });
 

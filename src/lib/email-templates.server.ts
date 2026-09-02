@@ -288,3 +288,53 @@ export function claimResolvedEmail(args: {
     note: "Reply in the claim thread if anything looks wrong and we take another look.",
   });
 }
+
+/**
+ * Inventory alert: a SKU crossed into AMBER (reorder window open) or RED
+ * (reorder is already late). Sent once per state transition, never repeated
+ * while the state holds.
+ */
+export function inventoryReorderEmail(args: {
+  productName: string;
+  sku: string;
+  workspaceName: string | null;
+  state: "amber" | "red";
+  daysOfCover: number | null;
+  totalLead: number;
+  reorderBy: string | null;
+  gapDays: number | null;
+  suggestedQty: number;
+}): BuiltEmail {
+  const red = args.state === "red";
+  const heading = red ? "Reorder this SKU now" : "Time to plan a reorder";
+  const lead = red
+    ? args.gapDays && args.gapDays > 0
+      ? `Ordering today still leaves roughly ${args.gapDays} days out of stock.`
+      : "Ordering today is the last moment to avoid running out."
+    : `Your reorder window is open. Place the order by ${args.reorderBy ?? "soon"} to stay in stock.`;
+
+  const rows = [
+    { label: "Product", value: `${args.productName} (${args.sku})` },
+    {
+      label: "Days of cover",
+      value: args.daysOfCover == null ? "No recent sales" : `${args.daysOfCover} days`,
+      strong: true,
+    },
+    { label: "Lead time", value: `${args.totalLead} days` },
+    { label: "Reorder by", value: args.reorderBy ?? "—" },
+    { label: "Suggested quantity", value: `${args.suggestedQty} units` },
+  ];
+  if (args.workspaceName) rows.unshift({ label: "Workspace", value: args.workspaceName });
+
+  return build(`${red ? "Reorder now" : "Reorder soon"}: ${args.sku}`, {
+    heading,
+    preheader: lead,
+    paragraphs: [
+      `Based on your current stock and the last 30 days of sales, ${args.productName} needs attention.`,
+      lead,
+    ],
+    panel: { title: "Forecast", rows },
+    button: { label: "Plan the reorder", url: portalUrl("/inventory") },
+    note: "Days of cover use your recent sales velocity. Lead times combine production, transit and your safety margin.",
+  });
+}
