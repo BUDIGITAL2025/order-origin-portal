@@ -131,6 +131,11 @@ export const Route = createFileRoute("/api/public/cron/daily-digest")({
               (t) => `  • tenant ${t.tenant_id} (${t.consecutive_failures} failures since ${t.first_failure_at}): ${t.last_error ?? "no error recorded"}`,
             ),
             "",
+            `SKUs needing a reorder now: ${summary.skus_red} · reorder soon: ${summary.skus_amber}`,
+            ...(inventoryAlerts.data ?? []).map(
+              (s) => `  • ${s.sku} (${s.state}) since ${s.updated_at}`,
+            ),
+            "",
             "https://app.flysales.app/admin/integration",
           ];
 
