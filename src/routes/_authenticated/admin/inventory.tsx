@@ -2,14 +2,21 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
-import { AlertTriangle, RefreshCw } from "lucide-react";
+import { AlertTriangle, RefreshCw, SlidersHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/app-shell";
 import { AdminSearch, FilterTabs, PanelHeader, SummaryBar } from "@/components/admin-ui";
 import { InventoryTable, type InventoryRow } from "@/components/inventory-table";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { getAdminInventory, syncInventoryNow } from "@/lib/inventory.functions";
+import {
+  getAdminInventory,
+  getProductPlanning,
+  listSuppliers,
+  setProductPlanning,
+  syncInventoryNow,
+} from "@/lib/inventory.functions";
+import { PlanningDialog } from "@/components/planning-dialog";
 import { friendlyError } from "@/lib/errors";
 
 export const Route = createFileRoute("/_authenticated/admin/inventory")({
@@ -35,6 +42,7 @@ function AdminInventoryPage() {
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("all");
   const [search, setSearch] = useState("");
+  const [planningProductId, setPlanningProductId] = useState<string | null>(null);
 
   const fetchInventory = useServerFn(getAdminInventory);
   const { data, isLoading, error } = useQuery({
@@ -145,12 +153,26 @@ function AdminInventoryPage() {
                       : "never"}
                   </div>
                 )}
-                <InventoryTable rows={rows} showOrigin />
+                <InventoryTable
+                  rows={rows}
+                  showOrigin
+                  planLabel="Planning"
+                  planIcon={SlidersHorizontal}
+                  onPlanReorder={(row) => row.product_id && setPlanningProductId(row.product_id)}
+                />
               </section>
             );
           })}
         </div>
       )}
+
+      <PlanningDialog
+        productId={planningProductId}
+        onClose={() => setPlanningProductId(null)}
+        loadPlanning={getProductPlanning}
+        loadSuppliers={listSuppliers}
+        savePlanning={setProductPlanning}
+      />
     </div>
   );
 }
