@@ -85,8 +85,10 @@ export const createInventoryItem = createServerFn({ method: "POST" })
       p_in_warehouse: data.in_warehouse,
       p_reserved: data.reserved,
       p_incoming: data.incoming,
-      p_weight: data.weight,
-      p_weight_unit: data.weight ? data.weight_unit : null,
+      // The generated arg types mark these non-nullable; SQL accepts NULL.
+      p_weight: data.weight as unknown as number,
+      p_weight_unit: (data.weight ? data.weight_unit : null) as unknown as string,
+
       p_lead_time_days: data.lead_time_days,
       p_routes: data.shipping_routes,
     });
