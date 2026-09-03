@@ -134,7 +134,7 @@ export function InventoryTable({
           <col className="w-[11.5%]" />
         </colgroup>
         <thead>
-          <tr className="border-b border-border text-left text-[10px] uppercase leading-tight tracking-wide text-muted-foreground [&>th]:break-words">
+          <tr className="border-b border-border text-left text-[10px] uppercase leading-tight tracking-wide text-muted-foreground [&>th]:break-normal [&>th]:hyphens-none">
             <th className="w-6 px-1 py-2" />
             <th className="px-2 py-2 font-medium">Product</th>
             <th className="px-2 py-2 text-right font-medium">Stock</th>
