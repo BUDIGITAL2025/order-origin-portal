@@ -43,6 +43,59 @@ export const getWorkspaceInventory = createServerFn({ method: "POST" })
     };
   });
 
+/**
+ * Create (or update) a manually tracked inventory item in a workspace the
+ * caller owns. Derived figures — sellable, sales, state — are never accepted
+ * from the client; they are computed from this data.
+ */
+export const createInventoryItem = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        storeId: uuid,
+        sku: z.string().trim().min(1).max(64),
+        product_name: z.string().trim().min(1).max(200),
+        tags: z.array(z.string().trim().min(1).max(40)).max(20).default([]),
+        in_warehouse: z.number().int().min(0).max(10_000_000),
+        reserved: z.number().int().min(0).max(10_000_000).default(0),
+        incoming: z.number().int().min(0).max(10_000_000).default(0),
+        weight: z.number().min(0).max(1_000_000).nullable().default(null),
+        weight_unit: z.enum(["g", "kg"]).default("g"),
+        lead_time_days: days,
+        shipping_routes: z
+          .array(
+            z.object({
+              destination: z.string().trim().min(1).max(80),
+              handling_time_days: days,
+              is_default: z.boolean().default(false),
+            }),
+          )
+          .min(1)
+          .max(20),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { data: product, error } = await context.supabase.rpc("upsert_manual_inventory_item", {
+      p_store_id: data.storeId,
+      p_sku: data.sku,
+      p_product_name: data.product_name,
+      p_tags: data.tags,
+      p_in_warehouse: data.in_warehouse,
+      p_reserved: data.reserved,
+      p_incoming: data.incoming,
+      p_weight: data.weight,
+      p_weight_unit: data.weight ? data.weight_unit : null,
+      p_lead_time_days: data.lead_time_days,
+      p_routes: data.shipping_routes,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true as const, product };
+  });
+
+
+
 /** Admin: every connected workspace, with lead-time origin indicators. */
 export const getAdminInventory = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
