@@ -232,7 +232,7 @@ export function InventoryTable({
                 {open && (
                   <tr className="border-b border-border/60 bg-muted/30">
                     <td />
-                    <td colSpan={10} className="px-3 py-2">
+                    <td colSpan={15} className="px-3 py-2">
                       <div className="flex flex-wrap gap-2">
                         {row.locations.map((l) => (
                           <Chip key={l.location}>
