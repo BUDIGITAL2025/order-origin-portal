@@ -545,6 +545,47 @@ export type Database = {
           },
         ]
       }
+      manual_stock_levels: {
+        Row: {
+          created_at: string
+          id: string
+          in_warehouse: number
+          incoming: number
+          reserved: number
+          sku: string
+          store_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          in_warehouse?: number
+          incoming?: number
+          reserved?: number
+          sku: string
+          store_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          in_warehouse?: number
+          incoming?: number
+          reserved?: number
+          sku?: string
+          store_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "manual_stock_levels_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       middleware_sync_state: {
         Row: {
           consecutive_failures: number
@@ -932,6 +973,51 @@ export type Database = {
           },
         ]
       }
+      product_shipping_routes: {
+        Row: {
+          created_at: string
+          destination: string
+          handling_time_days: number
+          id: string
+          is_default: boolean
+          product_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          destination: string
+          handling_time_days?: number
+          id?: string
+          is_default?: boolean
+          product_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          destination?: string
+          handling_time_days?: number
+          id?: string
+          is_default?: boolean
+          product_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_shipping_routes_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "bundle_prices"
+            referencedColumns: ["bundle_product_id"]
+          },
+          {
+            foreignKeyName: "product_shipping_routes_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
           created_at: string
@@ -950,8 +1036,11 @@ export type Database = {
           status: Database["public"]["Enums"]["product_status"]
           store_id: string
           supplier_id: string | null
+          tags: string[]
           transit_lead_days: number | null
           variant_label: string | null
+          weight: number | null
+          weight_unit: string | null
         }
         Insert: {
           created_at?: string
@@ -970,8 +1059,11 @@ export type Database = {
           status?: Database["public"]["Enums"]["product_status"]
           store_id: string
           supplier_id?: string | null
+          tags?: string[]
           transit_lead_days?: number | null
           variant_label?: string | null
+          weight?: number | null
+          weight_unit?: string | null
         }
         Update: {
           created_at?: string
@@ -990,8 +1082,11 @@ export type Database = {
           status?: Database["public"]["Enums"]["product_status"]
           store_id?: string
           supplier_id?: string | null
+          tags?: string[]
           transit_lead_days?: number | null
           variant_label?: string | null
+          weight?: number | null
+          weight_unit?: string | null
         }
         Relationships: [
           {
@@ -1981,8 +2076,11 @@ export type Database = {
           status: Database["public"]["Enums"]["product_status"]
           store_id: string
           supplier_id: string | null
+          tags: string[]
           transit_lead_days: number | null
           variant_label: string | null
+          weight: number | null
+          weight_unit: string | null
         }
         SetofOptions: {
           from: "*"
@@ -2396,8 +2494,55 @@ export type Database = {
           status: Database["public"]["Enums"]["product_status"]
           store_id: string
           supplier_id: string | null
+          tags: string[]
           transit_lead_days: number | null
           variant_label: string | null
+          weight: number | null
+          weight_unit: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "products"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      upsert_manual_inventory_item: {
+        Args: {
+          p_in_warehouse: number
+          p_incoming: number
+          p_lead_time_days: number
+          p_product_name: string
+          p_reserved: number
+          p_routes: Json
+          p_sku: string
+          p_store_id: string
+          p_tags: string[]
+          p_weight: number
+          p_weight_unit: string
+        }
+        Returns: {
+          created_at: string
+          id: string
+          middleware_product_id: string | null
+          moq: number | null
+          price_override: number | null
+          product_name: string
+          product_type: Database["public"]["Enums"]["product_type"]
+          production_lead_days: number | null
+          push_error: string | null
+          push_status: Database["public"]["Enums"]["push_status"]
+          quote_line_id: string | null
+          safety_margin_days: number | null
+          sku: string
+          status: Database["public"]["Enums"]["product_status"]
+          store_id: string
+          supplier_id: string | null
+          tags: string[]
+          transit_lead_days: number | null
+          variant_label: string | null
+          weight: number | null
+          weight_unit: string | null
         }
         SetofOptions: {
           from: "*"
