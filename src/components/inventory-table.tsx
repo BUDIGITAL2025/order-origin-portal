@@ -110,14 +110,14 @@ export function InventoryTable({
       return next;
     });
 
-  const num = "w-[5.5%]";
+  const num = "w-[5.2%]";
 
   return (
     <TableShell className="overflow-x-auto lg:overflow-x-visible">
       <table className="w-full table-fixed text-[13px]">
         <colgroup>
           <col className="w-[28px]" />
-          <col className="w-[18%]" />
+          <col className="w-[16%]" />
           <col className={num} />
           <col className={num} />
           <col className={num} />
@@ -129,12 +129,12 @@ export function InventoryTable({
           <col className={num} />
           <col className={num} />
           <col className={num} />
+          <col className="w-[9%]" />
+          <col className="w-[7%]" />
           <col className="w-[10%]" />
-          <col className="w-[8%]" />
-          <col className="w-[8%]" />
         </colgroup>
         <thead>
-          <tr className="border-b border-border text-left text-[11px] uppercase tracking-wide text-muted-foreground">
+          <tr className="border-b border-border text-left text-[10px] uppercase leading-tight tracking-wide text-muted-foreground [&>th]:break-words">
             <th className="w-6 px-1 py-2" />
             <th className="px-2 py-2 font-medium">Product</th>
             <th className="px-2 py-2 text-right font-medium">Stock</th>
