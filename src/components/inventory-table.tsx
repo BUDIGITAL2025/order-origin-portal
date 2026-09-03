@@ -18,6 +18,12 @@ export interface InventoryRow {
   product_name: string;
   locations: { location: string; quantity: number }[];
   total_stock: number;
+  reserved?: number;
+  incoming?: number;
+  sellable?: number;
+  weight?: number | null;
+  weight_unit?: string | null;
+  tags?: string[];
   units_7d: number;
   units_30d: number;
   daily_velocity: number;
@@ -34,6 +40,7 @@ export interface InventoryRow {
   transit_origin?: string;
   safety_origin?: string;
 }
+
 
 const STATE_LABEL: Record<InventoryState, string> = {
   green: "Healthy",
