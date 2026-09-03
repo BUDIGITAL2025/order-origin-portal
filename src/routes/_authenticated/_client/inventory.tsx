@@ -42,6 +42,8 @@ function InventoryPage() {
   const navigate = useNavigate();
   const [storeId, setStoreId] = useState<string | null>(null);
   const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("all");
+  const [addOpen, setAddOpen] = useState(false);
+
 
   useEffect(() => {
     const read = () => setStoreId(getCurrentStoreId());
