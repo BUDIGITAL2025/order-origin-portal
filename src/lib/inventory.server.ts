@@ -287,13 +287,17 @@ export async function computeWorkspaceInventory(
       a.sku.localeCompare(b.sku),
   );
 
+  // Manually entered stock counts as a fresh update for the staleness banner.
+  const freshest = [lastCapturedAt, manualUpdatedAt].filter(Boolean).sort().at(-1) ?? null;
+
   return {
     store_id: store.id,
     store_name: store.store_name ?? null,
     rows,
-    last_captured_at: lastCapturedAt,
-    stale: lastCapturedAt ? Date.now() - new Date(lastCapturedAt).getTime() > STALE_AFTER_MS : true,
+    last_captured_at: freshest,
+    stale: freshest ? Date.now() - new Date(freshest).getTime() > STALE_AFTER_MS : true,
   };
+
 }
 
 // ============= Pulling stock from the middleware =============
