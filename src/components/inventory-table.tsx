@@ -118,8 +118,14 @@ export function InventoryTable({
             <th className="w-6 px-2 py-2" />
             <th className="px-3 py-2 font-medium">Product</th>
             <th className="px-3 py-2 text-right font-medium">Stock</th>
+            <th className="px-3 py-2 text-right font-medium">Reserved</th>
+            <th className="px-3 py-2 text-right font-medium">Incoming</th>
+            <th className="px-3 py-2 text-right font-medium">Weight</th>
+            <th className="px-3 py-2 text-right font-medium">Sales 30d</th>
             <th className="px-3 py-2 text-right font-medium">Units/day</th>
             <th className="px-3 py-2 text-right font-medium">Cover</th>
+            <th className="px-3 py-2 text-right font-medium">Total lead</th>
+
             <th className="px-3 py-2 text-right font-medium">Production</th>
             <th className="px-3 py-2 text-right font-medium">Transit</th>
             <th className="px-3 py-2 text-right font-medium">Safety</th>
