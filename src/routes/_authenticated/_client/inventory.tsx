@@ -108,12 +108,20 @@ function InventoryPage() {
             <p className="max-w-xl text-sm text-muted-foreground">
               {data?.connected
                 ? "We are connected to your fulfilment engine but have not received stock levels for this workspace yet. Levels appear within 30 minutes of the first sync."
-                : "Inventory appears once this workspace is connected to fulfilment and we start receiving stock levels. Until then, your orders and quotes work exactly as they do now."}
+                : "Inventory appears once this workspace is connected to fulfilment and we start receiving stock levels. Until then, you can add products manually below."}
             </p>
             <p className="text-xs text-muted-foreground">
               Once stock is flowing, you see days of cover, the reorder-by date for each SKU and an
               alert before you run out.
             </p>
+            <Button
+              className="rounded-full"
+              disabled={!currentStore}
+              onClick={() => setAddOpen(true)}
+            >
+              <Plus className="mr-1.5 h-4 w-4" />
+              Add product
+            </Button>
           </CardContent>
         </Card>
       ) : (
@@ -141,19 +149,38 @@ function InventoryPage() {
 
           <div className="mb-3 flex flex-wrap items-center gap-2">
             <FilterTabs tabs={TABS} value={tab} onChange={setTab} />
-            <button
-              type="button"
-              onClick={() => void refetch()}
-              className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-[13px] text-muted-foreground hover:text-foreground"
-            >
-              <RefreshCw className={isFetching ? "h-3.5 w-3.5 animate-spin" : "h-3.5 w-3.5"} />
-              Refresh
-            </button>
+            <div className="ml-auto flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => void refetch()}
+                className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-[13px] text-muted-foreground hover:text-foreground"
+              >
+                <RefreshCw className={isFetching ? "h-3.5 w-3.5 animate-spin" : "h-3.5 w-3.5"} />
+                Refresh
+              </button>
+              <Button
+                size="sm"
+                className="h-8 rounded-full px-3 text-[13px]"
+                disabled={!currentStore}
+                onClick={() => setAddOpen(true)}
+              >
+                <Plus className="mr-1 h-3.5 w-3.5" />
+                Add product
+              </Button>
+            </div>
           </div>
 
           <InventoryTable rows={visible} onPlanReorder={planReorder} />
         </>
       )}
+
+      <InventoryItemDialog
+        open={addOpen}
+        storeId={currentStore?.id ?? null}
+        existingSkus={rows.map((r) => r.sku)}
+        onOpenChange={setAddOpen}
+      />
     </div>
   );
+
 }
