@@ -165,13 +165,30 @@ export function InventoryTable({
                     <div className="font-medium leading-tight">{row.product_name}</div>
                     <div className="text-[11px] text-muted-foreground">{row.sku}</div>
                   </td>
-                  <td className="tnum px-3 py-2 text-right">{row.total_stock}</td>
+                  <td className="tnum px-3 py-2 text-right">
+                    <span className="font-medium">{row.sellable ?? row.total_stock}</span>
+                    {row.sellable != null && row.sellable !== row.total_stock && (
+                      <span className="text-[11px] text-muted-foreground"> / {row.total_stock}</span>
+                    )}
+                  </td>
+                  <td className="tnum px-3 py-2 text-right">
+                    {row.reserved ? row.reserved : <EmptyCell label="None reserved" />}
+                  </td>
+                  <td className="tnum px-3 py-2 text-right">
+                    {row.incoming ? row.incoming : <EmptyCell label="Nothing incoming" />}
+                  </td>
+                  <td className="tnum px-3 py-2 text-right">
+                    {row.weight != null ? `${row.weight}${row.weight_unit ?? ""}` : <EmptyCell label="No weight" />}
+                  </td>
+                  <td className="tnum px-3 py-2 text-right">{row.units_30d}</td>
                   <td className="tnum px-3 py-2 text-right">
                     {row.daily_velocity > 0 ? row.daily_velocity.toFixed(2) : <EmptyCell label="No recent sales" />}
                   </td>
                   <td className="tnum px-3 py-2 text-right">
                     {row.days_of_cover == null ? "∞" : `${row.days_of_cover}d`}
                   </td>
+                  <td className="tnum px-3 py-2 text-right">{row.total_lead}d</td>
+
                   <td className="px-3 py-2 text-right">
                     <LeadCell days={row.production_lead} origin={showOrigin ? row.production_origin : undefined} />
                   </td>
