@@ -110,30 +110,51 @@ export function InventoryTable({
       return next;
     });
 
+  const num = "w-[5.5%]";
+
   return (
-    <TableShell>
-      <table className="w-full text-[13px]">
+    <TableShell className="overflow-x-auto lg:overflow-x-visible">
+      <table className="w-full table-fixed text-[13px]">
+        <colgroup>
+          <col className="w-[28px]" />
+          <col className="w-[18%]" />
+          <col className={num} />
+          <col className={num} />
+          <col className={num} />
+          <col className={num} />
+          <col className={num} />
+          <col className={num} />
+          <col className={num} />
+          <col className={num} />
+          <col className={num} />
+          <col className={num} />
+          <col className={num} />
+          <col className="w-[10%]" />
+          <col className="w-[8%]" />
+          <col className="w-[8%]" />
+        </colgroup>
         <thead>
           <tr className="border-b border-border text-left text-[11px] uppercase tracking-wide text-muted-foreground">
-            <th className="w-6 px-2 py-2" />
-            <th className="px-3 py-2 font-medium">Product</th>
-            <th className="px-3 py-2 text-right font-medium">Stock</th>
-            <th className="px-3 py-2 text-right font-medium">Reserved</th>
-            <th className="px-3 py-2 text-right font-medium">Incoming</th>
-            <th className="px-3 py-2 text-right font-medium">Weight</th>
-            <th className="px-3 py-2 text-right font-medium">Sales 30d</th>
-            <th className="px-3 py-2 text-right font-medium">Units/day</th>
-            <th className="px-3 py-2 text-right font-medium">Cover</th>
-            <th className="px-3 py-2 text-right font-medium">Total lead</th>
+            <th className="w-6 px-1 py-2" />
+            <th className="px-2 py-2 font-medium">Product</th>
+            <th className="px-2 py-2 text-right font-medium">Stock</th>
+            <th className="px-2 py-2 text-right font-medium">Reserved</th>
+            <th className="px-2 py-2 text-right font-medium">Incoming</th>
+            <th className="px-2 py-2 text-right font-medium">Weight</th>
+            <th className="px-2 py-2 text-right font-medium">Sales 30d</th>
+            <th className="px-2 py-2 text-right font-medium">Units/day</th>
+            <th className="px-2 py-2 text-right font-medium">Cover</th>
+            <th className="px-2 py-2 text-right font-medium">Total lead</th>
 
-            <th className="px-3 py-2 text-right font-medium">Production</th>
-            <th className="px-3 py-2 text-right font-medium">Transit</th>
-            <th className="px-3 py-2 text-right font-medium">Safety</th>
-            <th className="px-3 py-2 font-medium">Reorder by</th>
-            <th className="px-3 py-2 font-medium">State</th>
-            <th className="px-3 py-2 text-right font-medium">Action</th>
+            <th className="px-2 py-2 text-right font-medium">Production</th>
+            <th className="px-2 py-2 text-right font-medium">Transit</th>
+            <th className="px-2 py-2 text-right font-medium">Safety</th>
+            <th className="px-2 py-2 font-medium">Reorder by</th>
+            <th className="px-2 py-2 font-medium">State</th>
+            <th className="px-2 py-2 text-right font-medium">Action</th>
           </tr>
         </thead>
+
         <tbody>
           {rows.map((row) => {
             const open = expanded.has(row.sku);
