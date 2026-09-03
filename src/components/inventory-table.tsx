@@ -110,30 +110,51 @@ export function InventoryTable({
       return next;
     });
 
-  return (
-    <TableShell>
-      <table className="w-full text-[13px]">
-        <thead>
-          <tr className="border-b border-border text-left text-[11px] uppercase tracking-wide text-muted-foreground">
-            <th className="w-6 px-2 py-2" />
-            <th className="px-3 py-2 font-medium">Product</th>
-            <th className="px-3 py-2 text-right font-medium">Stock</th>
-            <th className="px-3 py-2 text-right font-medium">Reserved</th>
-            <th className="px-3 py-2 text-right font-medium">Incoming</th>
-            <th className="px-3 py-2 text-right font-medium">Weight</th>
-            <th className="px-3 py-2 text-right font-medium">Sales 30d</th>
-            <th className="px-3 py-2 text-right font-medium">Units/day</th>
-            <th className="px-3 py-2 text-right font-medium">Cover</th>
-            <th className="px-3 py-2 text-right font-medium">Total lead</th>
+  const num = "w-[5.0%]";
 
-            <th className="px-3 py-2 text-right font-medium">Production</th>
-            <th className="px-3 py-2 text-right font-medium">Transit</th>
-            <th className="px-3 py-2 text-right font-medium">Safety</th>
-            <th className="px-3 py-2 font-medium">Reorder by</th>
-            <th className="px-3 py-2 font-medium">State</th>
-            <th className="px-3 py-2 text-right font-medium">Action</th>
+  return (
+    <TableShell className="overflow-x-auto lg:overflow-x-visible">
+      <table className="w-full table-fixed text-[13px]">
+        <colgroup>
+          <col className="w-[28px]" />
+          <col className="w-[16%]" />
+          <col className={num} />
+          <col className={num} />
+          <col className={num} />
+          <col className={num} />
+          <col className={num} />
+          <col className={num} />
+          <col className={num} />
+          <col className={num} />
+          <col className={num} />
+          <col className={num} />
+          <col className={num} />
+          <col className="w-[9%]" />
+          <col className="w-[7%]" />
+          <col className="w-[11.5%]" />
+        </colgroup>
+        <thead>
+          <tr className="border-b border-border text-left text-[10px] uppercase leading-tight tracking-wide text-muted-foreground [&>th]:break-normal [&>th]:hyphens-none">
+            <th className="w-6 px-1 py-2" />
+            <th className="px-2 py-2 font-medium">Product</th>
+            <th className="px-2 py-2 text-right font-medium">Stock</th>
+            <th className="px-2 py-2 text-right font-medium">Reserved</th>
+            <th className="px-2 py-2 text-right font-medium">Incoming</th>
+            <th className="px-2 py-2 text-right font-medium">Weight</th>
+            <th className="px-2 py-2 text-right font-medium">Sales 30d</th>
+            <th className="px-2 py-2 text-right font-medium">Units/day</th>
+            <th className="px-2 py-2 text-right font-medium">Cover</th>
+            <th className="px-2 py-2 text-right font-medium">Total lead</th>
+
+            <th className="px-2 py-2 text-right font-medium">Production</th>
+            <th className="px-2 py-2 text-right font-medium">Transit</th>
+            <th className="px-2 py-2 text-right font-medium">Safety</th>
+            <th className="px-2 py-2 font-medium">Reorder by</th>
+            <th className="px-2 py-2 font-medium">State</th>
+            <th className="px-2 py-2 text-right font-medium">Action</th>
           </tr>
         </thead>
+
         <tbody>
           {rows.map((row) => {
             const open = expanded.has(row.sku);
@@ -145,7 +166,7 @@ export function InventoryTable({
                     row.state === "red" && "bg-destructive/5",
                   )}
                 >
-                  <td className="px-2 py-2 align-top">
+                  <td className="px-1 py-2 align-top">
                     {row.locations.length > 0 && (
                       <button
                         type="button"
@@ -161,44 +182,48 @@ export function InventoryTable({
                       </button>
                     )}
                   </td>
-                  <td className="px-3 py-2">
-                    <div className="font-medium leading-tight">{row.product_name}</div>
-                    <div className="text-[11px] text-muted-foreground">{row.sku}</div>
+                  <td className="px-2 py-2">
+                    <div className="truncate font-medium leading-tight" title={row.product_name}>
+                      {row.product_name}
+                    </div>
+                    <div className="truncate text-[11px] text-muted-foreground" title={row.sku}>
+                      {row.sku}
+                    </div>
                   </td>
-                  <td className="tnum px-3 py-2 text-right">
+                  <td className="tnum px-2 py-2 text-right text-xs">
                     <span className="font-medium">{row.sellable ?? row.total_stock}</span>
                     {row.sellable != null && row.sellable !== row.total_stock && (
                       <span className="text-[11px] text-muted-foreground"> / {row.total_stock}</span>
                     )}
                   </td>
-                  <td className="tnum px-3 py-2 text-right">
+                  <td className="tnum px-2 py-2 text-right text-xs">
                     {row.reserved ? row.reserved : <EmptyCell label="None reserved" />}
                   </td>
-                  <td className="tnum px-3 py-2 text-right">
+                  <td className="tnum px-2 py-2 text-right text-xs">
                     {row.incoming ? row.incoming : <EmptyCell label="Nothing incoming" />}
                   </td>
-                  <td className="tnum px-3 py-2 text-right">
+                  <td className="tnum px-2 py-2 text-right text-xs">
                     {row.weight != null ? `${row.weight}${row.weight_unit ?? ""}` : <EmptyCell label="No weight" />}
                   </td>
-                  <td className="tnum px-3 py-2 text-right">{row.units_30d}</td>
-                  <td className="tnum px-3 py-2 text-right">
+                  <td className="tnum px-2 py-2 text-right text-xs">{row.units_30d}</td>
+                  <td className="tnum px-2 py-2 text-right text-xs">
                     {row.daily_velocity > 0 ? row.daily_velocity.toFixed(2) : <EmptyCell label="No recent sales" />}
                   </td>
-                  <td className="tnum px-3 py-2 text-right">
+                  <td className="tnum px-2 py-2 text-right text-xs">
                     {row.days_of_cover == null ? "∞" : `${row.days_of_cover}d`}
                   </td>
-                  <td className="tnum px-3 py-2 text-right">{row.total_lead}d</td>
+                  <td className="tnum px-2 py-2 text-right text-xs">{row.total_lead}d</td>
 
-                  <td className="px-3 py-2 text-right">
+                  <td className="px-2 py-2 text-right text-xs">
                     <LeadCell days={row.production_lead} origin={showOrigin ? row.production_origin : undefined} />
                   </td>
-                  <td className="px-3 py-2 text-right">
+                  <td className="px-2 py-2 text-right text-xs">
                     <LeadCell days={row.transit_lead} origin={showOrigin ? row.transit_origin : undefined} />
                   </td>
-                  <td className="px-3 py-2 text-right">
+                  <td className="px-2 py-2 text-right text-xs">
                     <LeadCell days={row.safety_margin} origin={showOrigin ? row.safety_origin : undefined} />
                   </td>
-                  <td className="px-3 py-2">
+                  <td className="px-2 py-2 text-xs">
                     {row.reorder_by ? (
                       <span className="tnum">{formatDate(row.reorder_by)}</span>
                     ) : (
@@ -210,15 +235,15 @@ export function InventoryTable({
                       </div>
                     )}
                   </td>
-                  <td className="px-3 py-2">
+                  <td className="px-2 py-2">
                     <StateChip state={row.state} />
                   </td>
-                  <td className="px-3 py-2 text-right">
+                  <td className="px-2 py-2 text-right">
                     {onPlanReorder ? (
                       <Button
                         size="sm"
                         variant={row.state === "red" ? "default" : "outline"}
-                        className="h-7 rounded-full px-3 text-[12px]"
+                        className="h-7 max-w-full rounded-full px-2 text-[11px]"
                         onClick={() => onPlanReorder(row)}
                       >
                         <PlanIcon className="mr-1 h-3.5 w-3.5" />
@@ -228,6 +253,7 @@ export function InventoryTable({
                       <EmptyCell label="No action" />
                     )}
                   </td>
+
                 </tr>
                 {open && (
                   <tr className="border-b border-border/60 bg-muted/30">
