@@ -18,6 +18,12 @@ export interface InventoryRow {
   product_name: string;
   locations: { location: string; quantity: number }[];
   total_stock: number;
+  reserved?: number;
+  incoming?: number;
+  sellable?: number;
+  weight?: number | null;
+  weight_unit?: string | null;
+  tags?: string[];
   units_7d: number;
   units_30d: number;
   daily_velocity: number;
@@ -34,6 +40,7 @@ export interface InventoryRow {
   transit_origin?: string;
   safety_origin?: string;
 }
+
 
 const STATE_LABEL: Record<InventoryState, string> = {
   green: "Healthy",
@@ -111,8 +118,14 @@ export function InventoryTable({
             <th className="w-6 px-2 py-2" />
             <th className="px-3 py-2 font-medium">Product</th>
             <th className="px-3 py-2 text-right font-medium">Stock</th>
+            <th className="px-3 py-2 text-right font-medium">Reserved</th>
+            <th className="px-3 py-2 text-right font-medium">Incoming</th>
+            <th className="px-3 py-2 text-right font-medium">Weight</th>
+            <th className="px-3 py-2 text-right font-medium">Sales 30d</th>
             <th className="px-3 py-2 text-right font-medium">Units/day</th>
             <th className="px-3 py-2 text-right font-medium">Cover</th>
+            <th className="px-3 py-2 text-right font-medium">Total lead</th>
+
             <th className="px-3 py-2 text-right font-medium">Production</th>
             <th className="px-3 py-2 text-right font-medium">Transit</th>
             <th className="px-3 py-2 text-right font-medium">Safety</th>
@@ -152,13 +165,30 @@ export function InventoryTable({
                     <div className="font-medium leading-tight">{row.product_name}</div>
                     <div className="text-[11px] text-muted-foreground">{row.sku}</div>
                   </td>
-                  <td className="tnum px-3 py-2 text-right">{row.total_stock}</td>
+                  <td className="tnum px-3 py-2 text-right">
+                    <span className="font-medium">{row.sellable ?? row.total_stock}</span>
+                    {row.sellable != null && row.sellable !== row.total_stock && (
+                      <span className="text-[11px] text-muted-foreground"> / {row.total_stock}</span>
+                    )}
+                  </td>
+                  <td className="tnum px-3 py-2 text-right">
+                    {row.reserved ? row.reserved : <EmptyCell label="None reserved" />}
+                  </td>
+                  <td className="tnum px-3 py-2 text-right">
+                    {row.incoming ? row.incoming : <EmptyCell label="Nothing incoming" />}
+                  </td>
+                  <td className="tnum px-3 py-2 text-right">
+                    {row.weight != null ? `${row.weight}${row.weight_unit ?? ""}` : <EmptyCell label="No weight" />}
+                  </td>
+                  <td className="tnum px-3 py-2 text-right">{row.units_30d}</td>
                   <td className="tnum px-3 py-2 text-right">
                     {row.daily_velocity > 0 ? row.daily_velocity.toFixed(2) : <EmptyCell label="No recent sales" />}
                   </td>
                   <td className="tnum px-3 py-2 text-right">
                     {row.days_of_cover == null ? "∞" : `${row.days_of_cover}d`}
                   </td>
+                  <td className="tnum px-3 py-2 text-right">{row.total_lead}d</td>
+
                   <td className="px-3 py-2 text-right">
                     <LeadCell days={row.production_lead} origin={showOrigin ? row.production_origin : undefined} />
                   </td>
@@ -202,7 +232,7 @@ export function InventoryTable({
                 {open && (
                   <tr className="border-b border-border/60 bg-muted/30">
                     <td />
-                    <td colSpan={10} className="px-3 py-2">
+                    <td colSpan={15} className="px-3 py-2">
                       <div className="flex flex-wrap gap-2">
                         {row.locations.map((l) => (
                           <Chip key={l.location}>

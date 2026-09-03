@@ -19,12 +19,30 @@ export interface SkuLocation {
   quantity: number;
 }
 
+export interface ShippingRoute {
+  destination: string;
+  handling_time_days: number;
+  is_default: boolean;
+}
+
 export interface SkuRow {
   sku: string;
   product_id: string | null;
   product_name: string;
   locations: SkuLocation[];
   total_stock: number;
+  /** Manually tracked reservations (0 when the workspace is middleware-fed). */
+  reserved: number;
+  /** Units already on their way in. */
+  incoming: number;
+  /** total_stock − reserved, floored at 0. Drives cover and the stock bar. */
+  sellable: number;
+  weight: number | null;
+  weight_unit: string | null;
+  tags: string[];
+  routes: ShippingRoute[];
+  /** True when the stock figure came from a manual entry, not the middleware. */
+  manual: boolean;
   units_7d: number;
   units_30d: number;
   daily_velocity: number;
@@ -44,6 +62,7 @@ export interface SkuRow {
   gap_days: number | null;
   suggested_qty: number;
 }
+
 
 export interface WorkspaceInventory {
   store_id: string;
@@ -143,16 +162,26 @@ export async function computeWorkspaceInventory(
   store: { id: string; store_name?: string | null },
   now = new Date(),
 ): Promise<WorkspaceInventory> {
-  const [{ data: snapshots }, { data: velocity }, { data: leads }] = await Promise.all([
-    admin
-      .from("inventory_snapshots")
-      .select("sku, location, quantity, captured_at")
-      .eq("store_id", store.id)
-      .order("captured_at", { ascending: false })
-      .limit(2000),
-    admin.from("sku_velocity").select("sku, units_7d, units_30d").eq("store_id", store.id),
-    admin.rpc("resolved_lead_times", { p_store_id: store.id }),
-  ]);
+  const [{ data: snapshots }, { data: velocity }, { data: leads }, { data: manual }, { data: catalogue }] =
+    await Promise.all([
+      admin
+        .from("inventory_snapshots")
+        .select("sku, location, quantity, captured_at")
+        .eq("store_id", store.id)
+        .order("captured_at", { ascending: false })
+        .limit(2000),
+      admin.from("sku_velocity").select("sku, units_7d, units_30d").eq("store_id", store.id),
+      admin.rpc("resolved_lead_times", { p_store_id: store.id }),
+      admin
+        .from("manual_stock_levels")
+        .select("sku, in_warehouse, reserved, incoming, updated_at")
+        .eq("store_id", store.id),
+      admin
+        .from("products")
+        .select("id, sku, tags, weight, weight_unit, product_shipping_routes(destination, handling_time_days, is_default)")
+        .eq("store_id", store.id)
+        .limit(2000),
+    ]);
 
   const snapshotRows = snapshots ?? [];
   const lastCapturedAt = snapshotRows[0]?.captured_at ?? null;
@@ -169,6 +198,16 @@ export async function computeWorkspaceInventory(
     bySku.set(row.sku, list);
   }
 
+  // Manually entered stock wins for its SKU: a sync must never silently
+  // overwrite what somebody typed in by hand.
+  const manualBySku = new Map((manual ?? []).map((m) => [m.sku, m]));
+  const manualUpdatedAt = (manual ?? [])
+    .map((m) => m.updated_at)
+    .sort()
+    .at(-1) ?? null;
+
+  const catalogueBySku = new Map((catalogue ?? []).map((p) => [p.sku, p]));
+
   const velocityBySku = new Map(
     (velocity ?? []).map((v) => [v.sku, { units_7d: v.units_7d, units_30d: v.units_30d }]),
   );
@@ -176,23 +215,35 @@ export async function computeWorkspaceInventory(
     ((leads ?? []) as ResolvedLead[]).map((l) => [l.sku, l]),
   );
 
-  // Every SKU we know about: stocked SKUs plus catalogue SKUs with velocity.
-  const skus = new Set<string>([...bySku.keys()]);
+  // Every SKU we know about: stocked SKUs, manual entries, plus catalogue SKUs with velocity.
+  const skus = new Set<string>([...bySku.keys(), ...manualBySku.keys()]);
   for (const sku of velocityBySku.keys()) if (leadBySku.has(sku)) skus.add(sku);
 
   const rows: SkuRow[] = [];
   for (const sku of skus) {
     const lead = leadBySku.get(sku);
-    const locations = (bySku.get(sku) ?? []).sort((a, b) => a.location.localeCompare(b.location));
+    const manualRow = manualBySku.get(sku);
+    const locations = manualRow
+      ? [{ location: "Warehouse", quantity: manualRow.in_warehouse }]
+      : (bySku.get(sku) ?? []).sort((a, b) => a.location.localeCompare(b.location));
     const totalStock = locations.reduce((sum, l) => sum + l.quantity, 0);
+    const reserved = manualRow?.reserved ?? 0;
+    const incoming = manualRow?.incoming ?? 0;
+    const sellable = Math.max(0, totalStock - reserved);
     const vel = velocityBySku.get(sku) ?? { units_7d: 0, units_30d: 0 };
+    const product = catalogueBySku.get(sku);
+    const routes: ShippingRoute[] = (product?.product_shipping_routes ?? []).map((r) => ({
+      destination: r.destination,
+      handling_time_days: r.handling_time_days,
+      is_default: r.is_default,
+    }));
 
     const production = lead?.production_lead ?? 0;
     const transit = lead?.transit_lead ?? 0;
     const safety = lead?.safety_margin ?? 0;
 
     const math = evaluateSku({
-      total_stock: totalStock,
+      total_stock: sellable,
       units_7d: vel.units_7d,
       units_30d: vel.units_30d,
       production_lead: production,
@@ -203,10 +254,18 @@ export async function computeWorkspaceInventory(
 
     rows.push({
       sku,
-      product_id: lead?.product_id ?? null,
+      product_id: lead?.product_id ?? product?.id ?? null,
       product_name: lead?.product_name ?? sku,
       locations,
       total_stock: totalStock,
+      reserved,
+      incoming,
+      sellable,
+      weight: product?.weight ?? null,
+      weight_unit: product?.weight_unit ?? null,
+      tags: product?.tags ?? [],
+      routes,
+      manual: manualRow != null,
       units_7d: vel.units_7d,
       units_30d: vel.units_30d,
       production_lead: production,
@@ -219,6 +278,7 @@ export async function computeWorkspaceInventory(
     });
   }
 
+
   const order: Record<InventoryState, number> = { red: 0, amber: 1, green: 2, idle: 3 };
   rows.sort(
     (a, b) =>
@@ -227,13 +287,17 @@ export async function computeWorkspaceInventory(
       a.sku.localeCompare(b.sku),
   );
 
+  // Manually entered stock counts as a fresh update for the staleness banner.
+  const freshest = [lastCapturedAt, manualUpdatedAt].filter(Boolean).sort().at(-1) ?? null;
+
   return {
     store_id: store.id,
     store_name: store.store_name ?? null,
     rows,
-    last_captured_at: lastCapturedAt,
-    stale: lastCapturedAt ? Date.now() - new Date(lastCapturedAt).getTime() > STALE_AFTER_MS : true,
+    last_captured_at: freshest,
+    stale: freshest ? Date.now() - new Date(freshest).getTime() > STALE_AFTER_MS : true,
   };
+
 }
 
 // ============= Pulling stock from the middleware =============
