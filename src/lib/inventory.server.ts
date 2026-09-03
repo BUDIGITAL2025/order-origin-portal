@@ -19,12 +19,30 @@ export interface SkuLocation {
   quantity: number;
 }
 
+export interface ShippingRoute {
+  destination: string;
+  handling_time_days: number;
+  is_default: boolean;
+}
+
 export interface SkuRow {
   sku: string;
   product_id: string | null;
   product_name: string;
   locations: SkuLocation[];
   total_stock: number;
+  /** Manually tracked reservations (0 when the workspace is middleware-fed). */
+  reserved: number;
+  /** Units already on their way in. */
+  incoming: number;
+  /** total_stock − reserved, floored at 0. Drives cover and the stock bar. */
+  sellable: number;
+  weight: number | null;
+  weight_unit: string | null;
+  tags: string[];
+  routes: ShippingRoute[];
+  /** True when the stock figure came from a manual entry, not the middleware. */
+  manual: boolean;
   units_7d: number;
   units_30d: number;
   daily_velocity: number;
@@ -44,6 +62,7 @@ export interface SkuRow {
   gap_days: number | null;
   suggested_qty: number;
 }
+
 
 export interface WorkspaceInventory {
   store_id: string;
