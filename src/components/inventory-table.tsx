@@ -110,7 +110,7 @@ export function InventoryTable({
       return next;
     });
 
-  const num = "w-[5.2%]";
+  const num = "w-[5.0%]";
 
   return (
     <TableShell className="overflow-x-auto lg:overflow-x-visible">
@@ -131,7 +131,7 @@ export function InventoryTable({
           <col className={num} />
           <col className="w-[9%]" />
           <col className="w-[7%]" />
-          <col className="w-[10%]" />
+          <col className="w-[11.5%]" />
         </colgroup>
         <thead>
           <tr className="border-b border-border text-left text-[10px] uppercase leading-tight tracking-wide text-muted-foreground [&>th]:break-words">
@@ -243,7 +243,7 @@ export function InventoryTable({
                       <Button
                         size="sm"
                         variant={row.state === "red" ? "default" : "outline"}
-                        className="h-7 rounded-full px-2 text-[12px]"
+                        className="h-7 max-w-full rounded-full px-2 text-[11px]"
                         onClick={() => onPlanReorder(row)}
                       >
                         <PlanIcon className="mr-1 h-3.5 w-3.5" />
