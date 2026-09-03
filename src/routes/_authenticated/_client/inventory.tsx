@@ -2,15 +2,18 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
-import { AlertTriangle, PackageSearch, RefreshCw } from "lucide-react";
+import { AlertTriangle, PackageSearch, Plus, RefreshCw } from "lucide-react";
 import { PageHeader } from "@/components/app-shell";
 import { getCurrentStoreId, STORE_CHANGED_EVENT } from "@/components/store-switcher";
 import { SummaryBar, FilterTabs } from "@/components/admin-ui";
 import { InventoryTable, type InventoryRow } from "@/components/inventory-table";
+import { InventoryItemDialog } from "@/components/inventory-item-dialog";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { getWorkspaceInventory } from "@/lib/inventory.functions";
 import { useMyContext } from "../_client";
 import { friendlyError } from "@/lib/errors";
+
 
 export const Route = createFileRoute("/_authenticated/_client/inventory")({
   head: () => ({
