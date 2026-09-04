@@ -24,6 +24,8 @@ export interface InventoryRow {
   weight?: number | null;
   weight_unit?: string | null;
   tags?: string[];
+  routes?: { destination: string; handling_time_days: number; is_default: boolean }[];
+  source?: "manual" | "shopify";
   units_7d: number;
   units_30d: number;
   daily_velocity: number;

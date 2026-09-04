@@ -3,7 +3,7 @@
  * timing behind it; everything derived (sellable, sales, state) is computed
  * server-side and never submitted from here.
  */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Plus, X } from "lucide-react";
@@ -27,6 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import type { InventoryRow } from "@/components/inventory-table";
 import { createInventoryItem } from "@/lib/inventory.functions";
 import { friendlyError } from "@/lib/errors";
 
