@@ -163,6 +163,29 @@ export const syncInventoryNow = createServerFn({ method: "POST" })
     return { results };
   });
 
+/** Client-triggered stock refresh for one workspace the caller owns. */
+export const syncWorkspaceInventory = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ storeId: uuid }).parse(input))
+  .handler(async ({ data, context }) => {
+    // RLS proves ownership before we touch anything with the admin client.
+    const { data: store, error } = await context.supabase
+      .from("stores")
+      .select("id")
+      .eq("id", data.storeId)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!store) throw new Error("Workspace not found");
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { syncInventoryAllTenants } = await import("./inventory.server");
+    const results = await syncInventoryAllTenants(supabaseAdmin, {
+      force: true,
+      storeIds: [data.storeId],
+    });
+    return { results };
+  });
+
 // ============= Suppliers (admin only) =============
 
 export const listSuppliers = createServerFn({ method: "GET" })

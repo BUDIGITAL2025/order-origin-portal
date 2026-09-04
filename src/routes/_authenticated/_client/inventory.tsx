@@ -1,8 +1,9 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { AlertTriangle, PackageSearch, Plus, RefreshCw } from "lucide-react";
+import { toast } from "sonner";
 import { PageHeader } from "@/components/app-shell";
 import { getCurrentStoreId, STORE_CHANGED_EVENT } from "@/components/store-switcher";
 import { SummaryBar, FilterTabs } from "@/components/admin-ui";
@@ -10,7 +11,7 @@ import { InventoryTable, type InventoryRow } from "@/components/inventory-table"
 import { InventoryItemDialog } from "@/components/inventory-item-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { getWorkspaceInventory } from "@/lib/inventory.functions";
+import { getWorkspaceInventory, syncWorkspaceInventory } from "@/lib/inventory.functions";
 import { useMyContext } from "../_client";
 import { friendlyError } from "@/lib/errors";
 
@@ -43,6 +44,8 @@ function InventoryPage() {
   const [storeId, setStoreId] = useState<string | null>(null);
   const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("all");
   const [addOpen, setAddOpen] = useState(false);
+  const [editing, setEditing] = useState<InventoryRow | null>(null);
+  const queryClient = useQueryClient();
 
 
   useEffect(() => {
@@ -61,6 +64,18 @@ function InventoryPage() {
     enabled: currentStore != null,
     staleTime: 60_000,
     queryFn: () => fetchInventory({ data: { storeId: currentStore!.id } }),
+  });
+
+  const callSync = useServerFn(syncWorkspaceInventory);
+  const syncShopify = useMutation({
+    mutationFn: () => callSync({ data: { storeId: currentStore!.id } }),
+    onSuccess: () => {
+      toast.success("Sync started");
+      setTimeout(() => {
+        void queryClient.invalidateQueries({ queryKey: ["inventory"] });
+      }, 4000);
+    },
+    onError: (e) => toast.error(friendlyError(e)),
   });
 
   const rows = (data?.rows ?? []) as InventoryRow[];
@@ -117,7 +132,10 @@ function InventoryPage() {
             <Button
               className="rounded-full"
               disabled={!currentStore}
-              onClick={() => setAddOpen(true)}
+              onClick={() => {
+                setEditing(null);
+                setAddOpen(true);
+              }}
             >
               <Plus className="mr-1.5 h-4 w-4" />
               Add product
@@ -160,9 +178,21 @@ function InventoryPage() {
               </button>
               <Button
                 size="sm"
+                variant="outline"
+                className="h-8 rounded-full px-3 text-[13px]"
+                disabled={!currentStore || syncShopify.isPending}
+                onClick={() => syncShopify.mutate()}
+              >
+                {syncShopify.isPending ? "Syncing…" : "Sync with Shopify"}
+              </Button>
+              <Button
+                size="sm"
                 className="h-8 rounded-full px-3 text-[13px]"
                 disabled={!currentStore}
-                onClick={() => setAddOpen(true)}
+                onClick={() => {
+                  setEditing(null);
+                  setAddOpen(true);
+                }}
               >
                 <Plus className="mr-1 h-3.5 w-3.5" />
                 Add product
@@ -170,7 +200,14 @@ function InventoryPage() {
             </div>
           </div>
 
-          <InventoryTable rows={visible} onPlanReorder={planReorder} />
+          <InventoryTable
+            rows={visible}
+            onPlanReorder={planReorder}
+            onRowClick={(row) => {
+              setEditing(row);
+              setAddOpen(true);
+            }}
+          />
         </>
       )}
 
@@ -178,7 +215,11 @@ function InventoryPage() {
         open={addOpen}
         storeId={currentStore?.id ?? null}
         existingSkus={rows.map((r) => r.sku)}
-        onOpenChange={setAddOpen}
+        item={editing}
+        onOpenChange={(next) => {
+          setAddOpen(next);
+          if (!next) setEditing(null);
+        }}
       />
     </div>
   );
