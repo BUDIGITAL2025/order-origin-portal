@@ -178,7 +178,7 @@ export function InventoryItemDialog({
         },
       }),
     onSuccess: () => {
-      toast.success("Product added to your inventory");
+      toast.success(editing ? "Product updated" : "Product added to your inventory");
       void queryClient.invalidateQueries({ queryKey: ["inventory"] });
       reset();
       onOpenChange(false);
@@ -219,10 +219,11 @@ export function InventoryItemDialog({
     >
       <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Add product</DialogTitle>
+          <DialogTitle>{editing ? `Edit ${item.product_name}` : "Add product"}</DialogTitle>
           <DialogDescription>
-            The SKU must match the one in your store exactly, so sales can be deducted
-            automatically later.
+            {synced
+              ? "This product is synced from Shopify. Stock, timings and routes are yours to edit."
+              : "The SKU must match the one in your store exactly, so sales can be deducted automatically later."}
           </DialogDescription>
         </DialogHeader>
 
@@ -230,8 +231,16 @@ export function InventoryItemDialog({
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <Label htmlFor="i-sku">SKU</Label>
-              <Input id="i-sku" value={sku} onChange={(e) => setSku(e.target.value)} placeholder="FS-0001" />
-              {duplicate && sku.trim() !== "" && (
+              <Input
+                id="i-sku"
+                value={sku}
+                disabled={synced || editing}
+                className={synced || editing ? "bg-muted" : undefined}
+                onChange={(e) => setSku(e.target.value)}
+                placeholder="FS-0001"
+              />
+              {synced && <p className="mt-1 text-[12px] text-muted-foreground">Synced from Shopify</p>}
+              {!editing && duplicate && sku.trim() !== "" && (
                 <p className="mt-1 text-[12px] text-warning">
                   This SKU already exists in this workspace — saving updates it.
                 </p>
@@ -242,9 +251,12 @@ export function InventoryItemDialog({
               <Input
                 id="i-name"
                 value={productName}
+                disabled={synced}
+                className={synced ? "bg-muted" : undefined}
                 onChange={(e) => setProductName(e.target.value)}
                 placeholder="Sleep mask"
               />
+              {synced && <p className="mt-1 text-[12px] text-muted-foreground">Synced from Shopify</p>}
             </div>
           </div>
 
@@ -358,11 +370,17 @@ export function InventoryItemDialog({
                   min={0}
                   step="0.01"
                   value={weight}
+                  disabled={synced}
+                  className={synced ? "bg-muted" : undefined}
                   onChange={(e) => setWeight(e.target.value)}
                   placeholder="Optional"
                 />
-                <Select value={weightUnit} onValueChange={(v) => setWeightUnit(v as "g" | "kg")}>
-                  <SelectTrigger className="w-24">
+                <Select
+                  value={weightUnit}
+                  disabled={synced}
+                  onValueChange={(v) => setWeightUnit(v as "g" | "kg")}
+                >
+                  <SelectTrigger className={synced ? "w-24 bg-muted" : "w-24"}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -454,7 +472,7 @@ export function InventoryItemDialog({
             Cancel
           </Button>
           <Button className="rounded-full" disabled={create.isPending || !storeId} onClick={submit}>
-            {create.isPending ? "Adding…" : "Add product"}
+            {create.isPending ? "Saving…" : editing ? "Save changes" : "Add product"}
           </Button>
         </DialogFooter>
       </DialogContent>
