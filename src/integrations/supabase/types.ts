@@ -551,6 +551,7 @@ export type Database = {
           id: string
           in_warehouse: number
           incoming: number
+          locations: Json
           reserved: number
           sku: string
           store_id: string
@@ -561,6 +562,7 @@ export type Database = {
           id?: string
           in_warehouse?: number
           incoming?: number
+          locations?: Json
           reserved?: number
           sku: string
           store_id: string
@@ -571,6 +573,7 @@ export type Database = {
           id?: string
           in_warehouse?: number
           incoming?: number
+          locations?: Json
           reserved?: number
           sku?: string
           store_id?: string
@@ -2509,7 +2512,6 @@ export type Database = {
       }
       upsert_manual_inventory_item: {
         Args: {
-          p_in_warehouse: number
           p_incoming: number
           p_lead_time_days: number
           p_product_name: string
@@ -2518,6 +2520,7 @@ export type Database = {
           p_sku: string
           p_store_id: string
           p_tags: string[]
+          p_warehouses: Json
           p_weight: number
           p_weight_unit: string
         }
