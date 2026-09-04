@@ -174,7 +174,7 @@ export async function computeWorkspaceInventory(
       admin.rpc("resolved_lead_times", { p_store_id: store.id }),
       admin
         .from("manual_stock_levels")
-        .select("sku, in_warehouse, reserved, incoming, updated_at")
+        .select("sku, in_warehouse, reserved, incoming, locations, updated_at")
         .eq("store_id", store.id),
       admin
         .from("products")
