@@ -69,7 +69,7 @@ export function InventoryItemDialog({
   const [sku, setSku] = useState("");
   const [productName, setProductName] = useState("");
   const [tagsInput, setTagsInput] = useState("");
-  const [inWarehouse, setInWarehouse] = useState("0");
+  const [warehouses, setWarehouses] = useState<WarehouseDraft[]>([emptyWarehouse()]);
   const [reserved, setReserved] = useState("0");
   const [incoming, setIncoming] = useState("0");
   const [weight, setWeight] = useState("");
@@ -82,7 +82,7 @@ export function InventoryItemDialog({
     setSku("");
     setProductName("");
     setTagsInput("");
-    setInWarehouse("0");
+    setWarehouses([emptyWarehouse()]);
     setReserved("0");
     setIncoming("0");
     setWeight("");
@@ -96,6 +96,20 @@ export function InventoryItemDialog({
   const production = intOr(leadTimeDays, 0);
   const handling = intOr(mainRoute?.handlingTimeDays ?? "", 0);
   const duplicate = existingSkus.some((s) => s.toLowerCase() === sku.trim().toLowerCase());
+
+  const totalStock = useMemo(
+    () => warehouses.reduce((sum, w) => sum + intOr(w.quantity, 0), 0),
+    [warehouses],
+  );
+  const duplicateWarehouse = useMemo(() => {
+    const names = warehouses
+      .map((w) => w.location.trim().toLowerCase())
+      .filter(Boolean);
+    return new Set(names).size !== names.length;
+  }, [warehouses]);
+
+  const updateWarehouse = (index: number, patch: Partial<WarehouseDraft>) =>
+    setWarehouses((prev) => prev.map((w, i) => (i === index ? { ...w, ...patch } : w)));
 
   const updateRoute = (index: number, patch: Partial<RouteDraft>) =>
     setRoutes((prev) => prev.map((r, i) => (i === index ? { ...r, ...patch } : r)));
@@ -111,7 +125,9 @@ export function InventoryItemDialog({
           sku: sku.trim(),
           product_name: productName.trim(),
           tags: tagsInput.split(",").map((t) => t.trim()).filter(Boolean),
-          in_warehouse: intOr(inWarehouse, 0),
+          warehouses: warehouses
+            .filter((w) => w.location.trim() !== "")
+            .map((w) => ({ location: w.location.trim(), quantity: intOr(w.quantity, 0) })),
           reserved: intOr(reserved, 0),
           incoming: intOr(incoming, 0),
           weight: weight.trim() === "" ? null : Number(weight),
@@ -138,13 +154,23 @@ export function InventoryItemDialog({
     if (!sku.trim()) return setError("Enter the SKU.");
     if (!productName.trim()) return setError("Enter the product name.");
     if (leadTimeDays.trim() === "") return setError("Enter the production lead time in days.");
-    if (intOr(inWarehouse, -1) < 0) return setError("Warehouse quantity cannot be negative.");
+    const filledWarehouses = warehouses.filter(
+      (w) => w.location.trim() !== "" && w.quantity.trim() !== "",
+    );
+    if (filledWarehouses.length === 0) {
+      return setError("Add at least one warehouse with a name and a quantity.");
+    }
+    if (warehouses.some((w) => w.quantity.trim() !== "" && Number(w.quantity) < 0)) {
+      return setError("Warehouse quantity cannot be negative.");
+    }
+    if (duplicateWarehouse) return setError("Each warehouse can only appear once.");
     if (routes.some((r) => !r.destination.trim() || r.handlingTimeDays.trim() === "")) {
       return setError("Every shipping route needs a destination and a handling time.");
     }
     setError(null);
     create.mutate();
   };
+
 
   return (
     <Dialog
