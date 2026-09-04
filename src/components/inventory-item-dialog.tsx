@@ -36,12 +36,21 @@ interface RouteDraft {
   isDefault: boolean;
 }
 
+interface WarehouseDraft {
+  location: string;
+  quantity: string;
+}
+
+const WAREHOUSE_SUGGESTIONS = ["China", "EUA", "Espanha", "Portugal"];
+
 const emptyRoute = (): RouteDraft => ({ destination: "", handlingTimeDays: "", isDefault: false });
+const emptyWarehouse = (): WarehouseDraft => ({ location: "", quantity: "" });
 
 function intOr(value: string, fallback: number): number {
   const n = Number(value);
   return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : fallback;
 }
+
 
 export function InventoryItemDialog({
   open,
