@@ -96,7 +96,7 @@ export const createInventoryItem = createServerFn({ method: "POST" })
       p_sku: data.sku,
       p_product_name: data.product_name,
       p_tags: data.tags,
-      p_in_warehouse: data.in_warehouse,
+      p_warehouses: data.warehouses,
       p_reserved: data.reserved,
       p_incoming: data.incoming,
       // The generated arg types mark these non-nullable; SQL accepts NULL.
