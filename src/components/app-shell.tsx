@@ -450,12 +450,7 @@ export function AppShell({
         <main className="min-w-0 flex-1">
           <PaymentTestModeBanner />
           {role === "client" && <PastDueBanner />}
-          <div
-            className={cn(
-              "mx-auto px-6 py-6",
-              pathname.endsWith("/inventory") ? "max-w-[1800px]" : "max-w-6xl",
-            )}
-          >
+          <div className="mx-auto max-w-[1800px] px-6 py-6">
             {children}
           </div>
 
