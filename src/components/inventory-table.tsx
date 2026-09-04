@@ -94,12 +94,14 @@ export function InventoryTable({
   rows,
   showOrigin,
   onPlanReorder,
+  onRowClick,
   planLabel = "Plan reorder",
   planIcon: PlanIcon = PackagePlus,
 }: {
   rows: InventoryRow[];
   showOrigin?: boolean | undefined;
   onPlanReorder?: ((row: InventoryRow) => void) | undefined;
+  onRowClick?: ((row: InventoryRow) => void) | undefined;
   planLabel?: string | undefined;
   planIcon?: React.ComponentType<{ className?: string }> | undefined;
 }) {
@@ -119,7 +121,7 @@ export function InventoryTable({
       <table className="w-full table-fixed text-[13px]">
         <colgroup>
           <col className="w-[28px]" />
-          <col className="w-[16%]" />
+          <col className="w-[15%]" />
           <col className={num} />
           <col className={num} />
           <col className={num} />
@@ -131,9 +133,10 @@ export function InventoryTable({
           <col className={num} />
           <col className={num} />
           <col className={num} />
-          <col className="w-[9%]" />
-          <col className="w-[7%]" />
-          <col className="w-[11.5%]" />
+          <col className="w-[8%]" />
+          <col className="w-[6.5%]" />
+          <col className="w-[6%]" />
+          <col className="w-[11%]" />
         </colgroup>
         <thead>
           <tr className="border-b border-border text-left text-[10px] uppercase leading-tight tracking-wide text-muted-foreground [&>th]:break-normal [&>th]:hyphens-none">
@@ -153,6 +156,7 @@ export function InventoryTable({
             <th className="px-2 py-2 text-right font-medium">Safety</th>
             <th className="px-2 py-2 font-medium">Reorder by</th>
             <th className="px-2 py-2 font-medium">State</th>
+            <th className="px-2 py-2 font-medium">Origin</th>
             <th className="px-2 py-2 text-right font-medium">Action</th>
           </tr>
         </thead>
@@ -166,13 +170,18 @@ export function InventoryTable({
                   className={cn(
                     "border-b border-border/60 last:border-0",
                     row.state === "red" && "bg-destructive/5",
+                    onRowClick && "cursor-pointer hover:bg-muted/40",
                   )}
+                  {...(onRowClick ? { onClick: () => onRowClick(row) } : {})}
                 >
                   <td className="px-1 py-2 align-top">
                     {row.locations.length > 0 && (
                       <button
                         type="button"
-                        onClick={() => toggle(row.sku)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggle(row.sku);
+                        }}
                         aria-label={open ? "Hide locations" : "Show locations"}
                         className="text-muted-foreground hover:text-foreground"
                       >
@@ -248,13 +257,21 @@ export function InventoryTable({
                   <td className="px-2 py-2">
                     <StateChip state={row.state} />
                   </td>
+                  <td className="px-2 py-2">
+                    <Chip tone={row.source === "shopify" ? "info" : "neutral"}>
+                      {row.source === "shopify" ? "Shopify" : "Manual"}
+                    </Chip>
+                  </td>
                   <td className="px-2 py-2 text-right">
                     {onPlanReorder ? (
                       <Button
                         size="sm"
                         variant={row.state === "red" ? "default" : "outline"}
                         className="h-7 max-w-full rounded-full px-2 text-[11px]"
-                        onClick={() => onPlanReorder(row)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onPlanReorder(row);
+                        }}
                       >
                         <PlanIcon className="mr-1 h-3.5 w-3.5" />
                         {planLabel}
@@ -268,7 +285,7 @@ export function InventoryTable({
                 {open && (
                   <tr className="border-b border-border/60 bg-muted/30">
                     <td />
-                    <td colSpan={15} className="px-3 py-2">
+                    <td colSpan={16} className="px-3 py-2">
                       <div className="flex flex-wrap gap-2">
                         {row.locations.map((l) => (
                           <Chip key={l.location}>

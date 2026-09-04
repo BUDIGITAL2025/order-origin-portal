@@ -43,6 +43,8 @@ export interface SkuRow {
   routes: ShippingRoute[];
   /** True when the stock figure came from a manual entry, not the middleware. */
   manual: boolean;
+  /** Where the product record came from: typed in here, or synced from the store. */
+  source: "manual" | "shopify";
   units_7d: number;
   units_30d: number;
   daily_velocity: number;
@@ -275,6 +277,7 @@ export async function computeWorkspaceInventory(
       tags: product?.tags ?? [],
       routes,
       manual: manualRow != null,
+      source: manualRow != null ? ("manual" as const) : ("shopify" as const),
       units_7d: vel.units_7d,
       units_30d: vel.units_30d,
       production_lead: production,
