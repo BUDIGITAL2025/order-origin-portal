@@ -56,15 +56,21 @@ export function InventoryItemDialog({
   open,
   storeId,
   existingSkus,
+  item,
   onOpenChange,
 }: {
   open: boolean;
   storeId: string | null;
   existingSkus: string[];
+  /** When set, the dialog edits this SKU instead of creating a new one. */
+  item?: InventoryRow | null | undefined;
   onOpenChange: (open: boolean) => void;
 }) {
   const queryClient = useQueryClient();
   const callCreate = useServerFn(createInventoryItem);
+
+  const editing = item != null;
+  const synced = editing && item.source === "shopify";
 
   const [sku, setSku] = useState("");
   const [productName, setProductName] = useState("");
@@ -77,6 +83,36 @@ export function InventoryItemDialog({
   const [leadTimeDays, setLeadTimeDays] = useState("");
   const [routes, setRoutes] = useState<RouteDraft[]>([emptyRoute()]);
   const [error, setError] = useState<string | null>(null);
+
+  // Prefill whenever the dialog opens on an existing row.
+  useEffect(() => {
+    if (!open) return;
+    if (!item) return;
+    setSku(item.sku);
+    setProductName(item.product_name);
+    setTagsInput((item.tags ?? []).join(", "));
+    setWarehouses(
+      item.locations.length > 0
+        ? item.locations.map((l) => ({ location: l.location, quantity: String(l.quantity) }))
+        : [emptyWarehouse()],
+    );
+    setReserved(String(item.reserved ?? 0));
+    setIncoming(String(item.incoming ?? 0));
+    setWeight(item.weight != null ? String(item.weight) : "");
+    setWeightUnit(item.weight_unit === "kg" ? "kg" : "g");
+    setLeadTimeDays(String(item.production_lead ?? 0));
+    setRoutes(
+      (item.routes ?? []).length > 0
+        ? (item.routes ?? []).map((r) => ({
+            destination: r.destination,
+            handlingTimeDays: String(r.handling_time_days),
+            isDefault: r.is_default,
+          }))
+        : [emptyRoute()],
+    );
+    setError(null);
+  }, [open, item]);
+
 
   const reset = () => {
     setSku("");
