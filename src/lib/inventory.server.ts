@@ -174,7 +174,7 @@ export async function computeWorkspaceInventory(
       admin.rpc("resolved_lead_times", { p_store_id: store.id }),
       admin
         .from("manual_stock_levels")
-        .select("sku, in_warehouse, reserved, incoming, updated_at")
+        .select("sku, in_warehouse, reserved, incoming, locations, updated_at")
         .eq("store_id", store.id),
       admin
         .from("products")
@@ -223,9 +223,18 @@ export async function computeWorkspaceInventory(
   for (const sku of skus) {
     const lead = leadBySku.get(sku);
     const manualRow = manualBySku.get(sku);
+    const manualLocations: SkuLocation[] = Array.isArray(manualRow?.locations)
+      ? (manualRow.locations as unknown[])
+          .map((l) => l as { location?: unknown; quantity?: unknown })
+          .filter((l) => typeof l.location === "string" && typeof l.quantity === "number")
+          .map((l) => ({ location: l.location as string, quantity: l.quantity as number }))
+      : [];
     const locations = manualRow
-      ? [{ location: "Warehouse", quantity: manualRow.in_warehouse }]
+      ? manualLocations.length > 0
+        ? manualLocations
+        : [{ location: "Warehouse", quantity: manualRow.in_warehouse }]
       : (bySku.get(sku) ?? []).sort((a, b) => a.location.localeCompare(b.location));
+
     const totalStock = locations.reduce((sum, l) => sum + l.quantity, 0);
     const reserved = manualRow?.reserved ?? 0;
     const incoming = manualRow?.incoming ?? 0;

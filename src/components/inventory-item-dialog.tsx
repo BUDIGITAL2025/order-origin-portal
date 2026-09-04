@@ -36,12 +36,21 @@ interface RouteDraft {
   isDefault: boolean;
 }
 
+interface WarehouseDraft {
+  location: string;
+  quantity: string;
+}
+
+const WAREHOUSE_SUGGESTIONS = ["China", "EUA", "Espanha", "Portugal"];
+
 const emptyRoute = (): RouteDraft => ({ destination: "", handlingTimeDays: "", isDefault: false });
+const emptyWarehouse = (): WarehouseDraft => ({ location: "", quantity: "" });
 
 function intOr(value: string, fallback: number): number {
   const n = Number(value);
   return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : fallback;
 }
+
 
 export function InventoryItemDialog({
   open,
@@ -60,7 +69,7 @@ export function InventoryItemDialog({
   const [sku, setSku] = useState("");
   const [productName, setProductName] = useState("");
   const [tagsInput, setTagsInput] = useState("");
-  const [inWarehouse, setInWarehouse] = useState("0");
+  const [warehouses, setWarehouses] = useState<WarehouseDraft[]>([emptyWarehouse()]);
   const [reserved, setReserved] = useState("0");
   const [incoming, setIncoming] = useState("0");
   const [weight, setWeight] = useState("");
@@ -73,7 +82,7 @@ export function InventoryItemDialog({
     setSku("");
     setProductName("");
     setTagsInput("");
-    setInWarehouse("0");
+    setWarehouses([emptyWarehouse()]);
     setReserved("0");
     setIncoming("0");
     setWeight("");
@@ -87,6 +96,20 @@ export function InventoryItemDialog({
   const production = intOr(leadTimeDays, 0);
   const handling = intOr(mainRoute?.handlingTimeDays ?? "", 0);
   const duplicate = existingSkus.some((s) => s.toLowerCase() === sku.trim().toLowerCase());
+
+  const totalStock = useMemo(
+    () => warehouses.reduce((sum, w) => sum + intOr(w.quantity, 0), 0),
+    [warehouses],
+  );
+  const duplicateWarehouse = useMemo(() => {
+    const names = warehouses
+      .map((w) => w.location.trim().toLowerCase())
+      .filter(Boolean);
+    return new Set(names).size !== names.length;
+  }, [warehouses]);
+
+  const updateWarehouse = (index: number, patch: Partial<WarehouseDraft>) =>
+    setWarehouses((prev) => prev.map((w, i) => (i === index ? { ...w, ...patch } : w)));
 
   const updateRoute = (index: number, patch: Partial<RouteDraft>) =>
     setRoutes((prev) => prev.map((r, i) => (i === index ? { ...r, ...patch } : r)));
@@ -102,7 +125,9 @@ export function InventoryItemDialog({
           sku: sku.trim(),
           product_name: productName.trim(),
           tags: tagsInput.split(",").map((t) => t.trim()).filter(Boolean),
-          in_warehouse: intOr(inWarehouse, 0),
+          warehouses: warehouses
+            .filter((w) => w.location.trim() !== "")
+            .map((w) => ({ location: w.location.trim(), quantity: intOr(w.quantity, 0) })),
           reserved: intOr(reserved, 0),
           incoming: intOr(incoming, 0),
           weight: weight.trim() === "" ? null : Number(weight),
@@ -129,13 +154,23 @@ export function InventoryItemDialog({
     if (!sku.trim()) return setError("Enter the SKU.");
     if (!productName.trim()) return setError("Enter the product name.");
     if (leadTimeDays.trim() === "") return setError("Enter the production lead time in days.");
-    if (intOr(inWarehouse, -1) < 0) return setError("Warehouse quantity cannot be negative.");
+    const filledWarehouses = warehouses.filter(
+      (w) => w.location.trim() !== "" && w.quantity.trim() !== "",
+    );
+    if (filledWarehouses.length === 0) {
+      return setError("Add at least one warehouse with a name and a quantity.");
+    }
+    if (warehouses.some((w) => w.quantity.trim() !== "" && Number(w.quantity) < 0)) {
+      return setError("Warehouse quantity cannot be negative.");
+    }
+    if (duplicateWarehouse) return setError("Each warehouse can only appear once.");
     if (routes.some((r) => !r.destination.trim() || r.handlingTimeDays.trim() === "")) {
       return setError("Every shipping route needs a destination and a handling time.");
     }
     setError(null);
     create.mutate();
   };
+
 
   return (
     <Dialog
@@ -187,17 +222,72 @@ export function InventoryItemDialog({
             <p className="mt-1 text-[12px] text-muted-foreground">Separate with commas. Optional.</p>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-3">
-            <div>
-              <Label htmlFor="i-wh">In warehouse</Label>
-              <Input
-                id="i-wh"
-                type="number"
-                min={0}
-                value={inWarehouse}
-                onChange={(e) => setInWarehouse(e.target.value)}
-              />
+          <div className="rounded-xl border border-border p-3">
+            <div className="mb-2 flex items-center justify-between">
+              <Label>Warehouses</Label>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-7 rounded-full px-3 text-[12px]"
+                onClick={() => setWarehouses((prev) => [...prev, emptyWarehouse()])}
+              >
+                <Plus className="mr-1 h-3.5 w-3.5" />
+                Add warehouse
+              </Button>
             </div>
+
+            <datalist id="warehouse-suggestions">
+              {WAREHOUSE_SUGGESTIONS.map((s) => (
+                <option key={s} value={s} />
+              ))}
+            </datalist>
+
+            <div className="space-y-2">
+              {warehouses.map((wh, index) => (
+                <div key={index} className="flex flex-wrap items-center gap-2">
+                  <Input
+                    className="min-w-[140px] flex-1"
+                    list="warehouse-suggestions"
+                    value={wh.location}
+                    onChange={(e) => updateWarehouse(index, { location: e.target.value })}
+                    placeholder="Warehouse (e.g. China)"
+                  />
+                  <Input
+                    className="w-32"
+                    type="number"
+                    min={0}
+                    value={wh.quantity}
+                    onChange={(e) => updateWarehouse(index, { quantity: e.target.value })}
+                    placeholder="Quantity"
+                  />
+                  {warehouses.length > 1 && (
+                    <button
+                      type="button"
+                      aria-label="Remove warehouse"
+                      className="text-muted-foreground hover:text-destructive"
+                      onClick={() => setWarehouses((prev) => prev.filter((_, i) => i !== index))}
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {duplicateWarehouse && (
+              <p className="mt-2 text-[12px] text-warning">
+                Each warehouse can only appear once.
+              </p>
+            )}
+
+            <p className="mt-3 text-[13px] text-muted-foreground">
+              Total stock:{" "}
+              <span className="font-medium text-foreground">{totalStock} units</span>
+            </p>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <Label htmlFor="i-res">Reserved</Label>
               <Input
@@ -219,6 +309,7 @@ export function InventoryItemDialog({
               />
             </div>
           </div>
+
 
           <div className="grid gap-3 sm:grid-cols-3">
             <div className="sm:col-span-2">

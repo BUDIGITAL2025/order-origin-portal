@@ -190,12 +190,20 @@ export function InventoryTable({
                       {row.sku}
                     </div>
                   </td>
-                  <td className="tnum px-2 py-2 text-right text-xs">
+                  <td
+                    className="tnum px-2 py-2 text-right text-xs"
+                    title={
+                      row.locations.length > 0
+                        ? row.locations.map((l) => `${l.location}: ${l.quantity}`).join(" · ")
+                        : undefined
+                    }
+                  >
                     <span className="font-medium">{row.sellable ?? row.total_stock}</span>
                     {row.sellable != null && row.sellable !== row.total_stock && (
                       <span className="text-[11px] text-muted-foreground"> / {row.total_stock}</span>
                     )}
                   </td>
+
                   <td className="tnum px-2 py-2 text-right text-xs">
                     {row.reserved ? row.reserved : <EmptyCell label="None reserved" />}
                   </td>

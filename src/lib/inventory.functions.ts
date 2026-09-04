@@ -57,7 +57,21 @@ export const createInventoryItem = createServerFn({ method: "POST" })
         sku: z.string().trim().min(1).max(64),
         product_name: z.string().trim().min(1).max(200),
         tags: z.array(z.string().trim().min(1).max(40)).max(20).default([]),
-        in_warehouse: z.number().int().min(0).max(10_000_000),
+        warehouses: z
+          .array(
+            z.object({
+              location: z.string().trim().min(1).max(80),
+              quantity: z.number().int().min(0).max(10_000_000),
+            }),
+          )
+          .min(1)
+          .max(20)
+          .refine(
+            (list) =>
+              new Set(list.map((w) => w.location.toLowerCase())).size === list.length,
+            { message: "Each warehouse can only appear once." },
+          ),
+
         reserved: z.number().int().min(0).max(10_000_000).default(0),
         incoming: z.number().int().min(0).max(10_000_000).default(0),
         weight: z.number().min(0).max(1_000_000).nullable().default(null),
@@ -82,7 +96,7 @@ export const createInventoryItem = createServerFn({ method: "POST" })
       p_sku: data.sku,
       p_product_name: data.product_name,
       p_tags: data.tags,
-      p_in_warehouse: data.in_warehouse,
+      p_warehouses: data.warehouses,
       p_reserved: data.reserved,
       p_incoming: data.incoming,
       // The generated arg types mark these non-nullable; SQL accepts NULL.
