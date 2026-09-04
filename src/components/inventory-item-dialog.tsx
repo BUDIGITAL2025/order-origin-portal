@@ -222,17 +222,72 @@ export function InventoryItemDialog({
             <p className="mt-1 text-[12px] text-muted-foreground">Separate with commas. Optional.</p>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-3">
-            <div>
-              <Label htmlFor="i-wh">In warehouse</Label>
-              <Input
-                id="i-wh"
-                type="number"
-                min={0}
-                value={inWarehouse}
-                onChange={(e) => setInWarehouse(e.target.value)}
-              />
+          <div className="rounded-xl border border-border p-3">
+            <div className="mb-2 flex items-center justify-between">
+              <Label>Warehouses</Label>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-7 rounded-full px-3 text-[12px]"
+                onClick={() => setWarehouses((prev) => [...prev, emptyWarehouse()])}
+              >
+                <Plus className="mr-1 h-3.5 w-3.5" />
+                Add warehouse
+              </Button>
             </div>
+
+            <datalist id="warehouse-suggestions">
+              {WAREHOUSE_SUGGESTIONS.map((s) => (
+                <option key={s} value={s} />
+              ))}
+            </datalist>
+
+            <div className="space-y-2">
+              {warehouses.map((wh, index) => (
+                <div key={index} className="flex flex-wrap items-center gap-2">
+                  <Input
+                    className="min-w-[140px] flex-1"
+                    list="warehouse-suggestions"
+                    value={wh.location}
+                    onChange={(e) => updateWarehouse(index, { location: e.target.value })}
+                    placeholder="Warehouse (e.g. China)"
+                  />
+                  <Input
+                    className="w-32"
+                    type="number"
+                    min={0}
+                    value={wh.quantity}
+                    onChange={(e) => updateWarehouse(index, { quantity: e.target.value })}
+                    placeholder="Quantity"
+                  />
+                  {warehouses.length > 1 && (
+                    <button
+                      type="button"
+                      aria-label="Remove warehouse"
+                      className="text-muted-foreground hover:text-destructive"
+                      onClick={() => setWarehouses((prev) => prev.filter((_, i) => i !== index))}
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {duplicateWarehouse && (
+              <p className="mt-2 text-[12px] text-warning">
+                Each warehouse can only appear once.
+              </p>
+            )}
+
+            <p className="mt-3 text-[13px] text-muted-foreground">
+              Total stock:{" "}
+              <span className="font-medium text-foreground">{totalStock} units</span>
+            </p>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <Label htmlFor="i-res">Reserved</Label>
               <Input
@@ -254,6 +309,7 @@ export function InventoryItemDialog({
               />
             </div>
           </div>
+
 
           <div className="grid gap-3 sm:grid-cols-3">
             <div className="sm:col-span-2">
