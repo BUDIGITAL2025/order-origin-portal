@@ -619,7 +619,12 @@ function EntityDetailsCard({
     legal_name: string;
     vat_number: string | null;
     country: string | null;
+    tax_id?: string | null;
     address?: string | null;
+    address_line1?: string | null;
+    address_line2?: string | null;
+    postal_code?: string | null;
+    city?: string | null;
   };
 }) {
   const callUpdate = useServerFn(updateMyEntity);
@@ -629,6 +634,11 @@ function EntityDetailsCard({
     legal_name: entity.legal_name ?? "",
     country: entity.country ?? "",
     vat_number: entity.vat_number ?? "",
+    tax_id: entity.tax_id ?? "",
+    address_line1: entity.address_line1 ?? "",
+    address_line2: entity.address_line2 ?? "",
+    postal_code: entity.postal_code ?? "",
+    city: entity.city ?? "",
     address: entity.address ?? "",
   });
   const setField = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
@@ -662,7 +672,7 @@ function EntityDetailsCard({
           <Building2 className="h-4 w-4" /> Company details
         </CardTitle>
         <CardDescription>
-          Legal name, VAT and address appear on your payment receipts.
+          Legal name, tax ID and registered address appear on your payment receipts.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -685,8 +695,34 @@ function EntityDetailsCard({
             <Input id="ed-vat" value={form.vat_number} onChange={setField("vat_number")} />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="ed-address">Address</Label>
-            <Input id="ed-address" value={form.address} onChange={setField("address")} />
+            <Label htmlFor="ed-tax-id">Tax ID (NIF / VAT / EIN)</Label>
+            <Input id="ed-tax-id" value={form.tax_id} onChange={setField("tax_id")} />
+          </div>
+          <div className="space-y-1.5 sm:col-span-2">
+            <Label htmlFor="ed-address1">Registered address</Label>
+            <Input
+              id="ed-address1"
+              placeholder="Street and number"
+              value={form.address_line1}
+              onChange={setField("address_line1")}
+            />
+          </div>
+          <div className="space-y-1.5 sm:col-span-2">
+            <Label htmlFor="ed-address2">Address line 2</Label>
+            <Input
+              id="ed-address2"
+              placeholder="Apartment, floor, unit (optional)"
+              value={form.address_line2}
+              onChange={setField("address_line2")}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="ed-postal">Postal code</Label>
+            <Input id="ed-postal" value={form.postal_code} onChange={setField("postal_code")} />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="ed-city">City</Label>
+            <Input id="ed-city" value={form.city} onChange={setField("city")} />
           </div>
           <div className="sm:col-span-2">
             <Button type="submit" variant="secondary" disabled={busy}>
