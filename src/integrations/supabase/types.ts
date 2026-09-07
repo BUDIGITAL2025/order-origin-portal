@@ -408,6 +408,158 @@ export type Database = {
         }
         Relationships: []
       }
+      inbound_shipment_lines: {
+        Row: {
+          counted_qty: number | null
+          created_at: string
+          declared_qty: number
+          id: string
+          product_id: string | null
+          product_name: string
+          shipment_id: string
+          sku: string
+        }
+        Insert: {
+          counted_qty?: number | null
+          created_at?: string
+          declared_qty: number
+          id?: string
+          product_id?: string | null
+          product_name: string
+          shipment_id: string
+          sku: string
+        }
+        Update: {
+          counted_qty?: number | null
+          created_at?: string
+          declared_qty?: number
+          id?: string
+          product_id?: string | null
+          product_name?: string
+          shipment_id?: string
+          sku?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inbound_shipment_lines_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "bundle_prices"
+            referencedColumns: ["bundle_product_id"]
+          },
+          {
+            foreignKeyName: "inbound_shipment_lines_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inbound_shipment_lines_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: false
+            referencedRelation: "inbound_shipments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inbound_shipments: {
+        Row: {
+          completed_at: string | null
+          counted_pieces: number | null
+          created_at: string
+          created_by: string | null
+          declared_pieces: number
+          entity_id: string
+          fee_charged: number | null
+          has_discrepancy: boolean
+          id: string
+          in_transit_at: string | null
+          qc: boolean
+          qc_fee_per_piece: number
+          received_at: string | null
+          refusal_reason: string | null
+          service_fee_per_piece: number
+          status: Database["public"]["Enums"]["inbound_status"]
+          store_id: string
+          tracking_carrier: string | null
+          tracking_number: string | null
+          updated_at: string
+          wallet_reference: string | null
+          warehouse_reference: string
+        }
+        Insert: {
+          completed_at?: string | null
+          counted_pieces?: number | null
+          created_at?: string
+          created_by?: string | null
+          declared_pieces?: number
+          entity_id: string
+          fee_charged?: number | null
+          has_discrepancy?: boolean
+          id?: string
+          in_transit_at?: string | null
+          qc?: boolean
+          qc_fee_per_piece?: number
+          received_at?: string | null
+          refusal_reason?: string | null
+          service_fee_per_piece?: number
+          status?: Database["public"]["Enums"]["inbound_status"]
+          store_id: string
+          tracking_carrier?: string | null
+          tracking_number?: string | null
+          updated_at?: string
+          wallet_reference?: string | null
+          warehouse_reference?: string
+        }
+        Update: {
+          completed_at?: string | null
+          counted_pieces?: number | null
+          created_at?: string
+          created_by?: string | null
+          declared_pieces?: number
+          entity_id?: string
+          fee_charged?: number | null
+          has_discrepancy?: boolean
+          id?: string
+          in_transit_at?: string | null
+          qc?: boolean
+          qc_fee_per_piece?: number
+          received_at?: string | null
+          refusal_reason?: string | null
+          service_fee_per_piece?: number
+          status?: Database["public"]["Enums"]["inbound_status"]
+          store_id?: string
+          tracking_carrier?: string | null
+          tracking_number?: string | null
+          updated_at?: string
+          wallet_reference?: string | null
+          warehouse_reference?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inbound_shipments_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inbound_shipments_entity_id_fkey"
+            columns: ["entity_id"]
+            isOneToOne: false
+            referencedRelation: "entities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inbound_shipments_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       integration_calls: {
         Row: {
           created_at: string
@@ -1023,8 +1175,11 @@ export type Database = {
       }
       products: {
         Row: {
+          client_owned: boolean
           created_at: string
+          fulfilment_model: Database["public"]["Enums"]["fulfilment_model"]
           id: string
+          image_urls: string[]
           middleware_product_id: string | null
           moq: number | null
           price_override: number | null
@@ -1046,8 +1201,11 @@ export type Database = {
           weight_unit: string | null
         }
         Insert: {
+          client_owned?: boolean
           created_at?: string
+          fulfilment_model?: Database["public"]["Enums"]["fulfilment_model"]
           id?: string
+          image_urls?: string[]
           middleware_product_id?: string | null
           moq?: number | null
           price_override?: number | null
@@ -1069,8 +1227,11 @@ export type Database = {
           weight_unit?: string | null
         }
         Update: {
+          client_owned?: boolean
           created_at?: string
+          fulfilment_model?: Database["public"]["Enums"]["fulfilment_model"]
           id?: string
+          image_urls?: string[]
           middleware_product_id?: string | null
           moq?: number | null
           price_override?: number | null
@@ -1619,6 +1780,51 @@ export type Database = {
           },
         ]
       }
+      stock_in_prices: {
+        Row: {
+          country_code: string
+          created_at: string
+          fulfilment_fee: number
+          id: string
+          product_id: string
+          shipping_price: number
+          updated_at: string
+        }
+        Insert: {
+          country_code: string
+          created_at?: string
+          fulfilment_fee?: number
+          id?: string
+          product_id: string
+          shipping_price?: number
+          updated_at?: string
+        }
+        Update: {
+          country_code?: string
+          created_at?: string
+          fulfilment_fee?: number
+          id?: string
+          product_id?: string
+          shipping_price?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_in_prices_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "bundle_prices"
+            referencedColumns: ["bundle_product_id"]
+          },
+          {
+            foreignKeyName: "stock_in_prices_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stores: {
         Row: {
           approved_at: string | null
@@ -1918,6 +2124,72 @@ export type Database = {
       }
     }
     Functions: {
+      admin_confirm_inbound_receipt: {
+        Args: { p_counts: Json; p_shipment_id: string }
+        Returns: {
+          completed_at: string | null
+          counted_pieces: number | null
+          created_at: string
+          created_by: string | null
+          declared_pieces: number
+          entity_id: string
+          fee_charged: number | null
+          has_discrepancy: boolean
+          id: string
+          in_transit_at: string | null
+          qc: boolean
+          qc_fee_per_piece: number
+          received_at: string | null
+          refusal_reason: string | null
+          service_fee_per_piece: number
+          status: Database["public"]["Enums"]["inbound_status"]
+          store_id: string
+          tracking_carrier: string | null
+          tracking_number: string | null
+          updated_at: string
+          wallet_reference: string | null
+          warehouse_reference: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "inbound_shipments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      admin_refuse_inbound: {
+        Args: { p_reason: string; p_shipment_id: string }
+        Returns: {
+          completed_at: string | null
+          counted_pieces: number | null
+          created_at: string
+          created_by: string | null
+          declared_pieces: number
+          entity_id: string
+          fee_charged: number | null
+          has_discrepancy: boolean
+          id: string
+          in_transit_at: string | null
+          qc: boolean
+          qc_fee_per_piece: number
+          received_at: string | null
+          refusal_reason: string | null
+          service_fee_per_piece: number
+          status: Database["public"]["Enums"]["inbound_status"]
+          store_id: string
+          tracking_carrier: string | null
+          tracking_number: string | null
+          updated_at: string
+          wallet_reference: string | null
+          warehouse_reference: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "inbound_shipments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       admin_resolve_order_item: {
         Args: { p_item_id: string; p_product_id: string }
         Returns: {
@@ -2063,8 +2335,11 @@ export type Database = {
       create_bundle: {
         Args: { p_components: Json; p_name: string; p_store_id: string }
         Returns: {
+          client_owned: boolean
           created_at: string
+          fulfilment_model: Database["public"]["Enums"]["fulfilment_model"]
           id: string
+          image_urls: string[]
           middleware_product_id: string | null
           moq: number | null
           price_override: number | null
@@ -2090,6 +2365,46 @@ export type Database = {
           to: "products"
           isOneToOne: true
           isSetofReturn: false
+        }
+      }
+      create_client_product: {
+        Args: {
+          p_image_urls?: string[]
+          p_name: string
+          p_store_id: string
+          p_variants: Json
+        }
+        Returns: {
+          client_owned: boolean
+          created_at: string
+          fulfilment_model: Database["public"]["Enums"]["fulfilment_model"]
+          id: string
+          image_urls: string[]
+          middleware_product_id: string | null
+          moq: number | null
+          price_override: number | null
+          product_name: string
+          product_type: Database["public"]["Enums"]["product_type"]
+          production_lead_days: number | null
+          push_error: string | null
+          push_status: Database["public"]["Enums"]["push_status"]
+          quote_line_id: string | null
+          safety_margin_days: number | null
+          sku: string
+          status: Database["public"]["Enums"]["product_status"]
+          store_id: string
+          supplier_id: string | null
+          tags: string[]
+          transit_lead_days: number | null
+          variant_label: string | null
+          weight: number | null
+          weight_unit: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "products"
+          isOneToOne: false
+          isSetofReturn: true
         }
       }
       create_manual_order: {
@@ -2182,6 +2497,39 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "orders"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      declare_inbound_shipment: {
+        Args: { p_lines: Json; p_qc: boolean; p_store_id: string }
+        Returns: {
+          completed_at: string | null
+          counted_pieces: number | null
+          created_at: string
+          created_by: string | null
+          declared_pieces: number
+          entity_id: string
+          fee_charged: number | null
+          has_discrepancy: boolean
+          id: string
+          in_transit_at: string | null
+          qc: boolean
+          qc_fee_per_piece: number
+          received_at: string | null
+          refusal_reason: string | null
+          service_fee_per_piece: number
+          status: Database["public"]["Enums"]["inbound_status"]
+          store_id: string
+          tracking_carrier: string | null
+          tracking_number: string | null
+          updated_at: string
+          wallet_reference: string | null
+          warehouse_reference: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "inbound_shipments"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -2438,6 +2786,47 @@ export type Database = {
         Args: { p_decisions: Json; p_product_name: string; p_quote_id: string }
         Returns: number
       }
+      set_inbound_tracking: {
+        Args: {
+          p_shipment_id: string
+          p_tracking_carrier: string
+          p_tracking_number: string
+        }
+        Returns: {
+          completed_at: string | null
+          counted_pieces: number | null
+          created_at: string
+          created_by: string | null
+          declared_pieces: number
+          entity_id: string
+          fee_charged: number | null
+          has_discrepancy: boolean
+          id: string
+          in_transit_at: string | null
+          qc: boolean
+          qc_fee_per_piece: number
+          received_at: string | null
+          refusal_reason: string | null
+          service_fee_per_piece: number
+          status: Database["public"]["Enums"]["inbound_status"]
+          store_id: string
+          tracking_carrier: string | null
+          tracking_number: string | null
+          updated_at: string
+          wallet_reference: string | null
+          warehouse_reference: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "inbound_shipments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      stock_in_available: {
+        Args: { p_sku: string; p_store_id: string }
+        Returns: number
+      }
       submit_quote_request: {
         Args: {
           p_image_urls?: string[]
@@ -2481,8 +2870,11 @@ export type Database = {
       update_bundle: {
         Args: { p_bundle_id: string; p_components: Json; p_name: string }
         Returns: {
+          client_owned: boolean
           created_at: string
+          fulfilment_model: Database["public"]["Enums"]["fulfilment_model"]
           id: string
+          image_urls: string[]
           middleware_product_id: string | null
           moq: number | null
           price_override: number | null
@@ -2525,8 +2917,11 @@ export type Database = {
           p_weight_unit: string
         }
         Returns: {
+          client_owned: boolean
           created_at: string
+          fulfilment_model: Database["public"]["Enums"]["fulfilment_model"]
           id: string
+          image_urls: string[]
           middleware_product_id: string | null
           moq: number | null
           price_override: number | null
@@ -2566,8 +2961,19 @@ export type Database = {
         | "approved"
         | "rejected"
         | "closed"
-      document_type: "order_receipt" | "wallet_topup" | "subscription"
+      document_type:
+        | "order_receipt"
+        | "wallet_topup"
+        | "subscription"
+        | "inbound_fee"
       entity_status: "active" | "suspended"
+      fulfilment_model: "per_order" | "stock_in"
+      inbound_status:
+        | "declared"
+        | "in_transit"
+        | "received"
+        | "completed"
+        | "refused"
       integration_mode: "automatic" | "manual"
       order_payment_method: "wallet" | "direct"
       order_status:
@@ -2730,8 +3136,21 @@ export const Constants = {
         "rejected",
         "closed",
       ],
-      document_type: ["order_receipt", "wallet_topup", "subscription"],
+      document_type: [
+        "order_receipt",
+        "wallet_topup",
+        "subscription",
+        "inbound_fee",
+      ],
       entity_status: ["active", "suspended"],
+      fulfilment_model: ["per_order", "stock_in"],
+      inbound_status: [
+        "declared",
+        "in_transit",
+        "received",
+        "completed",
+        "refused",
+      ],
       integration_mode: ["automatic", "manual"],
       order_payment_method: ["wallet", "direct"],
       order_status: [

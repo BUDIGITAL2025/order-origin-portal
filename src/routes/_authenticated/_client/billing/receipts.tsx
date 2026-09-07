@@ -58,6 +58,7 @@ const TYPE_LABELS: Record<DocumentType, string> = {
   wallet_topup: "Top-up",
   order_receipt: "Order payment",
   subscription: "Subscription",
+  inbound_fee: "Inbound service fee",
 };
 
 function monthStart(): string {
