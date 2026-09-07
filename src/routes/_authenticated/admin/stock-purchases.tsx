@@ -40,10 +40,7 @@ const STATUS_TONE: Record<string, "neutral" | "primary" | "success" | "warning" 
 
 export const Route = createFileRoute("/_authenticated/admin/stock-purchases")({
   head: () => ({
-    meta: [
-      { title: "Stock purchases — FlySales admin" },
-      { name: "robots", content: "noindex" },
-    ],
+    meta: [{ title: "Stock purchases — FlySales admin" }, { name: "robots", content: "noindex" }],
   }),
   component: AdminStockPurchasesPage,
 });
@@ -65,9 +62,7 @@ function AdminStockPurchasesPage() {
   });
 
   const purchases = rows ?? [];
-  const awaitingFreight = purchases.filter(
-    (p) => p.path === "direct" && p.status === "requested",
-  );
+  const awaitingFreight = purchases.filter((p) => p.path === "direct" && p.status === "requested");
   const paidValue = purchases
     .filter((p) => p.paid_at)
     .reduce((s, p) => s + Number(p.total_amount ?? 0), 0);
@@ -193,9 +188,7 @@ function AdminStockPurchasesPage() {
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() =>
-                        advance.mutate({ purchase_id: p.id, status: "in_production" })
-                      }
+                      onClick={() => advance.mutate({ purchase_id: p.id, status: "in_production" })}
                     >
                       In production
                     </Button>

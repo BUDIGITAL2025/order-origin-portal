@@ -33,10 +33,7 @@ import {
 
 export const Route = createFileRoute("/_authenticated/admin/sourcing")({
   head: () => ({
-    meta: [
-      { title: "Sourcing team — FlySales admin" },
-      { name: "robots", content: "noindex" },
-    ],
+    meta: [{ title: "Sourcing team — FlySales admin" }, { name: "robots", content: "noindex" }],
   }),
   component: AdminSourcingPage,
 });
