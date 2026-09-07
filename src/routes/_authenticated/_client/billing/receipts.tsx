@@ -59,6 +59,8 @@ const TYPE_LABELS: Record<DocumentType, string> = {
   order_receipt: "Order payment",
   subscription: "Subscription",
   inbound_fee: "Inbound service fee",
+  stock_purchase: "Stock purchase",
+
 };
 
 function monthStart(): string {

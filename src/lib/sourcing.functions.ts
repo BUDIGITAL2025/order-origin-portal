@@ -1,0 +1,492 @@
+/**
+ * Sourcing desk — server functions.
+ *
+ * Every collaborator-facing function reads through the service role AFTER
+ * `requireCollaborator`, and projects only the columns that layer is allowed
+ * to see. Client identity, client price and owner margin are never selected,
+ * so they cannot leak even by accident.
+ */
+import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import {
+  assignSourcerSchema,
+  collaboratorInviteSchema,
+  collaboratorUpdateSchema,
+  publishQuoteSchema,
+  settleEarningsSchema,
+  sourcingSaveLinesSchema,
+} from "./schemas";
+
+const uuid = z.string().uuid();
+
+/** Columns of a quote request a collaborator may see — no store, no client. */
+const DESK_QUOTE_COLUMNS =
+  "id, product_url, product_name, notes, target_monthly_volume, target_countries, image_urls, status, created_at, quote_due_at, sourcing_submitted_at, assigned_sourcer";
+
+/** Columns of a quote line a collaborator may see — no unit_price, no margin. */
+const DESK_LINE_COLUMNS =
+  "id, quote_request_id, variant_label, country_code, sku, supplier_id, supplier_unit_price, moq, production_lead_days, sourcing_notes, sourcing_image_urls, sourcing_fee_rate, sourcing_cost, sourced_at, status";
+
+// ===================== Collaborator desk =====================
+
+/** Who am I on the sourcing desk? Returns null for everyone else. */
+export const getSourcingDeskContext = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { getAdminClient } = await import("./admin.server");
+    const admin = await getAdminClient();
+    const { data } = await admin
+      .from("sourcing_collaborators")
+      .select("id, email, display_name, fee_rate, active")
+      .eq("user_id", context.userId)
+      .maybeSingle();
+    return { collaborator: data?.active ? data : null };
+  });
+
+/** The queue: requests assigned to me, plus anything still unassigned. */
+export const sourcingListQueue = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { getAdminClient } = await import("./admin.server");
+    const { requireCollaborator } = await import("./sourcing.server");
+    const admin = await getAdminClient();
+    const me = await requireCollaborator(admin, context.userId);
+
+    const { data: quotes, error } = await admin
+      .from("quote_requests")
+      .select(DESK_QUOTE_COLUMNS)
+      .in("status", ["submitted", "sourcing", "quoted"])
+      .or(`assigned_sourcer.eq.${context.userId},assigned_sourcer.is.null`)
+      .order("quote_due_at", { ascending: true })
+      .limit(200);
+    if (error) throw new Error(error.message);
+
+    const ids = (quotes ?? []).map((q) => q.id);
+    const { data: lines } = ids.length
+      ? await admin
+          .from("quote_lines")
+          .select("quote_request_id, supplier_unit_price")
+          .in("quote_request_id", ids)
+      : { data: [] };
+    const pricedByQuote = new Map<string, number>();
+    for (const l of lines ?? []) {
+      if (l.supplier_unit_price != null) {
+        pricedByQuote.set(l.quote_request_id, (pricedByQuote.get(l.quote_request_id) ?? 0) + 1);
+      }
+    }
+
+    return {
+      feeRate: Number(me.fee_rate),
+      quotes: (quotes ?? []).map((q) => ({
+        ...q,
+        mine: q.assigned_sourcer === context.userId,
+        priced_lines: pricedByQuote.get(q.id) ?? 0,
+      })),
+    };
+  });
+
+/** One request with the sourcing layer only. */
+export const sourcingGetQuote = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ quote_id: uuid }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { getAdminClient } = await import("./admin.server");
+    const { requireCollaborator, feeAmount } = await import("./sourcing.server");
+    const admin = await getAdminClient();
+    const me = await requireCollaborator(admin, context.userId);
+
+    const { data: quote, error } = await admin
+      .from("quote_requests")
+      .select(`${DESK_QUOTE_COLUMNS}, preview_id`)
+      .eq("id", data.quote_id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!quote) throw new Error("Quote request not found");
+    if (quote.assigned_sourcer && quote.assigned_sourcer !== context.userId) {
+      throw new Error("This request is assigned to another collaborator");
+    }
+
+    const { data: lines } = await admin
+      .from("quote_lines")
+      .select(DESK_LINE_COLUMNS)
+      .eq("quote_request_id", data.quote_id)
+      .order("created_at", { ascending: true });
+
+    const supplierIds = [...new Set((lines ?? []).map((l) => l.supplier_id).filter(Boolean))];
+    const { data: suppliers } = supplierIds.length
+      ? await admin.from("suppliers").select("id, name").in("id", supplierIds as string[])
+      : { data: [] };
+    const nameById = new Map((suppliers ?? []).map((s) => [s.id, s.name]));
+
+    let preview: {
+      title: string | null;
+      description: string | null;
+      image_urls: string[];
+      price_hint: string | null;
+      variants: string[];
+    } | null = null;
+    if (quote.preview_id) {
+      const { data: p } = await admin
+        .from("url_previews")
+        .select("title, description, image_urls, price_hint, variants")
+        .eq("id", quote.preview_id)
+        .maybeSingle();
+      if (p) preview = { ...p, variants: p.variants ?? [] };
+    }
+
+    return {
+      feeRate: Number(me.fee_rate),
+      quote,
+      preview,
+      lines: (lines ?? []).map((l) => ({
+        ...l,
+        supplier_name: l.supplier_id ? (nameById.get(l.supplier_id) ?? null) : null,
+        my_fee:
+          l.supplier_unit_price != null
+            ? feeAmount(Number(l.supplier_unit_price), Number(l.sourcing_fee_rate ?? me.fee_rate))
+            : null,
+      })),
+    };
+  });
+
+/**
+ * Save the sourcing layer for a request: supplier, supplier unit price, MOQ,
+ * production lead time. The fee rate is snapshotted from the collaborator's
+ * own row — never sent by the browser — and sourcing_cost is computed here.
+ */
+export const sourcingSaveLines = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => sourcingSaveLinesSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const { getAdminClient } = await import("./admin.server");
+    const sourcing = await import("./sourcing.server");
+    const admin = await getAdminClient();
+    const me = await sourcing.requireCollaborator(admin, context.userId);
+    const feeRate = Number(me.fee_rate);
+
+    const { data: quote } = await admin
+      .from("quote_requests")
+      .select("id, status, assigned_sourcer, store_id")
+      .eq("id", data.quote_id)
+      .maybeSingle();
+    if (!quote) throw new Error("Quote request not found");
+    if (quote.assigned_sourcer && quote.assigned_sourcer !== context.userId) {
+      throw new Error("This request is assigned to another collaborator");
+    }
+
+    const { data: existing } = await admin
+      .from("quote_lines")
+      .select("id")
+      .eq("quote_request_id", data.quote_id);
+    const existingIds = new Set((existing ?? []).map((l) => l.id));
+
+    const now = new Date().toISOString();
+    const saved: string[] = [];
+    for (const line of data.lines) {
+      const supplier = await sourcing.upsertSupplierByName(
+        admin,
+        line.supplier_name,
+        line.production_lead_days,
+      );
+      const cost = sourcing.sourcingCost(line.supplier_unit_price, feeRate);
+      const payload = {
+        supplier_id: supplier.id,
+        supplier_unit_price: line.supplier_unit_price,
+        moq: line.moq,
+        production_lead_days: line.production_lead_days,
+        lead_time_days: line.production_lead_days,
+        sourcing_notes: line.sourcing_notes || null,
+        sourcing_image_urls: line.sourcing_image_urls ?? [],
+        sourced_by: context.userId,
+        sourcing_fee_rate: feeRate,
+        sourcing_cost: cost,
+        sourced_at: now,
+        variant_label: line.variant_label,
+        country_code: line.country_code,
+      };
+
+      if (line.id && existingIds.has(line.id)) {
+        const { error } = await admin.from("quote_lines").update(payload).eq("id", line.id);
+        if (error) throw new Error(error.message);
+        saved.push(line.id);
+      } else {
+        const { data: sku } = await admin.rpc("generate_sku", { p_prefix: "FS" });
+        const { data: created, error } = await admin
+          .from("quote_lines")
+          .insert({
+            quote_request_id: data.quote_id,
+            sku: sku ?? `FS-${Date.now()}`,
+            status: "pending",
+            ...payload,
+          })
+          .select("id")
+          .single();
+        if (error) throw new Error(error.message);
+        saved.push(created.id);
+      }
+    }
+
+    // Remove lines the collaborator deleted, but never a line a client has
+    // already responded to.
+    const toDelete = [...existingIds].filter((id) => !saved.includes(id));
+    if (toDelete.length) {
+      await admin.from("quote_lines").delete().in("id", toDelete).eq("status", "pending");
+    }
+
+    await admin
+      .from("quote_requests")
+      .update({
+        status: "sourcing",
+        assigned_sourcer: context.userId,
+        sourcing_submitted_at: now,
+      })
+      .eq("id", data.quote_id);
+
+    return { ok: true, lines: saved.length };
+  });
+
+/** The collaborator's own earnings — accrued and settled totals plus lines. */
+export const sourcingMyEarnings = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { getAdminClient } = await import("./admin.server");
+    const { requireCollaborator } = await import("./sourcing.server");
+    const admin = await getAdminClient();
+    await requireCollaborator(admin, context.userId);
+
+    const { data, error } = await admin
+      .from("sourcing_earnings")
+      .select("id, description, units, fee_rate, amount, accrued_at, settled, settled_at")
+      .eq("collaborator_user_id", context.userId)
+      .order("accrued_at", { ascending: false })
+      .limit(500);
+    if (error) throw new Error(error.message);
+    const rows = data ?? [];
+    const total = (settled: boolean) =>
+      Math.round(
+        rows.filter((r) => r.settled === settled).reduce((a, r) => a + Number(r.amount), 0) * 100,
+      ) / 100;
+    return { rows, pending: total(false), settled: total(true) };
+  });
+
+// ===================== Admin: collaborators =====================
+
+export const adminListCollaborators = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { requireAdmin, getAdminClient } = await import("./admin.server");
+    await requireAdmin(context.supabase, context.userId);
+    const admin = await getAdminClient();
+    const { data, error } = await admin
+      .from("sourcing_collaborators")
+      .select("*")
+      .order("created_at", { ascending: true });
+    if (error) throw new Error(error.message);
+
+    const { data: earnings } = await admin
+      .from("sourcing_earnings")
+      .select("collaborator_user_id, amount, settled");
+    const totals = new Map<string, { pending: number; settled: number }>();
+    for (const e of earnings ?? []) {
+      const t = totals.get(e.collaborator_user_id) ?? { pending: 0, settled: 0 };
+      if (e.settled) t.settled += Number(e.amount);
+      else t.pending += Number(e.amount);
+      totals.set(e.collaborator_user_id, t);
+    }
+    return {
+      collaborators: (data ?? []).map((c) => ({
+        ...c,
+        pending: Math.round((totals.get(c.user_id)?.pending ?? 0) * 100) / 100,
+        settled_total: Math.round((totals.get(c.user_id)?.settled ?? 0) * 100) / 100,
+      })),
+    };
+  });
+
+/** Invite a collaborator by email (or link an existing account). */
+export const adminInviteCollaborator = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => collaboratorInviteSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const { requireAdmin, getAdminClient } = await import("./admin.server");
+    await requireAdmin(context.supabase, context.userId);
+    const admin = await getAdminClient();
+    const email = data.email.toLowerCase();
+
+    // Existing account? Reuse it. Otherwise send a Supabase invite.
+    const { data: list } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+    let user = (list?.users ?? []).find((u) => u.email?.toLowerCase() === email) ?? null;
+    let invited = false;
+    if (!user) {
+      const { data: created, error } = await admin.auth.admin.inviteUserByEmail(email);
+      if (error) throw new Error(error.message);
+      user = created.user;
+      invited = true;
+    }
+    if (!user) throw new Error("Could not create the collaborator account");
+
+    const { error: insertError } = await admin.from("sourcing_collaborators").upsert(
+      {
+        user_id: user.id,
+        email,
+        display_name: data.display_name || null,
+        fee_rate: data.fee_rate_pct / 100,
+        active: true,
+      },
+      { onConflict: "user_id" },
+    );
+    if (insertError) throw new Error(insertError.message);
+    return { ok: true, invited };
+  });
+
+export const adminUpdateCollaborator = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => collaboratorUpdateSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const { requireAdmin, getAdminClient } = await import("./admin.server");
+    await requireAdmin(context.supabase, context.userId);
+    const admin = await getAdminClient();
+    const { error } = await admin
+      .from("sourcing_collaborators")
+      .update({
+        ...(data.display_name !== undefined ? { display_name: data.display_name || null } : {}),
+        ...(data.fee_rate_pct !== undefined ? { fee_rate: data.fee_rate_pct / 100 } : {}),
+        ...(data.active !== undefined ? { active: data.active } : {}),
+      })
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const adminAssignSourcer = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => assignSourcerSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const { requireAdmin, getAdminClient } = await import("./admin.server");
+    await requireAdmin(context.supabase, context.userId);
+    const admin = await getAdminClient();
+    const { error } = await admin
+      .from("quote_requests")
+      .update({ assigned_sourcer: data.user_id })
+      .eq("id", data.quote_id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+// ===================== Admin: publish the chain =====================
+
+/**
+ * The owner's step: set the margin per variant and publish. client_price is
+ * computed here from the stored sourcing_cost — the browser only ever sends
+ * a margin percentage.
+ */
+export const adminPublishQuote = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => publishQuoteSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const { requireAdmin, getAdminClient } = await import("./admin.server");
+    const { clientPrice } = await import("./sourcing.server");
+    await requireAdmin(context.supabase, context.userId);
+    const admin = await getAdminClient();
+
+    const { data: lines, error } = await admin
+      .from("quote_lines")
+      .select("id, sourcing_cost, quote_request_id")
+      .eq("quote_request_id", data.quote_id);
+    if (error) throw new Error(error.message);
+    const byId = new Map((lines ?? []).map((l) => [l.id, l]));
+
+    for (const input of data.lines) {
+      const line = byId.get(input.id);
+      if (!line) continue;
+      if (line.sourcing_cost == null) {
+        throw new Error("Every variant needs a supplier price before publishing.");
+      }
+      const price = clientPrice(Number(line.sourcing_cost), input.margin_pct);
+      const { error: updateError } = await admin
+        .from("quote_lines")
+        .update({ margin_pct: input.margin_pct, unit_price: price, responded_at: null })
+        .eq("id", input.id);
+      if (updateError) throw new Error(updateError.message);
+    }
+
+    const { error: quoteError } = await admin
+      .from("quote_requests")
+      .update({
+        status: "quoted",
+        quoted_at: new Date().toISOString(),
+        quoted_by: context.userId,
+        quote_valid_until: data.quote_valid_until ?? null,
+      })
+      .eq("id", data.quote_id);
+    if (quoteError) throw new Error(quoteError.message);
+
+    if (data.admin_notes) {
+      await admin
+        .from("quote_request_internal")
+        .upsert(
+          { quote_request_id: data.quote_id, admin_notes: data.admin_notes },
+          { onConflict: "quote_request_id" },
+        );
+    }
+    return { ok: true };
+  });
+
+// ===================== Admin: earnings report =====================
+
+export const adminEarningsReport = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        from: z.string().optional(),
+        to: z.string().optional(),
+        settled: z.enum(["all", "pending", "settled"]).default("all"),
+      })
+      .parse(input ?? {}),
+  )
+  .handler(async ({ data, context }) => {
+    const { requireAdmin, getAdminClient } = await import("./admin.server");
+    await requireAdmin(context.supabase, context.userId);
+    const admin = await getAdminClient();
+
+    let query = admin
+      .from("sourcing_earnings")
+      .select("*")
+      .order("accrued_at", { ascending: false })
+      .limit(1000);
+    if (data.from) query = query.gte("accrued_at", data.from);
+    if (data.to) query = query.lte("accrued_at", data.to);
+    if (data.settled !== "all") query = query.eq("settled", data.settled === "settled");
+    const { data: rows, error } = await query;
+    if (error) throw new Error(error.message);
+
+    const { data: collaborators } = await admin
+      .from("sourcing_collaborators")
+      .select("user_id, email, display_name");
+    const nameByUser = new Map(
+      (collaborators ?? []).map((c) => [c.user_id, c.display_name || c.email]),
+    );
+    return {
+      rows: (rows ?? []).map((r) => ({
+        ...r,
+        collaborator: nameByUser.get(r.collaborator_user_id) ?? "Unknown",
+      })),
+    };
+  });
+
+export const adminSettleEarnings = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => settleEarningsSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const { requireAdmin, getAdminClient } = await import("./admin.server");
+    await requireAdmin(context.supabase, context.userId);
+    const admin = await getAdminClient();
+    const { error } = await admin
+      .from("sourcing_earnings")
+      .update({ settled: true, settled_at: new Date().toISOString() })
+      .in("id", data.ids)
+      .eq("settled", false);
+    if (error) throw new Error(error.message);
+    return { ok: true, settled: data.ids.length };
+  });

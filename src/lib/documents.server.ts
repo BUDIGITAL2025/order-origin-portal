@@ -31,7 +31,13 @@ import { planLabel } from "./plans";
 type Admin = SupabaseClient<Database>;
 
 export const DOCUMENTS_BUCKET = "documents";
-export type DocumentType = "order_receipt" | "wallet_topup" | "subscription" | "inbound_fee";
+export type DocumentType =
+  | "order_receipt"
+  | "wallet_topup"
+  | "subscription"
+  | "inbound_fee"
+  | "stock_purchase";
+
 
 // ---------- Supplier (issuing entity) — environment-driven ----------
 
@@ -724,6 +730,74 @@ export async function issueInboundReceiptDocument(
         },
       ],
       total: args.amount,
+    },
+  });
+}
+
+/**
+ * Stock purchase paid from the wallet → stock_purchase receipt. Keyed on the
+ * wallet reference (`purchase:<id>`), so a replay returns "exists".
+ */
+export async function issueStockPurchaseReceipt(
+  admin: Admin,
+  args: {
+    entityId: string;
+    storeId: string | null;
+    reference: string;
+    purchaseRef: string;
+    productName: string;
+    quantity: number;
+    unitPrice: number;
+    goodsTotal: number;
+    freightCost: number | null;
+    total: number;
+    paidAt: Date;
+    path: "flysales" | "direct";
+  },
+): Promise<"issued" | "exists"> {
+  const client = await getEntityBlock(admin, args.entityId);
+  const number = await nextDocumentNumber(admin);
+  const lines: ReceiptLine[] = [
+    {
+      description: args.productName,
+      detail: "Product price per unit — excludes fulfilment and shipping",
+      quantity: args.quantity,
+      unitPrice: args.unitPrice,
+      total: args.goodsTotal,
+    },
+  ];
+  if (args.freightCost != null && args.freightCost > 0) {
+    lines.push({
+      description: "Freight to your address",
+      detail: null,
+      quantity: 1,
+      unitPrice: args.freightCost,
+      total: args.freightCost,
+    });
+  }
+
+  return storeReceipt(admin, {
+    entityId: args.entityId,
+    storeId: args.storeId,
+    documentType: "stock_purchase",
+    paymentReference: args.reference,
+    amount: args.total,
+    receipt: {
+      documentNumber: number,
+      documentKind: "Stock purchase",
+      issuedAt: new Date(),
+      paymentDate: args.paidAt,
+      paymentMethod: "Wallet balance",
+      referenceLines: [
+        ["Purchase", args.purchaseRef],
+        [
+          "Delivery",
+          args.path === "flysales" ? "FlySales warehouse" : "Direct to your warehouse",
+        ],
+      ],
+      client,
+      lines,
+      total: args.total,
     },
   });
 }

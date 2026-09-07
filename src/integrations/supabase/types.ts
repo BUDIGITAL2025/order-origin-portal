@@ -492,7 +492,9 @@ export type Database = {
           received_at: string | null
           refusal_reason: string | null
           service_fee_per_piece: number
+          source: string
           status: Database["public"]["Enums"]["inbound_status"]
+          stock_purchase_id: string | null
           store_id: string
           tracking_carrier: string | null
           tracking_number: string | null
@@ -516,7 +518,9 @@ export type Database = {
           received_at?: string | null
           refusal_reason?: string | null
           service_fee_per_piece?: number
+          source?: string
           status?: Database["public"]["Enums"]["inbound_status"]
+          stock_purchase_id?: string | null
           store_id: string
           tracking_carrier?: string | null
           tracking_number?: string | null
@@ -540,7 +544,9 @@ export type Database = {
           received_at?: string | null
           refusal_reason?: string | null
           service_fee_per_piece?: number
+          source?: string
           status?: Database["public"]["Enums"]["inbound_status"]
+          stock_purchase_id?: string | null
           store_id?: string
           tracking_carrier?: string | null
           tracking_number?: string | null
@@ -561,6 +567,13 @@ export type Database = {
             columns: ["entity_id"]
             isOneToOne: false
             referencedRelation: "entities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inbound_shipments_stock_purchase_id_fkey"
+            columns: ["stock_purchase_id"]
+            isOneToOne: false
+            referencedRelation: "stock_purchases"
             referencedColumns: ["id"]
           },
           {
@@ -1330,16 +1343,26 @@ export type Database = {
           created_at: string
           id: string
           lead_time_days: number | null
+          margin_pct: number
           markup_product: number | null
           markup_shipping: number | null
           moq: number | null
+          production_lead_days: number | null
           quote_request_id: string
           responded_at: string | null
           sku: string
+          sourced_at: string | null
+          sourced_by: string | null
+          sourcing_cost: number | null
+          sourcing_fee_rate: number | null
+          sourcing_image_urls: string[]
+          sourcing_notes: string | null
           status: Database["public"]["Enums"]["quote_line_status"]
           supplier_cogs: number | null
+          supplier_id: string | null
           supplier_shipping: number | null
           supplier_tax: number | null
+          supplier_unit_price: number | null
           unit_price: number | null
           variant_label: string
         }
@@ -1348,16 +1371,26 @@ export type Database = {
           created_at?: string
           id?: string
           lead_time_days?: number | null
+          margin_pct?: number
           markup_product?: number | null
           markup_shipping?: number | null
           moq?: number | null
+          production_lead_days?: number | null
           quote_request_id: string
           responded_at?: string | null
           sku: string
+          sourced_at?: string | null
+          sourced_by?: string | null
+          sourcing_cost?: number | null
+          sourcing_fee_rate?: number | null
+          sourcing_image_urls?: string[]
+          sourcing_notes?: string | null
           status?: Database["public"]["Enums"]["quote_line_status"]
           supplier_cogs?: number | null
+          supplier_id?: string | null
           supplier_shipping?: number | null
           supplier_tax?: number | null
+          supplier_unit_price?: number | null
           unit_price?: number | null
           variant_label: string
         }
@@ -1366,16 +1399,26 @@ export type Database = {
           created_at?: string
           id?: string
           lead_time_days?: number | null
+          margin_pct?: number
           markup_product?: number | null
           markup_shipping?: number | null
           moq?: number | null
+          production_lead_days?: number | null
           quote_request_id?: string
           responded_at?: string | null
           sku?: string
+          sourced_at?: string | null
+          sourced_by?: string | null
+          sourcing_cost?: number | null
+          sourcing_fee_rate?: number | null
+          sourcing_image_urls?: string[]
+          sourcing_notes?: string | null
           status?: Database["public"]["Enums"]["quote_line_status"]
           supplier_cogs?: number | null
+          supplier_id?: string | null
           supplier_shipping?: number | null
           supplier_tax?: number | null
+          supplier_unit_price?: number | null
           unit_price?: number | null
           variant_label?: string
         }
@@ -1385,6 +1428,13 @@ export type Database = {
             columns: ["quote_request_id"]
             isOneToOne: false
             referencedRelation: "quote_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quote_lines_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
             referencedColumns: ["id"]
           },
         ]
@@ -1420,6 +1470,7 @@ export type Database = {
       }
       quote_requests: {
         Row: {
+          assigned_sourcer: string | null
           created_at: string
           id: string
           image_urls: string[] | null
@@ -1433,6 +1484,7 @@ export type Database = {
           quoted_at: string | null
           quoted_by: string | null
           responded_at: string | null
+          sourcing_submitted_at: string | null
           status: Database["public"]["Enums"]["quote_status"]
           store_id: string
           supersedes_quote_id: string | null
@@ -1440,6 +1492,7 @@ export type Database = {
           target_monthly_volume: number | null
         }
         Insert: {
+          assigned_sourcer?: string | null
           created_at?: string
           id?: string
           image_urls?: string[] | null
@@ -1453,6 +1506,7 @@ export type Database = {
           quoted_at?: string | null
           quoted_by?: string | null
           responded_at?: string | null
+          sourcing_submitted_at?: string | null
           status?: Database["public"]["Enums"]["quote_status"]
           store_id: string
           supersedes_quote_id?: string | null
@@ -1460,6 +1514,7 @@ export type Database = {
           target_monthly_volume?: number | null
         }
         Update: {
+          assigned_sourcer?: string | null
           created_at?: string
           id?: string
           image_urls?: string[] | null
@@ -1473,6 +1528,7 @@ export type Database = {
           quoted_at?: string | null
           quoted_by?: string | null
           responded_at?: string | null
+          sourcing_submitted_at?: string | null
           status?: Database["public"]["Enums"]["quote_status"]
           store_id?: string
           supersedes_quote_id?: string | null
@@ -1618,6 +1674,115 @@ export type Database = {
             columns: ["store_id"]
             isOneToOne: false
             referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sourcing_collaborators: {
+        Row: {
+          active: boolean
+          created_at: string
+          display_name: string | null
+          email: string
+          fee_rate: number
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          display_name?: string | null
+          email: string
+          fee_rate?: number
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          display_name?: string | null
+          email?: string
+          fee_rate?: number
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      sourcing_earnings: {
+        Row: {
+          accrued_at: string
+          amount: number
+          collaborator_user_id: string
+          created_at: string
+          description: string
+          fee_rate: number
+          id: string
+          order_id: string | null
+          quote_line_id: string | null
+          reference: string
+          settled: boolean
+          settled_at: string | null
+          stock_purchase_id: string | null
+          supplier_unit_price: number
+          units: number
+        }
+        Insert: {
+          accrued_at?: string
+          amount: number
+          collaborator_user_id: string
+          created_at?: string
+          description: string
+          fee_rate: number
+          id?: string
+          order_id?: string | null
+          quote_line_id?: string | null
+          reference: string
+          settled?: boolean
+          settled_at?: string | null
+          stock_purchase_id?: string | null
+          supplier_unit_price: number
+          units: number
+        }
+        Update: {
+          accrued_at?: string
+          amount?: number
+          collaborator_user_id?: string
+          created_at?: string
+          description?: string
+          fee_rate?: number
+          id?: string
+          order_id?: string | null
+          quote_line_id?: string | null
+          reference?: string
+          settled?: boolean
+          settled_at?: string | null
+          stock_purchase_id?: string | null
+          supplier_unit_price?: number
+          units?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sourcing_earnings_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sourcing_earnings_quote_line_id_fkey"
+            columns: ["quote_line_id"]
+            isOneToOne: false
+            referencedRelation: "quote_lines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sourcing_earnings_stock_purchase_id_fkey"
+            columns: ["stock_purchase_id"]
+            isOneToOne: false
+            referencedRelation: "stock_purchases"
             referencedColumns: ["id"]
           },
         ]
@@ -1833,6 +1998,171 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stock_purchases: {
+        Row: {
+          admin_notes: string | null
+          created_at: string
+          created_by: string | null
+          delivered_at: string | null
+          delivery_address: Json | null
+          entity_id: string
+          freight_cost: number | null
+          freight_quoted_at: string | null
+          goods_total: number
+          id: string
+          in_production_at: string | null
+          inbound_shipment_id: string | null
+          paid_at: string | null
+          path: Database["public"]["Enums"]["stock_purchase_path"]
+          product_id: string | null
+          product_name: string
+          quantity: number
+          quote_line_id: string | null
+          quote_request_id: string | null
+          shipped_at: string | null
+          sku: string | null
+          sourced_by: string | null
+          sourcing_fee_rate: number | null
+          status: Database["public"]["Enums"]["stock_purchase_status"]
+          store_id: string
+          supplier_unit_price: number | null
+          total_amount: number | null
+          tracking_carrier: string | null
+          tracking_number: string | null
+          unit_price: number
+          updated_at: string
+          variant_label: string | null
+          wallet_reference: string | null
+        }
+        Insert: {
+          admin_notes?: string | null
+          created_at?: string
+          created_by?: string | null
+          delivered_at?: string | null
+          delivery_address?: Json | null
+          entity_id: string
+          freight_cost?: number | null
+          freight_quoted_at?: string | null
+          goods_total: number
+          id?: string
+          in_production_at?: string | null
+          inbound_shipment_id?: string | null
+          paid_at?: string | null
+          path: Database["public"]["Enums"]["stock_purchase_path"]
+          product_id?: string | null
+          product_name: string
+          quantity: number
+          quote_line_id?: string | null
+          quote_request_id?: string | null
+          shipped_at?: string | null
+          sku?: string | null
+          sourced_by?: string | null
+          sourcing_fee_rate?: number | null
+          status?: Database["public"]["Enums"]["stock_purchase_status"]
+          store_id: string
+          supplier_unit_price?: number | null
+          total_amount?: number | null
+          tracking_carrier?: string | null
+          tracking_number?: string | null
+          unit_price: number
+          updated_at?: string
+          variant_label?: string | null
+          wallet_reference?: string | null
+        }
+        Update: {
+          admin_notes?: string | null
+          created_at?: string
+          created_by?: string | null
+          delivered_at?: string | null
+          delivery_address?: Json | null
+          entity_id?: string
+          freight_cost?: number | null
+          freight_quoted_at?: string | null
+          goods_total?: number
+          id?: string
+          in_production_at?: string | null
+          inbound_shipment_id?: string | null
+          paid_at?: string | null
+          path?: Database["public"]["Enums"]["stock_purchase_path"]
+          product_id?: string | null
+          product_name?: string
+          quantity?: number
+          quote_line_id?: string | null
+          quote_request_id?: string | null
+          shipped_at?: string | null
+          sku?: string | null
+          sourced_by?: string | null
+          sourcing_fee_rate?: number | null
+          status?: Database["public"]["Enums"]["stock_purchase_status"]
+          store_id?: string
+          supplier_unit_price?: number | null
+          total_amount?: number | null
+          tracking_carrier?: string | null
+          tracking_number?: string | null
+          unit_price?: number
+          updated_at?: string
+          variant_label?: string | null
+          wallet_reference?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_purchases_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_purchases_entity_id_fkey"
+            columns: ["entity_id"]
+            isOneToOne: false
+            referencedRelation: "entities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_purchases_inbound_fkey"
+            columns: ["inbound_shipment_id"]
+            isOneToOne: false
+            referencedRelation: "inbound_shipments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_purchases_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "bundle_prices"
+            referencedColumns: ["bundle_product_id"]
+          },
+          {
+            foreignKeyName: "stock_purchases_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_purchases_quote_line_id_fkey"
+            columns: ["quote_line_id"]
+            isOneToOne: false
+            referencedRelation: "quote_lines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_purchases_quote_request_id_fkey"
+            columns: ["quote_request_id"]
+            isOneToOne: false
+            referencedRelation: "quote_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_purchases_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
             referencedColumns: ["id"]
           },
         ]
@@ -2154,7 +2484,9 @@ export type Database = {
           received_at: string | null
           refusal_reason: string | null
           service_fee_per_piece: number
+          source: string
           status: Database["public"]["Enums"]["inbound_status"]
+          stock_purchase_id: string | null
           store_id: string
           tracking_carrier: string | null
           tracking_number: string | null
@@ -2187,7 +2519,9 @@ export type Database = {
           received_at: string | null
           refusal_reason: string | null
           service_fee_per_piece: number
+          source: string
           status: Database["public"]["Enums"]["inbound_status"]
+          stock_purchase_id: string | null
           store_id: string
           tracking_carrier: string | null
           tracking_number: string | null
@@ -2256,16 +2590,26 @@ export type Database = {
           created_at: string
           id: string
           lead_time_days: number | null
+          margin_pct: number
           markup_product: number | null
           markup_shipping: number | null
           moq: number | null
+          production_lead_days: number | null
           quote_request_id: string
           responded_at: string | null
           sku: string
+          sourced_at: string | null
+          sourced_by: string | null
+          sourcing_cost: number | null
+          sourcing_fee_rate: number | null
+          sourcing_image_urls: string[]
+          sourcing_notes: string | null
           status: Database["public"]["Enums"]["quote_line_status"]
           supplier_cogs: number | null
+          supplier_id: string | null
           supplier_shipping: number | null
           supplier_tax: number | null
+          supplier_unit_price: number | null
           unit_price: number | null
           variant_label: string
         }[]
@@ -2531,7 +2875,9 @@ export type Database = {
           received_at: string | null
           refusal_reason: string | null
           service_fee_per_piece: number
+          source: string
           status: Database["public"]["Enums"]["inbound_status"]
+          stock_purchase_id: string | null
           store_id: string
           tracking_carrier: string | null
           tracking_number: string | null
@@ -2687,6 +3033,7 @@ export type Database = {
         Args: { p_job: string; p_method?: string; p_path: string }
         Returns: undefined
       }
+      is_sourcing: { Args: { _user_id: string }; Returns: boolean }
       open_dispute: {
         Args: {
           p_description: string
@@ -2820,7 +3167,9 @@ export type Database = {
           received_at: string | null
           refusal_reason: string | null
           service_fee_per_piece: number
+          source: string
           status: Database["public"]["Enums"]["inbound_status"]
+          stock_purchase_id: string | null
           store_id: string
           tracking_carrier: string | null
           tracking_number: string | null
@@ -2853,6 +3202,7 @@ export type Database = {
           p_target_monthly_volume?: number
         }
         Returns: {
+          assigned_sourcer: string | null
           created_at: string
           id: string
           image_urls: string[] | null
@@ -2866,6 +3216,7 @@ export type Database = {
           quoted_at: string | null
           quoted_by: string | null
           responded_at: string | null
+          sourcing_submitted_at: string | null
           status: Database["public"]["Enums"]["quote_status"]
           store_id: string
           supersedes_quote_id: string | null
@@ -2978,6 +3329,7 @@ export type Database = {
         | "wallet_topup"
         | "subscription"
         | "inbound_fee"
+        | "stock_purchase"
       entity_status: "active" | "suspended"
       fulfilment_model: "per_order" | "stock_in"
       inbound_status:
@@ -3005,6 +3357,15 @@ export type Database = {
       quote_line_status: "pending" | "accepted" | "rejected"
       quote_status: "submitted" | "sourcing" | "quoted" | "closed" | "expired"
       spymarket_plan: "starter" | "plus" | "max"
+      stock_purchase_path: "flysales" | "direct"
+      stock_purchase_status:
+        | "requested"
+        | "freight_quoted"
+        | "paid"
+        | "in_production"
+        | "shipped"
+        | "delivered"
+        | "cancelled"
       store_platform: "shopify" | "woocommerce" | "other"
       subscription_plan: "basic" | "unlimited"
       subscription_status: "none" | "active" | "past_due" | "canceled"
@@ -3153,6 +3514,7 @@ export const Constants = {
         "wallet_topup",
         "subscription",
         "inbound_fee",
+        "stock_purchase",
       ],
       entity_status: ["active", "suspended"],
       fulfilment_model: ["per_order", "stock_in"],
@@ -3183,6 +3545,16 @@ export const Constants = {
       quote_line_status: ["pending", "accepted", "rejected"],
       quote_status: ["submitted", "sourcing", "quoted", "closed", "expired"],
       spymarket_plan: ["starter", "plus", "max"],
+      stock_purchase_path: ["flysales", "direct"],
+      stock_purchase_status: [
+        "requested",
+        "freight_quoted",
+        "paid",
+        "in_production",
+        "shipped",
+        "delivered",
+        "cancelled",
+      ],
       store_platform: ["shopify", "woocommerce", "other"],
       subscription_plan: ["basic", "unlimited"],
       subscription_status: ["none", "active", "past_due", "canceled"],

@@ -1,0 +1,102 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
+import { useQuery } from "@tanstack/react-query";
+import { EmptyState, PageHeader } from "@/components/app-shell";
+import { SectionTabs, DESK_TABS } from "@/components/section-tabs";
+import { Chip, SummaryBar, TableShell } from "@/components/admin-ui";
+import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { formatDate, formatUSD } from "@/lib/format";
+import { sourcingMyEarnings } from "@/lib/sourcing.functions";
+
+export const Route = createFileRoute("/_authenticated/desk/earnings")({
+  head: () => ({
+    meta: [
+      { title: "My earnings — FlySales" },
+      {
+        name: "description",
+        content: "Commission accrued on the units your sourced products actually sell.",
+      },
+      { name: "robots", content: "noindex" },
+    ],
+  }),
+  component: EarningsPage,
+});
+
+function EarningsPage() {
+  const fetchEarnings = useServerFn(sourcingMyEarnings);
+  const { data, isPending } = useQuery({
+    queryKey: ["sourcing-my-earnings"],
+    queryFn: fetchEarnings,
+  });
+
+  const rows = data?.rows ?? [];
+
+  return (
+    <div>
+      <PageHeader
+        title="My earnings"
+        description="Your fee accrues on every unit sold or purchased from a product you sourced."
+      />
+      <SectionTabs tabs={DESK_TABS} />
+
+      <SummaryBar
+        items={[
+          {
+            key: "pending",
+            label: "Awaiting payout",
+            value: formatUSD(data?.pending ?? 0),
+            tone: "primary",
+          },
+          { key: "settled", label: "Paid out", value: formatUSD(data?.settled ?? 0), tone: "success" },
+          { key: "lines", label: "Entries", value: String(rows.length) },
+        ]}
+      />
+
+      {isPending ? (
+        <p className="text-sm text-muted-foreground">Loading…</p>
+      ) : rows.length === 0 ? (
+        <EmptyState
+          title="No commission yet"
+          hint="Once a client buys a product you sourced, your fee shows up here automatically."
+        />
+      ) : (
+        <TableShell>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Date</TableHead>
+              <TableHead>Description</TableHead>
+              <TableHead className="text-right">Units</TableHead>
+              <TableHead className="text-right">Rate</TableHead>
+              <TableHead className="text-right">Amount</TableHead>
+              <TableHead>Status</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rows.map((r) => (
+              <TableRow key={r.id}>
+                <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
+                  {formatDate(r.accrued_at)}
+                </TableCell>
+                <TableCell className="text-sm">{r.description}</TableCell>
+                <TableCell className="text-right tnum text-sm">{r.units}</TableCell>
+                <TableCell className="text-right tnum text-xs text-muted-foreground">
+                  {(Number(r.fee_rate) * 100).toFixed(1)}%
+                </TableCell>
+                <TableCell className="text-right tnum text-sm font-medium">
+                  {formatUSD(Number(r.amount))}
+                </TableCell>
+                <TableCell>
+                  {r.settled ? (
+                    <Chip tone="success">Paid {r.settled_at ? formatDate(r.settled_at) : ""}</Chip>
+                  ) : (
+                    <Chip tone="warning">Awaiting payout</Chip>
+                  )}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </TableShell>
+      )}
+    </div>
+  );
+}
