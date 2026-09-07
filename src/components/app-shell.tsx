@@ -11,7 +11,6 @@ import {
   Download,
   ExternalLink,
   FilePlus2,
-  FileText,
   FlaskConical,
   LayoutDashboard,
   LogOut,
