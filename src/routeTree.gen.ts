@@ -53,6 +53,7 @@ import { Route as AuthenticatedClientFulfilmentClaimsRouteImport } from './route
 import { Route as AuthenticatedClientFulfilmentInboundRouteImport } from './routes/_authenticated/_client/fulfilment/inbound'
 import { Route as AuthenticatedClientFulfilmentInventoryRouteImport } from './routes/_authenticated/_client/fulfilment/inventory'
 import { Route as AuthenticatedClientFulfilmentOrdersRouteImport } from './routes/_authenticated/_client/fulfilment/orders'
+import { Route as AuthenticatedClientFulfilmentStockPurchasesRouteImport } from './routes/_authenticated/_client/fulfilment/stock-purchases'
 import { Route as AuthenticatedClientOrdersIndexRouteImport } from './routes/_authenticated/_client/orders/index'
 import { Route as AuthenticatedClientOrdersIdRouteImport } from './routes/_authenticated/_client/orders.$id'
 import { Route as AuthenticatedClientOrdersImportRouteImport } from './routes/_authenticated/_client/orders/import'
@@ -328,6 +329,12 @@ const AuthenticatedClientFulfilmentOrdersRoute =
     path: '/fulfilment/orders',
     getParentRoute: () => AuthenticatedClientRoute,
   } as any)
+const AuthenticatedClientFulfilmentStockPurchasesRoute =
+  AuthenticatedClientFulfilmentStockPurchasesRouteImport.update({
+    id: '/fulfilment/stock-purchases',
+    path: '/fulfilment/stock-purchases',
+    getParentRoute: () => AuthenticatedClientRoute,
+  } as any)
 const AuthenticatedClientOrdersIndexRoute =
   AuthenticatedClientOrdersIndexRouteImport.update({
     id: '/orders/',
@@ -513,6 +520,7 @@ export interface FileRoutesByFullPath {
   '/fulfilment/inbound': typeof AuthenticatedClientFulfilmentInboundRoute
   '/fulfilment/inventory': typeof AuthenticatedClientFulfilmentInventoryRoute
   '/fulfilment/orders': typeof AuthenticatedClientFulfilmentOrdersRoute
+  '/fulfilment/stock-purchases': typeof AuthenticatedClientFulfilmentStockPurchasesRoute
   '/orders/$id': typeof AuthenticatedClientOrdersIdRoute
   '/orders/import': typeof AuthenticatedClientOrdersImportRoute
   '/orders/new': typeof AuthenticatedClientOrdersNewRoute
@@ -580,6 +588,7 @@ export interface FileRoutesByTo {
   '/fulfilment/inbound': typeof AuthenticatedClientFulfilmentInboundRoute
   '/fulfilment/inventory': typeof AuthenticatedClientFulfilmentInventoryRoute
   '/fulfilment/orders': typeof AuthenticatedClientFulfilmentOrdersRoute
+  '/fulfilment/stock-purchases': typeof AuthenticatedClientFulfilmentStockPurchasesRoute
   '/orders/$id': typeof AuthenticatedClientOrdersIdRoute
   '/orders/import': typeof AuthenticatedClientOrdersImportRoute
   '/orders/new': typeof AuthenticatedClientOrdersNewRoute
@@ -651,6 +660,7 @@ export interface FileRoutesById {
   '/_authenticated/_client/fulfilment/inbound': typeof AuthenticatedClientFulfilmentInboundRoute
   '/_authenticated/_client/fulfilment/inventory': typeof AuthenticatedClientFulfilmentInventoryRoute
   '/_authenticated/_client/fulfilment/orders': typeof AuthenticatedClientFulfilmentOrdersRoute
+  '/_authenticated/_client/fulfilment/stock-purchases': typeof AuthenticatedClientFulfilmentStockPurchasesRoute
   '/_authenticated/_client/orders/$id': typeof AuthenticatedClientOrdersIdRoute
   '/_authenticated/_client/orders/import': typeof AuthenticatedClientOrdersImportRoute
   '/_authenticated/_client/orders/new': typeof AuthenticatedClientOrdersNewRoute
@@ -721,6 +731,7 @@ export interface FileRouteTypes {
     | '/fulfilment/inbound'
     | '/fulfilment/inventory'
     | '/fulfilment/orders'
+    | '/fulfilment/stock-purchases'
     | '/orders/$id'
     | '/orders/import'
     | '/orders/new'
@@ -788,6 +799,7 @@ export interface FileRouteTypes {
     | '/fulfilment/inbound'
     | '/fulfilment/inventory'
     | '/fulfilment/orders'
+    | '/fulfilment/stock-purchases'
     | '/orders/$id'
     | '/orders/import'
     | '/orders/new'
@@ -858,6 +870,7 @@ export interface FileRouteTypes {
     | '/_authenticated/_client/fulfilment/inbound'
     | '/_authenticated/_client/fulfilment/inventory'
     | '/_authenticated/_client/fulfilment/orders'
+    | '/_authenticated/_client/fulfilment/stock-purchases'
     | '/_authenticated/_client/orders/$id'
     | '/_authenticated/_client/orders/import'
     | '/_authenticated/_client/orders/new'
@@ -1214,6 +1227,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedClientFulfilmentOrdersRouteImport
       parentRoute: typeof AuthenticatedClientRoute
     }
+    '/_authenticated/_client/fulfilment/stock-purchases': {
+      id: '/_authenticated/_client/fulfilment/stock-purchases'
+      path: '/fulfilment/stock-purchases'
+      fullPath: '/fulfilment/stock-purchases'
+      preLoaderRoute: typeof AuthenticatedClientFulfilmentStockPurchasesRouteImport
+      parentRoute: typeof AuthenticatedClientRoute
+    }
     '/_authenticated/_client/orders/': {
       id: '/_authenticated/_client/orders/'
       path: '/orders'
@@ -1430,6 +1450,7 @@ interface AuthenticatedClientRouteChildren {
   AuthenticatedClientFulfilmentInboundRoute: typeof AuthenticatedClientFulfilmentInboundRoute
   AuthenticatedClientFulfilmentInventoryRoute: typeof AuthenticatedClientFulfilmentInventoryRoute
   AuthenticatedClientFulfilmentOrdersRoute: typeof AuthenticatedClientFulfilmentOrdersRoute
+  AuthenticatedClientFulfilmentStockPurchasesRoute: typeof AuthenticatedClientFulfilmentStockPurchasesRoute
   AuthenticatedClientOrdersIdRoute: typeof AuthenticatedClientOrdersIdRoute
   AuthenticatedClientOrdersImportRoute: typeof AuthenticatedClientOrdersImportRoute
   AuthenticatedClientOrdersNewRoute: typeof AuthenticatedClientOrdersNewRoute
@@ -1468,6 +1489,8 @@ const AuthenticatedClientRouteChildren: AuthenticatedClientRouteChildren = {
     AuthenticatedClientFulfilmentInventoryRoute,
   AuthenticatedClientFulfilmentOrdersRoute:
     AuthenticatedClientFulfilmentOrdersRoute,
+  AuthenticatedClientFulfilmentStockPurchasesRoute:
+    AuthenticatedClientFulfilmentStockPurchasesRoute,
   AuthenticatedClientOrdersIdRoute: AuthenticatedClientOrdersIdRoute,
   AuthenticatedClientOrdersImportRoute: AuthenticatedClientOrdersImportRoute,
   AuthenticatedClientOrdersNewRoute: AuthenticatedClientOrdersNewRoute,
