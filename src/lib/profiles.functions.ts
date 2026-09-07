@@ -256,13 +256,13 @@ export const updateMyEntity = createServerFn({ method: "POST" })
 function fiscalUpdate(data: {
   legal_name: string;
   country: string;
-  vat_number?: string;
-  tax_id?: string;
-  address_line1?: string;
-  address_line2?: string;
-  postal_code?: string;
-  city?: string;
-  address?: string;
+  vat_number?: string | undefined;
+  tax_id?: string | undefined;
+  address_line1?: string | undefined;
+  address_line2?: string | undefined;
+  postal_code?: string | undefined;
+  city?: string | undefined;
+  address?: string | undefined;
 }) {
   return {
     legal_name: data.legal_name,
