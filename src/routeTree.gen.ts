@@ -19,8 +19,12 @@ import { Route as AuthenticatedClientRouteImport } from './routes/_authenticated
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedPendingRouteImport } from './routes/_authenticated/pending'
 import { Route as AuthenticatedClientDashboardRouteImport } from './routes/_authenticated/_client/dashboard'
+import { Route as AuthenticatedClientDisputesRouteImport } from './routes/_authenticated/_client/disputes'
+import { Route as AuthenticatedClientDocumentsRouteImport } from './routes/_authenticated/_client/documents'
+import { Route as AuthenticatedClientInventoryRouteImport } from './routes/_authenticated/_client/inventory'
 import { Route as AuthenticatedClientProductsRouteImport } from './routes/_authenticated/_client/products'
 import { Route as AuthenticatedClientSpymarketRouteImport } from './routes/_authenticated/_client/spymarket'
+import { Route as AuthenticatedClientWalletRouteImport } from './routes/_authenticated/_client/wallet'
 import { Route as AuthenticatedClientWorkspacesRouteImport } from './routes/_authenticated/_client/workspaces'
 import { Route as AuthenticatedAdminClientsRouteImport } from './routes/_authenticated/admin/clients'
 import { Route as AuthenticatedAdminDisputesRouteImport } from './routes/_authenticated/admin/disputes'
@@ -34,17 +38,22 @@ import { Route as AuthenticatedAdminSpymarketRouteImport } from './routes/_authe
 import { Route as AuthenticatedAdminSpymarketToolsRouteImport } from './routes/_authenticated/admin/spymarket-tools'
 import { Route as AuthenticatedAdminSuppliersRouteImport } from './routes/_authenticated/admin/suppliers'
 import { Route as AuthenticatedAdminWalletRouteImport } from './routes/_authenticated/admin/wallet'
+import { Route as AuthenticatedClientBillingIndexRouteImport } from './routes/_authenticated/_client/billing/index'
 import { Route as AuthenticatedClientBillingReceiptsRouteImport } from './routes/_authenticated/_client/billing/receipts'
 import { Route as AuthenticatedClientBillingSubscriptionRouteImport } from './routes/_authenticated/_client/billing/subscription'
 import { Route as AuthenticatedClientBillingWalletRouteImport } from './routes/_authenticated/_client/billing/wallet'
 import { Route as AuthenticatedClientDisputesIdRouteImport } from './routes/_authenticated/_client/disputes.$id'
+import { Route as AuthenticatedClientFulfilmentIndexRouteImport } from './routes/_authenticated/_client/fulfilment/index'
 import { Route as AuthenticatedClientFulfilmentClaimsRouteImport } from './routes/_authenticated/_client/fulfilment/claims'
 import { Route as AuthenticatedClientFulfilmentInventoryRouteImport } from './routes/_authenticated/_client/fulfilment/inventory'
 import { Route as AuthenticatedClientFulfilmentOrdersRouteImport } from './routes/_authenticated/_client/fulfilment/orders'
+import { Route as AuthenticatedClientOrdersIndexRouteImport } from './routes/_authenticated/_client/orders/index'
 import { Route as AuthenticatedClientOrdersIdRouteImport } from './routes/_authenticated/_client/orders.$id'
 import { Route as AuthenticatedClientOrdersImportRouteImport } from './routes/_authenticated/_client/orders/import'
 import { Route as AuthenticatedClientOrdersNewRouteImport } from './routes/_authenticated/_client/orders/new'
+import { Route as AuthenticatedClientQuotesIndexRouteImport } from './routes/_authenticated/_client/quotes/index'
 import { Route as AuthenticatedClientQuotesIdRouteImport } from './routes/_authenticated/_client/quotes/$id'
+import { Route as AuthenticatedClientQuotesNewRouteImport } from './routes/_authenticated/_client/quotes/new'
 import { Route as AuthenticatedClientSourcingNewRouteImport } from './routes/_authenticated/_client/sourcing/new'
 import { Route as AuthenticatedClientSourcingQuotesRouteImport } from './routes/_authenticated/_client/sourcing/quotes'
 import { Route as AuthenticatedClientWorkspacesNewRouteImport } from './routes/_authenticated/_client/workspaces/new'
@@ -110,6 +119,24 @@ const AuthenticatedClientDashboardRoute =
     path: '/dashboard',
     getParentRoute: () => AuthenticatedClientRoute,
   } as any)
+const AuthenticatedClientDisputesRoute =
+  AuthenticatedClientDisputesRouteImport.update({
+    id: '/disputes',
+    path: '/disputes',
+    getParentRoute: () => AuthenticatedClientRoute,
+  } as any)
+const AuthenticatedClientDocumentsRoute =
+  AuthenticatedClientDocumentsRouteImport.update({
+    id: '/documents',
+    path: '/documents',
+    getParentRoute: () => AuthenticatedClientRoute,
+  } as any)
+const AuthenticatedClientInventoryRoute =
+  AuthenticatedClientInventoryRouteImport.update({
+    id: '/inventory',
+    path: '/inventory',
+    getParentRoute: () => AuthenticatedClientRoute,
+  } as any)
 const AuthenticatedClientProductsRoute =
   AuthenticatedClientProductsRouteImport.update({
     id: '/products',
@@ -120,6 +147,12 @@ const AuthenticatedClientSpymarketRoute =
   AuthenticatedClientSpymarketRouteImport.update({
     id: '/spymarket',
     path: '/spymarket',
+    getParentRoute: () => AuthenticatedClientRoute,
+  } as any)
+const AuthenticatedClientWalletRoute =
+  AuthenticatedClientWalletRouteImport.update({
+    id: '/wallet',
+    path: '/wallet',
     getParentRoute: () => AuthenticatedClientRoute,
   } as any)
 const AuthenticatedClientWorkspacesRoute =
@@ -200,6 +233,12 @@ const AuthenticatedAdminWalletRoute =
     path: '/wallet',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedClientBillingIndexRoute =
+  AuthenticatedClientBillingIndexRouteImport.update({
+    id: '/billing/',
+    path: '/billing/',
+    getParentRoute: () => AuthenticatedClientRoute,
+  } as any)
 const AuthenticatedClientBillingReceiptsRoute =
   AuthenticatedClientBillingReceiptsRouteImport.update({
     id: '/billing/receipts',
@@ -220,8 +259,14 @@ const AuthenticatedClientBillingWalletRoute =
   } as any)
 const AuthenticatedClientDisputesIdRoute =
   AuthenticatedClientDisputesIdRouteImport.update({
-    id: '/disputes/$id',
-    path: '/disputes/$id',
+    id: '/$id',
+    path: '/$id',
+    getParentRoute: () => AuthenticatedClientDisputesRoute,
+  } as any)
+const AuthenticatedClientFulfilmentIndexRoute =
+  AuthenticatedClientFulfilmentIndexRouteImport.update({
+    id: '/fulfilment/',
+    path: '/fulfilment/',
     getParentRoute: () => AuthenticatedClientRoute,
   } as any)
 const AuthenticatedClientFulfilmentClaimsRoute =
@@ -242,6 +287,12 @@ const AuthenticatedClientFulfilmentOrdersRoute =
     path: '/fulfilment/orders',
     getParentRoute: () => AuthenticatedClientRoute,
   } as any)
+const AuthenticatedClientOrdersIndexRoute =
+  AuthenticatedClientOrdersIndexRouteImport.update({
+    id: '/orders/',
+    path: '/orders/',
+    getParentRoute: () => AuthenticatedClientRoute,
+  } as any)
 const AuthenticatedClientOrdersIdRoute =
   AuthenticatedClientOrdersIdRouteImport.update({
     id: '/orders/$id',
@@ -260,10 +311,22 @@ const AuthenticatedClientOrdersNewRoute =
     path: '/orders/new',
     getParentRoute: () => AuthenticatedClientRoute,
   } as any)
+const AuthenticatedClientQuotesIndexRoute =
+  AuthenticatedClientQuotesIndexRouteImport.update({
+    id: '/quotes/',
+    path: '/quotes/',
+    getParentRoute: () => AuthenticatedClientRoute,
+  } as any)
 const AuthenticatedClientQuotesIdRoute =
   AuthenticatedClientQuotesIdRouteImport.update({
     id: '/quotes/$id',
     path: '/quotes/$id',
+    getParentRoute: () => AuthenticatedClientRoute,
+  } as any)
+const AuthenticatedClientQuotesNewRoute =
+  AuthenticatedClientQuotesNewRouteImport.update({
+    id: '/quotes/new',
+    path: '/quotes/new',
     getParentRoute: () => AuthenticatedClientRoute,
   } as any)
 const AuthenticatedClientSourcingNewRoute =
@@ -365,8 +428,12 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/pending': typeof AuthenticatedPendingRoute
   '/dashboard': typeof AuthenticatedClientDashboardRoute
+  '/disputes': typeof AuthenticatedClientDisputesRouteWithChildren
+  '/documents': typeof AuthenticatedClientDocumentsRoute
+  '/inventory': typeof AuthenticatedClientInventoryRoute
   '/products': typeof AuthenticatedClientProductsRoute
   '/spymarket': typeof AuthenticatedClientSpymarketRoute
+  '/wallet': typeof AuthenticatedClientWalletRoute
   '/workspaces': typeof AuthenticatedClientWorkspacesRouteWithChildren
   '/admin/clients': typeof AuthenticatedAdminClientsRoute
   '/admin/disputes': typeof AuthenticatedAdminDisputesRouteWithChildren
@@ -391,6 +458,7 @@ export interface FileRoutesByFullPath {
   '/orders/import': typeof AuthenticatedClientOrdersImportRoute
   '/orders/new': typeof AuthenticatedClientOrdersNewRoute
   '/quotes/$id': typeof AuthenticatedClientQuotesIdRoute
+  '/quotes/new': typeof AuthenticatedClientQuotesNewRoute
   '/sourcing/new': typeof AuthenticatedClientSourcingNewRoute
   '/sourcing/quotes': typeof AuthenticatedClientSourcingQuotesRoute
   '/workspaces/new': typeof AuthenticatedClientWorkspacesNewRoute
@@ -404,6 +472,10 @@ export interface FileRoutesByFullPath {
   '/api/public/cron/order-expiry': typeof ApiPublicCronOrderExpiryRoute
   '/api/public/middleware/webhook': typeof ApiPublicMiddlewareWebhookRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
+  '/billing/': typeof AuthenticatedClientBillingIndexRoute
+  '/fulfilment/': typeof AuthenticatedClientFulfilmentIndexRoute
+  '/orders/': typeof AuthenticatedClientOrdersIndexRoute
+  '/quotes/': typeof AuthenticatedClientQuotesIndexRoute
   '/admin/quotes/': typeof AuthenticatedAdminQuotesIndexRoute
   '/api/public/middleware/simulator/$': typeof ApiPublicMiddlewareSimulatorSplatRoute
 }
@@ -416,8 +488,12 @@ export interface FileRoutesByTo {
   '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/pending': typeof AuthenticatedPendingRoute
   '/dashboard': typeof AuthenticatedClientDashboardRoute
+  '/disputes': typeof AuthenticatedClientDisputesRouteWithChildren
+  '/documents': typeof AuthenticatedClientDocumentsRoute
+  '/inventory': typeof AuthenticatedClientInventoryRoute
   '/products': typeof AuthenticatedClientProductsRoute
   '/spymarket': typeof AuthenticatedClientSpymarketRoute
+  '/wallet': typeof AuthenticatedClientWalletRoute
   '/workspaces': typeof AuthenticatedClientWorkspacesRouteWithChildren
   '/admin/clients': typeof AuthenticatedAdminClientsRoute
   '/admin/disputes': typeof AuthenticatedAdminDisputesRouteWithChildren
@@ -442,6 +518,7 @@ export interface FileRoutesByTo {
   '/orders/import': typeof AuthenticatedClientOrdersImportRoute
   '/orders/new': typeof AuthenticatedClientOrdersNewRoute
   '/quotes/$id': typeof AuthenticatedClientQuotesIdRoute
+  '/quotes/new': typeof AuthenticatedClientQuotesNewRoute
   '/sourcing/new': typeof AuthenticatedClientSourcingNewRoute
   '/sourcing/quotes': typeof AuthenticatedClientSourcingQuotesRoute
   '/workspaces/new': typeof AuthenticatedClientWorkspacesNewRoute
@@ -455,6 +532,10 @@ export interface FileRoutesByTo {
   '/api/public/cron/order-expiry': typeof ApiPublicCronOrderExpiryRoute
   '/api/public/middleware/webhook': typeof ApiPublicMiddlewareWebhookRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
+  '/billing': typeof AuthenticatedClientBillingIndexRoute
+  '/fulfilment': typeof AuthenticatedClientFulfilmentIndexRoute
+  '/orders': typeof AuthenticatedClientOrdersIndexRoute
+  '/quotes': typeof AuthenticatedClientQuotesIndexRoute
   '/admin/quotes': typeof AuthenticatedAdminQuotesIndexRoute
   '/api/public/middleware/simulator/$': typeof ApiPublicMiddlewareSimulatorSplatRoute
 }
@@ -470,8 +551,12 @@ export interface FileRoutesById {
   '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
   '/_authenticated/pending': typeof AuthenticatedPendingRoute
   '/_authenticated/_client/dashboard': typeof AuthenticatedClientDashboardRoute
+  '/_authenticated/_client/disputes': typeof AuthenticatedClientDisputesRouteWithChildren
+  '/_authenticated/_client/documents': typeof AuthenticatedClientDocumentsRoute
+  '/_authenticated/_client/inventory': typeof AuthenticatedClientInventoryRoute
   '/_authenticated/_client/products': typeof AuthenticatedClientProductsRoute
   '/_authenticated/_client/spymarket': typeof AuthenticatedClientSpymarketRoute
+  '/_authenticated/_client/wallet': typeof AuthenticatedClientWalletRoute
   '/_authenticated/_client/workspaces': typeof AuthenticatedClientWorkspacesRouteWithChildren
   '/_authenticated/admin/clients': typeof AuthenticatedAdminClientsRoute
   '/_authenticated/admin/disputes': typeof AuthenticatedAdminDisputesRouteWithChildren
@@ -496,6 +581,7 @@ export interface FileRoutesById {
   '/_authenticated/_client/orders/import': typeof AuthenticatedClientOrdersImportRoute
   '/_authenticated/_client/orders/new': typeof AuthenticatedClientOrdersNewRoute
   '/_authenticated/_client/quotes/$id': typeof AuthenticatedClientQuotesIdRoute
+  '/_authenticated/_client/quotes/new': typeof AuthenticatedClientQuotesNewRoute
   '/_authenticated/_client/sourcing/new': typeof AuthenticatedClientSourcingNewRoute
   '/_authenticated/_client/sourcing/quotes': typeof AuthenticatedClientSourcingQuotesRoute
   '/_authenticated/_client/workspaces/new': typeof AuthenticatedClientWorkspacesNewRoute
@@ -509,6 +595,10 @@ export interface FileRoutesById {
   '/api/public/cron/order-expiry': typeof ApiPublicCronOrderExpiryRoute
   '/api/public/middleware/webhook': typeof ApiPublicMiddlewareWebhookRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
+  '/_authenticated/_client/billing/': typeof AuthenticatedClientBillingIndexRoute
+  '/_authenticated/_client/fulfilment/': typeof AuthenticatedClientFulfilmentIndexRoute
+  '/_authenticated/_client/orders/': typeof AuthenticatedClientOrdersIndexRoute
+  '/_authenticated/_client/quotes/': typeof AuthenticatedClientQuotesIndexRoute
   '/_authenticated/admin/quotes/': typeof AuthenticatedAdminQuotesIndexRoute
   '/api/public/middleware/simulator/$': typeof ApiPublicMiddlewareSimulatorSplatRoute
 }
@@ -523,8 +613,12 @@ export interface FileRouteTypes {
     | '/admin'
     | '/pending'
     | '/dashboard'
+    | '/disputes'
+    | '/documents'
+    | '/inventory'
     | '/products'
     | '/spymarket'
+    | '/wallet'
     | '/workspaces'
     | '/admin/clients'
     | '/admin/disputes'
@@ -549,6 +643,7 @@ export interface FileRouteTypes {
     | '/orders/import'
     | '/orders/new'
     | '/quotes/$id'
+    | '/quotes/new'
     | '/sourcing/new'
     | '/sourcing/quotes'
     | '/workspaces/new'
@@ -562,6 +657,10 @@ export interface FileRouteTypes {
     | '/api/public/cron/order-expiry'
     | '/api/public/middleware/webhook'
     | '/api/public/payments/webhook'
+    | '/billing/'
+    | '/fulfilment/'
+    | '/orders/'
+    | '/quotes/'
     | '/admin/quotes/'
     | '/api/public/middleware/simulator/$'
   fileRoutesByTo: FileRoutesByTo
@@ -574,8 +673,12 @@ export interface FileRouteTypes {
     | '/admin'
     | '/pending'
     | '/dashboard'
+    | '/disputes'
+    | '/documents'
+    | '/inventory'
     | '/products'
     | '/spymarket'
+    | '/wallet'
     | '/workspaces'
     | '/admin/clients'
     | '/admin/disputes'
@@ -600,6 +703,7 @@ export interface FileRouteTypes {
     | '/orders/import'
     | '/orders/new'
     | '/quotes/$id'
+    | '/quotes/new'
     | '/sourcing/new'
     | '/sourcing/quotes'
     | '/workspaces/new'
@@ -613,6 +717,10 @@ export interface FileRouteTypes {
     | '/api/public/cron/order-expiry'
     | '/api/public/middleware/webhook'
     | '/api/public/payments/webhook'
+    | '/billing'
+    | '/fulfilment'
+    | '/orders'
+    | '/quotes'
     | '/admin/quotes'
     | '/api/public/middleware/simulator/$'
   id:
@@ -627,8 +735,12 @@ export interface FileRouteTypes {
     | '/_authenticated/admin'
     | '/_authenticated/pending'
     | '/_authenticated/_client/dashboard'
+    | '/_authenticated/_client/disputes'
+    | '/_authenticated/_client/documents'
+    | '/_authenticated/_client/inventory'
     | '/_authenticated/_client/products'
     | '/_authenticated/_client/spymarket'
+    | '/_authenticated/_client/wallet'
     | '/_authenticated/_client/workspaces'
     | '/_authenticated/admin/clients'
     | '/_authenticated/admin/disputes'
@@ -653,6 +765,7 @@ export interface FileRouteTypes {
     | '/_authenticated/_client/orders/import'
     | '/_authenticated/_client/orders/new'
     | '/_authenticated/_client/quotes/$id'
+    | '/_authenticated/_client/quotes/new'
     | '/_authenticated/_client/sourcing/new'
     | '/_authenticated/_client/sourcing/quotes'
     | '/_authenticated/_client/workspaces/new'
@@ -666,6 +779,10 @@ export interface FileRouteTypes {
     | '/api/public/cron/order-expiry'
     | '/api/public/middleware/webhook'
     | '/api/public/payments/webhook'
+    | '/_authenticated/_client/billing/'
+    | '/_authenticated/_client/fulfilment/'
+    | '/_authenticated/_client/orders/'
+    | '/_authenticated/_client/quotes/'
     | '/_authenticated/admin/quotes/'
     | '/api/public/middleware/simulator/$'
   fileRoutesById: FileRoutesById
@@ -760,6 +877,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedClientDashboardRouteImport
       parentRoute: typeof AuthenticatedClientRoute
     }
+    '/_authenticated/_client/disputes': {
+      id: '/_authenticated/_client/disputes'
+      path: '/disputes'
+      fullPath: '/disputes'
+      preLoaderRoute: typeof AuthenticatedClientDisputesRouteImport
+      parentRoute: typeof AuthenticatedClientRoute
+    }
+    '/_authenticated/_client/documents': {
+      id: '/_authenticated/_client/documents'
+      path: '/documents'
+      fullPath: '/documents'
+      preLoaderRoute: typeof AuthenticatedClientDocumentsRouteImport
+      parentRoute: typeof AuthenticatedClientRoute
+    }
+    '/_authenticated/_client/inventory': {
+      id: '/_authenticated/_client/inventory'
+      path: '/inventory'
+      fullPath: '/inventory'
+      preLoaderRoute: typeof AuthenticatedClientInventoryRouteImport
+      parentRoute: typeof AuthenticatedClientRoute
+    }
     '/_authenticated/_client/products': {
       id: '/_authenticated/_client/products'
       path: '/products'
@@ -772,6 +910,13 @@ declare module '@tanstack/react-router' {
       path: '/spymarket'
       fullPath: '/spymarket'
       preLoaderRoute: typeof AuthenticatedClientSpymarketRouteImport
+      parentRoute: typeof AuthenticatedClientRoute
+    }
+    '/_authenticated/_client/wallet': {
+      id: '/_authenticated/_client/wallet'
+      path: '/wallet'
+      fullPath: '/wallet'
+      preLoaderRoute: typeof AuthenticatedClientWalletRouteImport
       parentRoute: typeof AuthenticatedClientRoute
     }
     '/_authenticated/_client/workspaces': {
@@ -865,6 +1010,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminWalletRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/_client/billing/': {
+      id: '/_authenticated/_client/billing/'
+      path: '/billing'
+      fullPath: '/billing/'
+      preLoaderRoute: typeof AuthenticatedClientBillingIndexRouteImport
+      parentRoute: typeof AuthenticatedClientRoute
+    }
     '/_authenticated/_client/billing/receipts': {
       id: '/_authenticated/_client/billing/receipts'
       path: '/billing/receipts'
@@ -888,9 +1040,16 @@ declare module '@tanstack/react-router' {
     }
     '/_authenticated/_client/disputes/$id': {
       id: '/_authenticated/_client/disputes/$id'
-      path: '/disputes/$id'
+      path: '/$id'
       fullPath: '/disputes/$id'
       preLoaderRoute: typeof AuthenticatedClientDisputesIdRouteImport
+      parentRoute: typeof AuthenticatedClientDisputesRoute
+    }
+    '/_authenticated/_client/fulfilment/': {
+      id: '/_authenticated/_client/fulfilment/'
+      path: '/fulfilment'
+      fullPath: '/fulfilment/'
+      preLoaderRoute: typeof AuthenticatedClientFulfilmentIndexRouteImport
       parentRoute: typeof AuthenticatedClientRoute
     }
     '/_authenticated/_client/fulfilment/claims': {
@@ -914,6 +1073,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedClientFulfilmentOrdersRouteImport
       parentRoute: typeof AuthenticatedClientRoute
     }
+    '/_authenticated/_client/orders/': {
+      id: '/_authenticated/_client/orders/'
+      path: '/orders'
+      fullPath: '/orders/'
+      preLoaderRoute: typeof AuthenticatedClientOrdersIndexRouteImport
+      parentRoute: typeof AuthenticatedClientRoute
+    }
     '/_authenticated/_client/orders/$id': {
       id: '/_authenticated/_client/orders/$id'
       path: '/orders/$id'
@@ -935,11 +1101,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedClientOrdersNewRouteImport
       parentRoute: typeof AuthenticatedClientRoute
     }
+    '/_authenticated/_client/quotes/': {
+      id: '/_authenticated/_client/quotes/'
+      path: '/quotes'
+      fullPath: '/quotes/'
+      preLoaderRoute: typeof AuthenticatedClientQuotesIndexRouteImport
+      parentRoute: typeof AuthenticatedClientRoute
+    }
     '/_authenticated/_client/quotes/$id': {
       id: '/_authenticated/_client/quotes/$id'
       path: '/quotes/$id'
       fullPath: '/quotes/$id'
       preLoaderRoute: typeof AuthenticatedClientQuotesIdRouteImport
+      parentRoute: typeof AuthenticatedClientRoute
+    }
+    '/_authenticated/_client/quotes/new': {
+      id: '/_authenticated/_client/quotes/new'
+      path: '/quotes/new'
+      fullPath: '/quotes/new'
+      preLoaderRoute: typeof AuthenticatedClientQuotesNewRouteImport
       parentRoute: typeof AuthenticatedClientRoute
     }
     '/_authenticated/_client/sourcing/new': {
@@ -1050,6 +1230,20 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AuthenticatedClientDisputesRouteChildren {
+  AuthenticatedClientDisputesIdRoute: typeof AuthenticatedClientDisputesIdRoute
+}
+
+const AuthenticatedClientDisputesRouteChildren: AuthenticatedClientDisputesRouteChildren =
+  {
+    AuthenticatedClientDisputesIdRoute: AuthenticatedClientDisputesIdRoute,
+  }
+
+const AuthenticatedClientDisputesRouteWithChildren =
+  AuthenticatedClientDisputesRoute._addFileChildren(
+    AuthenticatedClientDisputesRouteChildren,
+  )
+
 interface AuthenticatedClientWorkspacesRouteChildren {
   AuthenticatedClientWorkspacesNewRoute: typeof AuthenticatedClientWorkspacesNewRoute
 }
@@ -1067,13 +1261,16 @@ const AuthenticatedClientWorkspacesRouteWithChildren =
 
 interface AuthenticatedClientRouteChildren {
   AuthenticatedClientDashboardRoute: typeof AuthenticatedClientDashboardRoute
+  AuthenticatedClientDisputesRoute: typeof AuthenticatedClientDisputesRouteWithChildren
+  AuthenticatedClientDocumentsRoute: typeof AuthenticatedClientDocumentsRoute
+  AuthenticatedClientInventoryRoute: typeof AuthenticatedClientInventoryRoute
   AuthenticatedClientProductsRoute: typeof AuthenticatedClientProductsRoute
   AuthenticatedClientSpymarketRoute: typeof AuthenticatedClientSpymarketRoute
+  AuthenticatedClientWalletRoute: typeof AuthenticatedClientWalletRoute
   AuthenticatedClientWorkspacesRoute: typeof AuthenticatedClientWorkspacesRouteWithChildren
   AuthenticatedClientBillingReceiptsRoute: typeof AuthenticatedClientBillingReceiptsRoute
   AuthenticatedClientBillingSubscriptionRoute: typeof AuthenticatedClientBillingSubscriptionRoute
   AuthenticatedClientBillingWalletRoute: typeof AuthenticatedClientBillingWalletRoute
-  AuthenticatedClientDisputesIdRoute: typeof AuthenticatedClientDisputesIdRoute
   AuthenticatedClientFulfilmentClaimsRoute: typeof AuthenticatedClientFulfilmentClaimsRoute
   AuthenticatedClientFulfilmentInventoryRoute: typeof AuthenticatedClientFulfilmentInventoryRoute
   AuthenticatedClientFulfilmentOrdersRoute: typeof AuthenticatedClientFulfilmentOrdersRoute
@@ -1081,14 +1278,24 @@ interface AuthenticatedClientRouteChildren {
   AuthenticatedClientOrdersImportRoute: typeof AuthenticatedClientOrdersImportRoute
   AuthenticatedClientOrdersNewRoute: typeof AuthenticatedClientOrdersNewRoute
   AuthenticatedClientQuotesIdRoute: typeof AuthenticatedClientQuotesIdRoute
+  AuthenticatedClientQuotesNewRoute: typeof AuthenticatedClientQuotesNewRoute
   AuthenticatedClientSourcingNewRoute: typeof AuthenticatedClientSourcingNewRoute
   AuthenticatedClientSourcingQuotesRoute: typeof AuthenticatedClientSourcingQuotesRoute
+  AuthenticatedClientBillingIndexRoute: typeof AuthenticatedClientBillingIndexRoute
+  AuthenticatedClientFulfilmentIndexRoute: typeof AuthenticatedClientFulfilmentIndexRoute
+  AuthenticatedClientOrdersIndexRoute: typeof AuthenticatedClientOrdersIndexRoute
+  AuthenticatedClientQuotesIndexRoute: typeof AuthenticatedClientQuotesIndexRoute
 }
 
 const AuthenticatedClientRouteChildren: AuthenticatedClientRouteChildren = {
   AuthenticatedClientDashboardRoute: AuthenticatedClientDashboardRoute,
+  AuthenticatedClientDisputesRoute:
+    AuthenticatedClientDisputesRouteWithChildren,
+  AuthenticatedClientDocumentsRoute: AuthenticatedClientDocumentsRoute,
+  AuthenticatedClientInventoryRoute: AuthenticatedClientInventoryRoute,
   AuthenticatedClientProductsRoute: AuthenticatedClientProductsRoute,
   AuthenticatedClientSpymarketRoute: AuthenticatedClientSpymarketRoute,
+  AuthenticatedClientWalletRoute: AuthenticatedClientWalletRoute,
   AuthenticatedClientWorkspacesRoute:
     AuthenticatedClientWorkspacesRouteWithChildren,
   AuthenticatedClientBillingReceiptsRoute:
@@ -1096,7 +1303,6 @@ const AuthenticatedClientRouteChildren: AuthenticatedClientRouteChildren = {
   AuthenticatedClientBillingSubscriptionRoute:
     AuthenticatedClientBillingSubscriptionRoute,
   AuthenticatedClientBillingWalletRoute: AuthenticatedClientBillingWalletRoute,
-  AuthenticatedClientDisputesIdRoute: AuthenticatedClientDisputesIdRoute,
   AuthenticatedClientFulfilmentClaimsRoute:
     AuthenticatedClientFulfilmentClaimsRoute,
   AuthenticatedClientFulfilmentInventoryRoute:
@@ -1107,9 +1313,15 @@ const AuthenticatedClientRouteChildren: AuthenticatedClientRouteChildren = {
   AuthenticatedClientOrdersImportRoute: AuthenticatedClientOrdersImportRoute,
   AuthenticatedClientOrdersNewRoute: AuthenticatedClientOrdersNewRoute,
   AuthenticatedClientQuotesIdRoute: AuthenticatedClientQuotesIdRoute,
+  AuthenticatedClientQuotesNewRoute: AuthenticatedClientQuotesNewRoute,
   AuthenticatedClientSourcingNewRoute: AuthenticatedClientSourcingNewRoute,
   AuthenticatedClientSourcingQuotesRoute:
     AuthenticatedClientSourcingQuotesRoute,
+  AuthenticatedClientBillingIndexRoute: AuthenticatedClientBillingIndexRoute,
+  AuthenticatedClientFulfilmentIndexRoute:
+    AuthenticatedClientFulfilmentIndexRoute,
+  AuthenticatedClientOrdersIndexRoute: AuthenticatedClientOrdersIndexRoute,
+  AuthenticatedClientQuotesIndexRoute: AuthenticatedClientQuotesIndexRoute,
 }
 
 const AuthenticatedClientRouteWithChildren =
