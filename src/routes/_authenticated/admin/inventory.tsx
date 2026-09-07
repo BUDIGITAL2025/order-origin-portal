@@ -127,11 +127,13 @@ function AdminInventoryPage() {
             onClick={() => sync.mutate()}
           >
             <RefreshCw className={sync.isPending ? "mr-2 h-3.5 w-3.5 animate-spin" : "mr-2 h-3.5 w-3.5"} />
-      <SectionTabs tabs={ADMIN_FULFILMENT_TABS} />
             Sync now
           </Button>
         }
       />
+      <SectionTabs tabs={ADMIN_FULFILMENT_TABS} />
+
+
 
       {error && (
         <Card className="mb-4 border-destructive/30">
