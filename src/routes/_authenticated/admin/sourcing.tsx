@@ -160,9 +160,9 @@ function AdminSourcingPage() {
           value={filter}
           onChange={setFilter}
           tabs={[
-            { value: "pending", label: "Owed" },
-            { value: "settled", label: "Paid" },
-            { value: "all", label: "All" },
+            { id: "pending", label: "Owed" },
+            { id: "settled", label: "Paid" },
+            { id: "all", label: "All" },
           ]}
         />
         {pendingIds.length > 0 && (
