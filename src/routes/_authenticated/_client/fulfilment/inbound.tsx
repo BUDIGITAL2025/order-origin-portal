@@ -37,7 +37,7 @@ import {
   setInboundTracking,
 } from "@/lib/inbound.functions";
 import { friendlyError } from "@/lib/errors";
-import { formatMoney } from "@/lib/format";
+import { formatUSD } from "@/lib/format";
 
 const FEE_PER_PIECE = 0.5;
 const QC_PER_PIECE = 0.2;
@@ -182,8 +182,8 @@ function InboundPage() {
             <h2 className="text-base font-semibold">No inbound shipments yet</h2>
             <p className="max-w-xl text-sm text-muted-foreground">
               Declare what you are sending, print our SKU labels and add supplier tracking. We
-              count every piece on arrival and charge {formatMoney(FEE_PER_PIECE)} per piece (
-              {formatMoney(FEE_PER_PIECE + QC_PER_PIECE)} with quality control) on the quantity we
+              count every piece on arrival and charge {formatUSD(FEE_PER_PIECE)} per piece (
+              {formatUSD(FEE_PER_PIECE + QC_PER_PIECE)} with quality control) on the quantity we
               count.
             </p>
             <Button className="rounded-full" disabled={!storeId} onClick={() => setDeclareOpen(true)}>
@@ -233,7 +233,7 @@ function InboundPage() {
                   </td>
                   <td className="px-3 py-2 text-xs">{s.qc ? "Yes" : "No"}</td>
                   <td className="px-3 py-2 text-right tabular-nums">
-                    {s.fee_charged ? formatMoney(Number(s.fee_charged)) : "—"}
+                    {s.fee_charged ? formatUSD(Number(s.fee_charged)) : "—"}
                   </td>
                   <td className="px-3 py-2 text-xs">
                     {s.tracking_number ? (
@@ -424,7 +424,7 @@ function DeclareDialog({
             <span className="text-sm">
               Quality control on every piece
               <span className="block text-xs text-muted-foreground">
-                We check each piece individually. Adds {formatMoney(QC_PER_PIECE)} per piece.
+                We check each piece individually. Adds {formatUSD(QC_PER_PIECE)} per piece.
               </span>
             </span>
           </label>
@@ -436,7 +436,7 @@ function DeclareDialog({
             </div>
             <div className="mt-1 flex justify-between font-medium">
               <span>Estimated service fee</span>
-              <span className="tabular-nums">{formatMoney(fee)}</span>
+              <span className="tabular-nums">{formatUSD(fee)}</span>
             </div>
             <p className="mt-2 text-xs text-muted-foreground">
               We charge on the quantity we count on arrival, not on the declared quantity. The fee
