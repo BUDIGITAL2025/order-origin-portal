@@ -2,7 +2,7 @@ import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, RefreshCw, Settings2, UserCheck, UserX } from "lucide-react";
+import { CheckCircle2, Pencil, Plus, RefreshCw, Settings2, UserCheck, UserX } from "lucide-react";
 import { toast } from "sonner";
 import { EmptyState, PageHeader } from "@/components/app-shell";
 import { ProfileStatusBadge, ProvisioningBadge, TierBadge } from "@/components/status-badges";
@@ -38,6 +38,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  AddClientDialog,
+  EditFiscalDetailsDialog,
+  type FiscalEntity,
+} from "@/components/entity-fiscal-dialogs";
 import { formatSignupSource } from "@/lib/acquisition";
 import { formatDateTime } from "@/lib/format";
 import { PLANS, TIER_LABELS, effectiveTier, planQuota } from "@/lib/plans";
@@ -73,6 +78,8 @@ function AdminClientsPage() {
   const queryClient = useQueryClient();
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [addOpen, setAddOpen] = useState(false);
+  const [fiscalEntity, setFiscalEntity] = useState<FiscalEntity | null>(null);
   const fetchClients = useServerFn(adminListClients);
   const callSetStatus = useServerFn(adminSetClientStatus);
   const callSetPlan = useServerFn(adminSetPlan);
@@ -174,7 +181,26 @@ function AdminClientsPage() {
 
   return (
     <div>
-      <PageHeader title="Clients" description="Approve, suspend and manage plans and pricing tiers." />
+      <PageHeader
+        title="Clients"
+        description="Approve, suspend and manage plans and pricing tiers."
+        actions={
+          <Button size="sm" onClick={() => setAddOpen(true)}>
+            <Plus className="h-4 w-4" /> Add client manually
+          </Button>
+        }
+      />
+
+      <AddClientDialog open={addOpen} onOpenChange={setAddOpen} onCreated={invalidate} />
+      {fiscalEntity && (
+        <EditFiscalDetailsDialog
+          key={fiscalEntity.id}
+          entity={fiscalEntity}
+          open
+          onOpenChange={(open) => !open && setFiscalEntity(null)}
+          onSaved={invalidate}
+        />
+      )}
 
       <SummaryBar
         className="lg:grid-cols-4"
@@ -277,10 +303,19 @@ function AdminClientsPage() {
                         <span className="text-sm font-medium">{entity.legal_name}</span>
                         <ProfileStatusBadge status={entity.status} />
                         <span className="text-xs text-muted-foreground">
-                          {[entity.country, entity.vat_number ? `VAT ${entity.vat_number}` : null]
+                          {[
+                            entity.country,
+                            entity.tax_id ? `Tax ID ${entity.tax_id}` : null,
+                            [entity.postal_code, entity.city].filter(Boolean).join(" ") || null,
+                          ]
                             .filter(Boolean)
                             .join(" · ") || "No fiscal details"}
                         </span>
+                        <RowAction
+                          label="Edit fiscal details"
+                          icon={Pencil}
+                          onClick={() => setFiscalEntity(entity as FiscalEntity)}
+                        />
                       </div>
                       {entity.stores.length === 0 ? (
                         <p className="text-xs text-muted-foreground">No workspaces under this entity.</p>
