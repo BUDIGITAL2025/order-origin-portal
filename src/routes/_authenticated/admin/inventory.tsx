@@ -5,6 +5,7 @@ import { useState } from "react";
 import { AlertTriangle, RefreshCw, SlidersHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/app-shell";
+import { SectionTabs, ADMIN_FULFILMENT_TABS } from "@/components/section-tabs";
 import { AdminSearch, FilterTabs, PanelHeader, SummaryBar } from "@/components/admin-ui";
 import { InventoryTable, type InventoryRow } from "@/components/inventory-table";
 import { Button } from "@/components/ui/button";
@@ -130,6 +131,9 @@ function AdminInventoryPage() {
           </Button>
         }
       />
+      <SectionTabs tabs={ADMIN_FULFILMENT_TABS} />
+
+
 
       {error && (
         <Card className="mb-4 border-destructive/30">

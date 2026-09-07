@@ -52,7 +52,7 @@ export function OpenQuotesWidget({
         </CardTitle>
         {quotes.length > MAX_ROWS && (
           <Button asChild variant="ghost" size="sm" className="gap-1 text-xs">
-            <Link to="/quotes">
+            <Link to="/sourcing/quotes">
               View all <ArrowRight className="h-3 w-3" />
             </Link>
           </Button>
@@ -66,14 +66,14 @@ export function OpenQuotesWidget({
                 icon={PackageSearch}
                 title="No open quote requests"
                 hint="Paste a product link and get a firm price per variant and country within 48 hours."
-                action={{ label: "Request a quote", to: "/quotes/new" }}
+                action={{ label: "Request a quote", to: "/sourcing/new" }}
               />
             ) : (
               <EmptyState
                 icon={Sparkles}
                 title="Quote requests need an active plan"
                 hint="Pick a plan and send your first request in minutes."
-                action={{ label: "Choose a plan", to: "/billing" }}
+                action={{ label: "Choose a plan", to: "/billing/subscription" }}
               />
             )}
           </div>

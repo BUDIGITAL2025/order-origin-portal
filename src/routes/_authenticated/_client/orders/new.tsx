@@ -179,7 +179,7 @@ function NewOrderPage() {
   return (
     <div className="max-w-3xl">
       <Link
-        to="/orders"
+        to="/fulfilment/orders"
         className="mb-2 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
       >
         <ArrowLeft className="h-3.5 w-3.5" /> All orders
@@ -364,7 +364,7 @@ function EmptyWorkspace() {
       <Card>
         <CardContent className="p-8 text-sm text-muted-foreground">
           You need a workspace first. <Link to="/workspaces/new" className="text-primary underline">Add one</Link>{" "}
-          — or subscribe on the <Link to="/billing" className="text-primary underline">Billing page</Link>{" "}
+          — or subscribe on the <Link to="/billing/subscription" className="text-primary underline">Billing page</Link>{" "}
           and a workspace is created for you.
         </CardContent>
       </Card>

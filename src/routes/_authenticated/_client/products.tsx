@@ -381,7 +381,7 @@ function MyProductsPageInner() {
         <EmptyState
           title="No products yet"
           hint="Your catalogue lives here. A product appears once you accept a price on a quote request, ready to sell and to order."
-          action={{ label: "View quotes", to: "/quotes" }}
+          action={{ label: "View quotes", to: "/sourcing/quotes" }}
         />
       ) : (
         <div className="rounded-lg border border-border bg-card">

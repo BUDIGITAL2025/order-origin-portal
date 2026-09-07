@@ -71,7 +71,7 @@ export function orderCancelledEmail(args: {
         { label: "Status", value: "Cancelled" },
       ],
     },
-    button: { label: "View your orders", url: portalUrl("/orders") },
+    button: { label: "View your orders", url: portalUrl("/fulfilment/orders") },
   });
 }
 
@@ -129,7 +129,7 @@ export function walletToppedUpEmail(args: {
     preheader: `${usd(args.credited)} credited. New balance ${usd(args.balance)}.`,
     paragraphs,
     panel: { title: "Wallet", rows },
-    button: { label: "View your wallet", url: portalUrl("/wallet") },
+    button: { label: "View your wallet", url: portalUrl("/billing/wallet") },
     note: "A payment receipt for this top-up is available in Receipts.",
   });
 }
@@ -175,7 +175,7 @@ export function batchPaymentEmail(args: {
         : `${args.settledCount} order${args.settledCount === 1 ? "" : "s"} paid.`,
     paragraphs,
     panel: { title: "Payment summary", rows },
-    button: { label: "View your orders", url: portalUrl("/orders") },
+    button: { label: "View your orders", url: portalUrl("/fulfilment/orders") },
     note: "A payment receipt is issued for every paid order and is available in Receipts.",
   });
 }
@@ -198,7 +198,7 @@ export function subscriptionActiveEmail(args: {
       "Your payment is confirmed and your plan is live. The new quote allowance applies immediately, so you can send your next request straight away.",
     ],
     panel: { title: "Subscription", rows },
-    button: { label: "Request a quote", url: portalUrl("/quotes/new") },
+    button: { label: "Request a quote", url: portalUrl("/sourcing/new") },
   });
 }
 
@@ -230,7 +230,7 @@ export function subscriptionCancelledEmail(args: {
         : "Your plan stays active until the end of the current billing period, so nothing changes before then.",
       "Your product catalogue and any open orders are unaffected, and your wallet balance stays yours. You can resubscribe whenever you want.",
     ],
-    button: { label: "Manage billing", url: portalUrl("/billing") },
+    button: { label: "Manage billing", url: portalUrl("/billing/subscription") },
   });
 }
 
@@ -243,7 +243,7 @@ export function paymentFailedEmail(): BuiltEmail {
       "Your last subscription payment did not go through. We retry it automatically over the next few days, so there is nothing to pay twice.",
       "Update your saved card on the Billing page to keep your plan and your quote allowance active. Your wallet balance and paid orders are unaffected.",
     ],
-    button: { label: "Update payment method", url: portalUrl("/billing") },
+    button: { label: "Update payment method", url: portalUrl("/billing/subscription") },
   });
 }
 
@@ -334,7 +334,7 @@ export function inventoryReorderEmail(args: {
       lead,
     ],
     panel: { title: "Forecast", rows },
-    button: { label: "Plan the reorder", url: portalUrl("/inventory") },
+    button: { label: "Plan the reorder", url: portalUrl("/fulfilment/inventory") },
     note: "Days of cover use your recent sales velocity. Lead times combine production, transit and your safety margin.",
   });
 }

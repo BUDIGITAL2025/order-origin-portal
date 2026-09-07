@@ -312,7 +312,7 @@ export function InventoryTable({
 /** Deep link into the quote form, prefilled as a reorder for one SKU. */
 export function reorderLink(row: InventoryRow) {
   return {
-    to: "/quotes/new" as const,
+    to: "/sourcing/new" as const,
     search: { sku: row.sku, name: row.product_name, qty: row.suggested_qty },
   };
 }

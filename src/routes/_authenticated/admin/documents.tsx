@@ -3,6 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { EmptyState, PageHeader } from "@/components/app-shell";
+import { SectionTabs, ADMIN_BILLING_TABS } from "@/components/section-tabs";
 import { DocumentDownloadButton, DocumentTypeBadge } from "@/components/documents-ui";
 import {
   AdminSearch,
@@ -85,6 +86,7 @@ function AdminDocumentsPage() {
         title="Payment receipts"
         description="Every payment receipt issued to clients. Documents are immutable once issued."
       />
+      <SectionTabs tabs={ADMIN_BILLING_TABS} />
 
       <SummaryBar
         className="lg:grid-cols-4"

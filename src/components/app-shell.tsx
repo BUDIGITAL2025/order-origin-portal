@@ -7,19 +7,16 @@ import {
   ChevronDown,
   LifeBuoy,
   ClipboardList,
-  CreditCard,
   Factory,
   Download,
   ExternalLink,
   FilePlus2,
-  FileText,
   FlaskConical,
   LayoutDashboard,
   LogOut,
   Package,
   Plug,
   ShieldAlert,
-  ShoppingCart,
   Sparkles,
 
   Store,
@@ -61,17 +58,13 @@ interface NavItem {
 const CLIENT_NAV: NavItem[] = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/workspaces", label: "Workspaces", icon: Store },
-  { to: "/quotes/new", label: "Request a quote", icon: FilePlus2 },
-  { to: "/quotes", label: "Quote requests", icon: ClipboardList },
+  { to: "/sourcing", label: "Sourcing", icon: FilePlus2 },
   { to: "/products", label: "Products", icon: Package },
-  { to: "/orders", label: "Orders", icon: ShoppingCart },
-  { to: "/inventory", label: "Inventory", icon: Truck },
-  { to: "/disputes", label: "Claims", icon: ShieldAlert },
-  { to: "/wallet", label: "Wallet", icon: Wallet },
-  { to: "/billing", label: "Billing", icon: CreditCard },
-  { to: "/documents", label: "Receipts", icon: FileText },
+  { to: "/fulfilment", label: "Fulfilment", icon: Truck },
+  { to: "/billing", label: "Billing", icon: Wallet },
   { to: "/spymarket", label: "SpyMarket", icon: Telescope, badge: "New" },
 ];
+
 
 /**
  * Persistent portal banner while a subscription is past_due. Nothing is
@@ -97,7 +90,7 @@ function PastDueBanner() {
   return (
     <div className="w-full border-b border-destructive/30 bg-destructive/10 px-4 py-2 text-center text-sm text-destructive">
       Your last subscription payment failed and we retry it automatically.{" "}
-      <Link to="/billing" className="font-medium underline">
+      <Link to="/billing/subscription" className="font-medium underline">
         Update your card
       </Link>{" "}
       to keep your plan.
@@ -107,15 +100,13 @@ function PastDueBanner() {
 
 const ADMIN_NAV: NavItem[] = [
   { to: "/admin/quotes", label: "Quote queue", icon: ClipboardList },
-  { to: "/admin/orders", label: "Orders", icon: ShoppingCart },
   { to: "/admin/products", label: "Products", icon: Package },
-  { to: "/admin/inventory", label: "Inventory", icon: Truck },
+  { to: "/admin/orders", label: "Fulfilment", icon: Truck },
   { to: "/admin/suppliers", label: "Suppliers", icon: Factory },
   { to: "/admin/disputes", label: "Disputes", icon: ShieldAlert },
   { to: "/admin/clients", label: "Clients", icon: Users },
   { to: "/admin/entities", label: "Entities & workspaces", icon: Building2 },
-  { to: "/admin/wallet", label: "Wallet adjustments", icon: Wallet },
-  { to: "/admin/documents", label: "Receipts", icon: FileText },
+  { to: "/admin/wallet", label: "Billing", icon: Wallet },
   { to: "/admin/integration", label: "Integration", icon: Plug },
   { to: "/admin/spymarket", label: "SpyMarket waitlist", icon: Telescope },
   { to: "/admin/spymarket-tools", label: "SpyMarket tools", icon: FlaskConical, badge: "New" },
@@ -299,7 +290,7 @@ function WalletChip() {
 
   return (
     <Link
-      to={low ? "/billing" : "/wallet"}
+      to={low ? "/billing/subscription" : "/billing/wallet"}
       title={low ? "Balance is low — top up to keep orders moving" : "Wallet balance"}
       className={cn(
         "flex h-9 items-center gap-2 rounded-full border px-3.5 text-xs transition-colors",
@@ -372,14 +363,32 @@ export function AppShell({
   const pathname = useRouterState({ select: (r) => r.location.pathname });
   const nav = role === "admin" ? ADMIN_NAV : CLIENT_NAV;
 
-  // Manual active matching so "/quotes/new" doesn't light up "My quotes".
+  // Manual active matching so "/sourcing/new" doesn't light up "My quotes".
   const isActive = (to: string) => {
     if (to === "/dashboard" || to === "/admin/quotes") return pathname === to;
-    if (to === "/quotes/new") return pathname === "/quotes/new";
-    if (to === "/quotes")
-      return pathname === "/quotes" || (pathname.startsWith("/quotes/") && pathname !== "/quotes/new");
+    // Detail pages that live outside their section prefix still light up the
+    // section they belong to.
+    if (to === "/sourcing") return pathname.startsWith("/sourcing") || pathname.startsWith("/quotes");
+    if (to === "/fulfilment")
+      return (
+        pathname.startsWith("/fulfilment") ||
+        pathname.startsWith("/orders") ||
+        pathname.startsWith("/inventory") ||
+        pathname.startsWith("/disputes")
+      );
+    if (to === "/billing")
+      return pathname.startsWith("/billing") || pathname.startsWith("/wallet") || pathname.startsWith("/documents");
+    if (to === "/admin/orders")
+      return (
+        pathname.startsWith("/admin/orders") ||
+        pathname.startsWith("/admin/inventory") ||
+        pathname.startsWith("/admin/inbound")
+      );
+    if (to === "/admin/wallet")
+      return pathname.startsWith("/admin/wallet") || pathname.startsWith("/admin/documents");
     return pathname === to || pathname.startsWith(to + "/");
   };
+
 
   const handleSignOut = async () => {
     // Sign-out hygiene: tear down queries first so none refetch against a

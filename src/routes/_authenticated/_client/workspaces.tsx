@@ -145,7 +145,7 @@ function WorkspaceCard({ store }: { store: CtxStore }) {
         {isDraft && <ConnectShopifyForm storeId={store.id} />}
         {!subscribed && (
           <Button asChild size="sm" variant="outline" className="w-full">
-            <Link to="/billing">
+            <Link to="/billing/subscription">
               <ArrowUpCircle className="mr-1.5 h-3.5 w-3.5" />
               Subscribe to unlock quotes
             </Link>

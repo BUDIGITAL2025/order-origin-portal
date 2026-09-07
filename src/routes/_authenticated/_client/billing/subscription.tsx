@@ -5,6 +5,7 @@ import { BellRing, Building2, CreditCard, FileText, RefreshCcw, Wallet } from "l
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/app-shell";
+import { SectionTabs, BILLING_TABS } from "@/components/section-tabs";
 import { TopUpCheckoutDialog } from "@/components/TopUpCheckoutDialog";
 import { TxnTypeBadge } from "@/components/status-badges";
 import { DocumentDownloadButton, DocumentTypeBadge } from "@/components/documents-ui";
@@ -44,7 +45,7 @@ import { getMyWallet } from "@/lib/wallet.functions";
 import { updateMyEntity } from "@/lib/profiles.functions";
 import { entityDetailsSchema } from "@/lib/schemas";
 import { getCurrentStoreId } from "@/components/store-switcher";
-import { useMyContext } from "../_client";
+import { useMyContext } from "../../_client";
 
 type StripeEnv = "sandbox" | "live";
 
@@ -56,7 +57,7 @@ function safeEnvironment(): StripeEnv | null {
   }
 }
 
-export const Route = createFileRoute("/_authenticated/_client/billing")({
+export const Route = createFileRoute("/_authenticated/_client/billing/subscription")({
   // Stripe's {CHECKOUT_SESSION_ID} is substituted server-side; whatever
   // reaches the browser is still just a display hint — all state changes
   // come from the webhook.
@@ -160,7 +161,7 @@ function BillingPage() {
       toast.success("Top-up received. Your balance updates as soon as the payment confirms.");
     }
     if (sub || topup) {
-      void navigate({ to: "/billing", replace: true, search: {} });
+      void navigate({ to: "/billing/subscription", replace: true, search: {} });
     }
   }, [sub, topup, navigate]);
 
@@ -282,6 +283,7 @@ function BillingPage() {
     return (
       <div>
         <PageHeader title="Billing" description="Plan, wallet and payment settings." />
+        <SectionTabs tabs={BILLING_TABS} />
         <Card>
           <CardContent className="p-6 text-sm text-muted-foreground">
             Card payments are not available in this environment yet. Your wallet balance
@@ -306,6 +308,7 @@ function BillingPage() {
         title="Billing"
         description="Your plan, wallet top-ups and auto top-up settings."
       />
+      <SectionTabs tabs={BILLING_TABS} />
 
       {data?.notifications && data.notifications.length > 0 && (
         <div className="mb-6 space-y-2">
