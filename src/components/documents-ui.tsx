@@ -11,13 +11,19 @@ import { friendlyError } from "@/lib/errors";
 
 // ---------- Badges ----------
 
-export type DocumentType = "order_receipt" | "wallet_topup" | "subscription" | "inbound_fee";
+export type DocumentType =
+  | "order_receipt"
+  | "wallet_topup"
+  | "subscription"
+  | "inbound_fee"
+  | "stock_purchase";
 
 const DOC_STYLES: Record<DocumentType, string> = {
   order_receipt: "bg-info/10 text-info border-info/25",
   wallet_topup: "bg-success/10 text-success border-success/25",
   subscription: "bg-warning/10 text-warning border-warning/25",
   inbound_fee: "bg-primary/10 text-primary border-primary/25",
+  stock_purchase: "bg-accent/10 text-accent border-accent/25",
 };
 
 const DOC_LABELS: Record<DocumentType, string> = {
@@ -25,7 +31,9 @@ const DOC_LABELS: Record<DocumentType, string> = {
   wallet_topup: "Wallet top-up",
   subscription: "Subscription",
   inbound_fee: "Inbound service fee",
+  stock_purchase: "Stock purchase",
 };
+
 
 export function DocumentTypeBadge({ type }: { type: DocumentType }) {
   return (

@@ -42,6 +42,7 @@ export const FULFILMENT_TABS: SectionTab[] = [
   { to: "/fulfilment/orders", label: "Orders" },
   { to: "/fulfilment/inventory", label: "Inventory" },
   { to: "/fulfilment/inbound", label: "Inbound" },
+  { to: "/fulfilment/stock-purchases", label: "Stock purchases" },
   { to: "/fulfilment/claims", label: "Claims" },
 ];
 
@@ -60,4 +61,15 @@ export const ADMIN_FULFILMENT_TABS: SectionTab[] = [
 export const ADMIN_BILLING_TABS: SectionTab[] = [
   { to: "/admin/wallet", label: "Wallet adjustments" },
   { to: "/admin/documents", label: "Receipts" },
+];
+
+export const DESK_TABS: SectionTab[] = [
+  { to: "/desk/queue", label: "Queue" },
+  { to: "/desk/earnings", label: "Earnings" },
+];
+
+export const ADMIN_SOURCING_TABS: SectionTab[] = [
+  { to: "/admin/quotes", label: "Quote queue" },
+  { to: "/admin/sourcing", label: "Collaborators" },
+  { to: "/admin/stock-purchases", label: "Stock purchases" },
 ];

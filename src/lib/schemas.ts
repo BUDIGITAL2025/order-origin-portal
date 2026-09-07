@@ -275,7 +275,14 @@ export const notificationIdsSchema = z.object({
 
 // ============= Payment receipts (documents) =============
 
-export const documentTypeSchema = z.enum(["order_receipt", "wallet_topup", "subscription", "inbound_fee"]);
+export const documentTypeSchema = z.enum([
+  "order_receipt",
+  "wallet_topup",
+  "subscription",
+  "inbound_fee",
+  "stock_purchase",
+]);
+
 
 export const documentIdSchema = z.object({
   id: z.string().uuid(),
@@ -443,4 +450,100 @@ export const stockInPriceSchema = z.object({
   country_code: countryCodeSchema,
   fulfilment_fee: z.number().min(0).max(10_000),
   shipping_price: z.number().min(0).max(10_000),
+});
+
+// ============= Sourcing collaborators & the pricing chain =============
+
+export const collaboratorInviteSchema = z.object({
+  email: z.string().trim().email("Invalid email address").max(255),
+  display_name: z.string().trim().max(120).optional().or(z.literal("")),
+  fee_rate_pct: z.number().min(0, "Fee cannot be negative").max(100).default(8),
+});
+
+export const collaboratorUpdateSchema = z.object({
+  id: z.string().uuid(),
+  display_name: z.string().trim().max(120).optional().or(z.literal("")),
+  fee_rate_pct: z.number().min(0).max(100).optional(),
+  active: z.boolean().optional(),
+});
+
+export const assignSourcerSchema = z.object({
+  quote_id: z.string().uuid(),
+  user_id: z.string().uuid().nullable(),
+});
+
+export const sourcingLineInputSchema = z.object({
+  id: z.string().uuid().optional(),
+  variant_label: z.string().trim().min(1, "Every variant needs a label").max(120),
+  country_code: countryCodeSchema,
+  supplier_name: z.string().trim().min(2, "Supplier is required").max(160),
+  supplier_unit_price: z
+    .number()
+    .min(0.01, "Enter the supplier unit price")
+    .max(1_000_000),
+  moq: z.number().int().min(1, "MOQ is required").max(1_000_000),
+  production_lead_days: z.number().int().min(0).max(365),
+  sourcing_notes: z.string().trim().max(2000).optional().or(z.literal("")),
+  sourcing_image_urls: z.array(z.string().max(500)).max(10).optional(),
+});
+
+export const sourcingSaveLinesSchema = z.object({
+  quote_id: z.string().uuid(),
+  lines: z.array(sourcingLineInputSchema).min(1, "Add at least one variant").max(200),
+});
+
+export const publishQuoteSchema = z.object({
+  quote_id: z.string().uuid(),
+  lines: z
+    .array(
+      z.object({
+        id: z.string().uuid(),
+        margin_pct: z.number().min(0, "Margin cannot be negative").max(500),
+      }),
+    )
+    .min(1)
+    .max(200),
+  quote_valid_until: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD")
+    .nullable()
+    .optional(),
+  admin_notes: z.string().trim().max(2000).optional().or(z.literal("")),
+});
+
+export const settleEarningsSchema = z.object({
+  ids: z.array(z.string().uuid()).min(1).max(500),
+});
+
+// ============= Stock purchases =============
+
+export const stockPurchasePathSchema = z.enum(["flysales", "direct"]);
+
+export const createStockPurchaseSchema = z.object({
+  quote_line_id: z.string().uuid(),
+  path: stockPurchasePathSchema,
+  quantity: z.number().int().min(1).max(1_000_000),
+  delivery_address: manualOrderAddressSchema.optional(),
+});
+
+export const stockPurchaseIdSchema = z.object({
+  purchase_id: z.string().uuid(),
+});
+
+export const payStockPurchaseSchema = stockPurchaseIdSchema.extend({
+  environment: stripeEnvSchema,
+});
+
+export const finalizeStockPurchaseSchema = payStockPurchaseSchema.extend({
+  paymentIntentId: z.string().min(1).max(200),
+});
+
+export const freightQuoteSchema = stockPurchaseIdSchema.extend({
+  freight_cost: z.number().min(0).max(1_000_000),
+});
+
+export const purchaseStatusSchema = stockPurchaseIdSchema.extend({
+  status: z.enum(["in_production", "shipped", "delivered", "cancelled"]),
+  tracking_number: z.string().trim().max(120).optional().or(z.literal("")),
+  tracking_carrier: z.string().trim().max(120).optional().or(z.literal("")),
 });

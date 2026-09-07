@@ -12,9 +12,11 @@ import {
   ExternalLink,
   FilePlus2,
   FlaskConical,
+  Handshake,
   LayoutDashboard,
   LogOut,
   Package,
+  PackageCheck,
   Plug,
   ShieldAlert,
   Sparkles,
@@ -100,6 +102,8 @@ function PastDueBanner() {
 
 const ADMIN_NAV: NavItem[] = [
   { to: "/admin/quotes", label: "Quote queue", icon: ClipboardList },
+  { to: "/admin/sourcing", label: "Sourcing team", icon: Handshake },
+  { to: "/admin/stock-purchases", label: "Stock purchases", icon: PackageCheck },
   { to: "/admin/products", label: "Products", icon: Package },
   { to: "/admin/orders", label: "Fulfilment", icon: Truck },
   { to: "/admin/suppliers", label: "Suppliers", icon: Factory },
@@ -110,6 +114,12 @@ const ADMIN_NAV: NavItem[] = [
   { to: "/admin/integration", label: "Integration", icon: Plug },
   { to: "/admin/spymarket", label: "SpyMarket waitlist", icon: Telescope },
   { to: "/admin/spymarket-tools", label: "SpyMarket tools", icon: FlaskConical, badge: "New" },
+];
+
+/** The collaborator desk is deliberately tiny: a queue and their earnings. */
+const SOURCING_NAV: NavItem[] = [
+  { to: "/desk/queue", label: "Sourcing queue", icon: ClipboardList },
+  { to: "/desk/earnings", label: "My earnings", icon: Wallet },
 ];
 
 interface OnboardingStore {
@@ -351,7 +361,7 @@ export function AppShell({
   onboardingStores,
   children,
 }: {
-  role: "client" | "admin";
+  role: "client" | "admin" | "sourcing";
   email: string | null;
   companyName: string | null;
   onboardingStores?: OnboardingStore[];
@@ -361,7 +371,7 @@ export function AppShell({
   const router = useRouter();
   const queryClient = useQueryClient();
   const pathname = useRouterState({ select: (r) => r.location.pathname });
-  const nav = role === "admin" ? ADMIN_NAV : CLIENT_NAV;
+  const nav = role === "admin" ? ADMIN_NAV : role === "sourcing" ? SOURCING_NAV : CLIENT_NAV;
 
   // Manual active matching so "/sourcing/new" doesn't light up "My quotes".
   const isActive = (to: string) => {
@@ -413,7 +423,7 @@ export function AppShell({
             />
           </a>
           <span className="ml-auto rounded border border-sidebar-border px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-sidebar-foreground">
-            {role === "admin" ? "Admin" : "Client"}
+            {role === "admin" ? "Admin" : role === "sourcing" ? "Sourcing" : "Client"}
           </span>
         </div>
         <nav className="flex-1 space-y-0.5 p-3">
