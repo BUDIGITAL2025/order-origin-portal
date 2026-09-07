@@ -7,7 +7,6 @@ import {
   ChevronDown,
   LifeBuoy,
   ClipboardList,
-  CreditCard,
   Factory,
   Download,
   ExternalLink,
@@ -19,7 +18,6 @@ import {
   Package,
   Plug,
   ShieldAlert,
-  ShoppingCart,
   Sparkles,
 
   Store,
