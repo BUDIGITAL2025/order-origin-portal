@@ -103,15 +103,13 @@ function PastDueBanner() {
 
 const ADMIN_NAV: NavItem[] = [
   { to: "/admin/quotes", label: "Quote queue", icon: ClipboardList },
-  { to: "/admin/orders", label: "Orders", icon: ShoppingCart },
   { to: "/admin/products", label: "Products", icon: Package },
-  { to: "/admin/inventory", label: "Inventory", icon: Truck },
+  { to: "/admin/orders", label: "Fulfilment", icon: Truck },
   { to: "/admin/suppliers", label: "Suppliers", icon: Factory },
   { to: "/admin/disputes", label: "Disputes", icon: ShieldAlert },
   { to: "/admin/clients", label: "Clients", icon: Users },
   { to: "/admin/entities", label: "Entities & workspaces", icon: Building2 },
-  { to: "/admin/wallet", label: "Wallet adjustments", icon: Wallet },
-  { to: "/admin/documents", label: "Receipts", icon: FileText },
+  { to: "/admin/wallet", label: "Billing", icon: Wallet },
   { to: "/admin/integration", label: "Integration", icon: Plug },
   { to: "/admin/spymarket", label: "SpyMarket waitlist", icon: Telescope },
   { to: "/admin/spymarket-tools", label: "SpyMarket tools", icon: FlaskConical, badge: "New" },
@@ -383,13 +381,13 @@ export function AppShell({
       );
     if (to === "/billing")
       return pathname.startsWith("/billing") || pathname.startsWith("/wallet") || pathname.startsWith("/documents");
-    if (to === "/admin/fulfilment")
+    if (to === "/admin/orders")
       return (
         pathname.startsWith("/admin/orders") ||
         pathname.startsWith("/admin/inventory") ||
         pathname.startsWith("/admin/inbound")
       );
-    if (to === "/admin/billing")
+    if (to === "/admin/wallet")
       return pathname.startsWith("/admin/wallet") || pathname.startsWith("/admin/documents");
     return pathname === to || pathname.startsWith(to + "/");
   };
