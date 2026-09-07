@@ -17,7 +17,7 @@ import { getMyWallet } from "@/lib/wallet.functions";
 import { listMyDocuments } from "@/lib/documents.functions";
 import { DocumentDownloadButton } from "@/components/documents-ui";
 
-export const Route = createFileRoute("/_authenticated/_client/wallet")({
+export const Route = createFileRoute("/_authenticated/_client/billing/wallet")({
   head: () => ({
     meta: [
       { title: "Wallet — FlySales" },

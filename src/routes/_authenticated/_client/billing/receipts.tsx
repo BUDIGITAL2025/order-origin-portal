@@ -36,7 +36,7 @@ import { formatDateTime, formatUSD } from "@/lib/format";
 import { listMyDocuments } from "@/lib/documents.functions";
 import { getMyWallet } from "@/lib/wallet.functions";
 
-export const Route = createFileRoute("/_authenticated/_client/documents")({
+export const Route = createFileRoute("/_authenticated/_client/billing/receipts")({
   head: () => ({
     meta: [
       { title: "Payment Receipts — FlySales" },

@@ -24,7 +24,7 @@ import { getStripeEnvironment } from "@/lib/stripe";
 import { useMyContext } from "../../_client";
 import { friendlyError } from "@/lib/errors";
 
-export const Route = createFileRoute("/_authenticated/_client/quotes/new")({
+export const Route = createFileRoute("/_authenticated/_client/sourcing/new")({
   // Stripe substitutes {CHECKOUT_SESSION_ID} server-side; sub=success/cancel
   // is a display hint only — activation comes from the webhook.
   // ?sku/&name/&qty arrive from the Inventory page's "Plan reorder" action.

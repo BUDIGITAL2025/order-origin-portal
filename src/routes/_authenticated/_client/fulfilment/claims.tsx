@@ -20,7 +20,7 @@ import {
 import { formatDateTime, formatUSD } from "@/lib/format";
 import { listMyDisputes } from "@/lib/disputes.functions";
 
-export const Route = createFileRoute("/_authenticated/_client/disputes")({
+export const Route = createFileRoute("/_authenticated/_client/fulfilment/claims")({
   head: () => ({
     meta: [
       { title: "Claims — FlySales" },

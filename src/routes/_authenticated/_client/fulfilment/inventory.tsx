@@ -16,7 +16,7 @@ import { useMyContext } from "../_client";
 import { friendlyError } from "@/lib/errors";
 
 
-export const Route = createFileRoute("/_authenticated/_client/inventory")({
+export const Route = createFileRoute("/_authenticated/_client/fulfilment/inventory")({
   head: () => ({
     meta: [
       { title: "Inventory — FlySales" },

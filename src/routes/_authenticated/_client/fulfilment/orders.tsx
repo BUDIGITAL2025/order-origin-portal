@@ -47,7 +47,7 @@ import {
 import { getStripeEnvironment } from "@/lib/stripe";
 import { friendlyError } from "@/lib/errors";
 
-export const Route = createFileRoute("/_authenticated/_client/orders/")({
+export const Route = createFileRoute("/_authenticated/_client/fulfilment/orders")({
   head: () => ({
     meta: [
       { title: "Orders — FlySales" },

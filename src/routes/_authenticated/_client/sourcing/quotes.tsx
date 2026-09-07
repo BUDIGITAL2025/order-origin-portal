@@ -15,7 +15,7 @@ import {
 import { formatDate } from "@/lib/format";
 import { listMyQuotes } from "@/lib/quotes.functions";
 
-export const Route = createFileRoute("/_authenticated/_client/quotes/")({
+export const Route = createFileRoute("/_authenticated/_client/sourcing/quotes")({
   head: () => ({
     meta: [
       { title: "Quote requests — FlySales" },

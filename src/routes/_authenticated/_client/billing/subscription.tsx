@@ -56,7 +56,7 @@ function safeEnvironment(): StripeEnv | null {
   }
 }
 
-export const Route = createFileRoute("/_authenticated/_client/billing")({
+export const Route = createFileRoute("/_authenticated/_client/billing/subscription")({
   // Stripe's {CHECKOUT_SESSION_ID} is substituted server-side; whatever
   // reaches the browser is still just a display hint — all state changes
   // come from the webhook.
