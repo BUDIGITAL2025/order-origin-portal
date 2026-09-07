@@ -39,6 +39,7 @@ import { Route as AuthenticatedAdminProductsRouteImport } from './routes/_authen
 import { Route as AuthenticatedAdminSourcingRouteImport } from './routes/_authenticated/admin/sourcing'
 import { Route as AuthenticatedAdminSpymarketRouteImport } from './routes/_authenticated/admin/spymarket'
 import { Route as AuthenticatedAdminSpymarketToolsRouteImport } from './routes/_authenticated/admin/spymarket-tools'
+import { Route as AuthenticatedAdminStockPurchasesRouteImport } from './routes/_authenticated/admin/stock-purchases'
 import { Route as AuthenticatedAdminSuppliersRouteImport } from './routes/_authenticated/admin/suppliers'
 import { Route as AuthenticatedAdminWalletRouteImport } from './routes/_authenticated/admin/wallet'
 import { Route as AuthenticatedDeskIndexRouteImport } from './routes/_authenticated/desk/index'
@@ -246,6 +247,12 @@ const AuthenticatedAdminSpymarketToolsRoute =
   AuthenticatedAdminSpymarketToolsRouteImport.update({
     id: '/spymarket-tools',
     path: '/spymarket-tools',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminStockPurchasesRoute =
+  AuthenticatedAdminStockPurchasesRouteImport.update({
+    id: '/stock-purchases',
+    path: '/stock-purchases',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 const AuthenticatedAdminSuppliersRoute =
@@ -515,6 +522,7 @@ export interface FileRoutesByFullPath {
   '/admin/sourcing': typeof AuthenticatedAdminSourcingRoute
   '/admin/spymarket': typeof AuthenticatedAdminSpymarketRoute
   '/admin/spymarket-tools': typeof AuthenticatedAdminSpymarketToolsRoute
+  '/admin/stock-purchases': typeof AuthenticatedAdminStockPurchasesRoute
   '/admin/suppliers': typeof AuthenticatedAdminSuppliersRoute
   '/admin/wallet': typeof AuthenticatedAdminWalletRoute
   '/desk/earnings': typeof AuthenticatedDeskEarningsRoute
@@ -584,6 +592,7 @@ export interface FileRoutesByTo {
   '/admin/sourcing': typeof AuthenticatedAdminSourcingRoute
   '/admin/spymarket': typeof AuthenticatedAdminSpymarketRoute
   '/admin/spymarket-tools': typeof AuthenticatedAdminSpymarketToolsRoute
+  '/admin/stock-purchases': typeof AuthenticatedAdminStockPurchasesRoute
   '/admin/suppliers': typeof AuthenticatedAdminSuppliersRoute
   '/admin/wallet': typeof AuthenticatedAdminWalletRoute
   '/desk/earnings': typeof AuthenticatedDeskEarningsRoute
@@ -657,6 +666,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/sourcing': typeof AuthenticatedAdminSourcingRoute
   '/_authenticated/admin/spymarket': typeof AuthenticatedAdminSpymarketRoute
   '/_authenticated/admin/spymarket-tools': typeof AuthenticatedAdminSpymarketToolsRoute
+  '/_authenticated/admin/stock-purchases': typeof AuthenticatedAdminStockPurchasesRoute
   '/_authenticated/admin/suppliers': typeof AuthenticatedAdminSuppliersRoute
   '/_authenticated/admin/wallet': typeof AuthenticatedAdminWalletRoute
   '/_authenticated/desk/earnings': typeof AuthenticatedDeskEarningsRoute
@@ -729,6 +739,7 @@ export interface FileRouteTypes {
     | '/admin/sourcing'
     | '/admin/spymarket'
     | '/admin/spymarket-tools'
+    | '/admin/stock-purchases'
     | '/admin/suppliers'
     | '/admin/wallet'
     | '/desk/earnings'
@@ -798,6 +809,7 @@ export interface FileRouteTypes {
     | '/admin/sourcing'
     | '/admin/spymarket'
     | '/admin/spymarket-tools'
+    | '/admin/stock-purchases'
     | '/admin/suppliers'
     | '/admin/wallet'
     | '/desk/earnings'
@@ -870,6 +882,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/sourcing'
     | '/_authenticated/admin/spymarket'
     | '/_authenticated/admin/spymarket-tools'
+    | '/_authenticated/admin/stock-purchases'
     | '/_authenticated/admin/suppliers'
     | '/_authenticated/admin/wallet'
     | '/_authenticated/desk/earnings'
@@ -1140,6 +1153,13 @@ declare module '@tanstack/react-router' {
       path: '/spymarket-tools'
       fullPath: '/admin/spymarket-tools'
       preLoaderRoute: typeof AuthenticatedAdminSpymarketToolsRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/stock-purchases': {
+      id: '/_authenticated/admin/stock-purchases'
+      path: '/stock-purchases'
+      fullPath: '/admin/stock-purchases'
+      preLoaderRoute: typeof AuthenticatedAdminStockPurchasesRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/admin/suppliers': {
@@ -1557,6 +1577,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminSourcingRoute: typeof AuthenticatedAdminSourcingRoute
   AuthenticatedAdminSpymarketRoute: typeof AuthenticatedAdminSpymarketRoute
   AuthenticatedAdminSpymarketToolsRoute: typeof AuthenticatedAdminSpymarketToolsRoute
+  AuthenticatedAdminStockPurchasesRoute: typeof AuthenticatedAdminStockPurchasesRoute
   AuthenticatedAdminSuppliersRoute: typeof AuthenticatedAdminSuppliersRoute
   AuthenticatedAdminWalletRoute: typeof AuthenticatedAdminWalletRoute
   AuthenticatedAdminQuotesIdRoute: typeof AuthenticatedAdminQuotesIdRoute
@@ -1576,6 +1597,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminSourcingRoute: AuthenticatedAdminSourcingRoute,
   AuthenticatedAdminSpymarketRoute: AuthenticatedAdminSpymarketRoute,
   AuthenticatedAdminSpymarketToolsRoute: AuthenticatedAdminSpymarketToolsRoute,
+  AuthenticatedAdminStockPurchasesRoute: AuthenticatedAdminStockPurchasesRoute,
   AuthenticatedAdminSuppliersRoute: AuthenticatedAdminSuppliersRoute,
   AuthenticatedAdminWalletRoute: AuthenticatedAdminWalletRoute,
   AuthenticatedAdminQuotesIdRoute: AuthenticatedAdminQuotesIdRoute,
