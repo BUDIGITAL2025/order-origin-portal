@@ -2,7 +2,7 @@ import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, RefreshCw, Settings2, UserCheck, UserX } from "lucide-react";
+import { CheckCircle2, Pencil, Plus, RefreshCw, Settings2, UserCheck, UserX } from "lucide-react";
 import { toast } from "sonner";
 import { EmptyState, PageHeader } from "@/components/app-shell";
 import { ProfileStatusBadge, ProvisioningBadge, TierBadge } from "@/components/status-badges";
@@ -38,6 +38,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  AddClientDialog,
+  EditFiscalDetailsDialog,
+  type FiscalEntity,
+} from "@/components/entity-fiscal-dialogs";
 import { formatSignupSource } from "@/lib/acquisition";
 import { formatDateTime } from "@/lib/format";
 import { PLANS, TIER_LABELS, effectiveTier, planQuota } from "@/lib/plans";
@@ -53,10 +58,7 @@ import {
 
 export const Route = createFileRoute("/_authenticated/admin/clients")({
   head: () => ({
-    meta: [
-      { title: "Clients — FlySales Admin" },
-      { name: "robots", content: "noindex" },
-    ],
+    meta: [{ title: "Clients — FlySales Admin" }, { name: "robots", content: "noindex" }],
   }),
   component: AdminClientsPage,
 });
@@ -73,6 +75,8 @@ function AdminClientsPage() {
   const queryClient = useQueryClient();
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [addOpen, setAddOpen] = useState(false);
+  const [fiscalEntity, setFiscalEntity] = useState<FiscalEntity | null>(null);
   const fetchClients = useServerFn(adminListClients);
   const callSetStatus = useServerFn(adminSetClientStatus);
   const callSetPlan = useServerFn(adminSetPlan);
@@ -128,8 +132,10 @@ function AdminClientsPage() {
   });
 
   const setOverride = useMutation({
-    mutationFn: (input: { store_id: string; tier_override: "starter" | "growth" | "scale" | null }) =>
-      callSetOverride({ data: input }),
+    mutationFn: (input: {
+      store_id: string;
+      tier_override: "starter" | "growth" | "scale" | null;
+    }) => callSetOverride({ data: input }),
     onSuccess: () => {
       toast.success("Tier override updated");
       void invalidate();
@@ -174,7 +180,26 @@ function AdminClientsPage() {
 
   return (
     <div>
-      <PageHeader title="Clients" description="Approve, suspend and manage plans and pricing tiers." />
+      <PageHeader
+        title="Clients"
+        description="Approve, suspend and manage plans and pricing tiers."
+        actions={
+          <Button size="sm" onClick={() => setAddOpen(true)}>
+            <Plus className="h-4 w-4" /> Add client manually
+          </Button>
+        }
+      />
+
+      <AddClientDialog open={addOpen} onOpenChange={setAddOpen} onCreated={invalidate} />
+      {fiscalEntity && (
+        <EditFiscalDetailsDialog
+          key={fiscalEntity.id}
+          entity={fiscalEntity}
+          open
+          onOpenChange={(open) => !open && setFiscalEntity(null)}
+          onSaved={invalidate}
+        />
+      )}
 
       <SummaryBar
         className="lg:grid-cols-4"
@@ -277,13 +302,24 @@ function AdminClientsPage() {
                         <span className="text-sm font-medium">{entity.legal_name}</span>
                         <ProfileStatusBadge status={entity.status} />
                         <span className="text-xs text-muted-foreground">
-                          {[entity.country, entity.vat_number ? `VAT ${entity.vat_number}` : null]
+                          {[
+                            entity.country,
+                            entity.tax_id ? `Tax ID ${entity.tax_id}` : null,
+                            [entity.postal_code, entity.city].filter(Boolean).join(" ") || null,
+                          ]
                             .filter(Boolean)
                             .join(" · ") || "No fiscal details"}
                         </span>
+                        <RowAction
+                          label="Edit fiscal details"
+                          icon={Pencil}
+                          onClick={() => setFiscalEntity(entity as FiscalEntity)}
+                        />
                       </div>
                       {entity.stores.length === 0 ? (
-                        <p className="text-xs text-muted-foreground">No workspaces under this entity.</p>
+                        <p className="text-xs text-muted-foreground">
+                          No workspaces under this entity.
+                        </p>
                       ) : (
                         <TableShell>
                           <Table className="text-[13px]">
@@ -313,7 +349,13 @@ function AdminClientsPage() {
                                       </div>
                                       <div className="mt-1 flex flex-wrap items-center gap-1">
                                         <Chip>{s.platform}</Chip>
-                                        <Chip tone={s.integration_mode === "automatic" ? "success" : "neutral"}>
+                                        <Chip
+                                          tone={
+                                            s.integration_mode === "automatic"
+                                              ? "success"
+                                              : "neutral"
+                                          }
+                                        >
                                           {s.integration_mode}
                                         </Chip>
                                         {s.fee_waived && <Chip tone="info">fee waived</Chip>}
@@ -382,7 +424,11 @@ function AdminClientsPage() {
                                       <RowActions>
                                         {s.status === "pending" && (
                                           <RowAction
-                                            label={provision.isPending ? "Approving…" : "Approve workspace"}
+                                            label={
+                                              provision.isPending
+                                                ? "Approving…"
+                                                : "Approve workspace"
+                                            }
                                             icon={CheckCircle2}
                                             tone="primary"
                                             disabled={provision.isPending}
@@ -427,7 +473,9 @@ function AdminClientsPage() {
                                                   </SelectTrigger>
                                                   <SelectContent>
                                                     <SelectItem value="manual">Manual</SelectItem>
-                                                    <SelectItem value="automatic">Automatic</SelectItem>
+                                                    <SelectItem value="automatic">
+                                                      Automatic
+                                                    </SelectItem>
                                                   </SelectContent>
                                                 </Select>
                                               ) : (
@@ -455,11 +503,18 @@ function AdminClientsPage() {
                                                 </SelectTrigger>
                                                 <SelectContent>
                                                   <SelectItem value="auto">
-                                                    Auto ({TIER_LABELS[s.pricing_tier] ?? s.pricing_tier})
+                                                    Auto (
+                                                    {TIER_LABELS[s.pricing_tier] ?? s.pricing_tier})
                                                   </SelectItem>
-                                                  <SelectItem value="starter">Override: Starter</SelectItem>
-                                                  <SelectItem value="growth">Override: Growth</SelectItem>
-                                                  <SelectItem value="scale">Override: Scale</SelectItem>
+                                                  <SelectItem value="starter">
+                                                    Override: Starter
+                                                  </SelectItem>
+                                                  <SelectItem value="growth">
+                                                    Override: Growth
+                                                  </SelectItem>
+                                                  <SelectItem value="scale">
+                                                    Override: Scale
+                                                  </SelectItem>
                                                 </SelectContent>
                                               </Select>
                                             </div>
@@ -479,7 +534,9 @@ function AdminClientsPage() {
                                             </div>
                                             <dl className="space-y-1 border-t border-border pt-2 text-xs">
                                               <div className="flex justify-between gap-2">
-                                                <dt className="text-muted-foreground">Subscription id</dt>
+                                                <dt className="text-muted-foreground">
+                                                  Subscription id
+                                                </dt>
                                                 <dd className="max-w-36 truncate font-mono">
                                                   <Value>{s.stripe_subscription_id}</Value>
                                                 </dd>

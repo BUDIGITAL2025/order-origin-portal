@@ -5,6 +5,7 @@ import {
   clientStatusSchema,
   completeSignupSchema,
   connectDraftStoreSchema,
+  adminCreateClientSchema,
   entityDetailsSchema,
   feeWaivedSchema,
   integrationModeSchema,
@@ -37,6 +38,12 @@ export interface ContextEntity {
   legal_name: string;
   country: string | null;
   vat_number: string | null;
+  tax_id: string | null;
+  address: string | null;
+  address_line1: string | null;
+  address_line2: string | null;
+  postal_code: string | null;
+  city: string | null;
   status: "active" | "suspended";
   auto_topup_enabled: boolean;
   created_at: string;
@@ -65,7 +72,7 @@ export interface MyContext {
 const PROFILE_SELECT = "id, contact_name, phone, status, created_at, terms_version";
 const STORE_SELECT =
   "id, entity_id, store_name, store_url, platform, integration_mode, subscription_plan, subscription_status, quotes_used_this_month, quotes_period_start, fee_waived, pricing_tier, status, created_at";
-const ENTITY_SELECT = `id, legal_name, country, vat_number, address, status, auto_topup_enabled, created_at, stores(${STORE_SELECT})`;
+const ENTITY_SELECT = `id, legal_name, country, vat_number, tax_id, address, address_line1, address_line2, postal_code, city, status, auto_topup_enabled, created_at, stores(${STORE_SELECT})`;
 
 /** Session + profile + role + entity/store hierarchy for the signed-in user. */
 export const getMyContext = createServerFn({ method: "GET" })
@@ -75,10 +82,7 @@ export const getMyContext = createServerFn({ method: "GET" })
     const [{ data: profile }, { data: roleRows }, { data: entities }] = await Promise.all([
       supabase.from("profiles").select(PROFILE_SELECT).eq("id", userId).maybeSingle(),
       supabase.from("user_roles").select("role").eq("user_id", userId),
-      supabase
-        .from("entities")
-        .select(ENTITY_SELECT)
-        .order("created_at", { ascending: true }),
+      supabase.from("entities").select(ENTITY_SELECT).order("created_at", { ascending: true }),
     ]);
     const roles = (roleRows ?? []).map((r) => r.role);
     const isAdmin = roles.includes("admin");
@@ -239,15 +243,117 @@ export const updateMyEntity = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { error } = await context.supabase
       .from("entities")
-      .update({
-        legal_name: data.legal_name,
-        country: data.country,
-        vat_number: data.vat_number || null,
-        address: data.address || null,
-      })
+      .update(fiscalUpdate(data))
       .eq("id", data.entity_id);
     if (error) throw new Error(error.message);
     return { ok: true };
+  });
+
+/** Shared mapping from the fiscal form to entity columns. */
+function fiscalUpdate(data: {
+  legal_name: string;
+  country: string;
+  vat_number?: string | undefined;
+  tax_id?: string | undefined;
+  address_line1?: string | undefined;
+  address_line2?: string | undefined;
+  postal_code?: string | undefined;
+  city?: string | undefined;
+  address?: string | undefined;
+}) {
+  return {
+    legal_name: data.legal_name,
+    country: data.country,
+    vat_number: data.vat_number || null,
+    tax_id: data.tax_id || null,
+    address_line1: data.address_line1 || null,
+    address_line2: data.address_line2 || null,
+    postal_code: data.postal_code || null,
+    city: data.city || null,
+    address: data.address || null,
+  };
+}
+
+/** Admin edits any entity's fiscal identity (receipts read these fields). */
+export const adminUpdateEntityFiscal = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => entityDetailsSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const { requireAdmin, getAdminClient } = await import("./admin.server");
+    await requireAdmin(context.supabase, context.userId);
+    const admin = await getAdminClient();
+    const { error } = await admin
+      .from("entities")
+      .update(fiscalUpdate(data))
+      .eq("id", data.entity_id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+/**
+ * Admin onboards a client we already work with off-platform: auth user
+ * (invited, no password), profile, entity with fiscal details and a first
+ * workspace — in one call. The invite email lets them take over the account.
+ */
+export const adminCreateClient = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => adminCreateClientSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const { requireAdmin, getAdminClient } = await import("./admin.server");
+    await requireAdmin(context.supabase, context.userId);
+    const admin = await getAdminClient();
+
+    let userId: string | null = null;
+    if (data.send_invite) {
+      const { data: invited, error: inviteError } = await admin.auth.admin.inviteUserByEmail(
+        data.email,
+        {
+          data: { contact_name: data.contact_name, phone: data.phone ?? "" },
+        },
+      );
+      if (inviteError) throw new Error(inviteError.message);
+      userId = invited.user?.id ?? null;
+    } else {
+      const { data: created, error: createError } = await admin.auth.admin.createUser({
+        email: data.email,
+        email_confirm: false,
+        user_metadata: { contact_name: data.contact_name, phone: data.phone ?? "" },
+      });
+      if (createError) throw new Error(createError.message);
+      userId = created.user?.id ?? null;
+    }
+    if (!userId) throw new Error("Could not create the account");
+
+    const { error: profileError } = await admin.from("profiles").upsert({
+      id: userId,
+      contact_name: data.contact_name,
+      phone: data.phone || "",
+      status: "active" as const,
+    });
+    if (profileError) throw new Error(profileError.message);
+
+    const { data: entity, error: entityError } = await admin
+      .from("entities")
+      .insert({ account_id: userId, ...fiscalUpdate(data) })
+      .select("id")
+      .single();
+    if (entityError || !entity) throw new Error(entityError?.message ?? "Entity not created");
+
+    const { data: store, error: storeError } = await admin
+      .from("stores")
+      .insert({
+        entity_id: entity.id,
+        store_name: data.store_name,
+        store_url: data.store_url || null,
+        platform: data.platform,
+        integration_mode: data.integration_mode,
+        status: "active" as const,
+      })
+      .select("id")
+      .single();
+    if (storeError) throw new Error(storeError.message);
+
+    return { ok: true, user_id: userId, entity_id: entity.id, store_id: store?.id ?? null };
   });
 
 /** Client edits their own account details. Protected columns are DB-enforced. */
@@ -275,7 +381,9 @@ export const adminListClients = createServerFn({ method: "GET" })
     const admin = await getAdminClient();
     const { data, error } = await admin
       .from("profiles")
-      .select(`id, contact_name, phone, status, created_at, signup_source, entities(id, legal_name, vat_number, country, status, created_at, stores(*))`)
+      .select(
+        `id, contact_name, phone, status, created_at, signup_source, entities(id, legal_name, vat_number, tax_id, country, address, address_line1, address_line2, postal_code, city, status, created_at, stores(*))`,
+      )
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
     return { clients: data ?? [] };
@@ -415,7 +523,10 @@ export const provisionStore = createServerFn({ method: "POST" })
     const MIDDLEWARE_SERVICE_PASSWORD = process.env["MIDDLEWARE_SERVICE_PASSWORD"];
     const MIDDLEWARE_SERVICE_USER_ID = process.env["MIDDLEWARE_SERVICE_USER_ID"];
     const middlewareConfigured = Boolean(
-      MIDDLEWARE_URL && MIDDLEWARE_SERVICE_USER && MIDDLEWARE_SERVICE_PASSWORD && MIDDLEWARE_SERVICE_USER_ID,
+      MIDDLEWARE_URL &&
+      MIDDLEWARE_SERVICE_USER &&
+      MIDDLEWARE_SERVICE_PASSWORD &&
+      MIDDLEWARE_SERVICE_USER_ID,
     );
 
     const setStep = async (step: string) => {
@@ -518,7 +629,7 @@ export const provisionStore = createServerFn({ method: "POST" })
       // Step 4 — select_tenant: exchange the service credentials for a JWT
       // scoped to this tenant, used for the remaining calls.
       // ------------------------------------------------------------------
-      let tenantScopedJwt: string | null = null;
+      const tenantScopedJwt: string | null = null;
       await setStep("select_tenant");
       try {
         if (middlewareConfigured) {

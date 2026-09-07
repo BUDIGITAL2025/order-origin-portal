@@ -32,12 +32,7 @@ type Admin = SupabaseClient<Database>;
 
 export const DOCUMENTS_BUCKET = "documents";
 export type DocumentType =
-  | "order_receipt"
-  | "wallet_topup"
-  | "subscription"
-  | "inbound_fee"
-  | "stock_purchase";
-
+  "order_receipt" | "wallet_topup" | "subscription" | "inbound_fee" | "stock_purchase";
 
 // ---------- Supplier (issuing entity) — environment-driven ----------
 
@@ -108,7 +103,14 @@ export interface ReceiptData {
   paymentDate: Date;
   paymentMethod: string;
   referenceLines: Array<[string, string]>;
-  client: { company: string; contact: string; country: string; vat: string };
+  client: {
+    company: string;
+    contact: string;
+    country: string;
+    vat: string;
+    taxId?: string;
+    addressLines?: string[];
+  };
   lines: ReceiptLine[];
   total: number;
 }
@@ -152,7 +154,12 @@ export async function renderReceiptPdf(data: ReceiptData): Promise<Uint8Array> {
   let page = doc.addPage([PAGE_W, PAGE_H]);
 
   const drawFooter = () => {
-    page.drawLine({ start: { x: MARGIN, y: 70 }, end: { x: RIGHT, y: 70 }, thickness: 0.5, color: HAIRLINE });
+    page.drawLine({
+      start: { x: MARGIN, y: 70 },
+      end: { x: RIGHT, y: 70 },
+      thickness: 0.5,
+      color: HAIRLINE,
+    });
     page.drawText("This document is a payment receipt - it is not a tax invoice.", {
       x: MARGIN,
       y: 56,
@@ -210,7 +217,13 @@ export async function renderReceiptPdf(data: ReceiptData): Promise<Uint8Array> {
   ];
   for (const [label, value] of meta) {
     page.drawText(s(label), { x: MARGIN, y, size: 8.5, font: regular, color: MUTED });
-    page.drawText(fit(value, bold, 9.5, 240), { x: MARGIN + 110, y, size: 9.5, font: bold, color: INK });
+    page.drawText(fit(value, bold, 9.5, 240), {
+      x: MARGIN + 110,
+      y,
+      size: 9.5,
+      font: bold,
+      color: INK,
+    });
     y -= 15;
   }
   let by = blockTop;
@@ -222,6 +235,14 @@ export async function renderReceiptPdf(data: ReceiptData): Promise<Uint8Array> {
   by -= 12;
   drawRight(page, fit(data.client.country, regular, 9, 220), RIGHT, by, regular, 9, MUTED);
   by -= 12;
+  for (const addressLine of data.client.addressLines ?? []) {
+    drawRight(page, fit(addressLine, regular, 9, 220), RIGHT, by, regular, 9, MUTED);
+    by -= 12;
+  }
+  if (data.client.taxId) {
+    drawRight(page, `Tax ID: ${data.client.taxId}`, RIGHT, by, regular, 9, MUTED);
+    by -= 12;
+  }
   if (data.client.vat) {
     drawRight(page, `VAT: ${data.client.vat}`, RIGHT, by, regular, 9, MUTED);
     by -= 12;
@@ -251,10 +272,22 @@ export async function renderReceiptPdf(data: ReceiptData): Promise<Uint8Array> {
       color: MUTED,
     });
     drawRight(page, line.quantity != null ? String(line.quantity) : "—", qtyRight, y, regular, 9.5);
-    drawRight(page, line.unitPrice != null ? money(line.unitPrice) : "—", unitRight, y, regular, 9.5);
+    drawRight(
+      page,
+      line.unitPrice != null ? money(line.unitPrice) : "—",
+      unitRight,
+      y,
+      regular,
+      9.5,
+    );
     drawRight(page, money(line.total), amountRight, y, regular, 9.5);
     y -= 11;
-    page.drawLine({ start: { x: MARGIN, y }, end: { x: RIGHT, y }, thickness: 0.5, color: HAIRLINE });
+    page.drawLine({
+      start: { x: MARGIN, y },
+      end: { x: RIGHT, y },
+      thickness: 0.5,
+      color: HAIRLINE,
+    });
     y -= 9;
   }
 
@@ -280,13 +313,34 @@ interface ClientBlock {
   contact: string;
   country: string;
   vat: string;
+  taxId: string;
+  addressLines: string[];
+}
+
+/** Registered address, one line per filled field. Empty when unknown. */
+function addressLinesOf(e: {
+  address_line1?: string | null;
+  address_line2?: string | null;
+  postal_code?: string | null;
+  city?: string | null;
+  address?: string | null;
+}): string[] {
+  const cityLine = [e.postal_code, e.city].filter(Boolean).join(" ").trim();
+  const lines = [e.address_line1, e.address_line2, cityLine]
+    .map((v) => (v ?? "").trim())
+    .filter(Boolean);
+  // Legacy free-text address is the fallback when structured fields are empty.
+  if (lines.length === 0 && e.address) return [e.address.trim()];
+  return lines;
 }
 
 /** "Bill to" block now reads the entity's legal identity, with the account's contact name. */
 async function getEntityBlock(admin: Admin, entityId: string): Promise<ClientBlock> {
   const { data, error } = await admin
     .from("entities")
-    .select("legal_name, country, vat_number, account_id, profiles(contact_name)")
+    .select(
+      "legal_name, country, vat_number, tax_id, address, address_line1, address_line2, postal_code, city, account_id, profiles(contact_name)",
+    )
     .eq("id", entityId)
     .single();
   if (error || !data) throw new Error(error?.message ?? "Entity not found");
@@ -295,6 +349,8 @@ async function getEntityBlock(admin: Admin, entityId: string): Promise<ClientBlo
     contact: data.profiles?.contact_name ?? "",
     country: data.country ?? "",
     vat: data.vat_number ?? "",
+    taxId: data.tax_id ?? "",
+    addressLines: addressLinesOf(data),
   };
 }
 
@@ -340,9 +396,8 @@ async function storeReceipt(
     .upload(path, pdf, { contentType: "application/pdf" });
   if (uploadError) throw new Error(uploadError.message);
 
-  const storeId = args.storeId !== undefined
-    ? args.storeId
-    : await resolveStoreIdForEntity(admin, args.entityId);
+  const storeId =
+    args.storeId !== undefined ? args.storeId : await resolveStoreIdForEntity(admin, args.entityId);
   const { error: insertError } = await admin.from("documents").insert({
     entity_id: args.entityId,
     store_id: storeId,
@@ -401,8 +456,7 @@ export async function issueOrderReceipt(
       detail: item.sku,
       quantity: qty,
       unitPrice: unit,
-      total:
-        item.line_total != null ? Number(item.line_total) : round2((unit ?? 0) * qty),
+      total: item.line_total != null ? Number(item.line_total) : round2((unit ?? 0) * qty),
     };
   });
   const total =
@@ -522,7 +576,7 @@ export async function issueSubscriptionReceipt(
 
   const { data: entity } = await admin
     .from("entities")
-    .select("id, legal_name, country, vat_number, profiles(contact_name)")
+    .select("id")
     .eq("stripe_customer_id", customerId)
     .maybeSingle();
   if (!entity) {
@@ -542,8 +596,10 @@ export async function issueSubscriptionReceipt(
   if (!(amountPaid > 0)) return "skipped";
 
   const invoiceLines =
-    (invoice["lines"] as { data?: Array<{ period?: { start?: number; end?: number } }> } | undefined)
-      ?.data ?? [];
+    (
+      invoice["lines"] as
+        { data?: Array<{ period?: { start?: number; end?: number } }> } | undefined
+    )?.data ?? [];
   const period = invoiceLines[0]?.period;
   const paidUnix =
     (invoice["status_transitions"] as { paid_at?: number } | undefined)?.paid_at ??
@@ -572,12 +628,7 @@ export async function issueSubscriptionReceipt(
       paymentDate: new Date(paidUnix * 1000),
       paymentMethod: "Card (Stripe)",
       referenceLines,
-      client: {
-        company: entity.legal_name,
-        contact: entity.profiles?.contact_name ?? "",
-        country: entity.country ?? "",
-        vat: entity.vat_number ?? "",
-      },
+      client: await getEntityBlock(admin, entity.id),
       lines: [
         {
           description: `FlySales ${planLabel(plan)} subscription`,
@@ -641,24 +692,22 @@ export async function backfillMissingReceipts(admin: Admin): Promise<{
   walletResults: Array<{ id: string; result: string }>;
   orderResults: Array<{ id: string; result: string }>;
 }> {
-  const [{ data: credits, error: cErr }, { data: walletDocs, error: wdErr }] =
-    await Promise.all([
-      admin.from("wallet_transactions").select("id").eq("type", "credit"),
-      admin
-        .from("documents")
-        .select("wallet_transaction_id")
-        .not("wallet_transaction_id", "is", null),
-    ]);
+  const [{ data: credits, error: cErr }, { data: walletDocs, error: wdErr }] = await Promise.all([
+    admin.from("wallet_transactions").select("id").eq("type", "credit"),
+    admin
+      .from("documents")
+      .select("wallet_transaction_id")
+      .not("wallet_transaction_id", "is", null),
+  ]);
   if (cErr) throw new Error(cErr.message);
   if (wdErr) throw new Error(wdErr.message);
   const haveWalletDoc = new Set((walletDocs ?? []).map((d) => d.wallet_transaction_id));
   const missingCredits = (credits ?? []).filter((t) => !haveWalletDoc.has(t.id));
 
-  const [{ data: paidOrders, error: oErr }, { data: orderDocs, error: odErr }] =
-    await Promise.all([
-      admin.from("orders").select("id").not("paid_at", "is", null),
-      admin.from("documents").select("order_id").not("order_id", "is", null),
-    ]);
+  const [{ data: paidOrders, error: oErr }, { data: orderDocs, error: odErr }] = await Promise.all([
+    admin.from("orders").select("id").not("paid_at", "is", null),
+    admin.from("documents").select("order_id").not("order_id", "is", null),
+  ]);
   if (oErr) throw new Error(oErr.message);
   if (odErr) throw new Error(odErr.message);
   const haveOrderDoc = new Set((orderDocs ?? []).map((d) => d.order_id));
@@ -720,9 +769,7 @@ export async function issueInboundReceiptDocument(
       client,
       lines: [
         {
-          description: args.qc
-            ? "Inbound handling with quality control"
-            : "Inbound handling",
+          description: args.qc ? "Inbound handling with quality control" : "Inbound handling",
           detail: "Unloading, counting, packaging materials, storage and packing",
           quantity: args.pieces,
           unitPrice: unit,
@@ -790,10 +837,7 @@ export async function issueStockPurchaseReceipt(
       paymentMethod: "Wallet balance",
       referenceLines: [
         ["Purchase", args.purchaseRef],
-        [
-          "Delivery",
-          args.path === "flysales" ? "FlySales warehouse" : "Direct to your warehouse",
-        ],
+        ["Delivery", args.path === "flysales" ? "FlySales warehouse" : "Direct to your warehouse"],
       ],
       client,
       lines,
