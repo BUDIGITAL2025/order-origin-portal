@@ -61,17 +61,13 @@ interface NavItem {
 const CLIENT_NAV: NavItem[] = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/workspaces", label: "Workspaces", icon: Store },
-  { to: "/sourcing/new", label: "Request a quote", icon: FilePlus2 },
-  { to: "/sourcing/quotes", label: "Quote requests", icon: ClipboardList },
+  { to: "/sourcing", label: "Sourcing", icon: FilePlus2 },
   { to: "/products", label: "Products", icon: Package },
-  { to: "/fulfilment/orders", label: "Orders", icon: ShoppingCart },
-  { to: "/fulfilment/inventory", label: "Inventory", icon: Truck },
-  { to: "/fulfilment/claims", label: "Claims", icon: ShieldAlert },
-  { to: "/billing/wallet", label: "Wallet", icon: Wallet },
-  { to: "/billing/subscription", label: "Billing", icon: CreditCard },
-  { to: "/billing/receipts", label: "Receipts", icon: FileText },
+  { to: "/fulfilment", label: "Fulfilment", icon: Truck },
+  { to: "/billing", label: "Billing", icon: Wallet },
   { to: "/spymarket", label: "SpyMarket", icon: Telescope, badge: "New" },
 ];
+
 
 /**
  * Persistent portal banner while a subscription is past_due. Nothing is
