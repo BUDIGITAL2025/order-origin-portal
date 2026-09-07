@@ -371,11 +371,29 @@ export function AppShell({
   // Manual active matching so "/sourcing/new" doesn't light up "My quotes".
   const isActive = (to: string) => {
     if (to === "/dashboard" || to === "/admin/quotes") return pathname === to;
-    if (to === "/sourcing/new") return pathname === "/sourcing/new";
-    if (to === "/sourcing/quotes")
-      return pathname === "/sourcing/quotes" || (pathname.startsWith("/quotes/") && pathname !== "/sourcing/new");
+    // Detail pages that live outside their section prefix still light up the
+    // section they belong to.
+    if (to === "/sourcing") return pathname.startsWith("/sourcing") || pathname.startsWith("/quotes");
+    if (to === "/fulfilment")
+      return (
+        pathname.startsWith("/fulfilment") ||
+        pathname.startsWith("/orders") ||
+        pathname.startsWith("/inventory") ||
+        pathname.startsWith("/disputes")
+      );
+    if (to === "/billing")
+      return pathname.startsWith("/billing") || pathname.startsWith("/wallet") || pathname.startsWith("/documents");
+    if (to === "/admin/fulfilment")
+      return (
+        pathname.startsWith("/admin/orders") ||
+        pathname.startsWith("/admin/inventory") ||
+        pathname.startsWith("/admin/inbound")
+      );
+    if (to === "/admin/billing")
+      return pathname.startsWith("/admin/wallet") || pathname.startsWith("/admin/documents");
     return pathname === to || pathname.startsWith(to + "/");
   };
+
 
   const handleSignOut = async () => {
     // Sign-out hygiene: tear down queries first so none refetch against a
