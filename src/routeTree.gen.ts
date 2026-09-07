@@ -45,6 +45,7 @@ import { Route as AuthenticatedClientBillingWalletRouteImport } from './routes/_
 import { Route as AuthenticatedClientDisputesIdRouteImport } from './routes/_authenticated/_client/disputes.$id'
 import { Route as AuthenticatedClientFulfilmentIndexRouteImport } from './routes/_authenticated/_client/fulfilment/index'
 import { Route as AuthenticatedClientFulfilmentClaimsRouteImport } from './routes/_authenticated/_client/fulfilment/claims'
+import { Route as AuthenticatedClientFulfilmentInboundRouteImport } from './routes/_authenticated/_client/fulfilment/inbound'
 import { Route as AuthenticatedClientFulfilmentInventoryRouteImport } from './routes/_authenticated/_client/fulfilment/inventory'
 import { Route as AuthenticatedClientFulfilmentOrdersRouteImport } from './routes/_authenticated/_client/fulfilment/orders'
 import { Route as AuthenticatedClientOrdersIndexRouteImport } from './routes/_authenticated/_client/orders/index'
@@ -276,6 +277,12 @@ const AuthenticatedClientFulfilmentClaimsRoute =
     path: '/fulfilment/claims',
     getParentRoute: () => AuthenticatedClientRoute,
   } as any)
+const AuthenticatedClientFulfilmentInboundRoute =
+  AuthenticatedClientFulfilmentInboundRouteImport.update({
+    id: '/fulfilment/inbound',
+    path: '/fulfilment/inbound',
+    getParentRoute: () => AuthenticatedClientRoute,
+  } as any)
 const AuthenticatedClientFulfilmentInventoryRoute =
   AuthenticatedClientFulfilmentInventoryRouteImport.update({
     id: '/fulfilment/inventory',
@@ -459,6 +466,7 @@ export interface FileRoutesByFullPath {
   '/billing/wallet': typeof AuthenticatedClientBillingWalletRoute
   '/disputes/$id': typeof AuthenticatedClientDisputesIdRoute
   '/fulfilment/claims': typeof AuthenticatedClientFulfilmentClaimsRoute
+  '/fulfilment/inbound': typeof AuthenticatedClientFulfilmentInboundRoute
   '/fulfilment/inventory': typeof AuthenticatedClientFulfilmentInventoryRoute
   '/fulfilment/orders': typeof AuthenticatedClientFulfilmentOrdersRoute
   '/orders/$id': typeof AuthenticatedClientOrdersIdRoute
@@ -520,6 +528,7 @@ export interface FileRoutesByTo {
   '/billing/wallet': typeof AuthenticatedClientBillingWalletRoute
   '/disputes/$id': typeof AuthenticatedClientDisputesIdRoute
   '/fulfilment/claims': typeof AuthenticatedClientFulfilmentClaimsRoute
+  '/fulfilment/inbound': typeof AuthenticatedClientFulfilmentInboundRoute
   '/fulfilment/inventory': typeof AuthenticatedClientFulfilmentInventoryRoute
   '/fulfilment/orders': typeof AuthenticatedClientFulfilmentOrdersRoute
   '/orders/$id': typeof AuthenticatedClientOrdersIdRoute
@@ -584,6 +593,7 @@ export interface FileRoutesById {
   '/_authenticated/_client/billing/wallet': typeof AuthenticatedClientBillingWalletRoute
   '/_authenticated/_client/disputes/$id': typeof AuthenticatedClientDisputesIdRoute
   '/_authenticated/_client/fulfilment/claims': typeof AuthenticatedClientFulfilmentClaimsRoute
+  '/_authenticated/_client/fulfilment/inbound': typeof AuthenticatedClientFulfilmentInboundRoute
   '/_authenticated/_client/fulfilment/inventory': typeof AuthenticatedClientFulfilmentInventoryRoute
   '/_authenticated/_client/fulfilment/orders': typeof AuthenticatedClientFulfilmentOrdersRoute
   '/_authenticated/_client/orders/$id': typeof AuthenticatedClientOrdersIdRoute
@@ -647,6 +657,7 @@ export interface FileRouteTypes {
     | '/billing/wallet'
     | '/disputes/$id'
     | '/fulfilment/claims'
+    | '/fulfilment/inbound'
     | '/fulfilment/inventory'
     | '/fulfilment/orders'
     | '/orders/$id'
@@ -708,6 +719,7 @@ export interface FileRouteTypes {
     | '/billing/wallet'
     | '/disputes/$id'
     | '/fulfilment/claims'
+    | '/fulfilment/inbound'
     | '/fulfilment/inventory'
     | '/fulfilment/orders'
     | '/orders/$id'
@@ -771,6 +783,7 @@ export interface FileRouteTypes {
     | '/_authenticated/_client/billing/wallet'
     | '/_authenticated/_client/disputes/$id'
     | '/_authenticated/_client/fulfilment/claims'
+    | '/_authenticated/_client/fulfilment/inbound'
     | '/_authenticated/_client/fulfilment/inventory'
     | '/_authenticated/_client/fulfilment/orders'
     | '/_authenticated/_client/orders/$id'
@@ -1072,6 +1085,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedClientFulfilmentClaimsRouteImport
       parentRoute: typeof AuthenticatedClientRoute
     }
+    '/_authenticated/_client/fulfilment/inbound': {
+      id: '/_authenticated/_client/fulfilment/inbound'
+      path: '/fulfilment/inbound'
+      fullPath: '/fulfilment/inbound'
+      preLoaderRoute: typeof AuthenticatedClientFulfilmentInboundRouteImport
+      parentRoute: typeof AuthenticatedClientRoute
+    }
     '/_authenticated/_client/fulfilment/inventory': {
       id: '/_authenticated/_client/fulfilment/inventory'
       path: '/fulfilment/inventory'
@@ -1292,6 +1312,7 @@ interface AuthenticatedClientRouteChildren {
   AuthenticatedClientBillingSubscriptionRoute: typeof AuthenticatedClientBillingSubscriptionRoute
   AuthenticatedClientBillingWalletRoute: typeof AuthenticatedClientBillingWalletRoute
   AuthenticatedClientFulfilmentClaimsRoute: typeof AuthenticatedClientFulfilmentClaimsRoute
+  AuthenticatedClientFulfilmentInboundRoute: typeof AuthenticatedClientFulfilmentInboundRoute
   AuthenticatedClientFulfilmentInventoryRoute: typeof AuthenticatedClientFulfilmentInventoryRoute
   AuthenticatedClientFulfilmentOrdersRoute: typeof AuthenticatedClientFulfilmentOrdersRoute
   AuthenticatedClientOrdersIdRoute: typeof AuthenticatedClientOrdersIdRoute
@@ -1326,6 +1347,8 @@ const AuthenticatedClientRouteChildren: AuthenticatedClientRouteChildren = {
   AuthenticatedClientBillingWalletRoute: AuthenticatedClientBillingWalletRoute,
   AuthenticatedClientFulfilmentClaimsRoute:
     AuthenticatedClientFulfilmentClaimsRoute,
+  AuthenticatedClientFulfilmentInboundRoute:
+    AuthenticatedClientFulfilmentInboundRoute,
   AuthenticatedClientFulfilmentInventoryRoute:
     AuthenticatedClientFulfilmentInventoryRoute,
   AuthenticatedClientFulfilmentOrdersRoute:

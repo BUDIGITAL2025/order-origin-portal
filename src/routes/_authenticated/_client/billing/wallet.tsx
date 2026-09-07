@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { EmptyState, PageHeader } from "@/components/app-shell";
+import { SectionTabs, BILLING_TABS } from "@/components/section-tabs";
 import { TxnTypeBadge } from "@/components/status-badges";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -45,6 +46,7 @@ function WalletPage() {
   return (
     <div>
       <PageHeader title="Wallet" description="Your prepaid balance and full transaction history." />
+      <SectionTabs tabs={BILLING_TABS} />
 
       <Card className="mb-6 max-w-sm">
         <CardHeader className="pb-1">

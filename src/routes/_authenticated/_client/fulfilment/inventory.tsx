@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { AlertTriangle, PackageSearch, Plus, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/app-shell";
+import { SectionTabs, FULFILMENT_TABS } from "@/components/section-tabs";
 import { getCurrentStoreId, STORE_CHANGED_EVENT } from "@/components/store-switcher";
 import { SummaryBar, FilterTabs } from "@/components/admin-ui";
 import { InventoryTable, type InventoryRow } from "@/components/inventory-table";
@@ -100,6 +101,7 @@ function InventoryPage() {
         title="Inventory"
         description="Stock, velocity and the date each SKU needs to be reordered."
       />
+      <SectionTabs tabs={FULFILMENT_TABS} />
 
       {error && (
         <Card className="mb-4 border-destructive/30">

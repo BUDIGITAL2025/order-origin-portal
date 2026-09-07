@@ -12,6 +12,7 @@ import {
   Wallet,
 } from "lucide-react";
 import { EmptyState, PageHeader } from "@/components/app-shell";
+import { SectionTabs, BILLING_TABS } from "@/components/section-tabs";
 import { DocumentDownloadButton, DocumentTypeBadge } from "@/components/documents-ui";
 import type { DocumentType } from "@/components/documents-ui";
 import { Button } from "@/components/ui/button";
@@ -159,6 +160,7 @@ function DocumentsPage() {
         title="Payment receipts"
         description="Proof of payment for your accountant, issued automatically for every paid order, wallet top-up and subscription charge. These are not tax invoices."
       />
+      <SectionTabs tabs={BILLING_TABS} />
 
       {/* 1. Prepaid summary — money already paid and money available. */}
       <div className="mb-5 grid gap-3 sm:grid-cols-2">

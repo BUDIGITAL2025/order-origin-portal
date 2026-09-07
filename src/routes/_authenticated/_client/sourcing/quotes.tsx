@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { EmptyState, PageHeader } from "@/components/app-shell";
+import { SectionTabs, SOURCING_TABS } from "@/components/section-tabs";
 import { QuoteStatusBadge } from "@/components/status-badges";
 import { Button } from "@/components/ui/button";
 import {
@@ -45,6 +46,7 @@ function MyQuotesPageInner() {
           </Button>
         }
       />
+      <SectionTabs tabs={SOURCING_TABS} />
 
       {isPending ? (
         <p className="text-sm text-muted-foreground">Loading…</p>

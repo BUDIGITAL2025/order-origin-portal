@@ -5,6 +5,7 @@ import { BellRing, Building2, CreditCard, FileText, RefreshCcw, Wallet } from "l
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/app-shell";
+import { SectionTabs, BILLING_TABS } from "@/components/section-tabs";
 import { TopUpCheckoutDialog } from "@/components/TopUpCheckoutDialog";
 import { TxnTypeBadge } from "@/components/status-badges";
 import { DocumentDownloadButton, DocumentTypeBadge } from "@/components/documents-ui";
@@ -282,6 +283,7 @@ function BillingPage() {
     return (
       <div>
         <PageHeader title="Billing" description="Plan, wallet and payment settings." />
+        <SectionTabs tabs={BILLING_TABS} />
         <Card>
           <CardContent className="p-6 text-sm text-muted-foreground">
             Card payments are not available in this environment yet. Your wallet balance
@@ -306,6 +308,7 @@ function BillingPage() {
         title="Billing"
         description="Your plan, wallet top-ups and auto top-up settings."
       />
+      <SectionTabs tabs={BILLING_TABS} />
 
       {data?.notifications && data.notifications.length > 0 && (
         <div className="mb-6 space-y-2">

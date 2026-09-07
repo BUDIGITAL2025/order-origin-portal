@@ -3,6 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { SUPPORT_EMAIL } from "@/lib/support";
 import { EmptyState, PageHeader } from "@/components/app-shell";
+import { SectionTabs, FULFILMENT_TABS } from "@/components/section-tabs";
 import { OrderStatusBadge, type OrderStatus } from "@/components/documents-ui";
 import {
   DisputeReasonLabel,
@@ -43,6 +44,7 @@ function DisputesPage() {
         title="Claims"
         description="Claims for orders that never arrived, arrived damaged, or shipped with the wrong product."
       />
+      <SectionTabs tabs={FULFILMENT_TABS} />
       <p className="mb-4 text-xs text-muted-foreground">
         Claims are handled here in the portal, so evidence, decisions and credits stay on one
         thread. For anything else, write to{" "}

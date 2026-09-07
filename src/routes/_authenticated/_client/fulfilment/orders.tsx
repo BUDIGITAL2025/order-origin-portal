@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { EmptyState, PageHeader } from "@/components/app-shell";
+import { SectionTabs, FULFILMENT_TABS } from "@/components/section-tabs";
 import { DocumentDownloadButton, OrderStatusBadge } from "@/components/documents-ui";
 import { OpenDisputeDialog } from "@/components/OpenDisputeDialog";
 import { Button } from "@/components/ui/button";
@@ -366,6 +367,7 @@ function OrdersPage() {
               <Link to="/orders/new">Create order</Link>
             </Button>
           </>
+      <SectionTabs tabs={FULFILMENT_TABS} />
         }
       />
 

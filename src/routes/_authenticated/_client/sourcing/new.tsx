@@ -5,6 +5,7 @@ import { ArrowUpCircle, Plus, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/app-shell";
+import { SectionTabs, SOURCING_TABS } from "@/components/section-tabs";
 import { getCurrentStoreId } from "@/components/store-switcher";
 import { UrlPreviewCard, type UrlPreviewData } from "@/components/url-preview-card";
 import { Button } from "@/components/ui/button";
@@ -386,6 +387,7 @@ function NewQuotePageInner() {
           title="Request a quote"
           description="Paste a product link and get a firm price per variant and country within 48 hours."
         />
+        <SectionTabs tabs={SOURCING_TABS} />
         <Card>
           <CardContent className="p-8 text-sm text-muted-foreground">Loading…</CardContent>
         </Card>
@@ -400,6 +402,7 @@ function NewQuotePageInner() {
           title="Request a quote"
           description="Paste a product link and get a firm price per variant and country within 48 hours."
         />
+        <SectionTabs tabs={SOURCING_TABS} />
         <Card>
           <CardContent className="flex flex-col items-start gap-3 p-8">
             <ArrowUpCircle className="h-8 w-8 text-warning" />
@@ -438,6 +441,7 @@ function NewQuotePageInner() {
           title="Request a quote"
           description="Paste a product link and get a firm price per variant and country within 48 hours."
         />
+        <SectionTabs tabs={SOURCING_TABS} />
         <Card className="border-primary/40">
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-base">
@@ -511,6 +515,7 @@ function NewQuotePageInner() {
         title="Request a quote"
         description="Paste a product link and get a firm price per variant and country within 48 hours."
       />
+      <SectionTabs tabs={SOURCING_TABS} />
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,360px)]">
         <div>
           <Card>
