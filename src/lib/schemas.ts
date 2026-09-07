@@ -82,7 +82,32 @@ export const entityDetailsSchema = z.object({
   legal_name: z.string().trim().min(2, "Legal name is required").max(160),
   country: z.string().trim().min(2, "Country is required").max(80),
   vat_number: z.string().trim().max(40).optional().or(z.literal("")),
+  tax_id: z.string().trim().max(60).optional().or(z.literal("")),
+  address_line1: z.string().trim().max(200).optional().or(z.literal("")),
+  address_line2: z.string().trim().max(200).optional().or(z.literal("")),
+  postal_code: z.string().trim().max(20).optional().or(z.literal("")),
+  city: z.string().trim().max(120).optional().or(z.literal("")),
   address: z.string().trim().max(500).optional().or(z.literal("")),
+});
+
+/** Admin creates a client we already work with off-platform, in one form. */
+export const adminCreateClientSchema = z.object({
+  email: z.string().trim().email("Enter a valid email address").max(255),
+  contact_name: z.string().trim().min(2, "Contact name is required").max(120),
+  phone: z.string().trim().max(40).optional().or(z.literal("")),
+  legal_name: z.string().trim().min(2, "Legal name is required").max(160),
+  country: z.string().trim().min(2, "Country is required").max(80),
+  vat_number: z.string().trim().max(40).optional().or(z.literal("")),
+  tax_id: z.string().trim().max(60).optional().or(z.literal("")),
+  address_line1: z.string().trim().max(200).optional().or(z.literal("")),
+  address_line2: z.string().trim().max(200).optional().or(z.literal("")),
+  postal_code: z.string().trim().max(20).optional().or(z.literal("")),
+  city: z.string().trim().max(120).optional().or(z.literal("")),
+  store_name: z.string().trim().min(2, "Workspace name is required").max(120),
+  store_url: z.string().trim().max(200).optional().or(z.literal("")),
+  platform: z.enum(["shopify", "woocommerce", "other"]),
+  integration_mode: z.enum(["automatic", "manual"]),
+  send_invite: z.boolean().default(true),
 });
 
 export const loginSchema = z.object({
