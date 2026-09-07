@@ -82,10 +82,7 @@ export const getMyContext = createServerFn({ method: "GET" })
     const [{ data: profile }, { data: roleRows }, { data: entities }] = await Promise.all([
       supabase.from("profiles").select(PROFILE_SELECT).eq("id", userId).maybeSingle(),
       supabase.from("user_roles").select("role").eq("user_id", userId),
-      supabase
-        .from("entities")
-        .select(ENTITY_SELECT)
-        .order("created_at", { ascending: true }),
+      supabase.from("entities").select(ENTITY_SELECT).order("created_at", { ascending: true }),
     ]);
     const roles = (roleRows ?? []).map((r) => r.role);
     const isAdmin = roles.includes("admin");
@@ -308,10 +305,12 @@ export const adminCreateClient = createServerFn({ method: "POST" })
 
     let userId: string | null = null;
     if (data.send_invite) {
-      const { data: invited, error: inviteError } =
-        await admin.auth.admin.inviteUserByEmail(data.email, {
+      const { data: invited, error: inviteError } = await admin.auth.admin.inviteUserByEmail(
+        data.email,
+        {
           data: { contact_name: data.contact_name, phone: data.phone ?? "" },
-        });
+        },
+      );
       if (inviteError) throw new Error(inviteError.message);
       userId = invited.user?.id ?? null;
     } else {
@@ -382,7 +381,9 @@ export const adminListClients = createServerFn({ method: "GET" })
     const admin = await getAdminClient();
     const { data, error } = await admin
       .from("profiles")
-      .select(`id, contact_name, phone, status, created_at, signup_source, entities(id, legal_name, vat_number, tax_id, country, address, address_line1, address_line2, postal_code, city, status, created_at, stores(*))`)
+      .select(
+        `id, contact_name, phone, status, created_at, signup_source, entities(id, legal_name, vat_number, tax_id, country, address, address_line1, address_line2, postal_code, city, status, created_at, stores(*))`,
+      )
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
     return { clients: data ?? [] };
@@ -522,7 +523,10 @@ export const provisionStore = createServerFn({ method: "POST" })
     const MIDDLEWARE_SERVICE_PASSWORD = process.env["MIDDLEWARE_SERVICE_PASSWORD"];
     const MIDDLEWARE_SERVICE_USER_ID = process.env["MIDDLEWARE_SERVICE_USER_ID"];
     const middlewareConfigured = Boolean(
-      MIDDLEWARE_URL && MIDDLEWARE_SERVICE_USER && MIDDLEWARE_SERVICE_PASSWORD && MIDDLEWARE_SERVICE_USER_ID,
+      MIDDLEWARE_URL &&
+      MIDDLEWARE_SERVICE_USER &&
+      MIDDLEWARE_SERVICE_PASSWORD &&
+      MIDDLEWARE_SERVICE_USER_ID,
     );
 
     const setStep = async (step: string) => {
@@ -625,7 +629,7 @@ export const provisionStore = createServerFn({ method: "POST" })
       // Step 4 — select_tenant: exchange the service credentials for a JWT
       // scoped to this tenant, used for the remaining calls.
       // ------------------------------------------------------------------
-      let tenantScopedJwt: string | null = null;
+      const tenantScopedJwt: string | null = null;
       await setStep("select_tenant");
       try {
         if (middlewareConfigured) {

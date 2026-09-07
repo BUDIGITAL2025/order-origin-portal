@@ -132,8 +132,18 @@ export function EditFiscalDetailsDialog({
             onChange={set("legal_name")}
             className="sm:col-span-2"
           />
-          <Field id="fd-tax" label="Tax ID (NIF / VAT / EIN)" value={form.tax_id} onChange={set("tax_id")} />
-          <Field id="fd-vat" label="VAT number" value={form.vat_number} onChange={set("vat_number")} />
+          <Field
+            id="fd-tax"
+            label="Tax ID (NIF / VAT / EIN)"
+            value={form.tax_id}
+            onChange={set("tax_id")}
+          />
+          <Field
+            id="fd-vat"
+            label="VAT number"
+            value={form.vat_number}
+            onChange={set("vat_number")}
+          />
           <Field
             id="fd-addr1"
             label="Registered address"
@@ -150,7 +160,12 @@ export function EditFiscalDetailsDialog({
             onChange={set("address_line2")}
             className="sm:col-span-2"
           />
-          <Field id="fd-postal" label="Postal code" value={form.postal_code} onChange={set("postal_code")} />
+          <Field
+            id="fd-postal"
+            label="Postal code"
+            value={form.postal_code}
+            onChange={set("postal_code")}
+          />
           <Field id="fd-city" label="City" value={form.city} onChange={set("city")} />
           <Field
             id="fd-country"
@@ -220,9 +235,7 @@ export function AddClientDialog({
     setBusy(true);
     try {
       await callCreate({ data: parsed.data });
-      toast.success(
-        sendInvite ? "Client created — invite email sent" : "Client created",
-      );
+      toast.success(sendInvite ? "Client created — invite email sent" : "Client created");
       onCreated();
       onOpenChange(false);
     } catch (err) {
@@ -271,8 +284,18 @@ export function AddClientDialog({
             onChange={set("legal_name")}
             className="sm:col-span-2"
           />
-          <Field id="ac-tax" label="Tax ID (NIF / VAT / EIN)" value={form.tax_id} onChange={set("tax_id")} />
-          <Field id="ac-vat" label="VAT number" value={form.vat_number} onChange={set("vat_number")} />
+          <Field
+            id="ac-tax"
+            label="Tax ID (NIF / VAT / EIN)"
+            value={form.tax_id}
+            onChange={set("tax_id")}
+          />
+          <Field
+            id="ac-vat"
+            label="VAT number"
+            value={form.vat_number}
+            onChange={set("vat_number")}
+          />
           <Field
             id="ac-addr1"
             label="Registered address"
@@ -288,7 +311,12 @@ export function AddClientDialog({
             onChange={set("address_line2")}
             className="sm:col-span-2"
           />
-          <Field id="ac-postal" label="Postal code" value={form.postal_code} onChange={set("postal_code")} />
+          <Field
+            id="ac-postal"
+            label="Postal code"
+            value={form.postal_code}
+            onChange={set("postal_code")}
+          />
           <Field id="ac-city" label="City" value={form.city} onChange={set("city")} />
           <Field
             id="ac-country"

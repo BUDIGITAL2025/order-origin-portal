@@ -32,12 +32,7 @@ type Admin = SupabaseClient<Database>;
 
 export const DOCUMENTS_BUCKET = "documents";
 export type DocumentType =
-  | "order_receipt"
-  | "wallet_topup"
-  | "subscription"
-  | "inbound_fee"
-  | "stock_purchase";
-
+  "order_receipt" | "wallet_topup" | "subscription" | "inbound_fee" | "stock_purchase";
 
 // ---------- Supplier (issuing entity) — environment-driven ----------
 
@@ -159,7 +154,12 @@ export async function renderReceiptPdf(data: ReceiptData): Promise<Uint8Array> {
   let page = doc.addPage([PAGE_W, PAGE_H]);
 
   const drawFooter = () => {
-    page.drawLine({ start: { x: MARGIN, y: 70 }, end: { x: RIGHT, y: 70 }, thickness: 0.5, color: HAIRLINE });
+    page.drawLine({
+      start: { x: MARGIN, y: 70 },
+      end: { x: RIGHT, y: 70 },
+      thickness: 0.5,
+      color: HAIRLINE,
+    });
     page.drawText("This document is a payment receipt - it is not a tax invoice.", {
       x: MARGIN,
       y: 56,
@@ -217,7 +217,13 @@ export async function renderReceiptPdf(data: ReceiptData): Promise<Uint8Array> {
   ];
   for (const [label, value] of meta) {
     page.drawText(s(label), { x: MARGIN, y, size: 8.5, font: regular, color: MUTED });
-    page.drawText(fit(value, bold, 9.5, 240), { x: MARGIN + 110, y, size: 9.5, font: bold, color: INK });
+    page.drawText(fit(value, bold, 9.5, 240), {
+      x: MARGIN + 110,
+      y,
+      size: 9.5,
+      font: bold,
+      color: INK,
+    });
     y -= 15;
   }
   let by = blockTop;
@@ -266,10 +272,22 @@ export async function renderReceiptPdf(data: ReceiptData): Promise<Uint8Array> {
       color: MUTED,
     });
     drawRight(page, line.quantity != null ? String(line.quantity) : "—", qtyRight, y, regular, 9.5);
-    drawRight(page, line.unitPrice != null ? money(line.unitPrice) : "—", unitRight, y, regular, 9.5);
+    drawRight(
+      page,
+      line.unitPrice != null ? money(line.unitPrice) : "—",
+      unitRight,
+      y,
+      regular,
+      9.5,
+    );
     drawRight(page, money(line.total), amountRight, y, regular, 9.5);
     y -= 11;
-    page.drawLine({ start: { x: MARGIN, y }, end: { x: RIGHT, y }, thickness: 0.5, color: HAIRLINE });
+    page.drawLine({
+      start: { x: MARGIN, y },
+      end: { x: RIGHT, y },
+      thickness: 0.5,
+      color: HAIRLINE,
+    });
     y -= 9;
   }
 
@@ -378,9 +396,8 @@ async function storeReceipt(
     .upload(path, pdf, { contentType: "application/pdf" });
   if (uploadError) throw new Error(uploadError.message);
 
-  const storeId = args.storeId !== undefined
-    ? args.storeId
-    : await resolveStoreIdForEntity(admin, args.entityId);
+  const storeId =
+    args.storeId !== undefined ? args.storeId : await resolveStoreIdForEntity(admin, args.entityId);
   const { error: insertError } = await admin.from("documents").insert({
     entity_id: args.entityId,
     store_id: storeId,
@@ -439,8 +456,7 @@ export async function issueOrderReceipt(
       detail: item.sku,
       quantity: qty,
       unitPrice: unit,
-      total:
-        item.line_total != null ? Number(item.line_total) : round2((unit ?? 0) * qty),
+      total: item.line_total != null ? Number(item.line_total) : round2((unit ?? 0) * qty),
     };
   });
   const total =
@@ -580,8 +596,10 @@ export async function issueSubscriptionReceipt(
   if (!(amountPaid > 0)) return "skipped";
 
   const invoiceLines =
-    (invoice["lines"] as { data?: Array<{ period?: { start?: number; end?: number } }> } | undefined)
-      ?.data ?? [];
+    (
+      invoice["lines"] as
+        { data?: Array<{ period?: { start?: number; end?: number } }> } | undefined
+    )?.data ?? [];
   const period = invoiceLines[0]?.period;
   const paidUnix =
     (invoice["status_transitions"] as { paid_at?: number } | undefined)?.paid_at ??
@@ -674,24 +692,22 @@ export async function backfillMissingReceipts(admin: Admin): Promise<{
   walletResults: Array<{ id: string; result: string }>;
   orderResults: Array<{ id: string; result: string }>;
 }> {
-  const [{ data: credits, error: cErr }, { data: walletDocs, error: wdErr }] =
-    await Promise.all([
-      admin.from("wallet_transactions").select("id").eq("type", "credit"),
-      admin
-        .from("documents")
-        .select("wallet_transaction_id")
-        .not("wallet_transaction_id", "is", null),
-    ]);
+  const [{ data: credits, error: cErr }, { data: walletDocs, error: wdErr }] = await Promise.all([
+    admin.from("wallet_transactions").select("id").eq("type", "credit"),
+    admin
+      .from("documents")
+      .select("wallet_transaction_id")
+      .not("wallet_transaction_id", "is", null),
+  ]);
   if (cErr) throw new Error(cErr.message);
   if (wdErr) throw new Error(wdErr.message);
   const haveWalletDoc = new Set((walletDocs ?? []).map((d) => d.wallet_transaction_id));
   const missingCredits = (credits ?? []).filter((t) => !haveWalletDoc.has(t.id));
 
-  const [{ data: paidOrders, error: oErr }, { data: orderDocs, error: odErr }] =
-    await Promise.all([
-      admin.from("orders").select("id").not("paid_at", "is", null),
-      admin.from("documents").select("order_id").not("order_id", "is", null),
-    ]);
+  const [{ data: paidOrders, error: oErr }, { data: orderDocs, error: odErr }] = await Promise.all([
+    admin.from("orders").select("id").not("paid_at", "is", null),
+    admin.from("documents").select("order_id").not("order_id", "is", null),
+  ]);
   if (oErr) throw new Error(oErr.message);
   if (odErr) throw new Error(odErr.message);
   const haveOrderDoc = new Set((orderDocs ?? []).map((d) => d.order_id));
@@ -753,9 +769,7 @@ export async function issueInboundReceiptDocument(
       client,
       lines: [
         {
-          description: args.qc
-            ? "Inbound handling with quality control"
-            : "Inbound handling",
+          description: args.qc ? "Inbound handling with quality control" : "Inbound handling",
           detail: "Unloading, counting, packaging materials, storage and packing",
           quantity: args.pieces,
           unitPrice: unit,
@@ -823,10 +837,7 @@ export async function issueStockPurchaseReceipt(
       paymentMethod: "Wallet balance",
       referenceLines: [
         ["Purchase", args.purchaseRef],
-        [
-          "Delivery",
-          args.path === "flysales" ? "FlySales warehouse" : "Direct to your warehouse",
-        ],
+        ["Delivery", args.path === "flysales" ? "FlySales warehouse" : "Direct to your warehouse"],
       ],
       client,
       lines,

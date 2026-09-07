@@ -58,10 +58,7 @@ import {
 
 export const Route = createFileRoute("/_authenticated/admin/clients")({
   head: () => ({
-    meta: [
-      { title: "Clients — FlySales Admin" },
-      { name: "robots", content: "noindex" },
-    ],
+    meta: [{ title: "Clients — FlySales Admin" }, { name: "robots", content: "noindex" }],
   }),
   component: AdminClientsPage,
 });
@@ -135,8 +132,10 @@ function AdminClientsPage() {
   });
 
   const setOverride = useMutation({
-    mutationFn: (input: { store_id: string; tier_override: "starter" | "growth" | "scale" | null }) =>
-      callSetOverride({ data: input }),
+    mutationFn: (input: {
+      store_id: string;
+      tier_override: "starter" | "growth" | "scale" | null;
+    }) => callSetOverride({ data: input }),
     onSuccess: () => {
       toast.success("Tier override updated");
       void invalidate();
@@ -318,7 +317,9 @@ function AdminClientsPage() {
                         />
                       </div>
                       {entity.stores.length === 0 ? (
-                        <p className="text-xs text-muted-foreground">No workspaces under this entity.</p>
+                        <p className="text-xs text-muted-foreground">
+                          No workspaces under this entity.
+                        </p>
                       ) : (
                         <TableShell>
                           <Table className="text-[13px]">
@@ -348,7 +349,13 @@ function AdminClientsPage() {
                                       </div>
                                       <div className="mt-1 flex flex-wrap items-center gap-1">
                                         <Chip>{s.platform}</Chip>
-                                        <Chip tone={s.integration_mode === "automatic" ? "success" : "neutral"}>
+                                        <Chip
+                                          tone={
+                                            s.integration_mode === "automatic"
+                                              ? "success"
+                                              : "neutral"
+                                          }
+                                        >
                                           {s.integration_mode}
                                         </Chip>
                                         {s.fee_waived && <Chip tone="info">fee waived</Chip>}
@@ -417,7 +424,11 @@ function AdminClientsPage() {
                                       <RowActions>
                                         {s.status === "pending" && (
                                           <RowAction
-                                            label={provision.isPending ? "Approving…" : "Approve workspace"}
+                                            label={
+                                              provision.isPending
+                                                ? "Approving…"
+                                                : "Approve workspace"
+                                            }
                                             icon={CheckCircle2}
                                             tone="primary"
                                             disabled={provision.isPending}
@@ -462,7 +473,9 @@ function AdminClientsPage() {
                                                   </SelectTrigger>
                                                   <SelectContent>
                                                     <SelectItem value="manual">Manual</SelectItem>
-                                                    <SelectItem value="automatic">Automatic</SelectItem>
+                                                    <SelectItem value="automatic">
+                                                      Automatic
+                                                    </SelectItem>
                                                   </SelectContent>
                                                 </Select>
                                               ) : (
@@ -490,11 +503,18 @@ function AdminClientsPage() {
                                                 </SelectTrigger>
                                                 <SelectContent>
                                                   <SelectItem value="auto">
-                                                    Auto ({TIER_LABELS[s.pricing_tier] ?? s.pricing_tier})
+                                                    Auto (
+                                                    {TIER_LABELS[s.pricing_tier] ?? s.pricing_tier})
                                                   </SelectItem>
-                                                  <SelectItem value="starter">Override: Starter</SelectItem>
-                                                  <SelectItem value="growth">Override: Growth</SelectItem>
-                                                  <SelectItem value="scale">Override: Scale</SelectItem>
+                                                  <SelectItem value="starter">
+                                                    Override: Starter
+                                                  </SelectItem>
+                                                  <SelectItem value="growth">
+                                                    Override: Growth
+                                                  </SelectItem>
+                                                  <SelectItem value="scale">
+                                                    Override: Scale
+                                                  </SelectItem>
                                                 </SelectContent>
                                               </Select>
                                             </div>
@@ -514,7 +534,9 @@ function AdminClientsPage() {
                                             </div>
                                             <dl className="space-y-1 border-t border-border pt-2 text-xs">
                                               <div className="flex justify-between gap-2">
-                                                <dt className="text-muted-foreground">Subscription id</dt>
+                                                <dt className="text-muted-foreground">
+                                                  Subscription id
+                                                </dt>
                                                 <dd className="max-w-36 truncate font-mono">
                                                   <Value>{s.stripe_subscription_id}</Value>
                                                 </dd>
