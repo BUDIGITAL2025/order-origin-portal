@@ -367,9 +367,10 @@ function OrdersPage() {
               <Link to="/orders/new">Create order</Link>
             </Button>
           </>
-      <SectionTabs tabs={FULFILMENT_TABS} />
         }
       />
+      <SectionTabs tabs={FULFILMENT_TABS} />
+
 
       {isPending ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
