@@ -206,7 +206,13 @@ export async function debitWalletOnce(
  */
 export async function notify(
   admin: Admin,
-  args: { entityId?: string | null; storeId?: string | null; kind: string; title: string; body: string },
+  args: {
+    entityId?: string | null;
+    storeId?: string | null;
+    kind: string;
+    title: string;
+    body: string;
+  },
 ): Promise<void> {
   await admin.from("notifications").insert({
     entity_id: args.entityId ?? null,
@@ -253,8 +259,7 @@ export async function syncSubscriptionFromStripe(
       }>;
     };
   };
-  const customerId =
-    typeof subAny.customer === "string" ? subAny.customer : subAny.customer?.id;
+  const customerId = typeof subAny.customer === "string" ? subAny.customer : subAny.customer?.id;
   const storeId = subAny.metadata?.["flysales_store_id"] ?? null;
 
   let store = await findStoreByStripeSubscription(admin, subAny.id);
@@ -317,7 +322,12 @@ export async function syncSubscriptionFromStripe(
   // the client reactivates before the period ends. Tracked on the entity.
   const entity = await findEntityById(admin, store.entity_id);
   let sendCancellationNotice = false;
-  if (entity && status === "active" && subAny.cancel_at_period_end && !entity.cancel_notice_sent_at) {
+  if (
+    entity &&
+    status === "active" &&
+    subAny.cancel_at_period_end &&
+    !entity.cancel_notice_sent_at
+  ) {
     await admin
       .from("entities")
       .update({ cancel_notice_sent_at: new Date().toISOString() })
@@ -389,7 +399,9 @@ async function syncSpyMarketSubscription(
 
   const accountId = m["flysales_user_id"] ?? null;
   const item = (
-    sub["items"] as { data?: Array<{ current_period_end?: number; price?: { lookup_key?: string | null } }> } | undefined
+    sub["items"] as
+      | { data?: Array<{ current_period_end?: number; price?: { lookup_key?: string | null } }> }
+      | undefined
   )?.data?.[0];
   const lookup = item?.price?.lookup_key ?? null;
   const planFromPrice =
@@ -406,9 +418,10 @@ async function syncSpyMarketSubscription(
 
   const row = {
     plan,
-    status: mapSubscriptionStatus(sub["status"] as string | undefined) === "none"
-      ? "canceled"
-      : mapSubscriptionStatus(sub["status"] as string | undefined),
+    status:
+      mapSubscriptionStatus(sub["status"] as string | undefined) === "none"
+        ? "canceled"
+        : mapSubscriptionStatus(sub["status"] as string | undefined),
     stripe_customer_id: idOf(sub["customer"]),
     stripe_subscription_id: subId,
     cancel_at_period_end: Boolean(sub["cancel_at_period_end"]),
@@ -419,10 +432,7 @@ async function syncSpyMarketSubscription(
   };
 
   if (existing) {
-    const { error } = await admin
-      .from("spymarket_subscriptions")
-      .update(row)
-      .eq("id", existing.id);
+    const { error } = await admin.from("spymarket_subscriptions").update(row).eq("id", existing.id);
     if (error) throw new Error(error.message);
   } else {
     if (!accountId) throw new Error("spymarket subscription without flysales_user_id");
@@ -460,16 +470,18 @@ export async function handleWalletTopup(
     amountUsd: pi.amount_received / 100,
     reference: pi.id,
     // Human-readable description — the Stripe id lives in reference only.
-    description: kind === "wallet_auto_topup" ? "Wallet auto top-up" : "Wallet top-up",
+    description:
+      kind === "wallet_auto_topup"
+        ? "Wallet auto top-up"
+        : kind === "wallet_topup_cover"
+          ? "Wallet top-up to cover order payment"
+          : "Wallet top-up",
   });
 
   // Keep the card on file so auto top-up has a payment method later.
   const pm = idOf(pi.payment_method);
   if (pm) {
-    await admin
-      .from("entities")
-      .update({ default_payment_method_id: pm })
-      .eq("id", entityId);
+    await admin.from("entities").update({ default_payment_method_id: pm }).eq("id", entityId);
   }
 
   if (!creditTxn) return; // replay of an already-processed payment
@@ -482,6 +494,10 @@ export async function handleWalletTopup(
   } catch (e) {
     console.error("wallet top-up receipt failed:", creditTxn.id, e);
   }
+
+  // Cover-the-difference top-ups fund ONE specific order selection, which
+  // the app settles right after the charge. Never release oldest-first here.
+  if (kind === "wallet_topup_cover") return;
 
   // Settle orders waiting on funds, oldest first, debiting through
   // apply_wallet_transaction with the order id as the reference.
@@ -628,9 +644,7 @@ export async function handleOrderBatchPayment(
     .select("reference, amount")
     .eq("entity_id", entityId)
     .in("reference", orderIds);
-  const settledSum = round2(
-    (debits ?? []).reduce((acc, d) => acc + Number(d.amount), 0),
-  );
+  const settledSum = round2((debits ?? []).reduce((acc, d) => acc + Number(d.amount), 0));
   const paidUsd = round2(pi.amount_received / 100);
   const leftover = round2(Math.max(0, paidUsd - settledSum));
   if (leftover > 0) {
@@ -697,10 +711,7 @@ export async function handleOrderBatchPayment(
 }
 
 /** The single entry point called by the webhook route after idempotency. */
-export async function processStripeEvent(
-  event: StripeEvent,
-  env: StripeEnv,
-): Promise<void> {
+export async function processStripeEvent(event: StripeEvent, env: StripeEnv): Promise<void> {
   const stripe = createStripeClient(env);
   const admin = await getAdminClient();
 
@@ -750,15 +761,11 @@ export async function processStripeEvent(
         if (subscriptionId) {
           try {
             const sub = await stripe.subscriptions.retrieve(subscriptionId);
-            const firstItem = sub.items?.data?.[0] as
-              | { current_period_end?: number }
-              | undefined;
+            const firstItem = sub.items?.data?.[0] as { current_period_end?: number } | undefined;
             const periodEnd =
               firstItem?.current_period_end ??
               (sub as unknown as { current_period_end?: number }).current_period_end;
-            nextBilling = periodEnd
-              ? new Date(periodEnd * 1000).toISOString().slice(0, 10)
-              : null;
+            nextBilling = periodEnd ? new Date(periodEnd * 1000).toISOString().slice(0, 10) : null;
           } catch (e) {
             console.error("subscription retrieve for confirmation email failed", e);
           }
@@ -779,11 +786,7 @@ export async function processStripeEvent(
         const subscriptionId = idOf(session["subscription"]);
         if (subscriptionId) {
           const sub = await stripe.subscriptions.retrieve(subscriptionId);
-          await syncSpyMarketSubscription(
-            admin,
-            sub as unknown as Record<string, unknown>,
-            env,
-          );
+          await syncSpyMarketSubscription(admin, sub as unknown as Record<string, unknown>, env);
         }
         const accountId = meta(session)["flysales_user_id"];
         const plan = meta(session)["plan"] ?? "starter";
@@ -913,7 +916,11 @@ export async function processStripeEvent(
 
     case "payment_intent.succeeded": {
       const kind = meta(event.data.object)["kind"];
-      if (kind === "wallet_topup" || kind === "wallet_auto_topup") {
+      if (
+        kind === "wallet_topup" ||
+        kind === "wallet_auto_topup" ||
+        kind === "wallet_topup_cover"
+      ) {
         const piId = String(event.data.object["id"] ?? "");
         if (piId) await handleWalletTopup(stripe, admin, piId);
       } else if (kind === "order_batch") {

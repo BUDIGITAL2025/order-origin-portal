@@ -12,13 +12,7 @@ import { DocumentDownloadButton, DocumentTypeBadge } from "@/components/document
 import { listMyDocuments } from "@/lib/documents.functions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -39,7 +33,6 @@ import {
   createSubscriptionCheckout,
   getBillingOverview,
   markNotificationsRead,
-  saveAutoTopupSettings,
 } from "@/lib/billing.functions";
 import { getMyWallet } from "@/lib/wallet.functions";
 import { updateMyEntity } from "@/lib/profiles.functions";
@@ -61,9 +54,7 @@ export const Route = createFileRoute("/_authenticated/_client/billing/subscripti
   // Stripe's {CHECKOUT_SESSION_ID} is substituted server-side; whatever
   // reaches the browser is still just a display hint — all state changes
   // come from the webhook.
-  validateSearch: (
-    search: Record<string, unknown>,
-  ): { sub?: string; topup?: string } => {
+  validateSearch: (search: Record<string, unknown>): { sub?: string; topup?: string } => {
     const sub = search["sub"];
     const topup = search["topup"];
     return {
@@ -113,7 +104,6 @@ function BillingPage() {
   const fetchOverview = useServerFn(getBillingOverview);
   const callSubscribe = useServerFn(createSubscriptionCheckout);
   const callChangePlan = useServerFn(changePlan);
-  const callSaveAuto = useServerFn(saveAutoTopupSettings);
   const callMarkRead = useServerFn(markNotificationsRead);
   const fetchWallet = useServerFn(getMyWallet);
   const fetchDocuments = useServerFn(listMyDocuments);
@@ -126,9 +116,7 @@ function BillingPage() {
     const entities = ctx?.entities ?? [];
     const stored = getCurrentStoreId();
     const valid =
-      stored && entities.some((e) => e.stores.some((s) => s.id === stored))
-        ? stored
-        : null;
+      stored && entities.some((e) => e.stores.some((s) => s.id === stored)) ? stored : null;
     setStoreId(valid ?? entities[0]?.stores[0]?.id ?? null);
   }, [ctx]);
 
@@ -167,20 +155,6 @@ function BillingPage() {
 
   const [topupAmount, setTopupAmount] = useState<number | null>(null);
   const [customAmount, setCustomAmount] = useState("");
-
-  const [autoEnabled, setAutoEnabled] = useState(false);
-  const [autoThreshold, setAutoThreshold] = useState("");
-  const [autoAmount, setAutoAmount] = useState("");
-  useEffect(() => {
-    if (!data) return;
-    setAutoEnabled(data.entity.auto_topup_enabled);
-    setAutoThreshold(
-      data.entity.auto_topup_threshold != null ? String(data.entity.auto_topup_threshold) : "",
-    );
-    setAutoAmount(
-      data.entity.auto_topup_amount != null ? String(data.entity.auto_topup_amount) : "",
-    );
-  }, [data]);
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["billing-overview"] });
 
@@ -241,26 +215,6 @@ function BillingPage() {
     onError: (e) => toast.error(e.message),
   });
 
-  const saveAuto = useMutation({
-    mutationFn: () => {
-      const threshold = autoThreshold === "" ? null : Number(autoThreshold);
-      const amount = autoAmount === "" ? null : Number(autoAmount);
-      if (autoEnabled && (threshold == null || amount == null)) {
-        throw new Error("Set both a threshold and an amount.");
-      }
-      if (autoEnabled && (amount ?? 0) < TOPUP_MIN) {
-        throw new Error(`The auto top-up amount must be at least $${TOPUP_MIN}.`);
-      }
-      if (!storeId) throw new Error("No workspace selected");
-      return callSaveAuto({ data: { enabled: autoEnabled, threshold, amount, storeId } });
-    },
-    onSuccess: async () => {
-      toast.success("Auto top-up settings saved");
-      await invalidate();
-    },
-    onError: (e) => toast.error(e.message),
-  });
-
   const dismiss = useMutation({
     mutationFn: (ids: string[]) => callMarkRead({ data: { ids } }),
     onSuccess: () => void invalidate(),
@@ -286,8 +240,8 @@ function BillingPage() {
         <SectionTabs tabs={BILLING_TABS} />
         <Card>
           <CardContent className="p-6 text-sm text-muted-foreground">
-            Card payments are not available in this environment yet. Your wallet balance
-            and existing orders are unaffected.
+            Card payments are not available in this environment yet. Your wallet balance and
+            existing orders are unaffected.
           </CardContent>
         </Card>
       </div>
@@ -339,8 +293,8 @@ function BillingPage() {
 
       {subStatus === "past_due" && (
         <div className="mb-6 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm">
-          Your last subscription payment failed and we retry it automatically. Keep your
-          saved card up to date to keep your plan.
+          Your last subscription payment failed and we retry it automatically. Keep your saved card
+          up to date to keep your plan.
         </div>
       )}
 
@@ -364,102 +318,102 @@ function BillingPage() {
             </CardContent>
           </Card>
         ) : (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <CreditCard className="h-4 w-4" /> Subscription
-              </CardTitle>
-              <SubStatusBadge status={subStatus} />
-            </div>
-            <CardDescription>
-              Changes apply when the payment confirms, not when you open checkout.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-end justify-between">
-              <div>
-                <div className="text-2xl font-semibold">{planLabel(plan)}</div>
-                <div className="text-sm text-muted-foreground">
-                  ${PLANS[plan].priceUsd}/month
-                  {feeWaived && " · fee waived by FlySales"}
-                </div>
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <CreditCard className="h-4 w-4" /> Subscription
+                </CardTitle>
+                <SubStatusBadge status={subStatus} />
               </div>
-              {data?.nextBillingDate && hasActiveSub && (
-                <div className="text-right text-xs text-muted-foreground">
-                  Next billing date
-                  <div className="text-sm font-medium text-foreground">
-                    {formatDate(data.nextBillingDate)}
+              <CardDescription>
+                Changes apply when the payment confirms, not when you open checkout.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-end justify-between">
+                <div>
+                  <div className="text-2xl font-semibold">{planLabel(plan)}</div>
+                  <div className="text-sm text-muted-foreground">
+                    ${PLANS[plan].priceUsd}/month
+                    {feeWaived && " · fee waived by FlySales"}
                   </div>
                 </div>
-              )}
-            </div>
+                {data?.nextBillingDate && hasActiveSub && (
+                  <div className="text-right text-xs text-muted-foreground">
+                    Next billing date
+                    <div className="text-sm font-medium text-foreground">
+                      {formatDate(data.nextBillingDate)}
+                    </div>
+                  </div>
+                )}
+              </div>
 
-            {feeWaived ? (
-              <p className="rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
-                Your plan is managed by FlySales. No payment is collected.
-              </p>
-            ) : !hasActiveSub ? (
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  variant="outline"
-                  disabled={subscribe.isPending}
-                  onClick={() => subscribe.mutate("basic")}
-                >
-                  Subscribe to Basic (${PLANS.basic.priceUsd}/mo)
-                </Button>
-                <Button
-                  disabled={subscribe.isPending}
-                  onClick={() => subscribe.mutate("unlimited")}
-                >
-                  {subscribe.isPending ? "Redirecting…" : `Subscribe to Unlimited ($${PLANS.unlimited.priceUsd}/mo)`}
-                </Button>
-              </div>
-            ) : store?.pending_plan_change ? (
-              <div className="space-y-3">
-                <p className="rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-sm">
-                  Your subscription changes to{" "}
-                  <span className="font-medium">{planLabel(store.pending_plan_change)}</span>
-                  {store.pending_plan_change_date && (
-                    <>
-                      {" "}on{" "}
-                      <span className="font-medium">
-                        {formatDate(store.pending_plan_change_date)}
-                      </span>
-                    </>
-                  )}
-                  . Until then you keep {planLabel(plan)} with its full quota.
+              {feeWaived ? (
+                <p className="rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
+                  Your plan is managed by FlySales. No payment is collected.
                 </p>
+              ) : !hasActiveSub ? (
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="outline"
+                    disabled={subscribe.isPending}
+                    onClick={() => subscribe.mutate("basic")}
+                  >
+                    Subscribe to Basic (${PLANS.basic.priceUsd}/mo)
+                  </Button>
+                  <Button
+                    disabled={subscribe.isPending}
+                    onClick={() => subscribe.mutate("unlimited")}
+                  >
+                    {subscribe.isPending
+                      ? "Redirecting…"
+                      : `Subscribe to Unlimited ($${PLANS.unlimited.priceUsd}/mo)`}
+                  </Button>
+                </div>
+              ) : store?.pending_plan_change ? (
+                <div className="space-y-3">
+                  <p className="rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-sm">
+                    Your subscription changes to{" "}
+                    <span className="font-medium">{planLabel(store.pending_plan_change)}</span>
+                    {store.pending_plan_change_date && (
+                      <>
+                        {" "}
+                        on{" "}
+                        <span className="font-medium">
+                          {formatDate(store.pending_plan_change_date)}
+                        </span>
+                      </>
+                    )}
+                    . Until then you keep {planLabel(plan)} with its full quota.
+                  </p>
+                  <Button
+                    variant="outline"
+                    disabled={keepPlan.isPending}
+                    onClick={() => keepPlan.mutate()}
+                  >
+                    {keepPlan.isPending ? "Cancelling…" : `Keep ${planLabel(plan)}`}
+                  </Button>
+                </div>
+              ) : plan === "basic" ? (
+                <Button disabled={change.isPending} onClick={() => change.mutate("unlimited")}>
+                  {change.isPending
+                    ? "Upgrading…"
+                    : `Upgrade to Unlimited ($${PLANS.unlimited.priceUsd}/mo, prorated today)`}
+                </Button>
+              ) : (
                 <Button
                   variant="outline"
-                  disabled={keepPlan.isPending}
-                  onClick={() => keepPlan.mutate()}
+                  disabled={change.isPending}
+                  onClick={() => change.mutate("basic")}
                 >
-                  {keepPlan.isPending ? "Cancelling…" : `Keep ${planLabel(plan)}`}
+                  {change.isPending
+                    ? "Scheduling…"
+                    : `Downgrade to Basic ($${PLANS.basic.priceUsd}/mo, at period end)`}
                 </Button>
-              </div>
-            ) : plan === "basic" ? (
-              <Button
-                disabled={change.isPending}
-                onClick={() => change.mutate("unlimited")}
-              >
-                {change.isPending
-                  ? "Upgrading…"
-                  : `Upgrade to Unlimited ($${PLANS.unlimited.priceUsd}/mo, prorated today)`}
-              </Button>
-            ) : (
-              <Button
-                variant="outline"
-                disabled={change.isPending}
-                onClick={() => change.mutate("basic")}
-              >
-                {change.isPending
-                  ? "Scheduling…"
-                  : `Downgrade to Basic ($${PLANS.basic.priceUsd}/mo, at period end)`}
-              </Button>
-            )}
-          </CardContent>
-        </Card>
+              )}
+            </CardContent>
+          </Card>
         )}
 
         {/* ============ Wallet top-up ============ */}
@@ -469,8 +423,8 @@ function BillingPage() {
               <Wallet className="h-4 w-4" /> Wallet
             </CardTitle>
             <CardDescription>
-              Top up in USD to prepay for orders. The funds stay yours until an order is
-              paid, and are credited as soon as the payment confirms.
+              Top up in USD to prepay for orders. The funds stay yours until an order is paid, and
+              are credited as soon as the payment confirms.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -484,12 +438,7 @@ function BillingPage() {
             </div>
             <div className="flex flex-wrap gap-2">
               {SUGGESTED_AMOUNTS.map((amount) => (
-                <Button
-                  key={amount}
-                  variant="outline"
-                  size="sm"
-                  onClick={() => openTopup(amount)}
-                >
+                <Button key={amount} variant="outline" size="sm" onClick={() => openTopup(amount)}>
                   + ${amount}
                 </Button>
               ))}
@@ -511,75 +460,23 @@ function BillingPage() {
           </CardContent>
         </Card>
 
-        {/* ============ Auto top-up ============ */}
-        {storeId != null && (
+        {/* Card, fast top-ups and auto top-up now live on the Wallet tab. */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
-              <RefreshCcw className="h-4 w-4" /> Auto top-up
+              <RefreshCcw className="h-4 w-4" /> Payment method & auto top-up
             </CardTitle>
             <CardDescription>
-              Off by default. When your balance falls below your threshold, we charge
-              your saved card once and credit the wallet on success.
+              Your saved card, one-click top-ups and automatic top-ups are managed on the Wallet
+              tab.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="auto-topup-enabled">Enable auto top-up</Label>
-              <Switch
-                id="auto-topup-enabled"
-                checked={autoEnabled}
-                onCheckedChange={setAutoEnabled}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="auto-threshold">When balance falls below</Label>
-                <Input
-                  id="auto-threshold"
-                  type="number"
-                  min={0}
-                  placeholder="e.g. 100"
-                  value={autoThreshold}
-                  onChange={(e) => setAutoThreshold(e.target.value)}
-                  disabled={!autoEnabled}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="auto-amount">Charge amount (min ${TOPUP_MIN})</Label>
-                <Input
-                  id="auto-amount"
-                  type="number"
-                  min={TOPUP_MIN}
-                  placeholder="e.g. 250"
-                  value={autoAmount}
-                  onChange={(e) => setAutoAmount(e.target.value)}
-                  disabled={!autoEnabled}
-                />
-              </div>
-            </div>
-            <div className="text-xs text-muted-foreground">
-              Saved card:{" "}
-              {data?.paymentMethod ? (
-                <span className="font-medium text-foreground">
-                  {data.paymentMethod.brand.toUpperCase()} •••• {data.paymentMethod.last4}{" "}
-                  (exp {String(data.paymentMethod.expMonth).padStart(2, "0")}/
-                  {data.paymentMethod.expYear})
-                </span>
-              ) : (
-                "none yet. Make a card top-up and we keep the card on file."
-              )}
-            </div>
-            <Button
-              variant="secondary"
-              disabled={saveAuto.isPending}
-              onClick={() => saveAuto.mutate()}
-            >
-              {saveAuto.isPending ? "Saving…" : "Save auto top-up settings"}
+          <CardContent>
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/billing/wallet">Go to Wallet</Link>
             </Button>
           </CardContent>
         </Card>
-        )}
       </div>
 
       {billingEntity && (
@@ -595,8 +492,7 @@ function BillingPage() {
         </h2>
         {documents.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            No receipts yet. One is issued for every top-up, order payment and
-            subscription charge.
+            No receipts yet. One is issued for every top-up, order payment and subscription charge.
           </p>
         ) : (
           <div className="rounded-lg border border-border bg-card">
@@ -735,9 +631,8 @@ function EntityDetailsCard({
     vat_number: entity.vat_number ?? "",
     address: entity.address ?? "",
   });
-  const setField =
-    (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
-      setForm((s) => ({ ...s, [key]: e.target.value }));
+  const setField = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
+    setForm((s) => ({ ...s, [key]: e.target.value }));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -752,7 +647,9 @@ function EntityDetailsCard({
       await queryClient.invalidateQueries({ queryKey: ["my-context"] });
       toast.success("Company details saved.");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Your company details were not saved. Try again.");
+      toast.error(
+        err instanceof Error ? err.message : "Your company details were not saved. Try again.",
+      );
     } finally {
       setBusy(false);
     }
@@ -772,7 +669,12 @@ function EntityDetailsCard({
         <form onSubmit={handleSubmit} className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1.5">
             <Label htmlFor="ed-legal-name">Legal name</Label>
-            <Input id="ed-legal-name" required value={form.legal_name} onChange={setField("legal_name")} />
+            <Input
+              id="ed-legal-name"
+              required
+              value={form.legal_name}
+              onChange={setField("legal_name")}
+            />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="ed-country">Country</Label>

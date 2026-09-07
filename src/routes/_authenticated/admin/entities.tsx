@@ -7,13 +7,7 @@ import {
   ProvisioningBadge,
   ProfileStatusBadge,
 } from "@/components/status-badges";
-import {
-  AdminSearch,
-  SummaryBar,
-  TableShell,
-  ToolBar,
-  Value,
-} from "@/components/admin-ui";
+import { AdminSearch, SummaryBar, TableShell, ToolBar, Value } from "@/components/admin-ui";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -141,6 +135,15 @@ function AdminEntitiesPage() {
                   {[entity.country, entity.vat_number ? `VAT ${entity.vat_number}` : null]
                     .filter(Boolean)
                     .join(" · ") || "No fiscal details"}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {entity.card_brand && entity.card_last4
+                    ? `Card on file: ${entity.card_brand.toUpperCase()} •••• ${entity.card_last4}`
+                    : "No card on file"}
+                  {" · "}
+                  {entity.auto_topup_enabled
+                    ? `Auto top-up on: $${Number(entity.auto_topup_amount ?? 0).toFixed(0)} when below $${Number(entity.auto_topup_threshold ?? 0).toFixed(0)}`
+                    : "Auto top-up off"}
                 </p>
               </CardHeader>
               <CardContent>

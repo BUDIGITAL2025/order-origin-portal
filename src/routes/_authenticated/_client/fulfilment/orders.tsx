@@ -41,12 +41,25 @@ import { listMyOrders } from "@/lib/orders.functions";
 import { listMyDisputes } from "@/lib/disputes.functions";
 import { listMyDocuments } from "@/lib/documents.functions";
 import { getMyWallet } from "@/lib/wallet.functions";
-import {
-  createBatchOrderCheckout,
-  payOrdersFromWallet,
-} from "@/lib/billing.functions";
-import { getStripeEnvironment } from "@/lib/stripe";
+import { createBatchOrderCheckout, payOrdersFromWallet } from "@/lib/billing.functions";
+import { getStripe, getStripeEnvironment } from "@/lib/stripe";
 import { friendlyError } from "@/lib/errors";
+import { cardLabel } from "@/lib/card-label";
+import {
+  finalizeCoverPayment,
+  getMyPaymentMethod,
+  payOrdersWithCardShortfall,
+} from "@/lib/cards.functions";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/_authenticated/_client/fulfilment/orders")({
   head: () => ({
@@ -109,8 +122,7 @@ const DISPUTABLE = new Set(["paid", "processing", "shipped", "delivered"]);
 
 function customerName(order: OrderRow): string {
   const address = (order.shipping_address ?? {}) as Record<string, unknown>;
-  const raw =
-    address["name"] ?? address["full_name"] ?? address["contact_name"] ?? null;
+  const raw = address["name"] ?? address["full_name"] ?? address["contact_name"] ?? null;
   return typeof raw === "string" && raw.trim() ? raw.trim() : "—";
 }
 
@@ -167,7 +179,14 @@ function OrdersPage() {
   });
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [busy, setBusy] = useState<"wallet" | "card" | null>(null);
+  const [busy, setBusy] = useState<"wallet" | "card" | "cover" | null>(null);
+  const [coverOpen, setCoverOpen] = useState(false);
+  const fetchCard = useServerFn(getMyPaymentMethod);
+  const { data: paymentMethod } = useQuery({
+    queryKey: ["my-payment-method-orders"],
+    queryFn: () => fetchCard({ data: {} }),
+  });
+  const savedCard = paymentMethod?.card ?? null;
   const [tab, setTab] = useState<TabId>("all");
   const [statusFilter, setStatusFilter] = useState<StatusKey | null>(null);
   const [search, setSearch] = useState("");
@@ -177,9 +196,7 @@ function OrdersPage() {
   const [disputeFor, setDisputeFor] = useState<OrderRow | null>(null);
 
   const receiptByOrder = new Map(
-    (documents ?? [])
-      .filter((d) => d.order_id)
-      .map((d) => [d.order_id as string, d.id] as const),
+    (documents ?? []).filter((d) => d.order_id).map((d) => [d.order_id as string, d.id] as const),
   );
 
   const openDisputeOrders = useMemo(
@@ -199,10 +216,7 @@ function OrdersPage() {
   const rows = useMemo(() => orders ?? [], [orders]);
 
   const counts = useMemo(() => {
-    const base = Object.fromEntries(STATUS_KEYS.map((k) => [k, 0])) as Record<
-      StatusKey,
-      number
-    >;
+    const base = Object.fromEntries(STATUS_KEYS.map((k) => [k, 0])) as Record<StatusKey, number>;
     for (const o of rows) {
       if ((STATUS_KEYS as readonly string[]).includes(o.status)) {
         base[o.status as StatusKey] += 1;
@@ -267,6 +281,8 @@ function OrdersPage() {
   const selectedTotal = selectedRows.reduce((acc, o) => acc + Number(o.total_amount ?? 0), 0);
   const balance = wallet?.balance ?? 0;
   const walletCovers = selectedTotal > 0 && balance >= selectedTotal;
+  const walletPart = Math.max(0, Math.min(balance, selectedTotal));
+  const shortfall = Math.round((selectedTotal - walletPart) * 100) / 100;
 
   function toggle(id: string, checked: boolean) {
     setSelected((prev) => {
@@ -301,6 +317,53 @@ function OrdersPage() {
     }
   }
 
+  /**
+   * Cover the difference: charge the saved card for the exact shortfall,
+   * credit it to the wallet, then pay the selected orders from the wallet.
+   * One charge, one flow — the card always funds the wallet.
+   */
+  async function coverAndPay() {
+    setBusy("cover");
+    try {
+      const orderIds = selectedRows.map((o) => o.id);
+      const environment = getStripeEnvironment();
+      let result = await payOrdersWithCardShortfall({ data: { orderIds, environment } });
+      if ("error" in result) throw new Error(String(result.error));
+      if (result.status === "requires_action") {
+        const stripe = await getStripe();
+        if (!stripe) throw new Error("Stripe could not be loaded.");
+        const { error } = await stripe.handleNextAction({
+          clientSecret: result.clientSecret,
+        });
+        if (error) throw new Error(error.message ?? "Card authentication failed.");
+        result = await finalizeCoverPayment({
+          data: { orderIds, environment, paymentIntentId: result.paymentIntentId },
+        });
+        if ("error" in result) throw new Error(String(result.error));
+        if (result.status !== "paid") throw new Error("The payment did not complete.");
+      }
+      const paid = result.status === "paid" ? result : null;
+      toast.success(
+        `${paid?.settled.length ?? 0} order${(paid?.settled.length ?? 0) === 1 ? "" : "s"} paid.` +
+          (paid && paid.charged > 0
+            ? ` ${formatUSD(paid.charged)} was charged to your card and credited to your wallet first.`
+            : ""),
+      );
+      setCoverOpen(false);
+      setSelected(new Set());
+      await queryClient.invalidateQueries();
+    } catch (e) {
+      toast.error(
+        friendlyError(
+          e,
+          "The card was declined. Nothing was credited and these orders are still awaiting payment.",
+        ),
+      );
+    } finally {
+      setBusy(null);
+    }
+  }
+
   async function payByCard(orderIds: string[]) {
     setBusy("card");
     try {
@@ -323,8 +386,7 @@ function OrdersPage() {
 
   function exportCsv() {
     const esc = (v: string) => (/[",\n]/.test(v) ? `"${v.replaceAll('"', '""')}"` : v);
-    const header =
-      "order,date,status,customer,country,total,tracking_carrier,tracking_number\n";
+    const header = "order,date,status,customer,country,total,tracking_carrier,tracking_number\n";
     const body = filtered
       .map((o) =>
         [
@@ -357,7 +419,12 @@ function OrdersPage() {
         description="Every order in this workspace, with its status, tracking and receipt."
         actions={
           <>
-            <Button variant="outline" size="sm" disabled={filtered.length === 0} onClick={exportCsv}>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={filtered.length === 0}
+              onClick={exportCsv}
+            >
               Export tracking
             </Button>
             <Button asChild variant="outline" size="sm">
@@ -370,7 +437,6 @@ function OrdersPage() {
         }
       />
       <SectionTabs tabs={FULFILMENT_TABS} />
-
 
       {isPending ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
@@ -386,8 +452,7 @@ function OrdersPage() {
           {/* 1. Status summary bar */}
           <div className="mb-4 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-border bg-border sm:grid-cols-4 xl:grid-cols-8">
             {([...STATUS_KEYS, "disputed"] as const).map((key) => {
-              const active =
-                key === "disputed" ? tab === "disputed" : statusFilter === key;
+              const active = key === "disputed" ? tab === "disputed" : statusFilter === key;
               return (
                 <button
                   key={key}
@@ -512,8 +577,7 @@ function OrdersPage() {
                   visible.map((order) => {
                     const receiptId = receiptByOrder.get(order.id);
                     const isPayable =
-                      order.status === "awaiting_payment" &&
-                      Number(order.total_amount ?? 0) > 0;
+                      order.status === "awaiting_payment" && Number(order.total_amount ?? 0) > 0;
                     const canDispute =
                       DISPUTABLE.has(order.status) && !openDisputeOrders.has(order.id);
                     return (
@@ -561,9 +625,7 @@ function OrdersPage() {
                           {order.total_amount != null ? formatUSD(order.total_amount) : "—"}
                         </TableCell>
                         <TableCell className="py-3 text-xs text-muted-foreground">
-                          {order.payment_method
-                            ? order.payment_method.replaceAll("_", " ")
-                            : "—"}
+                          {order.payment_method ? order.payment_method.replaceAll("_", " ") : "—"}
                         </TableCell>
                         <TableCell className="py-3">
                           {order.tracking_number ? (
@@ -732,7 +794,7 @@ function OrdersPage() {
               <p className="tnum text-xs text-muted-foreground">
                 {walletCovers
                   ? `Pay ${formatUSD(selectedTotal)} from your wallet. Balance after: ${formatUSD(balance - selectedTotal)}.`
-                  : `Your balance does not cover this selection (${formatUSD(selectedTotal)} needed, ${formatUSD(balance)} available). Top up the difference to continue.`}
+                  : `Your balance does not cover this selection (${formatUSD(selectedTotal)} needed, ${formatUSD(balance)} available). ${savedCard ? `We can charge ${cardLabel(savedCard)} for the ${formatUSD(shortfall)} difference.` : "Add a card to enable one-click payments, or top up first."}`}
               </p>
             </div>
             <Button
@@ -743,9 +805,16 @@ function OrdersPage() {
             >
               Clear
             </Button>
-            {!walletCovers && (
+            {!walletCovers && !savedCard && (
               <Button asChild variant="outline" size="sm">
-                <Link to="/billing/subscription">Top up</Link>
+                <Link to="/billing/wallet">Top up</Link>
+              </Button>
+            )}
+            {!walletCovers && savedCard && (
+              <Button size="sm" disabled={busy !== null} onClick={() => setCoverOpen(true)}>
+                {busy === "cover"
+                  ? "Paying…"
+                  : `Pay ${formatUSD(selectedTotal)} — cover the difference`}
               </Button>
             )}
             <Button
@@ -766,13 +835,36 @@ function OrdersPage() {
               onClick={() => void payByCard(selectedRows.map((o) => o.id))}
               disabled={busy !== null}
             >
-              {busy === "card"
-                ? "Redirecting…"
-                : `Pay by card: ${formatUSD(selectedTotal)}`}
+              {busy === "card" ? "Redirecting…" : `Pay by card: ${formatUSD(selectedTotal)}`}
             </Button>
           </div>
         </div>
       )}
+      <AlertDialog open={coverOpen} onOpenChange={setCoverOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Pay {formatUSD(selectedTotal)}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {formatUSD(walletPart)} from your wallet
+              {savedCard ? ` + ${formatUSD(shortfall)} charged to ${cardLabel(savedCard)}` : ""}.
+              The card tops up your wallet, and the wallet pays the orders. You get a receipt for
+              both.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={busy !== null}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={busy !== null}
+              onClick={(e) => {
+                e.preventDefault();
+                void coverAndPay();
+              }}
+            >
+              {busy === "cover" ? "Paying…" : `Confirm and pay ${formatUSD(selectedTotal)}`}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
