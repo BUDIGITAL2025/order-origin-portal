@@ -61,15 +61,15 @@ interface NavItem {
 const CLIENT_NAV: NavItem[] = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/workspaces", label: "Workspaces", icon: Store },
-  { to: "/quotes/new", label: "Request a quote", icon: FilePlus2 },
-  { to: "/quotes", label: "Quote requests", icon: ClipboardList },
+  { to: "/sourcing/new", label: "Request a quote", icon: FilePlus2 },
+  { to: "/sourcing/quotes", label: "Quote requests", icon: ClipboardList },
   { to: "/products", label: "Products", icon: Package },
-  { to: "/orders", label: "Orders", icon: ShoppingCart },
-  { to: "/inventory", label: "Inventory", icon: Truck },
-  { to: "/disputes", label: "Claims", icon: ShieldAlert },
-  { to: "/wallet", label: "Wallet", icon: Wallet },
-  { to: "/billing", label: "Billing", icon: CreditCard },
-  { to: "/documents", label: "Receipts", icon: FileText },
+  { to: "/fulfilment/orders", label: "Orders", icon: ShoppingCart },
+  { to: "/fulfilment/inventory", label: "Inventory", icon: Truck },
+  { to: "/fulfilment/claims", label: "Claims", icon: ShieldAlert },
+  { to: "/billing/wallet", label: "Wallet", icon: Wallet },
+  { to: "/billing/subscription", label: "Billing", icon: CreditCard },
+  { to: "/billing/receipts", label: "Receipts", icon: FileText },
   { to: "/spymarket", label: "SpyMarket", icon: Telescope, badge: "New" },
 ];
 
@@ -97,7 +97,7 @@ function PastDueBanner() {
   return (
     <div className="w-full border-b border-destructive/30 bg-destructive/10 px-4 py-2 text-center text-sm text-destructive">
       Your last subscription payment failed and we retry it automatically.{" "}
-      <Link to="/billing" className="font-medium underline">
+      <Link to="/billing/subscription" className="font-medium underline">
         Update your card
       </Link>{" "}
       to keep your plan.
@@ -299,7 +299,7 @@ function WalletChip() {
 
   return (
     <Link
-      to={low ? "/billing" : "/wallet"}
+      to={low ? "/billing/subscription" : "/billing/wallet"}
       title={low ? "Balance is low — top up to keep orders moving" : "Wallet balance"}
       className={cn(
         "flex h-9 items-center gap-2 rounded-full border px-3.5 text-xs transition-colors",
@@ -372,12 +372,12 @@ export function AppShell({
   const pathname = useRouterState({ select: (r) => r.location.pathname });
   const nav = role === "admin" ? ADMIN_NAV : CLIENT_NAV;
 
-  // Manual active matching so "/quotes/new" doesn't light up "My quotes".
+  // Manual active matching so "/sourcing/new" doesn't light up "My quotes".
   const isActive = (to: string) => {
     if (to === "/dashboard" || to === "/admin/quotes") return pathname === to;
-    if (to === "/quotes/new") return pathname === "/quotes/new";
-    if (to === "/quotes")
-      return pathname === "/quotes" || (pathname.startsWith("/quotes/") && pathname !== "/quotes/new");
+    if (to === "/sourcing/new") return pathname === "/sourcing/new";
+    if (to === "/sourcing/quotes")
+      return pathname === "/sourcing/quotes" || (pathname.startsWith("/quotes/") && pathname !== "/sourcing/new");
     return pathname === to || pathname.startsWith(to + "/");
   };
 

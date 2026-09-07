@@ -137,7 +137,7 @@ function DashboardPage() {
         description="Your sourcing activity at a glance."
         actions={
           <Button asChild size="sm">
-            <Link to="/quotes/new">Request a quote</Link>
+            <Link to="/sourcing/new">Request a quote</Link>
           </Button>
         }
       />
@@ -160,7 +160,7 @@ function DashboardPage() {
               <div className="mt-3 flex items-center justify-between gap-2">
                 <p className="text-xs text-muted-foreground">Prepaid funds in USD, used to pay for orders</p>
                 <Button asChild size="sm" className="gap-1">
-                  <Link to="/billing">
+                  <Link to="/billing/subscription">
                     <Plus className="h-3.5 w-3.5" /> Top up
                   </Link>
                 </Button>
@@ -258,7 +258,7 @@ function DashboardPage() {
             <p className="mt-3 text-xs font-medium text-warning">
               Monthly allowance reached. Upgrade to Unlimited (${PLANS.unlimited.priceUsd}/month)
               for unlimited quote requests from the{" "}
-              <Link to="/quotes/new" className="underline">
+              <Link to="/sourcing/new" className="underline">
                 quote form
               </Link>
               .
@@ -285,7 +285,7 @@ function DashboardPage() {
             </div>
             <div className="flex items-center gap-2">
               <Button asChild size="sm">
-                <Link to="/billing">Set up auto top-up</Link>
+                <Link to="/billing/subscription">Set up auto top-up</Link>
               </Button>
               <Button
                 variant="ghost"
@@ -311,7 +311,7 @@ function DashboardPage() {
           <CardHeader className="flex-row items-center justify-between pb-3">
             <CardTitle className="text-sm font-semibold">Recent quote requests</CardTitle>
             <Button asChild variant="ghost" size="sm" className="gap-1 text-xs">
-              <Link to="/quotes">
+              <Link to="/sourcing/quotes">
                 View all <ArrowRight className="h-3 w-3" />
               </Link>
             </Button>
@@ -323,7 +323,7 @@ function DashboardPage() {
                   icon={ClipboardList}
                   title="No quote requests yet"
                   hint="Paste a product link and get a firm price per variant and country within 48 hours."
-                  action={{ label: "Request a quote", to: "/quotes/new" }}
+                  action={{ label: "Request a quote", to: "/sourcing/new" }}
                 />
               </div>
             ) : (
@@ -365,7 +365,7 @@ function DashboardPage() {
           <CardHeader className="flex-row items-center justify-between pb-3">
             <CardTitle className="text-sm font-semibold">Recent wallet activity</CardTitle>
             <Button asChild variant="ghost" size="sm" className="gap-1 text-xs">
-              <Link to="/wallet">
+              <Link to="/billing/wallet">
                 View all <ArrowRight className="h-3 w-3" />
               </Link>
             </Button>
@@ -377,7 +377,7 @@ function DashboardPage() {
                   icon={Wallet}
                   title="No transactions yet"
                   hint="Top up your wallet to pay for orders. Every credit and debit appears here."
-                  action={{ label: "Top up wallet", to: "/billing" }}
+                  action={{ label: "Top up wallet", to: "/billing/subscription" }}
                 />
               </div>
             ) : (
@@ -440,7 +440,7 @@ function OnboardingCard({
       title: "Add company details",
       description: "Legal name, country and VAT. These appear on your receipts.",
       done: Boolean(entity?.vat_number),
-      to: "/billing",
+      to: "/billing/subscription",
       cta: "Complete details",
     },
     {
@@ -456,7 +456,7 @@ function OnboardingCard({
         ? "Quote request sent. Our sourcing team is on it."
         : "Paste a product link and we source it for you.",
       done: hasQuote,
-      to: "/quotes/new",
+      to: "/sourcing/new",
       cta: "Request a quote",
     },
   ] as const;

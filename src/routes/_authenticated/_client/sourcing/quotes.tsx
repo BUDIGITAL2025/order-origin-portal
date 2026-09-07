@@ -41,7 +41,7 @@ function MyQuotesPageInner() {
         description="Every quote request you have sent, with its status and validity."
         actions={
           <Button asChild size="sm">
-            <Link to="/quotes/new">Request a quote</Link>
+            <Link to="/sourcing/new">Request a quote</Link>
           </Button>
         }
       />
@@ -52,7 +52,7 @@ function MyQuotesPageInner() {
         <EmptyState
           title="No quote requests yet"
           hint="Paste a product link and get a firm price per variant and country within 48 hours."
-          action={{ label: "Request a quote", to: "/quotes/new" }}
+          action={{ label: "Request a quote", to: "/sourcing/new" }}
         />
       ) : (
         <div className="rounded-lg border border-border bg-card">

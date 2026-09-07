@@ -57,7 +57,7 @@ function DisputesPage() {
         <EmptyState
           title="No claims"
           hint="If an order arrives damaged, wrong, or never arrives, open a claim here and we resolve it with a wallet credit or reshipment."
-          action={{ label: "View orders", to: "/orders" }}
+          action={{ label: "View orders", to: "/fulfilment/orders" }}
         />
       ) : (
         <div className="rounded-2xl border border-border bg-card">

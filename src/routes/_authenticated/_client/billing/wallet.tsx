@@ -68,7 +68,7 @@ function WalletPage() {
         <EmptyState
           title="No transactions yet"
           hint="Your wallet ledger lives here. Every top-up, order payment and credit appears in this list."
-          action={{ label: "Top up", to: "/billing" }}
+          action={{ label: "Top up", to: "/billing/subscription" }}
         />
       ) : (
         <div className="rounded-lg border border-border bg-card">

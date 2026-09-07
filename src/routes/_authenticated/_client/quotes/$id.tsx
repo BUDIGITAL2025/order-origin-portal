@@ -161,7 +161,7 @@ function MyQuoteDetailPage() {
         description={`Submitted ${formatDate(quote.created_at)}${quote.quote_valid_until ? ` · valid until ${formatDate(quote.quote_valid_until)}` : ""}`}
         actions={
           <Button asChild variant="ghost" size="sm" className="gap-1">
-            <Link to="/quotes">
+            <Link to="/sourcing/quotes">
               <ArrowLeft className="h-3.5 w-3.5" /> My quotes
             </Link>
           </Button>

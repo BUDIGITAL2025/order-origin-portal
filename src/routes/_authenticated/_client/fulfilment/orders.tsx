@@ -742,7 +742,7 @@ function OrdersPage() {
             </Button>
             {!walletCovers && (
               <Button asChild variant="outline" size="sm">
-                <Link to="/billing">Top up</Link>
+                <Link to="/billing/subscription">Top up</Link>
               </Button>
             )}
             <Button

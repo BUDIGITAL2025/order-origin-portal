@@ -12,7 +12,7 @@ import { InventoryItemDialog } from "@/components/inventory-item-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { getWorkspaceInventory, syncWorkspaceInventory } from "@/lib/inventory.functions";
-import { useMyContext } from "../_client";
+import { useMyContext } from "../../_client";
 import { friendlyError } from "@/lib/errors";
 
 
@@ -90,7 +90,7 @@ function InventoryPage() {
 
   const planReorder = (row: InventoryRow) =>
     void navigate({
-      to: "/quotes/new",
+      to: "/sourcing/new",
       search: { sku: row.sku, name: row.product_name, qty: row.suggested_qty },
     });
 

@@ -297,7 +297,7 @@ function ImportOrdersPage() {
       );
       await queryClient.invalidateQueries({ queryKey: ["my-orders"] });
       await queryClient.invalidateQueries({ queryKey: ["my-wallet"] });
-      await navigate({ to: "/orders" });
+      await navigate({ to: "/fulfilment/orders" });
     } catch (err) {
       // All-or-nothing: the DB rolled the whole import back.
       toast.error(friendlyError(err, "The import did not run. No orders were created and your wallet was not debited."));
@@ -309,7 +309,7 @@ function ImportOrdersPage() {
   return (
     <div className="max-w-4xl">
       <Link
-        to="/orders"
+        to="/fulfilment/orders"
         className="mb-2 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
       >
         <ArrowLeft className="h-3.5 w-3.5" /> All orders

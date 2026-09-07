@@ -44,7 +44,7 @@ import { getMyWallet } from "@/lib/wallet.functions";
 import { updateMyEntity } from "@/lib/profiles.functions";
 import { entityDetailsSchema } from "@/lib/schemas";
 import { getCurrentStoreId } from "@/components/store-switcher";
-import { useMyContext } from "../_client";
+import { useMyContext } from "../../_client";
 
 type StripeEnv = "sandbox" | "live";
 
@@ -160,7 +160,7 @@ function BillingPage() {
       toast.success("Top-up received. Your balance updates as soon as the payment confirms.");
     }
     if (sub || topup) {
-      void navigate({ to: "/billing", replace: true, search: {} });
+      void navigate({ to: "/billing/subscription", replace: true, search: {} });
     }
   }, [sub, topup, navigate]);
 

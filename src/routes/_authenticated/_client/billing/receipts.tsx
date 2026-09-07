@@ -189,7 +189,7 @@ function DocumentsPage() {
               {formatUSD(wallet?.balance ?? 0)}
             </p>
             <Button asChild size="sm">
-              <Link to="/wallet">Top up</Link>
+              <Link to="/billing/wallet">Top up</Link>
             </Button>
           </div>
           <p className="mt-2 text-xs text-muted-foreground">
@@ -205,7 +205,7 @@ function DocumentsPage() {
           title="No receipts yet"
           hint="Your payment records live here. Every top-up and order payment generates a receipt you can download."
           icon={Receipt}
-          action={{ label: "Top up", to: "/billing" }}
+          action={{ label: "Top up", to: "/billing/subscription" }}
         />
       ) : (
         <>

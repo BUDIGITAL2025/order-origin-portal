@@ -136,7 +136,7 @@ function NewQuotePageInner() {
         3000,
       );
       const stop = setTimeout(() => clearInterval(poll), 30000);
-      void navigate({ to: "/quotes/new", replace: true, search: {} });
+      void navigate({ to: "/sourcing/new", replace: true, search: {} });
       return () => {
         clearInterval(poll);
         clearTimeout(stop);
@@ -144,7 +144,7 @@ function NewQuotePageInner() {
     }
     if (sub === "cancel") {
       toast.info("Checkout cancelled. Nothing was charged.");
-      void navigate({ to: "/quotes/new", replace: true, search: {} });
+      void navigate({ to: "/sourcing/new", replace: true, search: {} });
     }
     return undefined;
   }, [sub, navigate, queryClient]);
@@ -363,7 +363,7 @@ function NewQuotePageInner() {
       if (createdIds.length === 1 && createdIds[0]) {
         await navigate({ to: "/quotes/$id", params: { id: createdIds[0] } });
       } else {
-        await navigate({ to: "/quotes" });
+        await navigate({ to: "/sourcing/quotes" });
       }
     },
     onError: (err) => {
@@ -416,7 +416,7 @@ function NewQuotePageInner() {
             </p>
             <div className="flex gap-2">
               <Button asChild size="sm">
-                <Link to="/billing">Upgrade to {PLANS.unlimited.label}</Link>
+                <Link to="/billing/subscription">Upgrade to {PLANS.unlimited.label}</Link>
               </Button>
               <Button asChild size="sm" variant="outline">
                 <Link to="/dashboard">Back to dashboard</Link>
