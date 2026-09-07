@@ -108,7 +108,14 @@ export interface ReceiptData {
   paymentDate: Date;
   paymentMethod: string;
   referenceLines: Array<[string, string]>;
-  client: { company: string; contact: string; country: string; vat: string };
+  client: {
+    company: string;
+    contact: string;
+    country: string;
+    vat: string;
+    taxId?: string;
+    addressLines?: string[];
+  };
   lines: ReceiptLine[];
   total: number;
 }
@@ -222,6 +229,14 @@ export async function renderReceiptPdf(data: ReceiptData): Promise<Uint8Array> {
   by -= 12;
   drawRight(page, fit(data.client.country, regular, 9, 220), RIGHT, by, regular, 9, MUTED);
   by -= 12;
+  for (const addressLine of data.client.addressLines ?? []) {
+    drawRight(page, fit(addressLine, regular, 9, 220), RIGHT, by, regular, 9, MUTED);
+    by -= 12;
+  }
+  if (data.client.taxId) {
+    drawRight(page, `Tax ID: ${data.client.taxId}`, RIGHT, by, regular, 9, MUTED);
+    by -= 12;
+  }
   if (data.client.vat) {
     drawRight(page, `VAT: ${data.client.vat}`, RIGHT, by, regular, 9, MUTED);
     by -= 12;
@@ -280,13 +295,34 @@ interface ClientBlock {
   contact: string;
   country: string;
   vat: string;
+  taxId: string;
+  addressLines: string[];
+}
+
+/** Registered address, one line per filled field. Empty when unknown. */
+function addressLinesOf(e: {
+  address_line1?: string | null;
+  address_line2?: string | null;
+  postal_code?: string | null;
+  city?: string | null;
+  address?: string | null;
+}): string[] {
+  const cityLine = [e.postal_code, e.city].filter(Boolean).join(" ").trim();
+  const lines = [e.address_line1, e.address_line2, cityLine]
+    .map((v) => (v ?? "").trim())
+    .filter(Boolean);
+  // Legacy free-text address is the fallback when structured fields are empty.
+  if (lines.length === 0 && e.address) return [e.address.trim()];
+  return lines;
 }
 
 /** "Bill to" block now reads the entity's legal identity, with the account's contact name. */
 async function getEntityBlock(admin: Admin, entityId: string): Promise<ClientBlock> {
   const { data, error } = await admin
     .from("entities")
-    .select("legal_name, country, vat_number, account_id, profiles(contact_name)")
+    .select(
+      "legal_name, country, vat_number, tax_id, address, address_line1, address_line2, postal_code, city, account_id, profiles(contact_name)",
+    )
     .eq("id", entityId)
     .single();
   if (error || !data) throw new Error(error?.message ?? "Entity not found");
@@ -295,6 +331,8 @@ async function getEntityBlock(admin: Admin, entityId: string): Promise<ClientBlo
     contact: data.profiles?.contact_name ?? "",
     country: data.country ?? "",
     vat: data.vat_number ?? "",
+    taxId: data.tax_id ?? "",
+    addressLines: addressLinesOf(data),
   };
 }
 
@@ -522,7 +560,7 @@ export async function issueSubscriptionReceipt(
 
   const { data: entity } = await admin
     .from("entities")
-    .select("id, legal_name, country, vat_number, profiles(contact_name)")
+    .select("id")
     .eq("stripe_customer_id", customerId)
     .maybeSingle();
   if (!entity) {
@@ -572,12 +610,7 @@ export async function issueSubscriptionReceipt(
       paymentDate: new Date(paidUnix * 1000),
       paymentMethod: "Card (Stripe)",
       referenceLines,
-      client: {
-        company: entity.legal_name,
-        contact: entity.profiles?.contact_name ?? "",
-        country: entity.country ?? "",
-        vat: entity.vat_number ?? "",
-      },
+      client: await getEntityBlock(admin, entity.id),
       lines: [
         {
           description: `FlySales ${planLabel(plan)} subscription`,
