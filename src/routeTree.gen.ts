@@ -54,6 +54,7 @@ import { Route as AuthenticatedClientOrdersNewRouteImport } from './routes/_auth
 import { Route as AuthenticatedClientQuotesIndexRouteImport } from './routes/_authenticated/_client/quotes/index'
 import { Route as AuthenticatedClientQuotesIdRouteImport } from './routes/_authenticated/_client/quotes/$id'
 import { Route as AuthenticatedClientQuotesNewRouteImport } from './routes/_authenticated/_client/quotes/new'
+import { Route as AuthenticatedClientSourcingIndexRouteImport } from './routes/_authenticated/_client/sourcing/index'
 import { Route as AuthenticatedClientSourcingNewRouteImport } from './routes/_authenticated/_client/sourcing/new'
 import { Route as AuthenticatedClientSourcingQuotesRouteImport } from './routes/_authenticated/_client/sourcing/quotes'
 import { Route as AuthenticatedClientWorkspacesNewRouteImport } from './routes/_authenticated/_client/workspaces/new'
@@ -329,6 +330,12 @@ const AuthenticatedClientQuotesNewRoute =
     path: '/quotes/new',
     getParentRoute: () => AuthenticatedClientRoute,
   } as any)
+const AuthenticatedClientSourcingIndexRoute =
+  AuthenticatedClientSourcingIndexRouteImport.update({
+    id: '/sourcing/',
+    path: '/sourcing/',
+    getParentRoute: () => AuthenticatedClientRoute,
+  } as any)
 const AuthenticatedClientSourcingNewRoute =
   AuthenticatedClientSourcingNewRouteImport.update({
     id: '/sourcing/new',
@@ -476,6 +483,7 @@ export interface FileRoutesByFullPath {
   '/fulfilment/': typeof AuthenticatedClientFulfilmentIndexRoute
   '/orders/': typeof AuthenticatedClientOrdersIndexRoute
   '/quotes/': typeof AuthenticatedClientQuotesIndexRoute
+  '/sourcing/': typeof AuthenticatedClientSourcingIndexRoute
   '/admin/quotes/': typeof AuthenticatedAdminQuotesIndexRoute
   '/api/public/middleware/simulator/$': typeof ApiPublicMiddlewareSimulatorSplatRoute
 }
@@ -536,6 +544,7 @@ export interface FileRoutesByTo {
   '/fulfilment': typeof AuthenticatedClientFulfilmentIndexRoute
   '/orders': typeof AuthenticatedClientOrdersIndexRoute
   '/quotes': typeof AuthenticatedClientQuotesIndexRoute
+  '/sourcing': typeof AuthenticatedClientSourcingIndexRoute
   '/admin/quotes': typeof AuthenticatedAdminQuotesIndexRoute
   '/api/public/middleware/simulator/$': typeof ApiPublicMiddlewareSimulatorSplatRoute
 }
@@ -599,6 +608,7 @@ export interface FileRoutesById {
   '/_authenticated/_client/fulfilment/': typeof AuthenticatedClientFulfilmentIndexRoute
   '/_authenticated/_client/orders/': typeof AuthenticatedClientOrdersIndexRoute
   '/_authenticated/_client/quotes/': typeof AuthenticatedClientQuotesIndexRoute
+  '/_authenticated/_client/sourcing/': typeof AuthenticatedClientSourcingIndexRoute
   '/_authenticated/admin/quotes/': typeof AuthenticatedAdminQuotesIndexRoute
   '/api/public/middleware/simulator/$': typeof ApiPublicMiddlewareSimulatorSplatRoute
 }
@@ -661,6 +671,7 @@ export interface FileRouteTypes {
     | '/fulfilment/'
     | '/orders/'
     | '/quotes/'
+    | '/sourcing/'
     | '/admin/quotes/'
     | '/api/public/middleware/simulator/$'
   fileRoutesByTo: FileRoutesByTo
@@ -721,6 +732,7 @@ export interface FileRouteTypes {
     | '/fulfilment'
     | '/orders'
     | '/quotes'
+    | '/sourcing'
     | '/admin/quotes'
     | '/api/public/middleware/simulator/$'
   id:
@@ -783,6 +795,7 @@ export interface FileRouteTypes {
     | '/_authenticated/_client/fulfilment/'
     | '/_authenticated/_client/orders/'
     | '/_authenticated/_client/quotes/'
+    | '/_authenticated/_client/sourcing/'
     | '/_authenticated/admin/quotes/'
     | '/api/public/middleware/simulator/$'
   fileRoutesById: FileRoutesById
@@ -1122,6 +1135,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedClientQuotesNewRouteImport
       parentRoute: typeof AuthenticatedClientRoute
     }
+    '/_authenticated/_client/sourcing/': {
+      id: '/_authenticated/_client/sourcing/'
+      path: '/sourcing'
+      fullPath: '/sourcing/'
+      preLoaderRoute: typeof AuthenticatedClientSourcingIndexRouteImport
+      parentRoute: typeof AuthenticatedClientRoute
+    }
     '/_authenticated/_client/sourcing/new': {
       id: '/_authenticated/_client/sourcing/new'
       path: '/sourcing/new'
@@ -1285,6 +1305,7 @@ interface AuthenticatedClientRouteChildren {
   AuthenticatedClientFulfilmentIndexRoute: typeof AuthenticatedClientFulfilmentIndexRoute
   AuthenticatedClientOrdersIndexRoute: typeof AuthenticatedClientOrdersIndexRoute
   AuthenticatedClientQuotesIndexRoute: typeof AuthenticatedClientQuotesIndexRoute
+  AuthenticatedClientSourcingIndexRoute: typeof AuthenticatedClientSourcingIndexRoute
 }
 
 const AuthenticatedClientRouteChildren: AuthenticatedClientRouteChildren = {
@@ -1322,6 +1343,7 @@ const AuthenticatedClientRouteChildren: AuthenticatedClientRouteChildren = {
     AuthenticatedClientFulfilmentIndexRoute,
   AuthenticatedClientOrdersIndexRoute: AuthenticatedClientOrdersIndexRoute,
   AuthenticatedClientQuotesIndexRoute: AuthenticatedClientQuotesIndexRoute,
+  AuthenticatedClientSourcingIndexRoute: AuthenticatedClientSourcingIndexRoute,
 }
 
 const AuthenticatedClientRouteWithChildren =
