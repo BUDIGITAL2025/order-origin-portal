@@ -330,6 +330,10 @@ export type Database = {
           auto_topup_enabled: boolean
           auto_topup_threshold: number | null
           cancel_notice_sent_at: string | null
+          card_brand: string | null
+          card_exp_month: number | null
+          card_exp_year: number | null
+          card_last4: string | null
           country: string | null
           created_at: string
           default_payment_method_id: string | null
@@ -347,6 +351,10 @@ export type Database = {
           auto_topup_enabled?: boolean
           auto_topup_threshold?: number | null
           cancel_notice_sent_at?: string | null
+          card_brand?: string | null
+          card_exp_month?: number | null
+          card_exp_year?: number | null
+          card_last4?: string | null
           country?: string | null
           created_at?: string
           default_payment_method_id?: string | null
@@ -364,6 +372,10 @@ export type Database = {
           auto_topup_enabled?: boolean
           auto_topup_threshold?: number | null
           cancel_notice_sent_at?: string | null
+          card_brand?: string | null
+          card_exp_month?: number | null
+          card_exp_year?: number | null
+          card_last4?: string | null
           country?: string | null
           created_at?: string
           default_payment_method_id?: string | null

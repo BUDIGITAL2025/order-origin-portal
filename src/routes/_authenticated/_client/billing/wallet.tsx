@@ -15,6 +15,9 @@ import {
 } from "@/components/ui/table";
 import { formatDateTime, formatUSD } from "@/lib/format";
 import { getMyWallet } from "@/lib/wallet.functions";
+import { WalletPaymentSection } from "@/components/WalletPaymentSection";
+import { getCurrentStoreId } from "@/components/store-switcher";
+import { useMyContext } from "../../_client";
 import { listMyDocuments } from "@/lib/documents.functions";
 import { DocumentDownloadButton } from "@/components/documents-ui";
 
@@ -30,6 +33,10 @@ export const Route = createFileRoute("/_authenticated/_client/billing/wallet")({
 });
 
 function WalletPage() {
+  const ctx = useMyContext().data;
+  const storeId = getCurrentStoreId() ?? ctx?.entities?.[0]?.stores?.[0]?.id ?? null;
+  const entityId = ctx?.entities?.[0]?.id ?? null;
+
   const fetchWallet = useServerFn(getMyWallet);
   const fetchDocuments = useServerFn(listMyDocuments);
   const { data, isPending } = useQuery({ queryKey: ["my-wallet"], queryFn: fetchWallet });
@@ -63,6 +70,11 @@ function WalletPage() {
           </p>
         </CardContent>
       </Card>
+
+      <WalletPaymentSection
+        {...(storeId ? { storeId } : {})}
+        {...(!storeId && entityId ? { entityId } : {})}
+      />
 
       {isPending ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
