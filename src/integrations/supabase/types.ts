@@ -326,6 +326,8 @@ export type Database = {
         Row: {
           account_id: string
           address: string | null
+          address_line1: string | null
+          address_line2: string | null
           auto_topup_amount: number | null
           auto_topup_enabled: boolean
           auto_topup_threshold: number | null
@@ -334,19 +336,24 @@ export type Database = {
           card_exp_month: number | null
           card_exp_year: number | null
           card_last4: string | null
+          city: string | null
           country: string | null
           created_at: string
           default_payment_method_id: string | null
           id: string
           legal_name: string
           max_stores: number
+          postal_code: string | null
           status: Database["public"]["Enums"]["entity_status"]
           stripe_customer_id: string | null
+          tax_id: string | null
           vat_number: string | null
         }
         Insert: {
           account_id: string
           address?: string | null
+          address_line1?: string | null
+          address_line2?: string | null
           auto_topup_amount?: number | null
           auto_topup_enabled?: boolean
           auto_topup_threshold?: number | null
@@ -355,19 +362,24 @@ export type Database = {
           card_exp_month?: number | null
           card_exp_year?: number | null
           card_last4?: string | null
+          city?: string | null
           country?: string | null
           created_at?: string
           default_payment_method_id?: string | null
           id?: string
           legal_name: string
           max_stores?: number
+          postal_code?: string | null
           status?: Database["public"]["Enums"]["entity_status"]
           stripe_customer_id?: string | null
+          tax_id?: string | null
           vat_number?: string | null
         }
         Update: {
           account_id?: string
           address?: string | null
+          address_line1?: string | null
+          address_line2?: string | null
           auto_topup_amount?: number | null
           auto_topup_enabled?: boolean
           auto_topup_threshold?: number | null
@@ -376,14 +388,17 @@ export type Database = {
           card_exp_month?: number | null
           card_exp_year?: number | null
           card_last4?: string | null
+          city?: string | null
           country?: string | null
           created_at?: string
           default_payment_method_id?: string | null
           id?: string
           legal_name?: string
           max_stores?: number
+          postal_code?: string | null
           status?: Database["public"]["Enums"]["entity_status"]
           stripe_customer_id?: string | null
+          tax_id?: string | null
           vat_number?: string | null
         }
         Relationships: [
