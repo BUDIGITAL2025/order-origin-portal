@@ -31,7 +31,7 @@ import { planLabel } from "./plans";
 type Admin = SupabaseClient<Database>;
 
 export const DOCUMENTS_BUCKET = "documents";
-export type DocumentType = "order_receipt" | "wallet_topup" | "subscription";
+export type DocumentType = "order_receipt" | "wallet_topup" | "subscription" | "inbound_fee";
 
 // ---------- Supplier (issuing entity) — environment-driven ----------
 
@@ -675,4 +675,55 @@ export async function backfillMissingReceipts(admin: Admin): Promise<{
     }
   }
   return { walletResults, orderResults };
+}
+
+/**
+ * Inbound service fee charged on counted pieces → inbound_fee receipt.
+ * Keyed on the wallet reference (`inbound:<shipment id>`), so a replayed
+ * confirmation hits the unique index and returns "exists".
+ */
+export async function issueInboundReceiptDocument(
+  admin: Admin,
+  args: {
+    entityId: string;
+    storeId: string | null;
+    reference: string;
+    pieces: number;
+    qc: boolean;
+    amount: number;
+    paidAt: Date;
+  },
+): Promise<"issued" | "exists"> {
+  const client = await getEntityBlock(admin, args.entityId);
+  const number = await nextDocumentNumber(admin);
+  const unit = args.qc ? 0.7 : 0.5;
+
+  return storeReceipt(admin, {
+    entityId: args.entityId,
+    storeId: args.storeId,
+    documentType: "inbound_fee",
+    paymentReference: args.reference,
+    amount: args.amount,
+    receipt: {
+      documentNumber: number,
+      documentKind: "Inbound service fee",
+      issuedAt: new Date(),
+      paymentDate: args.paidAt,
+      paymentMethod: "Wallet balance",
+      referenceLines: [["Shipment", args.reference.replace("inbound:", "")]],
+      client,
+      lines: [
+        {
+          description: args.qc
+            ? "Inbound handling with quality control"
+            : "Inbound handling",
+          detail: "Unloading, counting, packaging materials, storage and packing",
+          quantity: args.pieces,
+          unitPrice: unit,
+          total: args.amount,
+        },
+      ],
+      total: args.amount,
+    },
+  });
 }

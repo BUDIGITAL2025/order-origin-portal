@@ -275,7 +275,7 @@ export const notificationIdsSchema = z.object({
 
 // ============= Payment receipts (documents) =============
 
-export const documentTypeSchema = z.enum(["order_receipt", "wallet_topup", "subscription"]);
+export const documentTypeSchema = z.enum(["order_receipt", "wallet_topup", "subscription", "inbound_fee"]);
 
 export const documentIdSchema = z.object({
   id: z.string().uuid(),
@@ -381,4 +381,66 @@ export const orderTrackingSchema = z.object({
   order_id: z.string().uuid(),
   tracking_number: z.string().trim().min(3, "Tracking number is required").max(120),
   tracking_carrier: z.string().trim().min(2, "Carrier is required").max(120),
+});
+
+// ============= Inbound shipments (stock-in) =============
+
+export const createClientProductSchema = z.object({
+  storeId: z.string().uuid(),
+  name: z.string().trim().min(2, "Product name is required").max(200),
+  variants: z
+    .array(z.object({ label: z.string().trim().min(1, "Every variation needs a name").max(120) }))
+    .min(1, "Add at least one variation")
+    .max(50),
+  image_urls: z.array(z.string().max(500)).max(10).optional(),
+});
+
+export const declareInboundSchema = z.object({
+  storeId: z.string().uuid(),
+  qc: z.boolean(),
+  lines: z
+    .array(
+      z.object({
+        product_id: z.string().uuid(),
+        quantity: z
+          .number()
+          .int()
+          .min(10, "Minimum 10 units per variation")
+          .max(1_000_000),
+      }),
+    )
+    .min(1, "Add at least one variation")
+    .max(100),
+});
+
+export const inboundIdSchema = z.object({
+  shipment_id: z.string().uuid(),
+});
+
+export const inboundTrackingSchema = inboundIdSchema.extend({
+  tracking_number: z.string().trim().min(3, "Tracking number is required").max(120),
+  tracking_carrier: z.string().trim().min(2, "Carrier is required").max(120),
+});
+
+export const confirmInboundSchema = inboundIdSchema.extend({
+  counts: z
+    .array(
+      z.object({
+        line_id: z.string().uuid(),
+        counted_qty: z.number().int().min(0).max(1_000_000),
+      }),
+    )
+    .min(1)
+    .max(100),
+});
+
+export const refuseInboundSchema = inboundIdSchema.extend({
+  reason: z.string().trim().min(5, "Give the client a reason").max(500),
+});
+
+export const stockInPriceSchema = z.object({
+  product_id: z.string().uuid(),
+  country_code: countryCodeSchema,
+  fulfilment_fee: z.number().min(0).max(10_000),
+  shipping_price: z.number().min(0).max(10_000),
 });

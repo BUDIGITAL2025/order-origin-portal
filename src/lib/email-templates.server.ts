@@ -338,3 +338,93 @@ export function inventoryReorderEmail(args: {
     note: "Days of cover use your recent sales velocity. Lead times combine production, transit and your safety margin.",
   });
 }
+
+/** Inbound shipment received and counted at the fulfilment centre. */
+export function inboundReceivedEmail(args: {
+  shipmentRef: string;
+  countedPieces: number;
+  declaredPieces: number;
+  qc: boolean;
+  fee: number;
+  discrepancies: Array<{ sku: string; declared: number; counted: number }>;
+}): BuiltEmail {
+  const hasGap = args.discrepancies.length > 0;
+  const rows = [
+    { label: "Shipment", value: args.shipmentRef },
+    { label: "Declared", value: `${args.declaredPieces} pieces` },
+    { label: "Counted", value: `${args.countedPieces} pieces`, strong: true },
+    { label: "Quality control", value: args.qc ? "Yes (+$0.20/piece)" : "No" },
+    { label: "Service fee charged", value: usd(args.fee), strong: true },
+  ];
+  const paragraphs = [
+    `We received and counted your shipment ${args.shipmentRef}. The stock is now available in your inventory.`,
+    `The service fee is charged on counted pieces and has been taken from your wallet balance.`,
+  ];
+  if (hasGap) {
+    paragraphs.push(
+      `We counted a different quantity than declared on ${args.discrepancies.length} line(s): ` +
+        args.discrepancies
+          .map((d) => `${d.sku} declared ${d.declared}, counted ${d.counted}`)
+          .join("; ") +
+        ".",
+    );
+  }
+  return build(`Shipment ${args.shipmentRef} received`, {
+    heading: hasGap ? "Shipment received, with a count difference" : "Shipment received",
+    preheader: `${args.countedPieces} pieces counted, ${usd(args.fee)} charged.`,
+    paragraphs,
+    panel: { title: "Receipt summary", rows },
+    button: { label: "View the shipment", url: portalUrl("/fulfilment/inbound") },
+    note: "Fees are always charged on the quantities we count, never on the declared quantities.",
+  });
+}
+
+/** Inbound shipment refused at the warehouse (no tracking, no labels). */
+export function inboundRefusedEmail(args: {
+  shipmentRef: string;
+  reason: string;
+}): BuiltEmail {
+  return build(`Shipment ${args.shipmentRef} was refused`, {
+    heading: "Your shipment was refused at the warehouse",
+    preheader: args.reason,
+    paragraphs: [
+      `Shipment ${args.shipmentRef} could not be accepted at our fulfilment centre.`,
+      args.reason,
+      "Nothing was charged. Fix the issue with your supplier and declare the shipment again.",
+    ],
+    panel: {
+      title: "What we need",
+      rows: [
+        { label: "Labels", value: "Our SKU labels on every carton" },
+        { label: "Tracking", value: "Supplier tracking added before arrival" },
+        { label: "Minimum", value: "10 units per variation" },
+      ],
+    },
+    button: { label: "Declare again", url: portalUrl("/fulfilment/inbound") },
+  });
+}
+
+/** Balance too low to charge the inbound service fee. */
+export function inboundPaymentNeededEmail(args: {
+  shipmentRef: string;
+  fee: number;
+  balance: number;
+}): BuiltEmail {
+  return build(`Top up to release shipment ${args.shipmentRef}`, {
+    heading: "Your shipment is counted and waiting for payment",
+    preheader: `${usd(args.fee)} service fee, ${usd(args.balance)} available.`,
+    paragraphs: [
+      `We counted shipment ${args.shipmentRef} at the warehouse, but your wallet balance does not cover the service fee.`,
+      "Top up and we charge the fee and release the stock into your inventory.",
+    ],
+    panel: {
+      title: "Amount needed",
+      rows: [
+        { label: "Service fee", value: usd(args.fee), strong: true },
+        { label: "Wallet balance", value: usd(args.balance) },
+        { label: "To top up", value: usd(Math.max(args.fee - args.balance, 0)) },
+      ],
+    },
+    button: { label: "Top up your wallet", url: portalUrl("/billing/wallet") },
+  });
+}
