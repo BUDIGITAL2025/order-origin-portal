@@ -30,6 +30,7 @@ import { Route as AuthenticatedAdminClientsRouteImport } from './routes/_authent
 import { Route as AuthenticatedAdminDisputesRouteImport } from './routes/_authenticated/admin/disputes'
 import { Route as AuthenticatedAdminDocumentsRouteImport } from './routes/_authenticated/admin/documents'
 import { Route as AuthenticatedAdminEntitiesRouteImport } from './routes/_authenticated/admin/entities'
+import { Route as AuthenticatedAdminInboundRouteImport } from './routes/_authenticated/admin/inbound'
 import { Route as AuthenticatedAdminIntegrationRouteImport } from './routes/_authenticated/admin/integration'
 import { Route as AuthenticatedAdminInventoryRouteImport } from './routes/_authenticated/admin/inventory'
 import { Route as AuthenticatedAdminOrdersRouteImport } from './routes/_authenticated/admin/orders'
@@ -185,6 +186,12 @@ const AuthenticatedAdminEntitiesRoute =
   AuthenticatedAdminEntitiesRouteImport.update({
     id: '/entities',
     path: '/entities',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminInboundRoute =
+  AuthenticatedAdminInboundRouteImport.update({
+    id: '/inbound',
+    path: '/inbound',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 const AuthenticatedAdminIntegrationRoute =
@@ -453,6 +460,7 @@ export interface FileRoutesByFullPath {
   '/admin/disputes': typeof AuthenticatedAdminDisputesRouteWithChildren
   '/admin/documents': typeof AuthenticatedAdminDocumentsRoute
   '/admin/entities': typeof AuthenticatedAdminEntitiesRoute
+  '/admin/inbound': typeof AuthenticatedAdminInboundRoute
   '/admin/integration': typeof AuthenticatedAdminIntegrationRoute
   '/admin/inventory': typeof AuthenticatedAdminInventoryRoute
   '/admin/orders': typeof AuthenticatedAdminOrdersRoute
@@ -515,6 +523,7 @@ export interface FileRoutesByTo {
   '/admin/disputes': typeof AuthenticatedAdminDisputesRouteWithChildren
   '/admin/documents': typeof AuthenticatedAdminDocumentsRoute
   '/admin/entities': typeof AuthenticatedAdminEntitiesRoute
+  '/admin/inbound': typeof AuthenticatedAdminInboundRoute
   '/admin/integration': typeof AuthenticatedAdminIntegrationRoute
   '/admin/inventory': typeof AuthenticatedAdminInventoryRoute
   '/admin/orders': typeof AuthenticatedAdminOrdersRoute
@@ -580,6 +589,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/disputes': typeof AuthenticatedAdminDisputesRouteWithChildren
   '/_authenticated/admin/documents': typeof AuthenticatedAdminDocumentsRoute
   '/_authenticated/admin/entities': typeof AuthenticatedAdminEntitiesRoute
+  '/_authenticated/admin/inbound': typeof AuthenticatedAdminInboundRoute
   '/_authenticated/admin/integration': typeof AuthenticatedAdminIntegrationRoute
   '/_authenticated/admin/inventory': typeof AuthenticatedAdminInventoryRoute
   '/_authenticated/admin/orders': typeof AuthenticatedAdminOrdersRoute
@@ -644,6 +654,7 @@ export interface FileRouteTypes {
     | '/admin/disputes'
     | '/admin/documents'
     | '/admin/entities'
+    | '/admin/inbound'
     | '/admin/integration'
     | '/admin/inventory'
     | '/admin/orders'
@@ -706,6 +717,7 @@ export interface FileRouteTypes {
     | '/admin/disputes'
     | '/admin/documents'
     | '/admin/entities'
+    | '/admin/inbound'
     | '/admin/integration'
     | '/admin/inventory'
     | '/admin/orders'
@@ -770,6 +782,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/disputes'
     | '/_authenticated/admin/documents'
     | '/_authenticated/admin/entities'
+    | '/_authenticated/admin/inbound'
     | '/_authenticated/admin/integration'
     | '/_authenticated/admin/inventory'
     | '/_authenticated/admin/orders'
@@ -978,6 +991,13 @@ declare module '@tanstack/react-router' {
       path: '/entities'
       fullPath: '/admin/entities'
       preLoaderRoute: typeof AuthenticatedAdminEntitiesRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/inbound': {
+      id: '/_authenticated/admin/inbound'
+      path: '/inbound'
+      fullPath: '/admin/inbound'
+      preLoaderRoute: typeof AuthenticatedAdminInboundRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/admin/integration': {
@@ -1391,6 +1411,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminDisputesRoute: typeof AuthenticatedAdminDisputesRouteWithChildren
   AuthenticatedAdminDocumentsRoute: typeof AuthenticatedAdminDocumentsRoute
   AuthenticatedAdminEntitiesRoute: typeof AuthenticatedAdminEntitiesRoute
+  AuthenticatedAdminInboundRoute: typeof AuthenticatedAdminInboundRoute
   AuthenticatedAdminIntegrationRoute: typeof AuthenticatedAdminIntegrationRoute
   AuthenticatedAdminInventoryRoute: typeof AuthenticatedAdminInventoryRoute
   AuthenticatedAdminOrdersRoute: typeof AuthenticatedAdminOrdersRoute
@@ -1408,6 +1429,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminDisputesRoute: AuthenticatedAdminDisputesRouteWithChildren,
   AuthenticatedAdminDocumentsRoute: AuthenticatedAdminDocumentsRoute,
   AuthenticatedAdminEntitiesRoute: AuthenticatedAdminEntitiesRoute,
+  AuthenticatedAdminInboundRoute: AuthenticatedAdminInboundRoute,
   AuthenticatedAdminIntegrationRoute: AuthenticatedAdminIntegrationRoute,
   AuthenticatedAdminInventoryRoute: AuthenticatedAdminInventoryRoute,
   AuthenticatedAdminOrdersRoute: AuthenticatedAdminOrdersRoute,

@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
 import { EmptyState, PageHeader } from "@/components/app-shell";
+import { SectionTabs, ADMIN_BILLING_TABS } from "@/components/section-tabs";
 import { TxnTypeBadge } from "@/components/status-badges";
 import { SummaryBar } from "@/components/admin-ui";
 import { Button } from "@/components/ui/button";
@@ -106,6 +107,7 @@ function AdminWalletPage() {
         title="Wallet adjustments"
         description="Manual credits and debits. Every entry is written to the append-only ledger."
       />
+      <SectionTabs tabs={ADMIN_BILLING_TABS} />
 
       <SummaryBar
         className="lg:grid-cols-4"

@@ -5,6 +5,7 @@ import { useState } from "react";
 import { AlertTriangle, RefreshCw, SlidersHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/app-shell";
+import { SectionTabs, ADMIN_FULFILMENT_TABS } from "@/components/section-tabs";
 import { AdminSearch, FilterTabs, PanelHeader, SummaryBar } from "@/components/admin-ui";
 import { InventoryTable, type InventoryRow } from "@/components/inventory-table";
 import { Button } from "@/components/ui/button";
@@ -126,6 +127,7 @@ function AdminInventoryPage() {
             onClick={() => sync.mutate()}
           >
             <RefreshCw className={sync.isPending ? "mr-2 h-3.5 w-3.5 animate-spin" : "mr-2 h-3.5 w-3.5"} />
+      <SectionTabs tabs={ADMIN_FULFILMENT_TABS} />
             Sync now
           </Button>
         }
