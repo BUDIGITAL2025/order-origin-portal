@@ -278,16 +278,21 @@ const LOW_BALANCE_USD = 50;
 function WalletChip() {
   const { data: ctx } = useMyContext();
   const fetchWallet = useServerFn(getMyWallet);
+
+  // localStorage is unreadable during SSR — render (and fetch) after
+  // hydration only, so the request always carries the session token.
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => setMounted(true), []);
+
   const { data: wallet } = useQuery({
     queryKey: ["my-wallet"],
     staleTime: 30_000,
     queryFn: fetchWallet,
+    enabled: mounted && (ctx?.entities?.length ?? 0) > 0,
   });
 
-  // localStorage is unreadable during SSR — render after hydration only.
-  const [mounted, setMounted] = React.useState(false);
-  React.useEffect(() => setMounted(true), []);
   if (!mounted) return null;
+
 
   const entities = ctx?.entities ?? [];
   const storeId = getCurrentStoreId();
