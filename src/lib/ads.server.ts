@@ -6,7 +6,7 @@
  * for the protocol and tool names: docs/pipeboard-ads-api-reference.md.
  *
  * Non-negotiables enforced here:
- *  - PIPEBOARD_TOKEN never leaves the server; the browser never sees a URL.
+ *  - PIPEBOARD_API_KEY never leaves the server; the browser never sees a URL.
  *  - READ-ONLY allowlist: any tool outside READ_TOOLS is refused at the gate,
  *    whatever the caller asks for.
  *  - The hard wall: a non-admin caller may only touch an ad account mapped to
@@ -382,8 +382,10 @@ async function mcpToolsCall(
   tool: string,
   args: Record<string, unknown>,
 ): Promise<{ payload: unknown; statusCode: number }> {
-  const token = process.env["PIPEBOARD_TOKEN"]?.trim();
-  if (!token) throw new AdsError("Ads provider is not configured (missing token)", null);
+  // One credential for both MCP servers, sent the way the provider documents:
+  // Authorization: Bearer <api key>.
+  const apiKey = (process.env["PIPEBOARD_API_KEY"] ?? process.env["PIPEBOARD_TOKEN"])?.trim();
+  if (!apiKey) throw new AdsError("Ads provider is not configured (missing API key)", null);
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
@@ -395,7 +397,7 @@ async function mcpToolsCall(
         "Content-Type": "application/json",
         Accept: "application/json, text/event-stream",
         "MCP-Protocol-Version": "2025-06-18",
-        Authorization: `Bearer ${token}`,
+        Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
         jsonrpc: "2.0",
@@ -669,6 +671,44 @@ export function normaliseMetaRow(row: Record<string, unknown>): AdMetrics {
     roas,
     cpa: purchases > 0 ? spend / purchases : 0,
   };
+}
+
+/**
+ * Normalise one Google Ads metrics row (campaign, ad group, ad or a daily
+ * segment). Google reports cost/conversions, not purchases; CTR is a fraction.
+ * Reach has no Google equivalent — it stays 0 and the UI labels it as a gap.
+ */
+export function normaliseGoogleRow(row: Record<string, unknown>): AdMetrics {
+  const spend = num(row["cost"]);
+  const impressions = num(row["impressions"]);
+  const clicks = num(row["clicks"]);
+  const purchases = num(row["conversions"]);
+  const revenue = num(row["conversions_value"]);
+  const ctrFraction = num(row["ctr"]) || num(row["average_ctr"]);
+  return {
+    spend,
+    impressions,
+    clicks,
+    reach: 0,
+    ctr: ctrFraction ? ctrFraction * 100 : impressions > 0 ? (clicks / impressions) * 100 : 0,
+    cpc: num(row["average_cpc"]) || (clicks > 0 ? spend / clicks : 0),
+    cpm: impressions > 0 ? (spend / impressions) * 1000 : 0,
+    purchases,
+    revenue,
+    roas: spend > 0 ? revenue / spend : 0,
+    cpa: purchases > 0 ? spend / purchases : 0,
+  };
+}
+
+/** Google only accepts named ranges — map our picker onto the closest one. */
+export function googleDateRange(days: number): { range: string; note?: string } {
+  if (days <= 7) return { range: "LAST_7_DAYS" };
+  if (days <= 30) {
+    return days === 30
+      ? { range: "LAST_30_DAYS" }
+      : { range: "LAST_30_DAYS", note: "Google Ads only offers 7, 30 and 90-day ranges — showing 30 days." };
+  }
+  return { range: "LAST_90_DAYS" };
 }
 
 export function emptyMetrics(): AdMetrics {
