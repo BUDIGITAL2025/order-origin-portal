@@ -917,7 +917,7 @@ function AdminQuoteDetailPage() {
               </div>
               {requestEditable && (
                 <Button type="submit" disabled={save.isPending}>
-                  {save.isPending ? "Saving…" : "Save & send quote"}
+                  {save.isPending ? "Publishing…" : "Publish quote to client"}
                 </Button>
               )}
             </form>
