@@ -299,10 +299,10 @@ export const getWhUsage = createServerFn({ method: "GET" })
     if (memberIds.length > 0) {
       const { data: profiles } = await supabaseAdmin
         .from("profiles")
-        .select("id, full_name, email")
+        .select("id, contact_name")
         .in("id", memberIds);
       for (const p of profiles ?? []) {
-        names.set(p.id, p.full_name || p.email || p.id.slice(0, 8));
+        names.set(p.id, p.contact_name || p.id.slice(0, 8));
       }
     }
 
