@@ -12,15 +12,7 @@
 import * as React from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  AlertTriangle,
-  Database,
-  Download,
-  Globe,
-  Loader2,
-  Play,
-  Wallet,
-} from "lucide-react";
+import { AlertTriangle, Database, Download, Globe, Loader2, Play, Wallet } from "lucide-react";
 import {
   getSeoStatus,
   seoDomainOverview,
@@ -71,120 +63,22 @@ import {
 } from "@/components/admin-ui";
 import { cn } from "@/lib/utils";
 
-// ---------------------------------------------------------------------------
-// shared helpers
-// ---------------------------------------------------------------------------
-
-type Rec = Record<string, unknown>;
-const asRec = (v: unknown): Rec => (v && typeof v === "object" ? (v as Rec) : {});
-const asArr = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
-const asNum = (v: unknown): number | null =>
-  typeof v === "number" && Number.isFinite(v) ? v : null;
-
-const usd = (n: number | null | undefined, digits = 4): string =>
-  n == null ? "—" : `$${n.toFixed(digits)}`;
-const int = (n: number | null | undefined): string =>
-  n == null ? "—" : n.toLocaleString("en-US");
-
-const ENDPOINTS = {
-  domain: "dataforseo_labs/google/domain_rank_overview/live",
-  volume: "keywords_data/google_ads/search_volume/live",
-  ideas: "keywords_data/google_ads/keywords_for_keywords/live",
-  serp: "serp/google/organic/live/advanced",
-} as const;
-
-/** Quick picks — location codes are DataForSEO's stable country codes. */
-const QUICK_MARKETS = [
-  { code: 2620, label: "Portugal", lang: "pt" },
-  { code: 2724, label: "Spain", lang: "es" },
-  { code: 2250, label: "France", lang: "fr" },
-  { code: 2276, label: "Germany", lang: "de" },
-  { code: 2826, label: "United Kingdom", lang: "en" },
-  { code: 2840, label: "United States", lang: "en" },
-] as const;
-
-const LANGUAGES = [
-  { code: "pt", label: "Portuguese" },
-  { code: "es", label: "Spanish" },
-  { code: "fr", label: "French" },
-  { code: "de", label: "German" },
-  { code: "en", label: "English" },
-  { code: "it", label: "Italian" },
-  { code: "nl", label: "Dutch" },
-] as const;
-
-type OverageAsk = { spentToday: number; estimatedCost: number; limit: number } | null;
-
-/** Narrow the gateway envelope without leaking its generics into the UI. */
-function readResult(res: unknown): {
-  kind: "ok" | "confirm";
-  data: unknown;
-  cost: number;
-  cacheHit: boolean;
-  spentToday: number;
-  estimatedCost: number;
-  limit: number;
-} {
-  const r = asRec(res);
-  if (r["status"] === "confirm") {
-    return {
-      kind: "confirm",
-      data: null,
-      cost: 0,
-      cacheHit: false,
-      spentToday: asNum(r["spentToday"]) ?? 0,
-      estimatedCost: asNum(r["estimatedCost"]) ?? 0,
-      limit: asNum(r["limit"]) ?? 0,
-    };
-  }
-  return {
-    kind: "ok",
-    data: r["data"],
-    cost: asNum(r["cost"]) ?? 0,
-    cacheHit: r["cacheHit"] === true,
-    spentToday: 0,
-    estimatedCost: 0,
-    limit: 0,
-  };
-}
-
-function CostButton({
-  price,
-  running,
-  onClick,
-  label,
-  disabled,
-}: {
-  price: number | undefined;
-  running: boolean;
-  onClick: () => void;
-  label: string;
-  disabled?: boolean;
-}) {
-  return (
-    <Button onClick={onClick} disabled={running || disabled} className="gap-2">
-      {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
-      {label}
-      <span className="rounded-full bg-primary-foreground/15 px-2 py-0.5 text-[11px] tabular-nums">
-        {price == null ? "cost unknown" : usd(price)}
-      </span>
-    </Button>
-  );
-}
-
-function ResultMeta({ cost, cacheHit }: { cost: number; cacheHit: boolean }) {
-  return (
-    <div className="flex items-center gap-2">
-      {cacheHit ? (
-        <Chip tone="success">
-          <Database className="h-3 w-3" /> cached · free
-        </Chip>
-      ) : (
-        <Chip tone="info">charged {usd(cost)}</Chip>
-      )}
-    </div>
-  );
-}
+import {
+  asArr,
+  asNum,
+  asRec,
+  CostButton,
+  ENDPOINTS,
+  int,
+  LANGUAGES,
+  type OverageAsk,
+  QUICK_MARKETS,
+  readResult,
+  ResultMeta,
+  type Rec,
+  usd,
+} from "@/components/seo-common";
+import { SeoPhase2Tab } from "@/components/seo-phase2";
 
 // ---------------------------------------------------------------------------
 // root
@@ -194,6 +88,10 @@ const TABS = [
   { id: "domain", label: "Domain overview" },
   { id: "keywords", label: "Keyword research" },
   { id: "serp", label: "SERP check" },
+  { id: "competitors", label: "Competitors" },
+  { id: "gap", label: "Keyword gap" },
+  { id: "ranked", label: "Ranked keywords" },
+  { id: "backlinks", label: "Backlinks" },
   { id: "usage", label: "Usage" },
 ] as const;
 type TabId = (typeof TABS)[number]["id"];
@@ -226,7 +124,10 @@ export function SeoTools({
   const [locationCode, setLocationCode] = React.useState<number>(2620);
   const [languageCode, setLanguageCode] = React.useState<string>("pt");
   const [overage, setOverage] = React.useState<OverageAsk>(null);
+  const [bigSpend, setBigSpend] = React.useState<number | null>(null);
+  const [domainSeed, setDomainSeed] = React.useState("");
   const pendingRun = React.useRef<(() => void) | null>(null);
+  const pendingBig = React.useRef<(() => void) | null>(null);
 
   const refreshCost = React.useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: ["seo-status"] });
@@ -238,8 +139,23 @@ export function SeoTools({
     setOverage(ask);
   }, []);
 
+  /** Explicit go-ahead for a single action above the big-spend threshold. */
+  const confirmSpend = React.useCallback((estimatedCost: number, run: () => void) => {
+    pendingBig.current = run;
+    setBigSpend(estimatedCost);
+  }, []);
+
+  const openDomain = React.useCallback(
+    (domain: string) => {
+      setDomainSeed(domain);
+      go({ tab: "domain" });
+    },
+    [go],
+  );
+
   const active = (TABS.some((t) => t.id === tab) ? tab : "domain") as TabId;
   const prices = status.data?.prices ?? {};
+  const perItem = status.data?.perItem ?? {};
 
   const marketCtl = (
     <MarketSelector
@@ -257,8 +173,8 @@ export function SeoTools({
         <div>
           <h1 className="text-xl font-semibold tracking-tight">FlySales SEO</h1>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Internal SEO research on the DataForSEO live API. Every paid call shows its price
-            first, is cached server-side and logged with the exact cost the API charged.
+            Internal SEO research on the DataForSEO live API. Every paid call shows its price first,
+            is cached server-side and logged with the exact cost the API charged.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -288,6 +204,8 @@ export function SeoTools({
 
       {active === "domain" && (
         <DomainTab
+          key={domainSeed}
+          seed={domainSeed}
           price={prices[ENDPOINTS.domain]}
           locationCode={locationCode}
           languageCode={languageCode}
@@ -317,7 +235,49 @@ export function SeoTools({
           askOverage={askOverage}
         />
       )}
+      {(active === "competitors" ||
+        active === "gap" ||
+        active === "ranked" ||
+        active === "backlinks") && (
+        <SeoPhase2Tab
+          kind={active}
+          prices={prices}
+          perItem={perItem}
+          locationCode={locationCode}
+          languageCode={languageCode}
+          market={marketCtl}
+          onSpend={refreshCost}
+          askOverage={askOverage}
+          confirmSpend={confirmSpend}
+          onOpenDomain={openDomain}
+        />
+      )}
       {active === "usage" && <UsageTab />}
+
+      <AlertDialog open={bigSpend != null} onOpenChange={(o) => !o && setBigSpend(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm this spend</AlertDialogTitle>
+            <AlertDialogDescription>
+              This single action is estimated at {usd(bigSpend ?? 0)}. Repeats of the exact same
+              request are served free from cache. Run it?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                const run = pendingBig.current;
+                setBigSpend(null);
+                pendingBig.current = null;
+                run?.();
+              }}
+            >
+              Run it
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={overage != null} onOpenChange={(o) => !o && setOverage(null)}>
         <AlertDialogContent>
@@ -451,6 +411,7 @@ function DomainTab({
   market,
   onSpend,
   askOverage,
+  seed,
 }: {
   price: number | undefined;
   locationCode: number;
@@ -458,9 +419,10 @@ function DomainTab({
   market: React.ReactNode;
   onSpend: () => void;
   askOverage: (ask: NonNullable<OverageAsk>, retry: () => void) => void;
+  seed?: string;
 }) {
   const call = useServerFn(seoDomainOverview);
-  const [target, setTarget] = React.useState("");
+  const [target, setTarget] = React.useState(seed ?? "");
   const [running, setRunning] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [meta, setMeta] = React.useState<{ cost: number; cacheHit: boolean } | null>(null);
@@ -557,9 +519,7 @@ function DomainTab({
               {
                 key: "top3",
                 label: "Top 3 positions",
-                value: int(
-                  (asNum(organic["pos_1"]) ?? 0) + (asNum(organic["pos_2_3"]) ?? 0),
-                ),
+                value: int((asNum(organic["pos_1"]) ?? 0) + (asNum(organic["pos_2_3"]) ?? 0)),
               },
               {
                 key: "top10",
@@ -711,8 +671,7 @@ function KeywordsTab({
     copy.sort((a, b) => {
       if (sort === "keyword") return a.keyword.localeCompare(b.keyword);
       if (sort === "cpc") return (b.cpc ?? -1) - (a.cpc ?? -1);
-      if (sort === "competition")
-        return (b.competitionIndex ?? -1) - (a.competitionIndex ?? -1);
+      if (sort === "competition") return (b.competitionIndex ?? -1) - (a.competitionIndex ?? -1);
       return (b.volume ?? -1) - (a.volume ?? -1);
     });
     return copy;
@@ -1182,4 +1141,3 @@ function UsageTab() {
     </div>
   );
 }
-

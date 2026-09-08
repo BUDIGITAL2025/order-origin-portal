@@ -14,12 +14,7 @@
  */
 
 export type JsonValue =
-  | string
-  | number
-  | boolean
-  | null
-  | JsonValue[]
-  | { [key: string]: JsonValue };
+  string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
 
 const BASE_URL = "https://api.dataforseo.com";
 const TIMEOUT_MS = 30_000;
@@ -47,7 +42,37 @@ export const PUBLISHED_PRICE: Record<string, number> = {
   "keywords_data/google_ads/search_volume/live": 0.09,
   "keywords_data/google_ads/keywords_for_keywords/live": 0.09,
   "serp/google/organic/live/advanced": 0.0025,
+  // Phase 2 — competitor intelligence (Labs) and backlinks.
+  "dataforseo_labs/google/competitors_domain/live": 0.012,
+  "dataforseo_labs/google/domain_intersection/live": 0.012,
+  "dataforseo_labs/google/ranked_keywords/live": 0.012,
+  "backlinks/summary/live": 0.024,
+  "backlinks/backlinks/live": 0.024,
+  "backlinks/referring_domains/live": 0.024,
+  "backlinks/anchors/live": 0.024,
 };
+
+/**
+ * Per-returned-row surcharge (USD). Labs endpoints bill $0.00012/item, the
+ * Backlinks list family $0.000036/row. Used only for the pre-flight estimate —
+ * the charged figure always comes from the API envelope.
+ */
+export const PER_ITEM_PRICE: Record<string, number> = {
+  "dataforseo_labs/google/domain_rank_overview/live": 0.00012,
+  "dataforseo_labs/google/competitors_domain/live": 0.00012,
+  "dataforseo_labs/google/domain_intersection/live": 0.00012,
+  "dataforseo_labs/google/ranked_keywords/live": 0.00012,
+  "backlinks/backlinks/live": 0.000036,
+  "backlinks/referring_domains/live": 0.000036,
+  "backlinks/anchors/live": 0.000036,
+};
+
+/** Pre-flight estimate for an endpoint asked to return up to `limit` rows. */
+export async function estimateFor(endpoint: string, limit = 0): Promise<number> {
+  const base = await priceFor(endpoint);
+  const perItem = PER_ITEM_PRICE[endpoint] ?? 0;
+  return round6(base + perItem * limit);
+}
 
 export interface SeoOk<T = JsonValue> {
   status: "ok";
