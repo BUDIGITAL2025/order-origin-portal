@@ -68,6 +68,12 @@ import {
 
 import type { ToolOk, ToolResult } from "@/lib/spymarket-tools.server";
 import { WhAdLibraryTab, WhHeaderChips } from "@/components/spymarket-wh";
+import {
+  WhBrandsTab,
+  WhStoreExplorerTab,
+  WhTikTokShopTab,
+  WhTrendsTab,
+} from "@/components/spymarket-wh2";
 import { cn } from "@/lib/utils";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
@@ -566,6 +572,10 @@ const TOOL_TABS: ReadonlyArray<{ id: string; label: string; badge?: string }> = 
   { id: "shop", label: "Shop detail" },
   { id: "ads", label: "Ad library" },
   { id: "wh-ads", label: "Ad Library (WH)", badge: "new" },
+  { id: "wh-stores", label: "Store explorer (WH)", badge: "new" },
+  { id: "wh-brands", label: "Brands (WH)", badge: "new" },
+  { id: "wh-trends", label: "Trends (WH)", badge: "new" },
+  { id: "wh-tiktok", label: "TikTok Shop (WH)", badge: "new" },
   { id: "emails", label: "Emails" },
   { id: "usage", label: "Usage", badge: "free" },
 ];
@@ -672,6 +682,10 @@ export function SpyMarketTools({ tab, shopId, domain, search, go }: SpyMarketToo
       )}
       {tab === "ads" && <AdsTab costs={status.endpointCosts} url={search} go={go} />}
       {tab === "wh-ads" && <WhAdLibraryTab url={search} go={go} />}
+      {tab === "wh-stores" && <WhStoreExplorerTab url={search} go={go} />}
+      {tab === "wh-brands" && <WhBrandsTab url={search} go={go} />}
+      {tab === "wh-trends" && <WhTrendsTab />}
+      {tab === "wh-tiktok" && <WhTikTokShopTab />}
       {tab === "emails" && (
         <EmailsTab costs={status.endpointCosts} scopeDomain={search["shop"]} />
       )}
