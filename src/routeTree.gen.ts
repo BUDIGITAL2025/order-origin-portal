@@ -19,6 +19,7 @@ import { Route as AuthenticatedClientRouteImport } from './routes/_authenticated
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedDeskRouteImport } from './routes/_authenticated/desk'
 import { Route as AuthenticatedPendingRouteImport } from './routes/_authenticated/pending'
+import { Route as AuthenticatedClientAdsRouteImport } from './routes/_authenticated/_client/ads'
 import { Route as AuthenticatedClientDashboardRouteImport } from './routes/_authenticated/_client/dashboard'
 import { Route as AuthenticatedClientDisputesRouteImport } from './routes/_authenticated/_client/disputes'
 import { Route as AuthenticatedClientDocumentsRouteImport } from './routes/_authenticated/_client/documents'
@@ -130,6 +131,11 @@ const AuthenticatedPendingRoute = AuthenticatedPendingRouteImport.update({
   id: '/pending',
   path: '/pending',
   getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedClientAdsRoute = AuthenticatedClientAdsRouteImport.update({
+  id: '/ads',
+  path: '/ads',
+  getParentRoute: () => AuthenticatedClientRoute,
 } as any)
 const AuthenticatedClientDashboardRoute =
   AuthenticatedClientDashboardRouteImport.update({
@@ -516,6 +522,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/desk': typeof AuthenticatedDeskRouteWithChildren
   '/pending': typeof AuthenticatedPendingRoute
+  '/ads': typeof AuthenticatedClientAdsRoute
   '/dashboard': typeof AuthenticatedClientDashboardRoute
   '/disputes': typeof AuthenticatedClientDisputesRouteWithChildren
   '/documents': typeof AuthenticatedClientDocumentsRoute
@@ -588,6 +595,7 @@ export interface FileRoutesByTo {
   '/terms': typeof TermsRoute
   '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/pending': typeof AuthenticatedPendingRoute
+  '/ads': typeof AuthenticatedClientAdsRoute
   '/dashboard': typeof AuthenticatedClientDashboardRoute
   '/disputes': typeof AuthenticatedClientDisputesRouteWithChildren
   '/documents': typeof AuthenticatedClientDocumentsRoute
@@ -664,6 +672,7 @@ export interface FileRoutesById {
   '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
   '/_authenticated/desk': typeof AuthenticatedDeskRouteWithChildren
   '/_authenticated/pending': typeof AuthenticatedPendingRoute
+  '/_authenticated/_client/ads': typeof AuthenticatedClientAdsRoute
   '/_authenticated/_client/dashboard': typeof AuthenticatedClientDashboardRoute
   '/_authenticated/_client/disputes': typeof AuthenticatedClientDisputesRouteWithChildren
   '/_authenticated/_client/documents': typeof AuthenticatedClientDocumentsRoute
@@ -739,6 +748,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/desk'
     | '/pending'
+    | '/ads'
     | '/dashboard'
     | '/disputes'
     | '/documents'
@@ -811,6 +821,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/admin'
     | '/pending'
+    | '/ads'
     | '/dashboard'
     | '/disputes'
     | '/documents'
@@ -886,6 +897,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin'
     | '/_authenticated/desk'
     | '/_authenticated/pending'
+    | '/_authenticated/_client/ads'
     | '/_authenticated/_client/dashboard'
     | '/_authenticated/_client/disputes'
     | '/_authenticated/_client/documents'
@@ -1041,6 +1053,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/pending'
       preLoaderRoute: typeof AuthenticatedPendingRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/_client/ads': {
+      id: '/_authenticated/_client/ads'
+      path: '/ads'
+      fullPath: '/ads'
+      preLoaderRoute: typeof AuthenticatedClientAdsRouteImport
+      parentRoute: typeof AuthenticatedClientRoute
     }
     '/_authenticated/_client/dashboard': {
       id: '/_authenticated/_client/dashboard'
@@ -1516,6 +1535,7 @@ const AuthenticatedClientWorkspacesRouteWithChildren =
   )
 
 interface AuthenticatedClientRouteChildren {
+  AuthenticatedClientAdsRoute: typeof AuthenticatedClientAdsRoute
   AuthenticatedClientDashboardRoute: typeof AuthenticatedClientDashboardRoute
   AuthenticatedClientDisputesRoute: typeof AuthenticatedClientDisputesRouteWithChildren
   AuthenticatedClientDocumentsRoute: typeof AuthenticatedClientDocumentsRoute
@@ -1547,6 +1567,7 @@ interface AuthenticatedClientRouteChildren {
 }
 
 const AuthenticatedClientRouteChildren: AuthenticatedClientRouteChildren = {
+  AuthenticatedClientAdsRoute: AuthenticatedClientAdsRoute,
   AuthenticatedClientDashboardRoute: AuthenticatedClientDashboardRoute,
   AuthenticatedClientDisputesRoute:
     AuthenticatedClientDisputesRouteWithChildren,
