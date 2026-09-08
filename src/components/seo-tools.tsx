@@ -133,7 +133,10 @@ export function SeoTools({
   const [locationCode, setLocationCode] = React.useState<number>(2620);
   const [languageCode, setLanguageCode] = React.useState<string>("pt");
   const [overage, setOverage] = React.useState<OverageAsk>(null);
+  const [bigSpend, setBigSpend] = React.useState<number | null>(null);
+  const [domainSeed, setDomainSeed] = React.useState("");
   const pendingRun = React.useRef<(() => void) | null>(null);
+  const pendingBig = React.useRef<(() => void) | null>(null);
 
   const refreshCost = React.useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: ["seo-status"] });
@@ -145,8 +148,23 @@ export function SeoTools({
     setOverage(ask);
   }, []);
 
+  /** Explicit go-ahead for a single action above the big-spend threshold. */
+  const confirmSpend = React.useCallback((estimatedCost: number, run: () => void) => {
+    pendingBig.current = run;
+    setBigSpend(estimatedCost);
+  }, []);
+
+  const openDomain = React.useCallback(
+    (domain: string) => {
+      setDomainSeed(domain);
+      go({ tab: "domain" });
+    },
+    [go],
+  );
+
   const active = (TABS.some((t) => t.id === tab) ? tab : "domain") as TabId;
   const prices = status.data?.prices ?? {};
+  const perItem = status.data?.perItem ?? {};
 
   const marketCtl = (
     <MarketSelector
