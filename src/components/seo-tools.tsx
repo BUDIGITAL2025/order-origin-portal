@@ -177,6 +177,19 @@ export function SeoTools({
     />
   );
 
+  if (status.isError) {
+    return (
+      <div className="rounded-lg border border-border bg-card p-6 text-sm text-muted-foreground">
+        <p className="font-medium text-foreground">SEO research is unavailable</p>
+        <p className="mt-1">
+          {/admin access required|Unauthorized/i.test(String(status.error))
+            ? "Sign in again with an admin account to use this tool."
+            : "Could not load the SEO tool status. Try again in a moment."}
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
