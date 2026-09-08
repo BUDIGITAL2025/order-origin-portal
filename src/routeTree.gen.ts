@@ -36,6 +36,7 @@ import { Route as AuthenticatedAdminIntegrationRouteImport } from './routes/_aut
 import { Route as AuthenticatedAdminInventoryRouteImport } from './routes/_authenticated/admin/inventory'
 import { Route as AuthenticatedAdminOrdersRouteImport } from './routes/_authenticated/admin/orders'
 import { Route as AuthenticatedAdminProductsRouteImport } from './routes/_authenticated/admin/products'
+import { Route as AuthenticatedAdminSeoToolsRouteImport } from './routes/_authenticated/admin/seo-tools'
 import { Route as AuthenticatedAdminSourcingRouteImport } from './routes/_authenticated/admin/sourcing'
 import { Route as AuthenticatedAdminSpymarketRouteImport } from './routes/_authenticated/admin/spymarket'
 import { Route as AuthenticatedAdminSpymarketToolsRouteImport } from './routes/_authenticated/admin/spymarket-tools'
@@ -229,6 +230,12 @@ const AuthenticatedAdminProductsRoute =
   AuthenticatedAdminProductsRouteImport.update({
     id: '/products',
     path: '/products',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminSeoToolsRoute =
+  AuthenticatedAdminSeoToolsRouteImport.update({
+    id: '/seo-tools',
+    path: '/seo-tools',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 const AuthenticatedAdminSourcingRoute =
@@ -519,6 +526,7 @@ export interface FileRoutesByFullPath {
   '/admin/inventory': typeof AuthenticatedAdminInventoryRoute
   '/admin/orders': typeof AuthenticatedAdminOrdersRoute
   '/admin/products': typeof AuthenticatedAdminProductsRoute
+  '/admin/seo-tools': typeof AuthenticatedAdminSeoToolsRoute
   '/admin/sourcing': typeof AuthenticatedAdminSourcingRoute
   '/admin/spymarket': typeof AuthenticatedAdminSpymarketRoute
   '/admin/spymarket-tools': typeof AuthenticatedAdminSpymarketToolsRoute
@@ -589,6 +597,7 @@ export interface FileRoutesByTo {
   '/admin/inventory': typeof AuthenticatedAdminInventoryRoute
   '/admin/orders': typeof AuthenticatedAdminOrdersRoute
   '/admin/products': typeof AuthenticatedAdminProductsRoute
+  '/admin/seo-tools': typeof AuthenticatedAdminSeoToolsRoute
   '/admin/sourcing': typeof AuthenticatedAdminSourcingRoute
   '/admin/spymarket': typeof AuthenticatedAdminSpymarketRoute
   '/admin/spymarket-tools': typeof AuthenticatedAdminSpymarketToolsRoute
@@ -663,6 +672,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/inventory': typeof AuthenticatedAdminInventoryRoute
   '/_authenticated/admin/orders': typeof AuthenticatedAdminOrdersRoute
   '/_authenticated/admin/products': typeof AuthenticatedAdminProductsRoute
+  '/_authenticated/admin/seo-tools': typeof AuthenticatedAdminSeoToolsRoute
   '/_authenticated/admin/sourcing': typeof AuthenticatedAdminSourcingRoute
   '/_authenticated/admin/spymarket': typeof AuthenticatedAdminSpymarketRoute
   '/_authenticated/admin/spymarket-tools': typeof AuthenticatedAdminSpymarketToolsRoute
@@ -736,6 +746,7 @@ export interface FileRouteTypes {
     | '/admin/inventory'
     | '/admin/orders'
     | '/admin/products'
+    | '/admin/seo-tools'
     | '/admin/sourcing'
     | '/admin/spymarket'
     | '/admin/spymarket-tools'
@@ -806,6 +817,7 @@ export interface FileRouteTypes {
     | '/admin/inventory'
     | '/admin/orders'
     | '/admin/products'
+    | '/admin/seo-tools'
     | '/admin/sourcing'
     | '/admin/spymarket'
     | '/admin/spymarket-tools'
@@ -879,6 +891,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/inventory'
     | '/_authenticated/admin/orders'
     | '/_authenticated/admin/products'
+    | '/_authenticated/admin/seo-tools'
     | '/_authenticated/admin/sourcing'
     | '/_authenticated/admin/spymarket'
     | '/_authenticated/admin/spymarket-tools'
@@ -1132,6 +1145,13 @@ declare module '@tanstack/react-router' {
       path: '/products'
       fullPath: '/admin/products'
       preLoaderRoute: typeof AuthenticatedAdminProductsRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/seo-tools': {
+      id: '/_authenticated/admin/seo-tools'
+      path: '/seo-tools'
+      fullPath: '/admin/seo-tools'
+      preLoaderRoute: typeof AuthenticatedAdminSeoToolsRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/admin/sourcing': {
@@ -1574,6 +1594,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminInventoryRoute: typeof AuthenticatedAdminInventoryRoute
   AuthenticatedAdminOrdersRoute: typeof AuthenticatedAdminOrdersRoute
   AuthenticatedAdminProductsRoute: typeof AuthenticatedAdminProductsRoute
+  AuthenticatedAdminSeoToolsRoute: typeof AuthenticatedAdminSeoToolsRoute
   AuthenticatedAdminSourcingRoute: typeof AuthenticatedAdminSourcingRoute
   AuthenticatedAdminSpymarketRoute: typeof AuthenticatedAdminSpymarketRoute
   AuthenticatedAdminSpymarketToolsRoute: typeof AuthenticatedAdminSpymarketToolsRoute
@@ -1594,6 +1615,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminInventoryRoute: AuthenticatedAdminInventoryRoute,
   AuthenticatedAdminOrdersRoute: AuthenticatedAdminOrdersRoute,
   AuthenticatedAdminProductsRoute: AuthenticatedAdminProductsRoute,
+  AuthenticatedAdminSeoToolsRoute: AuthenticatedAdminSeoToolsRoute,
   AuthenticatedAdminSourcingRoute: AuthenticatedAdminSourcingRoute,
   AuthenticatedAdminSpymarketRoute: AuthenticatedAdminSpymarketRoute,
   AuthenticatedAdminSpymarketToolsRoute: AuthenticatedAdminSpymarketToolsRoute,
