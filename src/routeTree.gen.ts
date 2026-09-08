@@ -28,6 +28,7 @@ import { Route as AuthenticatedClientProductsRouteImport } from './routes/_authe
 import { Route as AuthenticatedClientSpymarketRouteImport } from './routes/_authenticated/_client/spymarket'
 import { Route as AuthenticatedClientWalletRouteImport } from './routes/_authenticated/_client/wallet'
 import { Route as AuthenticatedClientWorkspacesRouteImport } from './routes/_authenticated/_client/workspaces'
+import { Route as AuthenticatedAdminAdsRouteImport } from './routes/_authenticated/admin/ads'
 import { Route as AuthenticatedAdminClientsRouteImport } from './routes/_authenticated/admin/clients'
 import { Route as AuthenticatedAdminDisputesRouteImport } from './routes/_authenticated/admin/disputes'
 import { Route as AuthenticatedAdminDocumentsRouteImport } from './routes/_authenticated/admin/documents'
@@ -185,6 +186,11 @@ const AuthenticatedClientWorkspacesRoute =
     path: '/workspaces',
     getParentRoute: () => AuthenticatedClientRoute,
   } as any)
+const AuthenticatedAdminAdsRoute = AuthenticatedAdminAdsRouteImport.update({
+  id: '/ads',
+  path: '/ads',
+  getParentRoute: () => AuthenticatedAdminRoute,
+} as any)
 const AuthenticatedAdminClientsRoute =
   AuthenticatedAdminClientsRouteImport.update({
     id: '/clients',
@@ -531,6 +537,7 @@ export interface FileRoutesByFullPath {
   '/spymarket': typeof AuthenticatedClientSpymarketRoute
   '/wallet': typeof AuthenticatedClientWalletRoute
   '/workspaces': typeof AuthenticatedClientWorkspacesRouteWithChildren
+  '/admin/ads': typeof AuthenticatedAdminAdsRoute
   '/admin/clients': typeof AuthenticatedAdminClientsRoute
   '/admin/disputes': typeof AuthenticatedAdminDisputesRouteWithChildren
   '/admin/documents': typeof AuthenticatedAdminDocumentsRoute
@@ -604,6 +611,7 @@ export interface FileRoutesByTo {
   '/spymarket': typeof AuthenticatedClientSpymarketRoute
   '/wallet': typeof AuthenticatedClientWalletRoute
   '/workspaces': typeof AuthenticatedClientWorkspacesRouteWithChildren
+  '/admin/ads': typeof AuthenticatedAdminAdsRoute
   '/admin/clients': typeof AuthenticatedAdminClientsRoute
   '/admin/disputes': typeof AuthenticatedAdminDisputesRouteWithChildren
   '/admin/documents': typeof AuthenticatedAdminDocumentsRoute
@@ -681,6 +689,7 @@ export interface FileRoutesById {
   '/_authenticated/_client/spymarket': typeof AuthenticatedClientSpymarketRoute
   '/_authenticated/_client/wallet': typeof AuthenticatedClientWalletRoute
   '/_authenticated/_client/workspaces': typeof AuthenticatedClientWorkspacesRouteWithChildren
+  '/_authenticated/admin/ads': typeof AuthenticatedAdminAdsRoute
   '/_authenticated/admin/clients': typeof AuthenticatedAdminClientsRoute
   '/_authenticated/admin/disputes': typeof AuthenticatedAdminDisputesRouteWithChildren
   '/_authenticated/admin/documents': typeof AuthenticatedAdminDocumentsRoute
@@ -757,6 +766,7 @@ export interface FileRouteTypes {
     | '/spymarket'
     | '/wallet'
     | '/workspaces'
+    | '/admin/ads'
     | '/admin/clients'
     | '/admin/disputes'
     | '/admin/documents'
@@ -830,6 +840,7 @@ export interface FileRouteTypes {
     | '/spymarket'
     | '/wallet'
     | '/workspaces'
+    | '/admin/ads'
     | '/admin/clients'
     | '/admin/disputes'
     | '/admin/documents'
@@ -906,6 +917,7 @@ export interface FileRouteTypes {
     | '/_authenticated/_client/spymarket'
     | '/_authenticated/_client/wallet'
     | '/_authenticated/_client/workspaces'
+    | '/_authenticated/admin/ads'
     | '/_authenticated/admin/clients'
     | '/_authenticated/admin/disputes'
     | '/_authenticated/admin/documents'
@@ -1116,6 +1128,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/workspaces'
       preLoaderRoute: typeof AuthenticatedClientWorkspacesRouteImport
       parentRoute: typeof AuthenticatedClientRoute
+    }
+    '/_authenticated/admin/ads': {
+      id: '/_authenticated/admin/ads'
+      path: '/ads'
+      fullPath: '/admin/ads'
+      preLoaderRoute: typeof AuthenticatedAdminAdsRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/admin/clients': {
       id: '/_authenticated/admin/clients'
@@ -1627,6 +1646,7 @@ const AuthenticatedAdminDisputesRouteWithChildren =
   )
 
 interface AuthenticatedAdminRouteChildren {
+  AuthenticatedAdminAdsRoute: typeof AuthenticatedAdminAdsRoute
   AuthenticatedAdminClientsRoute: typeof AuthenticatedAdminClientsRoute
   AuthenticatedAdminDisputesRoute: typeof AuthenticatedAdminDisputesRouteWithChildren
   AuthenticatedAdminDocumentsRoute: typeof AuthenticatedAdminDocumentsRoute
@@ -1648,6 +1668,7 @@ interface AuthenticatedAdminRouteChildren {
 }
 
 const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
+  AuthenticatedAdminAdsRoute: AuthenticatedAdminAdsRoute,
   AuthenticatedAdminClientsRoute: AuthenticatedAdminClientsRoute,
   AuthenticatedAdminDisputesRoute: AuthenticatedAdminDisputesRouteWithChildren,
   AuthenticatedAdminDocumentsRoute: AuthenticatedAdminDocumentsRoute,
