@@ -48,8 +48,8 @@ export const PUBLISHED_PRICE: Record<string, number> = {
   "dataforseo_labs/google/ranked_keywords/live": 0.012,
   "backlinks/summary/live": 0.02,
   "backlinks/backlinks/live": 0.024,
-  "backlinks/referring_domains/live": 0.02,
-  "backlinks/anchors/live": 0.02,
+  "backlinks/referring_domains/live": 0.024,
+  "backlinks/anchors/live": 0.024,
 };
 
 /**
