@@ -168,7 +168,8 @@ function readCreditsEnvelope(body: unknown): CreditsEnvelope | null {
   const credits = (body as Record<string, unknown>)["credits"];
   if (!credits || typeof credits !== "object") return null;
   const c = credits as Record<string, unknown>;
-  const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
+  const num = (v: unknown): number | null =>
+    typeof v === "number" && Number.isFinite(v) ? v : null;
   const purchase = (body as Record<string, unknown>)["purchase"];
   const url =
     purchase && typeof purchase === "object"
@@ -411,7 +412,10 @@ function errorTextOf(body: unknown): string | null {
 
 export type WhPlatform = "meta" | "tiktok" | "pinterest" | "google";
 
-export const WH_AD_ENDPOINTS: Record<WhPlatform, { endpoint: string; path: string; maxLimit: number }> = {
+export const WH_AD_ENDPOINTS: Record<
+  WhPlatform,
+  { endpoint: string; path: string; maxLimit: number }
+> = {
   meta: { endpoint: "adlibrary", path: "/api/v1/adlibrary", maxLimit: 50 },
   tiktok: { endpoint: "tiktok-ads", path: "/api/v1/tiktok-ads", maxLimit: 50 },
   pinterest: { endpoint: "pinterest-ads", path: "/api/v1/pinterest-ads", maxLimit: 50 },
@@ -449,10 +453,7 @@ export interface WhAdSearchInput {
  * platform (Google is 1-based `page`+`limit`; the rest use `scroll`), so the
  * mapping lives here and the UI stays platform-agnostic.
  */
-export async function whSearchAds(
-  userId: string,
-  input: WhAdSearchInput,
-): Promise<WhResult<Json>> {
+export async function whSearchAds(userId: string, input: WhAdSearchInput): Promise<WhResult<Json>> {
   const spec = WH_AD_ENDPOINTS[input.platform];
   const limit = Math.min(Math.max(input.limit, 1), spec.maxLimit);
   const query: Record<string, string | number | undefined> = {};
@@ -580,7 +581,10 @@ export async function getWhStatus(userId: string, live: boolean): Promise<WhStat
       creditsCheckedAt: new Date().toISOString(),
     };
   } catch (err) {
-    console.error("[winninghunter] credits probe failed:", err instanceof Error ? err.message : err);
+    console.error(
+      "[winninghunter] credits probe failed:",
+      err instanceof Error ? err.message : err,
+    );
     return base;
   }
 }

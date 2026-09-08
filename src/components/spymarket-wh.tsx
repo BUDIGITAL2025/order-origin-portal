@@ -50,6 +50,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 type Rec = Record<string, unknown>;
 const asRec = (v: unknown): Rec =>
   v && typeof v === "object" && !Array.isArray(v) ? (v as Rec) : {};
+const asArr = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
 const str = (v: unknown): string | null => (typeof v === "string" && v !== "" ? v : null);
 const num = (v: unknown): number | null => {
   if (typeof v === "number" && Number.isFinite(v)) return v;
@@ -100,8 +101,9 @@ const PLATFORMS: ReadonlyArray<{ id: Platform; label: string; maxLimit: number }
 
 const SORTS: Record<Platform, ReadonlyArray<{ value: string; label: string }>> = {
   meta: [
-    { value: "relevance", label: "Best match" },
+    // Newest first by default: older archived rows often have no creative left on their CDN.
     { value: "mostrecent", label: "Newest" },
+    { value: "relevance", label: "Best match" },
     { value: "longestrunning", label: "Longest running" },
     { value: "adspend", label: "Highest ad spend" },
     { value: "adsetamount", label: "Most ad sets" },
@@ -208,42 +210,103 @@ interface WhAd {
   engagement: Array<{ label: string; value: number }>;
 }
 
+/** Their cards mix absolute URLs with bare filenames on their media CDN. */
+const MEDIA_HOST = "https://media.winninghunter.com/";
+function mediaUrl(value: string | null): string | null {
+  if (!value) return null;
+  if (/^https?:\/\//i.test(value)) return value;
+  return `${MEDIA_HOST}${value.replace(/^\/+/, "")}`;
+}
+
+/** Ad copy arrives as dashboard HTML (`<br />`, entities). */
+function plainText(value: string | null): string | null {
+  if (!value) return null;
+  const text = value
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&amp;/g, "&")
+    .replace(/&nbsp;/g, " ")
+    .trim();
+  return text === "" ? null : text;
+}
+
+function hostOf(url: string | null): string | null {
+  if (!url) return null;
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return null;
+  }
+}
+
 function normalise(row: Rec, platform: Platform, index: number): WhAd {
-  const video = pickStr(row, ["video", "video_url", "videoUrl", "media_url_video"]);
-  const image = pickStr(row, [
-    "image",
-    "image_url",
-    "poster",
-    "thumbnail",
-    "thumbnail_url",
-    "creative_image",
-  ]);
-  const media = pickStr(row, ["media_url", "mediaUrl"]);
-  const mediaType = pickStr(row, ["media_type", "mediaType", "format"]);
-  const isVideo = !!video || mediaType === "video" || (media != null && /\.mp4(\?|$)/i.test(media));
+  const video = mediaUrl(
+    pickStr(row, ["video", "video_url", "videoUrl", "facebook_video_url", "media_url_video"]),
+  );
+  const firstVideo = asRec(asArr(row["videos"])[0]);
+  const thumb =
+    mediaUrl(
+      pickStr(row, [
+        "poster",
+        "image",
+        "image_url",
+        "thumbnail",
+        "thumbnail_url",
+        "facebook_thumbnail_url",
+        "facebook_image_url",
+        "creative_image",
+        "media_url",
+      ]),
+    ) ??
+    mediaUrl(pickStr(firstVideo, ["video_preview_image_url"])) ??
+    pickStr(row, ["shopify_productImageURL"]);
+  const format = pickStr(row, ["display_format", "adFormat", "media_type", "mediaType", "format"]);
+  const isVideo = !!video || format === "video";
+
   const engagement: Array<{ label: string; value: number }> = [];
   const push = (label: string, keys: string[]) => {
     const v = pickNum(row, keys);
-    if (v != null) engagement.push({ label, value: v });
+    if (v != null && v > 0) engagement.push({ label, value: v });
   };
   if (platform === "tiktok") {
-    push("likes", ["likes", "like_count", "digg_count"]);
-    push("comments", ["comments", "comment_count"]);
-    push("shares", ["shares", "share_count"]);
+    push("likes", ["likeCount", "likes", "like_count", "digg_count"]);
+    push("comments", ["commentCount", "comments", "comment_count"]);
+    push("shares", ["shareCount", "shares", "share_count"]);
+    push("views", ["total_views", "views"]);
   }
   if (platform === "pinterest") {
-    push("saves", ["save_count", "likes"]);
-    push("repins", ["repin_count", "shares"]);
-    push("comments", ["comments", "comment_count"]);
+    push("saves", ["save_count", "likes", "likeCount"]);
+    push("repins", ["repin_count", "shares", "shareCount"]);
+    push("comments", ["comment_count", "commentCount", "comments"]);
   }
-  if (platform === "meta" || platform === "google") {
+  if (platform === "meta") {
+    push("views", ["total_views"]);
+    push("page likes", ["page_like_count"]);
+  }
+  if (platform === "google") {
     push("reach", ["reach", "total_reach", "estimated_reach"]);
   }
 
+  const landingUrl = pickStr(row, [
+    "urlStore",
+    "url_store",
+    "landing_url",
+    "pin_url",
+    "page_url",
+    "url",
+  ]);
+
   return {
     key:
-      pickStr(row, ["productid", "ad_id", "id", "doc_id", "creative_id", "pin_url"]) ??
-      `${platform}-${index}`,
+      pickStr(row, [
+        "productid",
+        "ad_id",
+        "id",
+        "doc_id",
+        "creative_id",
+        "collationID",
+        "pin_url",
+      ]) ?? `${platform}-${index}`,
     advertiser: pickStr(row, [
       "pageName",
       "page_name",
@@ -252,16 +315,43 @@ function normalise(row: Rec, platform: Platform, index: number): WhAd {
       "advertiser",
       "brand_name",
     ]),
-    logo: pickStr(row, ["page_logo", "pageLogo", "logo", "logo_url", "avatar", "page_image"]),
-    copy: pickStr(row, ["copy", "caption", "text", "ad_text", "description", "body"]),
-    headline: pickStr(row, ["title", "headline", "ad_title", "product_name", "productName"]),
-    thumb: image ?? (isVideo ? pickStr(row, ["poster"]) : media) ?? media,
-    video: video ?? (isVideo ? media : null),
+    logo: mediaUrl(
+      pickStr(row, [
+        "page_profile_picture_url",
+        "profile_picture",
+        "page_logo",
+        "logo",
+        "logo_url",
+        "avatar",
+      ]),
+    ),
+    copy: plainText(pickStr(row, ["copy", "caption", "text", "ad_text", "description", "body"])),
+    headline: plainText(
+      pickStr(row, [
+        "shopify_productname",
+        "title",
+        "headline",
+        "ad_title",
+        "product_name",
+        "productName",
+      ]),
+    ),
+    thumb,
+    video,
     isVideo,
-    landingUrl: pickStr(row, ["urlStore", "url_store", "landing_url", "pin_url", "page_url", "url"]),
-    domain: pickStr(row, ["domain", "store_domain", "shop_domain", "advertiser_domain"]),
+    landingUrl,
+    domain:
+      pickStr(row, [
+        "shopify_shopifydomain",
+        "domain",
+        "store_domain",
+        "shop_domain",
+        "advertiser_domain",
+      ]) ?? hostOf(landingUrl),
     daysRunning: pickNum(row, ["daysrunning", "days_running", "daysRunning"]),
-    activeAds: pickNum(row, ["total_active_ads_on_page", "countActive", "active_ads"]),
+    activeAds:
+      pickNum(row, ["total_active_ads_on_page"]) ||
+      pickNum(row, ["countActive", "active_ads", "adscount"]),
     adSpend: pickNum(row, ["total_adspend", "adspend", "ad_spend", "estimated_spend"]),
     adRank: pickNum(row, ["ad_rank", "adrank"]),
     adScore: pickStr(row, ["adscore", "ad_score"]),
@@ -357,7 +447,11 @@ export function WhAdLibraryTab({
     setFilters((f) => ({ ...f, [key]: value }));
 
   const switchPlatform = (platform: Platform) => {
-    setFilters((f) => ({ ...defaultFilters(platform), keyword: f.keyword, countries: f.countries }));
+    setFilters((f) => ({
+      ...defaultFilters(platform),
+      keyword: f.keyword,
+      countries: f.countries,
+    }));
     setState({ kind: "idle" });
     go({ whp: platform });
   };
@@ -469,7 +563,8 @@ export function WhAdLibraryTab({
                 placeholder="product, brand, angle…"
                 onChange={(e) => set("keyword", e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") void run({ page: filters.platform === "google" ? 1 : 0, scroll: null });
+                  if (e.key === "Enter")
+                    void run({ page: filters.platform === "google" ? 1 : 0, scroll: null });
                 }}
               />
             </div>
@@ -580,10 +675,7 @@ export function WhAdLibraryTab({
             </div>
             <div>
               <Label className="text-xs">Rows per page</Label>
-              <Select
-                value={String(filters.limit)}
-                onValueChange={(v) => set("limit", Number(v))}
-              >
+              <Select value={String(filters.limit)} onValueChange={(v) => set("limit", Number(v))}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -611,7 +703,9 @@ export function WhAdLibraryTab({
               size="sm"
               className="ml-auto rounded-full"
               disabled={state.kind === "loading"}
-              onClick={() => void run({ page: filters.platform === "google" ? 1 : 0, scroll: null })}
+              onClick={() =>
+                void run({ page: filters.platform === "google" ? 1 : 0, scroll: null })
+              }
             >
               {state.kind === "loading" ? (
                 <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
@@ -658,7 +752,9 @@ export function WhAdLibraryTab({
               size="sm"
               variant="outline"
               className="rounded-full"
-              onClick={() => void run({ page: filters.platform === "google" ? 1 : 0, scroll: null })}
+              onClick={() =>
+                void run({ page: filters.platform === "google" ? 1 : 0, scroll: null })
+              }
             >
               <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
               Try again
@@ -716,12 +812,7 @@ export function WhAdLibraryTab({
           ) : (
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {state.ads.map((ad) => (
-                <WhAdCard
-                  key={ad.key}
-                  ad={ad}
-                  platform={filters.platform}
-                  onPreview={setPreview}
-                />
+                <WhAdCard key={ad.key} ad={ad} platform={filters.platform} onPreview={setPreview} />
               ))}
             </div>
           )}
@@ -797,6 +888,9 @@ function WhAdCard({
               alt={ad.advertiser}
               loading="lazy"
               className="h-8 w-8 shrink-0 rounded-full border object-cover"
+              onError={(e) => {
+                e.currentTarget.style.display = "none";
+              }}
             />
           ) : (
             <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-muted text-xs font-bold">
@@ -859,6 +953,10 @@ function WhAdCard({
               alt={ad.headline ?? "Ad creative"}
               loading="lazy"
               className="h-full w-full object-cover"
+              onError={(e) => {
+                // Archived ads sometimes lose their creative on the provider CDN.
+                e.currentTarget.style.display = "none";
+              }}
             />
             {ad.isVideo && (
               <div className="pointer-events-none absolute inset-0 grid place-items-center">
@@ -957,7 +1055,7 @@ function CreativeLightbox({
             <div className="flex justify-end">
               <Button asChild variant="outline" size="sm" className="rounded-full">
                 <a
-                  href={(target.video ?? target.thumb) ?? "#"}
+                  href={target.video ?? target.thumb ?? "#"}
                   target="_blank"
                   rel="noreferrer"
                   download
