@@ -210,7 +210,7 @@ function DeskQuotePage() {
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label>Supplier unit price (USD)</Label>
+                      <Label>COGS — supplier unit price (USD)</Label>
                       <Input
                         inputMode="decimal"
                         value={line.supplier_unit_price}
@@ -218,6 +218,26 @@ function DeskQuotePage() {
                         onChange={(e) => setField(index, "supplier_unit_price", e.target.value)}
                       />
                     </div>
+                    <div className="space-y-1.5">
+                      <Label>Supplier shipping per unit (USD)</Label>
+                      <Input
+                        inputMode="decimal"
+                        value={line.supplier_shipping}
+                        placeholder="0.00"
+                        onChange={(e) => setField(index, "supplier_shipping", e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Import tax / IOSS per unit (USD)</Label>
+                      <Input
+                        inputMode="decimal"
+                        value={line.supplier_tax}
+                        placeholder="3.50"
+                        onChange={(e) => setField(index, "supplier_tax", e.target.value)}
+                      />
+                      <p className="text-xs text-muted-foreground">{PASSTHROUGH_NOTE}</p>
+                    </div>
+
                     <div className="space-y-1.5">
                       <Label>MOQ</Label>
                       <Input
