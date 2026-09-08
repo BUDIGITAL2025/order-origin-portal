@@ -1,74 +1,28 @@
 /**
- * /admin/spymarket-tools — internal Trendtrack research tool (admin-only).
+ * /admin/spymarket-tools — internal WinningHunter research tool (admin-only).
  * Separate from /admin/spymarket (the public waitlist admin). The client
  * facing /spymarket page is untouched.
  *
- * URL state: active filters + sort serialize into the query string so a
- * filtered view survives refresh and can be shared between team members.
- * Short keys keep URLs readable: sq/st (shops search), vmin/vmax, amin/amax/
- * awin, pmin/pmax, plus, cat, cinc/cexc (country include/exclude csv), lang,
- * tp, ssort — and aq/atyp/astat/amed/asort for the ads tab.
+ * URL state: the active tab plus each tab's search context serialize into the
+ * query string so a view survives refresh and can be shared with the team.
  */
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { SpyMarketTools } from "@/components/spymarket-tools";
 
 const str = (search: Record<string, unknown>, key: string): string | undefined => {
   const v = search[key];
-  // Numeric-looking params (e.g. a numeric shop id) arrive parsed as numbers.
+  // Numeric-looking params arrive parsed as numbers.
   if (typeof v === "number" && Number.isFinite(v)) return String(v);
   return typeof v === "string" && v !== "" ? v : undefined;
 };
 
 export const Route = createFileRoute("/_authenticated/admin/spymarket-tools")({
   validateSearch: (search) => ({
-    tab: str(search, "tab") ?? "lookup",
-    shopId: str(search, "shopId"),
-    domain: str(search, "domain"),
-    // Active shop context (persists across tabs) + where "Back" returns to.
-    shop: str(search, "shop"),
-    shopName: str(search, "shopName"),
-    from: str(search, "from"),
-    auto: str(search, "auto"),
-    // Shop explorer filters
-    sq: str(search, "sq"),
-    st: str(search, "st"),
-    vmin: str(search, "vmin"),
-    vmax: str(search, "vmax"),
-    amin: str(search, "amin"),
-    amax: str(search, "amax"),
-    awin: str(search, "awin"),
-    pmin: str(search, "pmin"),
-    pmax: str(search, "pmax"),
-    plus: str(search, "plus"),
-    cat: str(search, "cat"),
-    cinc: str(search, "cinc"),
-    cexc: str(search, "cexc"),
-    lang: str(search, "lang"),
-    tp: str(search, "tp"),
-    ssort: str(search, "ssort"),
-    dtc: str(search, "dtc"),
-    // Growth rule builder + preset views
-    gr: str(search, "gr"),
-    trend: str(search, "trend"),
-    cafter: str(search, "cafter"),
-    pset: str(search, "pset"),
-    // Ad library filters
-    aq: str(search, "aq"),
-    atyp: str(search, "atyp"),
-    astat: str(search, "astat"),
-    amed: str(search, "amed"),
-    asort: str(search, "asort"),
-    // Ad rank / growth-rank views
-    aview: str(search, "aview"),
-    armode: str(search, "armode"),
-    arbasis: str(search, "arbasis"),
-    armax: str(search, "armax"),
-    arwin: str(search, "arwin"),
-    armin: str(search, "armin"),
-    // WinningHunter ad library (parallel provider)
+    tab: str(search, "tab") ?? "stores",
+    // Ad library
     whp: str(search, "whp"),
     whq: str(search, "whq"),
-    // WinningHunter store explorer + brands
+    // Store explorer + brands
     wsq: str(search, "wsq"),
     wsc: str(search, "wsc"),
     wbid: str(search, "wbid"),
@@ -90,13 +44,10 @@ function AdminSpyMarketToolsPage() {
     <div className="p-6">
       <SpyMarketTools
         tab={search.tab}
-        shopId={search.shopId}
-        domain={search.domain}
         search={search}
         /**
-         * Filter tweaks replace the current entry (no history spam); tab and
-         * shop-context changes push, so the browser back button walks between
-         * searches and details naturally.
+         * Filter tweaks replace the current entry (no history spam); tab
+         * changes push, so the back button walks between searches naturally.
          */
         go={(patch, opts) =>
           void navigate({
