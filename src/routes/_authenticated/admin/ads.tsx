@@ -39,7 +39,8 @@ export const Route = createFileRoute("/_authenticated/admin/ads")({
       { title: "Ads control room — admin" },
       {
         name: "description",
-        content: "Map client ad accounts to workspaces, review performance and audit every ads API call.",
+        content:
+          "Map client ad accounts to workspaces, review performance and audit every ads API call.",
       },
       { name: "robots", content: "noindex" },
     ],
@@ -56,8 +57,8 @@ function AdminAdsPage() {
       <div>
         <h1 className="text-xl font-semibold">Ads</h1>
         <p className="text-sm text-muted-foreground">
-          Client ad accounts reach us through partner access on our Business Manager. Map an account to a workspace
-          and that client sees it — and only it.
+          Client ad accounts reach us through partner access on our Business Manager. Map an account
+          to a workspace and that client sees it — and only it.
         </p>
       </div>
 
@@ -72,7 +73,9 @@ function AdminAdsPage() {
                 ? "border-accent font-medium text-foreground"
                 : "border-transparent text-muted-foreground hover:text-foreground",
             )}
-            onClick={() => void navigate({ search: (prev) => ({ ...prev, tab: t.id }), replace: true })}
+            onClick={() =>
+              void navigate({ search: (prev) => ({ ...prev, tab: t.id }), replace: true })
+            }
           >
             {t.label}
           </button>
@@ -96,7 +99,11 @@ function AccountsTab() {
   const bmFn = useServerFn(adminSetBusinessManagerId);
   const queryClient = useQueryClient();
 
-  const mappings = useQuery({ queryKey: ["ads-mappings"], queryFn: () => mappingsFn(), retry: false });
+  const mappings = useQuery({
+    queryKey: ["ads-mappings"],
+    queryFn: () => mappingsFn(),
+    retry: false,
+  });
   const provider = useMutation({
     mutationFn: (refresh: boolean) => providerFn({ data: { refresh } }),
   });
@@ -166,7 +173,11 @@ function AccountsTab() {
             placeholder="1234567890"
             className="max-w-xs"
           />
-          <Button size="sm" disabled={saveBm.isPending || businessId.trim().length < 3} onClick={() => saveBm.mutate()}>
+          <Button
+            size="sm"
+            disabled={saveBm.isPending || businessId.trim().length < 3}
+            onClick={() => saveBm.mutate()}
+          >
             Save
           </Button>
         </div>
@@ -178,7 +189,8 @@ function AccountsTab() {
           <ul className="mt-2 space-y-1 text-sm">
             {data.openRequests.map((r) => (
               <li key={r.id}>
-                {r.workspaceName ?? r.workspaceId} — asked {new Date(r.createdAt).toLocaleDateString()}
+                {r.workspaceName ?? r.workspaceId} — asked{" "}
+                {new Date(r.createdAt).toLocaleDateString()}
                 {r.note ? ` · "${r.note}"` : ""}
               </li>
             ))}
@@ -191,15 +203,26 @@ function AccountsTab() {
           <div>
             <div className="text-sm font-medium">Accounts in our connection</div>
             <p className="text-xs text-muted-foreground">
-              One metered call, cached 24 hours. Assign an account to a workspace to switch that client on.
+              One metered call, cached 24 hours. Assign an account to a workspace to switch that
+              client on.
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <Button size="sm" variant="outline" disabled={provider.isPending} onClick={() => provider.mutate(false)}>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={provider.isPending}
+              onClick={() => provider.mutate(false)}
+            >
               {provider.isPending ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : null}
               Load accounts
             </Button>
-            <Button size="sm" variant="ghost" disabled={provider.isPending} onClick={() => provider.mutate(true)}>
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={provider.isPending}
+              onClick={() => provider.mutate(true)}
+            >
               <RefreshCw className="h-3.5 w-3.5" />
             </Button>
           </div>
@@ -207,7 +230,9 @@ function AccountsTab() {
 
         {provider.isError ? (
           <div className="p-3 text-sm text-destructive">
-            {provider.error instanceof Error ? provider.error.message : "Could not reach the provider."}
+            {provider.error instanceof Error
+              ? provider.error.message
+              : "Could not reach the provider."}
           </div>
         ) : null}
 
@@ -232,7 +257,9 @@ function AccountsTab() {
                       <td className="px-3 py-2">{a.currency ?? "—"}</td>
                       <td className="px-3 py-2">
                         {mapped ? (
-                          <Badge variant="outline">{mapped.workspace_name ?? mapped.workspace_id}</Badge>
+                          <Badge variant="outline">
+                            {mapped.workspace_name ?? mapped.workspace_id}
+                          </Badge>
                         ) : (
                           <div className="flex items-center gap-2">
                             <select
@@ -272,8 +299,8 @@ function AccountsTab() {
           </div>
         ) : (
           <div className="p-6 text-center text-sm text-muted-foreground">
-            Press <span className="font-medium text-foreground">Load accounts</span> to see what our connection can
-            reach.
+            Press <span className="font-medium text-foreground">Load accounts</span> to see what our
+            connection can reach.
           </div>
         )}
       </div>
@@ -281,7 +308,9 @@ function AccountsTab() {
       <div className="rounded-lg border bg-card">
         <div className="border-b px-4 py-3 text-sm font-medium">Current mappings</div>
         {data.mappings.length === 0 ? (
-          <div className="p-6 text-center text-sm text-muted-foreground">No ad accounts mapped yet.</div>
+          <div className="p-6 text-center text-sm text-muted-foreground">
+            No ad accounts mapped yet.
+          </div>
         ) : (
           <table className="w-full text-sm">
             <thead className="border-b text-xs uppercase tracking-wide text-muted-foreground">
@@ -317,7 +346,11 @@ function AccountsTab() {
 
 function OverviewTab() {
   const mappingsFn = useServerFn(adminListMappings);
-  const mappings = useQuery({ queryKey: ["ads-mappings"], queryFn: () => mappingsFn(), retry: false });
+  const mappings = useQuery({
+    queryKey: ["ads-mappings"],
+    queryFn: () => mappingsFn(),
+    retry: false,
+  });
 
   if (mappings.isPending) {
     return (
@@ -380,8 +413,12 @@ function UsageTab() {
           <div className="mt-1 text-xl font-semibold tabular-nums">{u.total}</div>
         </div>
         <div className="rounded-lg border bg-card p-3">
-          <div className="text-xs uppercase tracking-wide text-muted-foreground">Served from cache</div>
-          <div className="mt-1 text-xl font-semibold tabular-nums">{(u.cacheHitRate * 100).toFixed(0)}%</div>
+          <div className="text-xs uppercase tracking-wide text-muted-foreground">
+            Served from cache
+          </div>
+          <div className="mt-1 text-xl font-semibold tabular-nums">
+            {(u.cacheHitRate * 100).toFixed(0)}%
+          </div>
         </div>
         <div className="rounded-lg border bg-card p-3">
           <div className="text-xs uppercase tracking-wide text-muted-foreground">Failures</div>
@@ -398,8 +435,12 @@ function UsageTab() {
                 <tr key={w.workspace} className="border-b last:border-0">
                   <td className="px-3 py-1.5">{w.workspace}</td>
                   <td className="px-3 py-1.5 text-right tabular-nums">{w.calls}</td>
-                  <td className="px-3 py-1.5 text-right text-xs text-muted-foreground">{w.cached} cached</td>
-                  <td className="px-3 py-1.5 text-right text-xs text-destructive">{w.failed || ""}</td>
+                  <td className="px-3 py-1.5 text-right text-xs text-muted-foreground">
+                    {w.cached} cached
+                  </td>
+                  <td className="px-3 py-1.5 text-right text-xs text-destructive">
+                    {w.failed || ""}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -413,8 +454,12 @@ function UsageTab() {
                 <tr key={t.tool} className="border-b last:border-0">
                   <td className="px-3 py-1.5 font-mono text-xs">{t.tool}</td>
                   <td className="px-3 py-1.5 text-right tabular-nums">{t.calls}</td>
-                  <td className="px-3 py-1.5 text-right text-xs text-muted-foreground">{t.cached} cached</td>
-                  <td className="px-3 py-1.5 text-right text-xs text-destructive">{t.failed || ""}</td>
+                  <td className="px-3 py-1.5 text-right text-xs text-muted-foreground">
+                    {t.cached} cached
+                  </td>
+                  <td className="px-3 py-1.5 text-right text-xs text-destructive">
+                    {t.failed || ""}
+                  </td>
                 </tr>
               ))}
             </tbody>

@@ -86,7 +86,9 @@ function stableStringify(value: unknown): string {
 }
 
 function hashArgs(platform: string, tool: string, args: unknown): string {
-  return createHash("sha256").update(`${platform}|${tool}|${stableStringify(args)}`).digest("hex");
+  return createHash("sha256")
+    .update(`${platform}|${tool}|${stableStringify(args)}`)
+    .digest("hex");
 }
 
 async function getAdmin() {
@@ -128,7 +130,10 @@ export async function listMyMappedAccounts(userId: string): Promise<MappedAccoun
     .order("created_at");
   if (error) throw new AdsError(error.message);
   const names = new Map((stores ?? []).map((s) => [s.id, s.store_name]));
-  return (data ?? []).map((row) => ({ ...row, workspace_name: names.get(row.workspace_id) ?? null }));
+  return (data ?? []).map((row) => ({
+    ...row,
+    workspace_name: names.get(row.workspace_id) ?? null,
+  }));
 }
 
 /** Every mapping in the system, with workspace names. Admin surfaces only. */
@@ -136,11 +141,15 @@ export async function listAllMappedAccounts(): Promise<MappedAccount[]> {
   const admin = await getAdmin();
   const { data, error } = await admin
     .from("workspace_ad_accounts")
-    .select("id, workspace_id, ad_account_id, platform, label, active, created_at, stores(store_name)")
+    .select(
+      "id, workspace_id, ad_account_id, platform, label, active, created_at, stores(store_name)",
+    )
     .order("created_at", { ascending: false });
   if (error) throw new AdsError(error.message);
   return (data ?? []).map((row) => {
-    const { stores, ...rest } = row as typeof row & { stores: { store_name: string | null } | null };
+    const { stores, ...rest } = row as typeof row & {
+      stores: { store_name: string | null } | null;
+    };
     return { ...rest, workspace_name: stores?.store_name ?? null } as MappedAccount;
   });
 }
@@ -167,7 +176,9 @@ export async function assertAccountAllowed(args: {
     return { workspaceId: data?.workspace_id ?? null };
   }
   const mine = await listMyMappedAccounts(args.userId);
-  const match = mine.find((m) => m.ad_account_id === args.accountId && m.platform === args.platform);
+  const match = mine.find(
+    (m) => m.ad_account_id === args.accountId && m.platform === args.platform,
+  );
   if (!match) {
     throw new AdsError("Forbidden: this ad account is not linked to your workspace", 403);
   }
@@ -292,8 +303,9 @@ function unwrapToolResult(result: unknown): unknown {
   const content = rec["content"];
   if (!Array.isArray(content)) return result;
   const texts = content
-    .filter((b): b is { type: string; text: string } =>
-      !!b && typeof b === "object" && (b as { type?: string }).type === "text",
+    .filter(
+      (b): b is { type: string; text: string } =>
+        !!b && typeof b === "object" && (b as { type?: string }).type === "text",
     )
     .map((b) => b.text);
   if (texts.length === 0) return result;
@@ -310,7 +322,17 @@ export function adsRowsOf(payload: unknown): number {
   if (Array.isArray(payload)) return payload.length;
   if (payload && typeof payload === "object") {
     const rec = payload as Record<string, unknown>;
-    for (const key of ["data", "segmented_metrics", "results", "items", "campaigns", "adsets", "ads", "accounts", "insights"]) {
+    for (const key of [
+      "data",
+      "segmented_metrics",
+      "results",
+      "items",
+      "campaigns",
+      "adsets",
+      "ads",
+      "accounts",
+      "insights",
+    ]) {
       const v = rec[key];
       if (Array.isArray(v)) return v.length;
     }
@@ -333,7 +355,16 @@ export function adsRowsArray(payload: unknown): Record<string, unknown>[] {
         return { ...metrics, date_start: s["period"] ?? s["period_start"] ?? null };
       });
     }
-    for (const key of ["data", "results", "items", "campaigns", "adsets", "ads", "accounts", "insights"]) {
+    for (const key of [
+      "data",
+      "results",
+      "items",
+      "campaigns",
+      "adsets",
+      "ads",
+      "accounts",
+      "insights",
+    ]) {
       const v = rec[key];
       if (Array.isArray(v)) return v as Record<string, unknown>[];
     }
@@ -391,7 +422,10 @@ async function mcpToolsCall(
       result?: unknown;
     };
     if (envelope.error) {
-      throw new AdsError(envelope.error.message ?? "Ads provider rejected the request", response.status);
+      throw new AdsError(
+        envelope.error.message ?? "Ads provider rejected the request",
+        response.status,
+      );
     }
     const result = envelope.result as { isError?: boolean } | undefined;
     const payload = unwrapToolResult(result);
@@ -506,7 +540,8 @@ export async function callAdsTool<T = unknown>(opts: AdsCallOptions): Promise<Ad
     });
     return { data: payload as T, cached: false, fetchedAt: new Date().toISOString(), rows };
   } catch (e) {
-    const err = e instanceof AdsError ? e : new AdsError(e instanceof Error ? e.message : String(e));
+    const err =
+      e instanceof AdsError ? e : new AdsError(e instanceof Error ? e.message : String(e));
     await logCall({
       userId: opts.userId,
       workspaceId: opts.workspaceId,
@@ -803,7 +838,12 @@ export async function fetchOverview(args: {
     workspaceId: args.workspaceId,
     tool: "get_insights",
     accountId: args.accountId,
-    args: insightArgs({ objectId: args.accountId, window: windows.current, level: "account", daily: true }),
+    args: insightArgs({
+      objectId: args.accountId,
+      window: windows.current,
+      level: "account",
+      daily: true,
+    }),
     ttlMs: INSIGHTS_TTL_MS,
     ...(args.refresh ? { refresh: true } : {}),
   });
@@ -816,7 +856,12 @@ export async function fetchOverview(args: {
       workspaceId: args.workspaceId,
       tool: "get_insights",
       accountId: args.accountId,
-      args: insightArgs({ objectId: args.accountId, window: windows.previous, level: "account", daily: true }),
+      args: insightArgs({
+        objectId: args.accountId,
+        window: windows.previous,
+        level: "account",
+        daily: true,
+      }),
       ttlMs: INSIGHTS_TTL_MS,
     });
     previous = aggregateMetrics(adsRowsArray(previousCall.data).map(normaliseMetaRow));
@@ -905,7 +950,8 @@ export async function fetchLevel(args: {
   refresh?: boolean;
 }): Promise<{ rows: CampaignRow[]; cached: boolean; stale: boolean; fetchedAt: string }> {
   const windows = periodWindows(args.days);
-  const tool = args.level === "campaign" ? "get_campaigns" : args.level === "adset" ? "get_adsets" : "get_ads";
+  const tool =
+    args.level === "campaign" ? "get_campaigns" : args.level === "adset" ? "get_adsets" : "get_ads";
 
   const structureArgs: Record<string, unknown> = { account_id: args.accountId, limit: 200 };
   if (args.level === "adset" && args.parentId) structureArgs["campaign_id"] = args.parentId;
@@ -1028,6 +1074,9 @@ export async function setBusinessManagerId(value: string): Promise<void> {
   const admin = await getAdmin();
   const { error } = await admin
     .from("internal_settings")
-    .upsert({ key: BM_ID_KEY, value: value.trim(), updated_at: new Date().toISOString() }, { onConflict: "key" });
+    .upsert(
+      { key: BM_ID_KEY, value: value.trim(), updated_at: new Date().toISOString() },
+      { onConflict: "key" },
+    );
   if (error) throw new AdsError(error.message);
 }

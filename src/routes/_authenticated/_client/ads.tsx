@@ -111,18 +111,22 @@ function ClientAdsPage() {
           </div>
           <h1 className="mt-2 text-xl font-semibold">Connect your ad account</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Grant FlySales partner access to your Meta ad account from Business Manager (Business settings →
-            Partners → add partner with our Business ID) and we'll activate your dashboard within a day.
+            Grant FlySales partner access to your Meta ad account from Business Manager (Business
+            settings → Partners → add partner with our Business ID) and we'll activate your
+            dashboard within a day.
           </p>
 
           <div className="mt-4 rounded-md border bg-muted/40 p-3">
-            <div className="text-xs uppercase tracking-wide text-muted-foreground">Our Business Manager ID</div>
+            <div className="text-xs uppercase tracking-wide text-muted-foreground">
+              Our Business Manager ID
+            </div>
             <div className="mt-1.5">
               {data.businessManagerId ? (
                 <CopyField value={data.businessManagerId} />
               ) : (
                 <p className="text-sm text-muted-foreground">
-                  Ask our team for the Business ID — press the button below and we'll send it to you.
+                  Ask our team for the Business ID — press the button below and we'll send it to
+                  you.
                 </p>
               )}
             </div>
@@ -130,7 +134,9 @@ function ClientAdsPage() {
 
           <ol className="mt-4 space-y-1.5 text-sm text-muted-foreground">
             <li>1. Open Meta Business settings → Partners → Add partner.</li>
-            <li>2. Paste our Business ID and give access to the ad account you want us to report on.</li>
+            <li>
+              2. Paste our Business ID and give access to the ad account you want us to report on.
+            </li>
             <li>3. Press the button below so we know to look for it.</li>
           </ol>
 
@@ -143,7 +149,9 @@ function ClientAdsPage() {
               {alreadyRequested ? "Request sent" : "Notify us"}
             </Button>
             {alreadyRequested ? (
-              <span className="text-sm text-muted-foreground">We're on it — you'll hear from us shortly.</span>
+              <span className="text-sm text-muted-foreground">
+                We're on it — you'll hear from us shortly.
+              </span>
             ) : null}
           </div>
         </div>

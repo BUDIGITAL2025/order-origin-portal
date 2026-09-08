@@ -55,7 +55,15 @@ function friendly(error: unknown): string {
 /* KPI cards                                                           */
 /* ------------------------------------------------------------------ */
 
-function Delta({ current, previous, invert }: { current: number; previous: number; invert?: boolean }) {
+function Delta({
+  current,
+  previous,
+  invert,
+}: {
+  current: number;
+  previous: number;
+  invert?: boolean;
+}) {
   if (!previous) return <span className="text-xs text-muted-foreground">no prior data</span>;
   const change = ((current - previous) / Math.abs(previous)) * 100;
   const good = invert ? change < 0 : change > 0;
@@ -64,7 +72,11 @@ function Delta({ current, previous, invert }: { current: number; previous: numbe
     <span
       className={cn(
         "inline-flex items-center gap-0.5 text-xs font-medium",
-        Math.abs(change) < 0.5 ? "text-muted-foreground" : good ? "text-emerald-500" : "text-destructive",
+        Math.abs(change) < 0.5
+          ? "text-muted-foreground"
+          : good
+            ? "text-emerald-500"
+            : "text-destructive",
       )}
     >
       <Icon className="h-3 w-3" />
@@ -175,7 +187,9 @@ export function AdsDashboard({
 }) {
   const [accountId, setAccountId] = React.useState(accounts[0]?.adAccountId ?? "");
   const [days, setDays] = React.useState<Days>(30);
-  const [crumbs, setCrumbs] = React.useState<Crumb[]>([{ level: "campaign", parentId: null, name: "Campaigns" }]);
+  const [crumbs, setCrumbs] = React.useState<Crumb[]>([
+    { level: "campaign", parentId: null, name: "Campaigns" },
+  ]);
 
   const overviewFn = useServerFn(getAdsOverview);
   const levelFn = useServerFn(getAdsLevel);
@@ -202,7 +216,11 @@ export function AdsDashboard({
   const load = (refresh = false) => {
     if (!accountId) return;
     overview.mutate({ ...(refresh ? { refresh: true } : {}) });
-    level.mutate({ level: current.level, parentId: current.parentId, ...(refresh ? { refresh: true } : {}) });
+    level.mutate({
+      level: current.level,
+      parentId: current.parentId,
+      ...(refresh ? { refresh: true } : {}),
+    });
   };
 
   const drill = (row: { id: string; name: string }) => {
@@ -261,7 +279,9 @@ export function AdsDashboard({
                 type="button"
                 className={cn(
                   "rounded px-2.5 py-1 text-xs font-medium",
-                  days === r ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground",
+                  days === r
+                    ? "bg-accent text-accent-foreground"
+                    : "text-muted-foreground hover:text-foreground",
                 )}
                 onClick={() => {
                   setDays(r);
@@ -306,8 +326,8 @@ export function AdsDashboard({
 
       {!o && !overview.isPending && !overview.isError ? (
         <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
-          Choose a period and press <span className="font-medium text-foreground">Load data</span> to pull your
-          numbers.
+          Choose a period and press <span className="font-medium text-foreground">Load data</span>{" "}
+          to pull your numbers.
         </div>
       ) : null}
 
@@ -322,24 +342,56 @@ export function AdsDashboard({
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <Kpi label="Spend" value={money(o.current.spend, currency)} current={o.current.spend} previous={o.previous.spend} />
+            <Kpi
+              label="Spend"
+              value={money(o.current.spend, currency)}
+              current={o.current.spend}
+              previous={o.previous.spend}
+            />
             <Kpi
               label="Impressions"
               value={int(o.current.impressions)}
               current={o.current.impressions}
               previous={o.previous.impressions}
             />
-            <Kpi label="Clicks" value={int(o.current.clicks)} current={o.current.clicks} previous={o.previous.clicks} />
-            <Kpi label="CTR" value={pct(o.current.ctr)} current={o.current.ctr} previous={o.previous.ctr} />
-            <Kpi label="CPC" value={money(o.current.cpc, currency)} current={o.current.cpc} previous={o.previous.cpc} invert />
+            <Kpi
+              label="Clicks"
+              value={int(o.current.clicks)}
+              current={o.current.clicks}
+              previous={o.previous.clicks}
+            />
+            <Kpi
+              label="CTR"
+              value={pct(o.current.ctr)}
+              current={o.current.ctr}
+              previous={o.previous.ctr}
+            />
+            <Kpi
+              label="CPC"
+              value={money(o.current.cpc, currency)}
+              current={o.current.cpc}
+              previous={o.previous.cpc}
+              invert
+            />
             <Kpi
               label="Purchases"
               value={int(o.current.purchases)}
               current={o.current.purchases}
               previous={o.previous.purchases}
             />
-            <Kpi label="ROAS" value={mult(o.current.roas)} current={o.current.roas} previous={o.previous.roas} />
-            <Kpi label="CPA" value={money(o.current.cpa, currency)} current={o.current.cpa} previous={o.previous.cpa} invert />
+            <Kpi
+              label="ROAS"
+              value={mult(o.current.roas)}
+              current={o.current.roas}
+              previous={o.previous.roas}
+            />
+            <Kpi
+              label="CPA"
+              value={money(o.current.cpa, currency)}
+              current={o.current.cpa}
+              previous={o.previous.cpa}
+              invert
+            />
           </div>
 
           {o.series.length > 0 ? (
@@ -349,8 +401,17 @@ export function AdsDashboard({
                 <div className="h-56">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={o.series}>
-                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" vertical={false} />
-                      <XAxis dataKey="date" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        className="stroke-muted"
+                        vertical={false}
+                      />
+                      <XAxis
+                        dataKey="date"
+                        tick={{ fontSize: 11 }}
+                        tickLine={false}
+                        axisLine={false}
+                      />
                       <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={48} />
                       <Tooltip formatter={(v: number) => money(v, currency)} />
                       <Area
@@ -369,9 +430,24 @@ export function AdsDashboard({
                 <div className="h-56">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={o.series}>
-                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" vertical={false} />
-                      <XAxis dataKey="date" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
-                      <YAxis yAxisId="left" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={40} />
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        className="stroke-muted"
+                        vertical={false}
+                      />
+                      <XAxis
+                        dataKey="date"
+                        tick={{ fontSize: 11 }}
+                        tickLine={false}
+                        axisLine={false}
+                      />
+                      <YAxis
+                        yAxisId="left"
+                        tick={{ fontSize: 11 }}
+                        tickLine={false}
+                        axisLine={false}
+                        width={40}
+                      />
                       <YAxis
                         yAxisId="right"
                         orientation="right"
@@ -381,8 +457,20 @@ export function AdsDashboard({
                         width={40}
                       />
                       <Tooltip />
-                      <Line yAxisId="left" type="monotone" dataKey="purchases" stroke="hsl(var(--accent))" dot={false} />
-                      <Line yAxisId="right" type="monotone" dataKey="roas" stroke="hsl(var(--primary))" dot={false} />
+                      <Line
+                        yAxisId="left"
+                        type="monotone"
+                        dataKey="purchases"
+                        stroke="hsl(var(--accent))"
+                        dot={false}
+                      />
+                      <Line
+                        yAxisId="right"
+                        type="monotone"
+                        dataKey="roas"
+                        stroke="hsl(var(--primary))"
+                        dot={false}
+                      />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
@@ -403,7 +491,9 @@ export function AdsDashboard({
                   type="button"
                   className={cn(
                     "rounded px-1.5 py-0.5",
-                    i === crumbs.length - 1 ? "font-medium" : "text-muted-foreground hover:text-foreground",
+                    i === crumbs.length - 1
+                      ? "font-medium"
+                      : "text-muted-foreground hover:text-foreground",
                   )}
                   onClick={() => goTo(i)}
                 >
@@ -411,7 +501,9 @@ export function AdsDashboard({
                 </button>
               </React.Fragment>
             ))}
-            {level.isPending ? <Loader2 className="ml-2 h-3.5 w-3.5 animate-spin text-muted-foreground" /> : null}
+            {level.isPending ? (
+              <Loader2 className="ml-2 h-3.5 w-3.5 animate-spin text-muted-foreground" />
+            ) : null}
           </div>
 
           {level.isError ? (
@@ -432,7 +524,9 @@ export function AdsDashboard({
                     <th className="px-3 py-2 text-right font-medium">CPA</th>
                     <th className="px-3 py-2 text-right font-medium">ROAS</th>
                     <th className="px-3 py-2 text-right font-medium">CTR</th>
-                    {current.level === "ad" ? <th className="px-3 py-2 text-left font-medium">Creative</th> : null}
+                    {current.level === "ad" ? (
+                      <th className="px-3 py-2 text-left font-medium">Creative</th>
+                    ) : null}
                   </tr>
                 </thead>
                 <tbody>
@@ -456,14 +550,27 @@ export function AdsDashboard({
                       </td>
                       {row.hasData ? (
                         <>
-                          <td className="px-3 py-2 text-right tabular-nums">{money(row.metrics.spend, currency)}</td>
-                          <td className="px-3 py-2 text-right tabular-nums">{int(row.metrics.purchases)}</td>
-                          <td className="px-3 py-2 text-right tabular-nums">{money(row.metrics.cpa, currency)}</td>
-                          <td className="px-3 py-2 text-right tabular-nums">{mult(row.metrics.roas)}</td>
-                          <td className="px-3 py-2 text-right tabular-nums">{pct(row.metrics.ctr)}</td>
+                          <td className="px-3 py-2 text-right tabular-nums">
+                            {money(row.metrics.spend, currency)}
+                          </td>
+                          <td className="px-3 py-2 text-right tabular-nums">
+                            {int(row.metrics.purchases)}
+                          </td>
+                          <td className="px-3 py-2 text-right tabular-nums">
+                            {money(row.metrics.cpa, currency)}
+                          </td>
+                          <td className="px-3 py-2 text-right tabular-nums">
+                            {mult(row.metrics.roas)}
+                          </td>
+                          <td className="px-3 py-2 text-right tabular-nums">
+                            {pct(row.metrics.ctr)}
+                          </td>
                         </>
                       ) : (
-                        <td className="px-3 py-2 text-right text-xs text-muted-foreground" colSpan={5}>
+                        <td
+                          className="px-3 py-2 text-right text-xs text-muted-foreground"
+                          colSpan={5}
+                        >
                           no spend in this period
                         </td>
                       )}

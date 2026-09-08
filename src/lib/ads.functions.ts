@@ -70,7 +70,9 @@ export const getMyAdsContext = createServerFn({ method: "GET" })
 export const requestAdsActivation = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
-    z.object({ workspaceId: z.string().uuid(), note: z.string().trim().max(500).optional() }).parse(input),
+    z
+      .object({ workspaceId: z.string().uuid(), note: z.string().trim().max(500).optional() })
+      .parse(input),
   )
   .handler(async ({ data, context }) => {
     // Ownership: the workspace must belong to the caller (RLS-respecting read).
@@ -198,7 +200,9 @@ export const getAdCreative = createServerFn({ method: "POST" })
 /** Ad accounts visible in OUR provider connection. One metered call, 24h cache. */
 export const adminListProviderAccounts = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ refresh: z.boolean().default(false) }).parse(input ?? {}))
+  .inputValidator((input: unknown) =>
+    z.object({ refresh: z.boolean().default(false) }).parse(input ?? {}),
+  )
   .handler(async ({ data, context }) => {
     const { requireAdmin } = await import("./admin.server");
     await requireAdmin(context.supabase, context.userId);
@@ -347,7 +351,9 @@ export const adminAdsUsage = createServerFn({ method: "GET" })
     const since = new Date(Date.now() - 30 * 24 * 3_600_000).toISOString();
     const { data, error } = await supabaseAdmin
       .from("ads_api_calls")
-      .select("id, workspace_id, tool, ad_account_id, ok, cached, rows_returned, duration_ms, error, created_at, stores(store_name)")
+      .select(
+        "id, workspace_id, tool, ad_account_id, ok, cached, rows_returned, duration_ms, error, created_at, stores(store_name)",
+      )
       .gte("created_at", since)
       .order("created_at", { ascending: false })
       .limit(500);
@@ -367,8 +373,14 @@ export const adminAdsUsage = createServerFn({ method: "GET" })
       createdAt: row.created_at,
     }));
 
-    const byTool = new Map<string, { tool: string; calls: number; cached: number; failed: number }>();
-    const byWorkspace = new Map<string, { workspace: string; calls: number; cached: number; failed: number }>();
+    const byTool = new Map<
+      string,
+      { tool: string; calls: number; cached: number; failed: number }
+    >();
+    const byWorkspace = new Map<
+      string,
+      { workspace: string; calls: number; cached: number; failed: number }
+    >();
     for (const c of calls) {
       const t = byTool.get(c.tool) ?? { tool: c.tool, calls: 0, cached: 0, failed: 0 };
       t.calls += 1;
