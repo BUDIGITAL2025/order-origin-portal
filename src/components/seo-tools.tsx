@@ -213,6 +213,8 @@ export function SeoTools({
 
       {active === "domain" && (
         <DomainTab
+          key={domainSeed}
+          seed={domainSeed}
           price={prices[ENDPOINTS.domain]}
           locationCode={locationCode}
           languageCode={languageCode}
@@ -242,7 +244,50 @@ export function SeoTools({
           askOverage={askOverage}
         />
       )}
+      {(active === "competitors" ||
+        active === "gap" ||
+        active === "ranked" ||
+        active === "backlinks") && (
+        <SeoPhase2Tab
+          kind={active}
+          prices={prices}
+          perItem={perItem}
+          locationCode={locationCode}
+          languageCode={languageCode}
+          market={marketCtl}
+          onSpend={refreshCost}
+          askOverage={askOverage}
+          confirmSpend={confirmSpend}
+          onOpenDomain={openDomain}
+        />
+      )}
       {active === "usage" && <UsageTab />}
+
+      <AlertDialog open={bigSpend != null} onOpenChange={(o) => !o && setBigSpend(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm this spend</AlertDialogTitle>
+            <AlertDialogDescription>
+              This single action is estimated at {usd(bigSpend ?? 0)}. Repeats of the exact same
+              request are served free from cache. Run it?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                const run = pendingBig.current;
+                setBigSpend(null);
+                pendingBig.current = null;
+                run?.();
+              }}
+            >
+              Run it
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
 
       <AlertDialog open={overage != null} onOpenChange={(o) => !o && setOverage(null)}>
         <AlertDialogContent>
