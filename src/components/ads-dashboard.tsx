@@ -561,7 +561,7 @@ export function AdsDashboard({
                     <th className="px-3 py-2 text-right font-medium">CPA</th>
                     <th className="px-3 py-2 text-right font-medium">ROAS</th>
                     <th className="px-3 py-2 text-right font-medium">CTR</th>
-                    {current.level === "ad" ? (
+                    {current.level === "ad" && platform === "meta" ? (
                       <th className="px-3 py-2 text-left font-medium">Creative</th>
                     ) : null}
                   </tr>
