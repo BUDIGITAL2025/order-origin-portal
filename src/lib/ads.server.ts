@@ -390,7 +390,10 @@ async function mcpToolsCall(
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
-    const response = await fetch(MCP_ENDPOINTS[platform], {
+    // Pipeboard's panel URLs carry the key as a ?token= query param; we send it
+    // both ways (query + Bearer header) so either accepted form works.
+    const endpoint = `${MCP_ENDPOINTS[platform]}?token=${encodeURIComponent(apiKey)}`;
+    const response = await fetch(endpoint, {
       method: "POST",
       signal: controller.signal,
       headers: {
