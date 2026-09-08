@@ -100,6 +100,16 @@ export const Route = createFileRoute("/api/public/cron/daily-digest")({
             .gte("created_at", since)
             .limit(10);
 
+          // Ads gateway failures — repeated ones mean partner access or the
+          // provider token needs attention.
+          const adsFailures = await supabaseAdmin
+            .from("ads_api_calls")
+            .select("tool, ad_account_id, error, created_at, stores(store_name)", { count: "exact" })
+            .eq("ok", false)
+            .gte("created_at", since)
+            .order("created_at", { ascending: false })
+            .limit(10);
+
           const summary = {
             failed_webhooks: webhooks.count ?? 0,
             failed_crons: crons.count ?? 0,
@@ -112,6 +122,7 @@ export const Route = createFileRoute("/api/public/cron/daily-digest")({
             skus_red: redCount,
             skus_amber: amberCount,
             seo_studies_needing_attention: seoStudies.count ?? 0,
+            ads_call_failures: adsFailures.count ?? 0,
           };
 
           const lines: string[] = [
@@ -166,6 +177,12 @@ export const Route = createFileRoute("/api/public/cron/daily-digest")({
                 (s.params as { target?: string } | null)?.target ?? "unknown domain";
               const detail = s.error ? ` — ${s.error}` : "";
               return `  • ${target}: ${s.status} at ${s.phase ?? "queued"} (${s.progress_pct}%, $${Number(s.total_cost).toFixed(4)})${detail}`;
+            }),
+            "",
+            `Ads data pulls that failed (24h): ${summary.ads_call_failures}`,
+            ...(adsFailures.data ?? []).map((a) => {
+              const workspace = (a.stores as { store_name: string | null } | null)?.store_name ?? "unmapped";
+              return `  • ${workspace} — ${a.tool} on ${a.ad_account_id ?? "no account"}: ${a.error ?? "unknown error"}`;
             }),
             "",
             "https://app.flysales.app/admin/integration",
