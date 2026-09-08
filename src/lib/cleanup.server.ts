@@ -27,10 +27,16 @@ export type CleanupCheck = {
 
 // Supabase's generated types can't express a table name chosen at runtime, so
 // the query builder is treated as untyped here and re-narrowed by the caller.
-type UntypedQuery = { eq: (c: string, v: unknown) => UntypedQuery } & PromiseLike<{
+type UntypedQuery = {
+  eq: (c: string, v: unknown) => UntypedQuery;
+  in: (c: string, v: readonly unknown[]) => UntypedQuery;
+  is: (c: string, v: unknown) => UntypedQuery;
+  not: (c: string, op: string, v: unknown) => UntypedQuery;
+} & PromiseLike<{
   count: number | null;
   error: { message: string } | null;
 }>;
+
 
 async function countOf(
   admin: Admin,
