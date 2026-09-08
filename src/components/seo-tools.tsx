@@ -97,6 +97,10 @@ const TABS = [
   { id: "domain", label: "Domain overview" },
   { id: "keywords", label: "Keyword research" },
   { id: "serp", label: "SERP check" },
+  { id: "competitors", label: "Competitors" },
+  { id: "gap", label: "Keyword gap" },
+  { id: "ranked", label: "Ranked keywords" },
+  { id: "backlinks", label: "Backlinks" },
   { id: "usage", label: "Usage" },
 ] as const;
 type TabId = (typeof TABS)[number]["id"];
