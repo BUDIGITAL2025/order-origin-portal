@@ -310,7 +310,7 @@ export function adsRowsOf(payload: unknown): number {
   if (Array.isArray(payload)) return payload.length;
   if (payload && typeof payload === "object") {
     const rec = payload as Record<string, unknown>;
-    for (const key of ["data", "results", "items", "campaigns", "adsets", "ads", "accounts", "insights"]) {
+    for (const key of ["data", "segmented_metrics", "results", "items", "campaigns", "adsets", "ads", "accounts", "insights"]) {
       const v = rec[key];
       if (Array.isArray(v)) return v.length;
     }
@@ -323,6 +323,16 @@ export function adsRowsArray(payload: unknown): Record<string, unknown>[] {
   if (Array.isArray(payload)) return payload as Record<string, unknown>[];
   if (payload && typeof payload === "object") {
     const rec = payload as Record<string, unknown>;
+    // Daily insights come back as { segmented_metrics: [{ period, metrics }] };
+    // flatten them into ordinary rows carrying their date.
+    const segments = rec["segmented_metrics"];
+    if (Array.isArray(segments)) {
+      return segments.map((seg) => {
+        const s = (seg ?? {}) as Record<string, unknown>;
+        const metrics = (s["metrics"] ?? {}) as Record<string, unknown>;
+        return { ...metrics, date_start: s["period"] ?? s["period_start"] ?? null };
+      });
+    }
     for (const key of ["data", "results", "items", "campaigns", "adsets", "ads", "accounts", "insights"]) {
       const v = rec[key];
       if (Array.isArray(v)) return v as Record<string, unknown>[];
@@ -784,7 +794,7 @@ export async function fetchOverview(args: {
       workspaceId: args.workspaceId,
       tool: "get_insights",
       accountId: args.accountId,
-      args: insightArgs({ objectId: args.accountId, window: windows.previous, level: "account" }),
+      args: insightArgs({ objectId: args.accountId, window: windows.previous, level: "account", daily: true }),
       ttlMs: INSIGHTS_TTL_MS,
     });
     previous = aggregateMetrics(adsRowsArray(previousCall.data).map(normaliseMetaRow));
