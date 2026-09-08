@@ -29,8 +29,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-const fmtInt = (v: number | null | undefined): string =>
-  v == null ? "—" : v.toLocaleString("en");
+const fmtInt = (v: number | null | undefined): string => (v == null ? "—" : v.toLocaleString("en"));
 
 export interface SpyMarketToolsProps {
   tab: string;
@@ -79,9 +78,7 @@ export function SpyMarketTools({ tab, search, go }: SpyMarketToolsProps) {
           <CardContent className="space-y-3 text-sm text-muted-foreground">
             <p>
               The WinningHunter integration is not configured yet. Add the secret{" "}
-              <code className="rounded bg-muted px-1.5 py-0.5 text-xs">
-                WINNINGHUNTER_API_KEY
-              </code>{" "}
+              <code className="rounded bg-muted px-1.5 py-0.5 text-xs">WINNINGHUNTER_API_KEY</code>{" "}
               under <span className="font-medium text-foreground">More → Secrets</span> and this
               section activates automatically — no deploy needed.
             </p>

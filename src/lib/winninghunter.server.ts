@@ -1,8 +1,7 @@
 /**
- * Server-only gateway for the WinningHunter API — phase 1 of the SpyMarket
- * provider gateway — WinningHunter is now the single SpyMarket provider and is
- * untouched and keeps running in parallel; this module is the ONLY place that
- * talks to app.winninghunter.com.
+ * Server-only gateway for the WinningHunter API. WinningHunter is the single
+ * SpyMarket provider; this module is the ONLY place that talks to
+ * app.winninghunter.com.
  *
  * Source of truth: docs/winninghunter-api-reference.md.
  *

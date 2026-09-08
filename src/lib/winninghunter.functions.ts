@@ -313,9 +313,7 @@ export const getWhUsage = createServerFn({ method: "GET" })
       month: sum(rows),
       calls30d: rows.length,
       cacheHitRate:
-        cacheable.length === 0
-          ? 0
-          : cacheable.filter((r) => r.cached).length / cacheable.length,
+        cacheable.length === 0 ? 0 : cacheable.filter((r) => r.cached).length / cacheable.length,
       byEndpoint: [...byEndpointMap.entries()]
         .map(([endpoint, v]) => ({ endpoint, ...v }))
         .sort((a, b) => b.credits - a.credits),
