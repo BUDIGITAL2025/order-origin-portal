@@ -11,7 +11,7 @@
  * same cache, same seo_api_calls log, same real cost from the API envelope.
  * The job row accumulates that cost.
  */
-import type { Admin, ArtifactRow, JobRow, PhaseDef, TickResult } from "./jobs.server";
+import type { Admin, ArtifactRow, JobRow, Json, PhaseDef, TickResult } from "./jobs.server";
 
 export const SEO_MODULE = "seo";
 export const SEO_STUDY_KIND = "seo_study";
@@ -267,7 +267,7 @@ export function studyPhases(userId: string, params: StudyParams): PhaseDef[] {
               (num(organic["pos_81_90"]) ?? 0) +
               (num(organic["pos_91_100"]) ?? 0) || null,
         };
-        return { kind: "done", data: out, cost };
+        return { kind: "done", data: out as unknown as Json, cost };
       },
     },
 
@@ -308,7 +308,7 @@ export function studyPhases(userId: string, params: StudyParams): PhaseDef[] {
         });
         return {
           kind: "done",
-          data: { totalCount: num(result["total_count"]), rows },
+          data: { totalCount: num(result["total_count"]), rows } as unknown as Json,
           cost,
         };
       },
@@ -347,7 +347,7 @@ export function studyPhases(userId: string, params: StudyParams): PhaseDef[] {
             };
           })
           .filter((r) => r.domain && r.domain !== params.target);
-        return { kind: "done", data: { rows }, cost };
+        return { kind: "done", data: { rows } as unknown as Json, cost };
       },
     },
 
@@ -406,7 +406,11 @@ export function studyPhases(userId: string, params: StudyParams): PhaseDef[] {
         rows.sort((a, b) => (b.volume ?? 0) - (a.volume ?? 0));
         return {
           kind: "done",
-          data: { minVolume: L.gapMinVolume, competitors: competitors.map((c) => c.domain), rows },
+          data: {
+            minVolume: L.gapMinVolume,
+            competitors: competitors.map((c) => c.domain),
+            rows,
+          } as unknown as Json,
           cost: Math.round(cost * 1e6) / 1e6,
         };
       },
@@ -437,7 +441,7 @@ export function studyPhases(userId: string, params: StudyParams): PhaseDef[] {
           spamScore: num(it["backlinks_spam_score"]),
           firstSeen: str(it["first_seen"]),
         };
-        return { kind: "done", data: out, cost };
+        return { kind: "done", data: out as unknown as Json, cost };
       },
     },
 
@@ -564,7 +568,7 @@ export function studyPhases(userId: string, params: StudyParams): PhaseDef[] {
             .slice(0, 5)
             .map((p) => ({ url: p.url, words: p.words, internalLinks: p.internalLinks })),
         };
-        return { kind: "done", data: out, cost };
+        return { kind: "done", data: out as unknown as Json, cost };
       },
     },
 
@@ -655,7 +659,7 @@ export function studyPhases(userId: string, params: StudyParams): PhaseDef[] {
           strongestPages,
           weakestPages,
         };
-        return { kind: "done", data: out, cost: 0 };
+        return { kind: "done", data: out as unknown as Json, cost: 0 };
       },
     },
   ];
