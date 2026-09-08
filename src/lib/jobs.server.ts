@@ -22,6 +22,8 @@ import type { Database } from "@/integrations/supabase/types";
 export type Admin = SupabaseClient<Database>;
 
 export type JobStatus = "queued" | "running" | "done" | "failed" | "partial";
+/** Everything stored in an artifact must survive a JSON round trip. */
+export type Json = string | number | boolean | null | Json[] | { [key: string]: Json };
 export type SectionStatus = "ok" | "skipped" | "pending";
 
 export interface JobRow {
@@ -51,14 +53,13 @@ export interface ArtifactSection {
   collectedAt: string;
   cost: number;
   error?: string;
-  data?: unknown;
+  data?: Json;
   /** Free-form phase state (e.g. an in-flight external task id). */
-  state?: Record<string, unknown>;
+  state?: Record<string, Json>;
 }
 
 export interface ArtifactPayload {
   sections: Record<string, ArtifactSection>;
-  [key: string]: unknown;
 }
 
 export interface ArtifactRow {
@@ -226,10 +227,7 @@ export async function getArtifact(admin: Admin, jobId: string): Promise<Artifact
   const payload = (data.payload ?? {}) as Record<string, unknown>;
   return {
     ...data,
-    payload: {
-      ...payload,
-      sections: (payload["sections"] ?? {}) as Record<string, ArtifactSection>,
-    },
+    payload: { sections: (payload["sections"] ?? {}) as Record<string, ArtifactSection> },
   } as ArtifactRow;
 }
 
@@ -242,11 +240,9 @@ export async function writeSection(
   artifact: ArtifactRow,
   key: string,
   section: ArtifactSection,
-  extra?: Record<string, unknown>,
 ): Promise<ArtifactRow> {
   const payload: ArtifactPayload = {
     ...artifact.payload,
-    ...(extra ?? {}),
     sections: { ...artifact.payload.sections, [key]: section },
   };
   const { error } = await admin
@@ -274,9 +270,9 @@ export async function finishArtifact(
 // ---------------------------------------------------------------------------
 
 export type PhaseOutcome =
-  | { kind: "done"; data: unknown; cost?: number; extra?: Record<string, unknown> }
+  | { kind: "done"; data: Json; cost?: number }
   /** External work still in flight — keep the section pending, retry next tick. */
-  | { kind: "wait"; state: Record<string, unknown>; cost?: number };
+  | { kind: "wait"; state: Record<string, Json>; cost?: number };
 
 export interface PhaseDef {
   key: string;
@@ -285,7 +281,7 @@ export interface PhaseDef {
     job: JobRow;
     artifact: ArtifactRow;
     /** Whatever the previous `wait` outcome stored. */
-    state: Record<string, unknown>;
+    state: Record<string, Json>;
   }) => Promise<PhaseOutcome>;
 }
 
@@ -335,7 +331,7 @@ export async function runPhases(
       const outcome = await phase.run({
         job,
         artifact,
-        state: (existing?.state ?? {}) as Record<string, unknown>,
+        state: (existing?.state ?? {}) as Record<string, Json>,
       });
       const cost = Math.round((outcome.cost ?? 0) * 1e6) / 1e6;
       if (cost) {
@@ -355,19 +351,13 @@ export async function runPhases(
         break;
       }
 
-      artifact = await writeSection(
-        admin,
-        artifact,
-        phase.key,
-        {
-          status: "ok",
-          phase: phase.label,
-          collectedAt: new Date().toISOString(),
-          cost: (existing?.cost ?? 0) + cost,
-          data: outcome.data,
-        },
-        outcome.extra,
-      );
+      artifact = await writeSection(admin, artifact, phase.key, {
+        status: "ok",
+        phase: phase.label,
+        collectedAt: new Date().toISOString(),
+        cost: (existing?.cost ?? 0) + cost,
+        data: outcome.data,
+      });
       ranPhases.push(phase.key);
     } catch (error) {
       // Resilience: one phase failing never kills the dossier.
