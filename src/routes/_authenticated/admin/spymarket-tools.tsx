@@ -68,6 +68,10 @@ export const Route = createFileRoute("/_authenticated/admin/spymarket-tools")({
     // WinningHunter ad library (parallel provider)
     whp: str(search, "whp"),
     whq: str(search, "whq"),
+    // WinningHunter store explorer + brands
+    wsq: str(search, "wsq"),
+    wsc: str(search, "wsc"),
+    wbid: str(search, "wbid"),
   }),
   head: () => ({
     meta: [

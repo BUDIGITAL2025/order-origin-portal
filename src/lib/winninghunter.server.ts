@@ -588,3 +588,299 @@ export async function getWhStatus(userId: string, live: boolean): Promise<WhStat
     return base;
   }
 }
+
+// ---------------------------------------------------------------------------
+// Phase 2 — Shopify Explorer / Tracker, Brands, Trends, TikTok Shop
+// Every helper below goes through whCall: 1 credit per uncached call, logged.
+// ---------------------------------------------------------------------------
+
+export interface WhStoreSearchInput {
+  search?: string | undefined;
+  country?: string | undefined;
+  sortingKey?: string | undefined;
+  sortingDirection?: "asc" | "desc" | undefined;
+  page?: number | undefined;
+  pageSize?: number | undefined;
+  includeWlads?: boolean | undefined;
+  category?: string | undefined;
+  minRevenue?: number | undefined;
+  maxRevenue?: number | undefined;
+  monthlyVisitsMin?: number | undefined;
+  monthlyVisitsMax?: number | undefined;
+  aovMin?: number | undefined;
+  aovMax?: number | undefined;
+  productCountMin?: number | undefined;
+  productCountMax?: number | undefined;
+  storeCreatedFrom?: string | undefined;
+  storeCreatedTo?: string | undefined;
+  language?: string | undefined;
+}
+
+/** POST /api/v1/store-explorer — one page of stores (max 50 rows/credit). */
+export async function whSearchStores(
+  userId: string,
+  input: WhStoreSearchInput,
+): Promise<WhResult<Json>> {
+  const pageSize = Math.min(Math.max(input.pageSize ?? 50, 1), 50);
+  const body: Record<string, unknown> = {
+    page: input.page && input.page > 0 ? input.page : 1,
+    pageSize,
+    sortingKey: input.sortingKey || "revenue_30d",
+    sortingDirection: input.sortingDirection ?? "desc",
+    // 0 skips the Meta ad enrichment: same rows, faster answer.
+    includeWlads: input.includeWlads ? 1 : 0,
+  };
+  const put = (key: string, value: unknown) => {
+    if (value !== undefined && value !== "" && value !== null) body[key] = value;
+  };
+  put("search", input.search);
+  put("country", input.country);
+  put("category", input.category);
+  put("language", input.language);
+  put("min_revenue", input.minRevenue);
+  put("max_revenue", input.maxRevenue);
+  put("monthly_visits_min", input.monthlyVisitsMin);
+  put("monthly_visits_max", input.monthlyVisitsMax);
+  put("aov_min", input.aovMin);
+  put("aov_max", input.aovMax);
+  put("product_count_min", input.productCountMin);
+  put("product_count_max", input.productCountMax);
+  // Their creation filter needs BOTH bounds or it is ignored.
+  if (input.storeCreatedFrom && input.storeCreatedTo) {
+    body["store_created_from"] = input.storeCreatedFrom;
+    body["store_created_to"] = input.storeCreatedTo;
+  }
+
+  return whCall({
+    userId,
+    endpoint: "store-explorer",
+    path: "/api/v1/store-explorer",
+    method: "POST",
+    body,
+    summary: {
+      search: input.search ?? null,
+      country: input.country ?? null,
+      sort: body["sortingKey"],
+      page: body["page"],
+      pageSize,
+    },
+  });
+}
+
+/** GET /api/v1/store-tracker → { amount, max_allowed }. */
+export async function whStoreTracker(userId: string): Promise<WhResult<Json>> {
+  return whCall({
+    userId,
+    endpoint: "store-tracker",
+    path: "/api/v1/store-tracker",
+    summary: { probe: "tracker" },
+    cacheTtlMs: 60 * 60 * 1000,
+  });
+}
+
+export interface WhBrandListInput {
+  search?: string | undefined;
+  sort?: string | undefined;
+  dir?: "asc" | "desc" | undefined;
+  page?: number | undefined;
+  limit?: number | undefined;
+  revenuePeriod?: string | undefined;
+}
+
+/** GET /api/v1/brands — brands tracked by the key owner. */
+export async function whListBrands(
+  userId: string,
+  input: WhBrandListInput,
+): Promise<WhResult<Json>> {
+  return whCall({
+    userId,
+    endpoint: "brands",
+    path: "/api/v1/brands",
+    query: {
+      search: input.search || undefined,
+      sort: input.sort || "date_added",
+      dir: input.dir ?? "desc",
+      page: input.page && input.page > 0 ? input.page : 1,
+      limit: Math.min(Math.max(input.limit ?? 50, 1), 50),
+      revenue_period: input.revenuePeriod || undefined,
+    },
+    summary: { search: input.search ?? null, page: input.page ?? 1 },
+    // Tracked-brand list moves as ads change: shorter window than ad searches.
+    cacheTtlMs: 6 * 60 * 60 * 1000,
+  });
+}
+
+/**
+ * Brand analytics tabs. Whitelisted so a UI bug can never point our key at an
+ * arbitrary path on their API.
+ */
+export const WH_BRAND_TABS = {
+  "overview-cards": "/api/v1/brands/overview-cards",
+  personas: "/api/v1/brands/personas",
+  themes: "/api/v1/brands/themes",
+  angles: "/api/v1/brands/angles",
+  desires: "/api/v1/brands/desires",
+  emotions: "/api/v1/brands/emotions",
+  "awareness-stages": "/api/v1/brands/awareness-stages",
+  "funnel-stages": "/api/v1/brands/funnel-stages",
+  usps: "/api/v1/brands/usps",
+  "ad-hooks": "/api/v1/brands/ad-hooks",
+  "ad-headlines": "/api/v1/brands/ad-headlines",
+  "ad-copies": "/api/v1/brands/ad-copies",
+  "landing-pages": "/api/v1/brands/landing-pages",
+  "associated-domains": "/api/v1/brands/associated-domains",
+  ads: "/api/v1/brands/ads",
+} as const;
+export type WhBrandTab = keyof typeof WH_BRAND_TABS;
+
+export async function whBrandTab(
+  userId: string,
+  input: { id: string; tab: WhBrandTab; dateRange?: string | undefined; page?: number | undefined },
+): Promise<WhResult<Json>> {
+  return whCall({
+    userId,
+    endpoint: `brand-${input.tab}`,
+    path: WH_BRAND_TABS[input.tab],
+    query: {
+      id: input.id,
+      date_range: input.dateRange || undefined,
+      // Only the ads tab pages, and it is 0-based.
+      page: input.tab === "ads" ? (input.page ?? 0) : undefined,
+    },
+    summary: { brand: input.id, tab: input.tab },
+  });
+}
+
+/** Track a brand by domain — a write, so never cached. */
+export async function whFollowBrandByDomain(
+  userId: string,
+  domain: string,
+): Promise<WhResult<Json>> {
+  return whCall({
+    userId,
+    endpoint: "brands-follow-by-domain",
+    path: "/api/v1/brands/follow-by-domain",
+    method: "POST",
+    body: { domain },
+    summary: { domain },
+    cacheable: false,
+  });
+}
+
+/** POST /api/v1/trends/search — Exploding Topics passthrough (browse if no query). */
+export async function whTrendsSearch(
+  userId: string,
+  input: {
+    query?: string | undefined;
+    category?: string | undefined;
+    timeframe?: string | undefined;
+    sorting?: string | undefined;
+    offset?: number | undefined;
+  },
+): Promise<WhResult<Json>> {
+  const body: Record<string, unknown> = {};
+  if (input.query) body["query"] = input.query;
+  if (input.category) body["category"] = input.category;
+  if (input.timeframe) body["timeframe"] = input.timeframe;
+  if (input.sorting) body["sorting"] = input.sorting;
+  if (input.offset) body["offset"] = input.offset;
+  return whCall({
+    userId,
+    endpoint: "trends-search",
+    path: "/api/v1/trends/search",
+    method: "POST",
+    body,
+    summary: { query: input.query ?? null, sorting: input.sorting ?? null },
+  });
+}
+
+/** POST /api/v1/trends/detail — one topic's full series. */
+export async function whTrendDetail(userId: string, topic: string): Promise<WhResult<Json>> {
+  return whCall({
+    userId,
+    endpoint: "trends-detail",
+    path: "/api/v1/trends/detail",
+    method: "POST",
+    body: { topic },
+    summary: { topic },
+  });
+}
+
+export const WH_TIKTOK_RESOURCES = ["products", "shops", "creators", "videos"] as const;
+export type WhTikTokResource = (typeof WH_TIKTOK_RESOURCES)[number];
+
+export interface WhTikTokExploreInput {
+  resource: WhTikTokResource;
+  name?: string | undefined;
+  country?: string | undefined;
+  period?: string | undefined;
+  sort?: string | undefined;
+  order?: "asc" | "desc" | undefined;
+  page?: number | undefined;
+  limit?: number | undefined;
+  minRevenue?: number | undefined;
+  minSold?: number | undefined;
+}
+
+/** POST /api/v1/tiktok-shop/{resource}/explore — POST avoids their 414 on big filter sets. */
+export async function whTikTokExplore(
+  userId: string,
+  input: WhTikTokExploreInput,
+): Promise<WhResult<Json>> {
+  const body: Record<string, unknown> = {
+    country: (input.country || "US").toUpperCase(),
+    period: input.period || "30d",
+    page: input.page && input.page > 0 ? input.page : 1,
+    limit: Math.min(Math.max(input.limit ?? 50, 1), 50),
+    order: input.order ?? "desc",
+  };
+  if (input.sort) body["sort"] = input.sort;
+  if (input.name) body["name"] = input.name;
+  if (input.minRevenue != null) body["min_revenue"] = input.minRevenue;
+  if (input.minSold != null) body["min_item_sold"] = input.minSold;
+
+  return whCall({
+    userId,
+    endpoint: `tiktok-shop-${input.resource}`,
+    path: `/api/v1/tiktok-shop/${input.resource}/explore`,
+    method: "POST",
+    body,
+    summary: {
+      resource: input.resource,
+      country: body["country"],
+      period: body["period"],
+      page: body["page"],
+    },
+  });
+}
+
+/** GET /api/v1/tiktok-shop/product-detail/{id}. */
+export async function whTikTokProductDetail(
+  userId: string,
+  id: string,
+  period: string,
+): Promise<WhResult<Json>> {
+  return whCall({
+    userId,
+    endpoint: "tiktok-shop-product-detail",
+    path: `/api/v1/tiktok-shop/product-detail/${encodeURIComponent(id)}`,
+    query: { period },
+    summary: { product: id, period },
+  });
+}
+
+/** GET /api/v1/tiktok-shop/suggestions — 1 credit even when empty, so never on keystroke. */
+export async function whTikTokSuggestions(
+  userId: string,
+  type: string,
+  q: string,
+  country: string,
+): Promise<WhResult<Json>> {
+  return whCall({
+    userId,
+    endpoint: "tiktok-shop-suggestions",
+    path: "/api/v1/tiktok-shop/suggestions",
+    query: { type, q, limit: 20, country: country.toUpperCase() },
+    summary: { type, q },
+  });
+}
