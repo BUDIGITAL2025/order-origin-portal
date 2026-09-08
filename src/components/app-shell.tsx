@@ -12,6 +12,7 @@ import {
   ExternalLink,
   FilePlus2,
   FlaskConical,
+  LineChart,
   Handshake,
   LayoutDashboard,
   LogOut,
@@ -114,6 +115,7 @@ const ADMIN_NAV: NavItem[] = [
   { to: "/admin/integration", label: "Integration", icon: Plug },
   { to: "/admin/spymarket", label: "SpyMarket waitlist", icon: Telescope },
   { to: "/admin/spymarket-tools", label: "SpyMarket tools", icon: FlaskConical, badge: "New" },
+  { to: "/admin/seo-tools", label: "FlySales SEO", icon: LineChart, badge: "New" },
 ];
 
 /** The collaborator desk is deliberately tiny: a queue and their earnings. */

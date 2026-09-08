@@ -1637,6 +1637,72 @@ export type Database = {
           },
         ]
       }
+      seo_api_calls: {
+        Row: {
+          cached: boolean
+          called_by: string | null
+          cost: number
+          created_at: string
+          duration_ms: number | null
+          endpoint: string
+          id: string
+          payload_hash: string
+          status: string
+          summary: Json
+        }
+        Insert: {
+          cached?: boolean
+          called_by?: string | null
+          cost?: number
+          created_at?: string
+          duration_ms?: number | null
+          endpoint: string
+          id?: string
+          payload_hash: string
+          status?: string
+          summary?: Json
+        }
+        Update: {
+          cached?: boolean
+          called_by?: string | null
+          cost?: number
+          created_at?: string
+          duration_ms?: number | null
+          endpoint?: string
+          id?: string
+          payload_hash?: string
+          status?: string
+          summary?: Json
+        }
+        Relationships: []
+      }
+      seo_cache: {
+        Row: {
+          created_at: string
+          endpoint: string
+          expires_at: string
+          id: string
+          payload_hash: string
+          response: Json
+        }
+        Insert: {
+          created_at?: string
+          endpoint: string
+          expires_at: string
+          id?: string
+          payload_hash: string
+          response: Json
+        }
+        Update: {
+          created_at?: string
+          endpoint?: string
+          expires_at?: string
+          id?: string
+          payload_hash?: string
+          response?: Json
+        }
+        Relationships: []
+      }
       simulator_calls: {
         Row: {
           action: string
