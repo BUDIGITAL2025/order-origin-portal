@@ -428,3 +428,28 @@ export function inboundPaymentNeededEmail(args: {
     button: { label: "Top up your wallet", url: portalUrl("/billing/wallet") },
   });
 }
+
+/** Internal: a client asked us to switch their ads dashboard on. */
+export function adsActivationRequestedEmail(args: {
+  workspaceName: string;
+  workspaceId: string;
+  note: string | null;
+}): BuiltEmail {
+  return build(`Ads activation requested — ${args.workspaceName}`, {
+    heading: "A client requested their ads dashboard",
+    preheader: `${args.workspaceName} is waiting for partner access to be confirmed.`,
+    paragraphs: [
+      `${args.workspaceName} clicked "Notify us" on the Ads page.`,
+      "Check that partner access has landed in our Business Manager, then map their ad account to this workspace in the admin Ads page.",
+      ...(args.note ? [`Their note: ${args.note}`] : []),
+    ],
+    panel: {
+      title: "Workspace",
+      rows: [
+        { label: "Name", value: args.workspaceName, strong: true },
+        { label: "ID", value: args.workspaceId },
+      ],
+    },
+    button: { label: "Open admin Ads", url: portalUrl("/admin/ads") },
+  });
+}
