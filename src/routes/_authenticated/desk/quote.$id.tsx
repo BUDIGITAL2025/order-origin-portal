@@ -36,6 +36,8 @@ type LineDraft = {
   country_code: string;
   supplier_name: string;
   supplier_unit_price: string;
+  supplier_shipping: string;
+  supplier_tax: string;
   moq: string;
   production_lead_days: string;
   sourcing_notes: string;
@@ -46,6 +48,8 @@ const emptyLine = (country: string): LineDraft => ({
   country_code: country,
   supplier_name: "",
   supplier_unit_price: "",
+  supplier_shipping: "",
+  supplier_tax: String(defaultImportTax(country)),
   moq: "",
   production_lead_days: "",
   sourcing_notes: "",
@@ -75,7 +79,17 @@ function DeskQuotePage() {
             variant_label: l.variant_label ?? "",
             country_code: l.country_code ?? country,
             supplier_name: l.supplier_name ?? "",
-            supplier_unit_price: l.supplier_unit_price != null ? String(l.supplier_unit_price) : "",
+            supplier_unit_price:
+              l.supplier_cogs != null
+                ? String(l.supplier_cogs)
+                : l.supplier_unit_price != null
+                  ? String(l.supplier_unit_price)
+                  : "",
+            supplier_shipping: l.supplier_shipping != null ? String(l.supplier_shipping) : "0",
+            supplier_tax:
+              l.supplier_tax != null
+                ? String(l.supplier_tax)
+                : String(defaultImportTax(l.country_code ?? country)),
             moq: l.moq != null ? String(l.moq) : "",
             production_lead_days:
               l.production_lead_days != null ? String(l.production_lead_days) : "",
@@ -101,6 +115,8 @@ function DeskQuotePage() {
           country_code: l.country_code,
           supplier_name: l.supplier_name,
           supplier_unit_price: Number(l.supplier_unit_price),
+          supplier_shipping: Number(l.supplier_shipping || 0),
+          supplier_tax: Number(l.supplier_tax || 0),
           moq: Number(l.moq),
           production_lead_days: Number(l.production_lead_days),
           sourcing_notes: l.sourcing_notes,
@@ -121,10 +137,10 @@ function DeskQuotePage() {
   if (isPending) return <p className="text-sm text-muted-foreground">Loading…</p>;
   if (!data) return <p className="text-sm text-muted-foreground">Request not found.</p>;
 
-  const totalFee = lines.reduce((sum, l) => {
-    const price = Number(l.supplier_unit_price);
-    return Number.isFinite(price) ? sum + price * feeRate : sum;
-  }, 0);
+  const totalFee = lines.reduce(
+    (sum, l) => sum + sourcingFee(Number(l.supplier_unit_price) || 0, Number(l.supplier_shipping) || 0, feeRate),
+    0,
+  );
 
   return (
     <div>
@@ -143,8 +159,11 @@ function DeskQuotePage() {
       <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
         <div className="space-y-3">
           {lines.map((line, index) => {
-            const price = Number(line.supplier_unit_price);
-            const fee = Number.isFinite(price) ? price * feeRate : 0;
+            const fee = sourcingFee(
+              Number(line.supplier_unit_price) || 0,
+              Number(line.supplier_shipping) || 0,
+              feeRate,
+            );
             return (
               <Card key={line.id ?? `new-${index}`}>
                 <CardContent className="space-y-3 pt-5">
