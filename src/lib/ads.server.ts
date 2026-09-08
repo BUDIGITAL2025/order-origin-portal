@@ -827,8 +827,13 @@ export interface OverviewSeriesPoint {
 
 export interface OverviewResult {
   accountId: string;
+  platform: AdPlatform;
   currency: string;
   days: number;
+  /** False when the platform cannot give a like-for-like previous period. */
+  hasPrevious: boolean;
+  /** Metrics this platform does not report, spelled out for the UI. */
+  gaps: string[];
   current: AdMetrics;
   previous: AdMetrics;
   series: OverviewSeriesPoint[];
@@ -848,8 +853,10 @@ export async function fetchOverview(args: {
   workspaceId: string | null;
   accountId: string;
   days: number;
+  platform?: AdPlatform;
   refresh?: boolean;
 }): Promise<OverviewResult> {
+  if ((args.platform ?? "meta") === "google") return fetchGoogleOverview(args);
   const windows = periodWindows(args.days);
 
   // Account currency, so the dashboard never labels euros as dollars.
@@ -929,8 +936,11 @@ export async function fetchOverview(args: {
 
   return {
     accountId: args.accountId,
+    platform: "meta",
     currency,
     days: args.days,
+    hasPrevious: true,
+    gaps: [],
     current: aggregateMetrics(rows.map(normaliseMetaRow)),
     previous,
     series,
@@ -939,6 +949,155 @@ export async function fetchOverview(args: {
     fetchedAt: currentCall.fetchedAt,
     ...(warning ? { warning } : {}),
   };
+}
+
+/**
+ * Google overview. One metrics call with a daily breakdown gives both the KPI
+ * totals (their aggregate block) and the time series. Google's tool only takes
+ * named ranges, so there is no honest previous-period comparison — we say so
+ * rather than invent one.
+ */
+async function fetchGoogleOverview(args: {
+  userId: string;
+  workspaceId: string | null;
+  accountId: string;
+  days: number;
+  refresh?: boolean;
+}): Promise<OverviewResult> {
+  const { range, note } = googleDateRange(args.days);
+
+  let currency = "USD";
+  try {
+    const info = await callAdsTool({
+      userId: args.userId,
+      workspaceId: args.workspaceId,
+      platform: "google",
+      tool: "get_google_ads_account_info",
+      accountId: args.accountId,
+      args: { customer_id: args.accountId },
+      ttlMs: STRUCTURE_TTL_MS,
+    });
+    const rec = (info.data ?? {}) as Record<string, unknown>;
+    const found = rec["currency_code"] ?? rec["currency"];
+    if (typeof found === "string" && found) currency = found;
+  } catch {
+    /* cosmetic */
+  }
+
+  const call = await callAdsToolWithStale<Record<string, unknown>>({
+    userId: args.userId,
+    workspaceId: args.workspaceId,
+    platform: "google",
+    tool: "get_google_ads_campaign_metrics",
+    accountId: args.accountId,
+    args: {
+      customer_id: args.accountId,
+      date_range: range,
+      time_breakdown: "day",
+      status_filter: "ALL",
+      page_size: 200,
+    },
+    ttlMs: INSIGHTS_TTL_MS,
+    ...(args.refresh ? { refresh: true } : {}),
+  });
+
+  const payload = (call.data ?? {}) as Record<string, unknown>;
+  const aggregate = (payload["aggregate_metrics"] ?? {}) as Record<string, unknown>;
+  const segments = Array.isArray(payload["segmented_metrics"])
+    ? (payload["segmented_metrics"] as Record<string, unknown>[])
+    : [];
+
+  const series: OverviewSeriesPoint[] = segments
+    .map((seg) => {
+      const m = normaliseGoogleRow(seg);
+      const date = typeof seg["date"] === "string" ? seg["date"].slice(0, 10) : null;
+      return date
+        ? {
+            date,
+            spend: m.spend,
+            revenue: m.revenue,
+            purchases: m.purchases,
+            clicks: m.clicks,
+            impressions: m.impressions,
+            roas: m.roas,
+          }
+        : null;
+    })
+    .filter((x): x is OverviewSeriesPoint => x !== null)
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  const current =
+    Object.keys(aggregate).length > 0
+      ? normaliseGoogleRow(aggregate)
+      : aggregateMetrics(segments.map(normaliseGoogleRow));
+
+  const gaps = [
+    "Reach and frequency are not reported by Google Ads.",
+    "Google Ads has no previous-period comparison here, so KPI deltas are hidden.",
+    "Conversions are Google conversions (can be fractional), not Meta purchases.",
+  ];
+  if (note) gaps.unshift(note);
+
+  return {
+    accountId: args.accountId,
+    platform: "google",
+    currency,
+    days: args.days,
+    hasPrevious: false,
+    gaps,
+    current,
+    previous: emptyMetrics(),
+    series,
+    cached: call.cached,
+    stale: call.stale,
+    fetchedAt: call.fetchedAt,
+  };
+}
+
+/** Google customer accounts our connection can reach. Admin surface only. */
+export async function listGoogleCustomers(args: {
+  userId: string;
+  refresh?: boolean;
+}): Promise<{
+  accounts: { id: string; name: string; currency: string | null; canQueryMetrics: boolean }[];
+  cached: boolean;
+  stale: boolean;
+  fetchedAt: string;
+  warnings: string[];
+}> {
+  const call = await callAdsToolWithStale<Record<string, unknown>>({
+    userId: args.userId,
+    workspaceId: null,
+    platform: "google",
+    tool: "list_google_ads_customers",
+    args: {},
+    ttlMs: STRUCTURE_TTL_MS,
+    ...(args.refresh ? { refresh: true } : {}),
+  });
+  const payload = (call.data ?? {}) as Record<string, unknown>;
+  const connections = Array.isArray(payload["connections"])
+    ? (payload["connections"] as Record<string, unknown>[])
+    : [];
+  const accounts: { id: string; name: string; currency: string | null; canQueryMetrics: boolean }[] =
+    [];
+  for (const conn of connections) {
+    const customers = Array.isArray(conn["customers"])
+      ? (conn["customers"] as Record<string, unknown>[])
+      : [];
+    for (const c of customers) {
+      const id = String(c["id"] ?? "");
+      if (!id) continue;
+      accounts.push({
+        id,
+        name: String(c["descriptive_name"] ?? c["name"] ?? id),
+        currency: typeof c["currency_code"] === "string" ? c["currency_code"] : null,
+        canQueryMetrics: c["can_query_metrics"] !== false,
+      });
+    }
+  }
+  const summary = (payload["summary"] ?? {}) as Record<string, unknown>;
+  const warnings = Array.isArray(summary["warnings"]) ? summary["warnings"].map(String) : [];
+  return { accounts, cached: call.cached, stale: call.stale, fetchedAt: call.fetchedAt, warnings };
 }
 
 export interface CampaignRow {
@@ -986,9 +1145,11 @@ export async function fetchLevel(args: {
   accountId: string;
   days: number;
   level: "campaign" | "adset" | "ad";
+  platform?: AdPlatform;
   parentId?: string | null;
   refresh?: boolean;
 }): Promise<{ rows: CampaignRow[]; cached: boolean; stale: boolean; fetchedAt: string }> {
+  if ((args.platform ?? "meta") === "google") return fetchGoogleLevel(args);
   const windows = periodWindows(args.days);
   const tool =
     args.level === "campaign" ? "get_campaigns" : args.level === "adset" ? "get_adsets" : "get_ads";
@@ -1050,6 +1211,85 @@ export async function fetchLevel(args: {
     stale: structure.stale || insights.stale,
     fetchedAt: insights.fetchedAt,
   };
+}
+
+/**
+ * Google campaigns / ad groups / ads with their performance. One metrics call
+ * per level — the structure and the numbers arrive together.
+ */
+async function fetchGoogleLevel(args: {
+  userId: string;
+  workspaceId: string | null;
+  accountId: string;
+  days: number;
+  level: "campaign" | "adset" | "ad";
+  parentId?: string | null;
+  refresh?: boolean;
+}): Promise<{ rows: CampaignRow[]; cached: boolean; stale: boolean; fetchedAt: string }> {
+  const { range } = googleDateRange(args.days);
+  const tool =
+    args.level === "campaign"
+      ? "get_google_ads_campaign_metrics"
+      : args.level === "adset"
+        ? "get_google_ads_ad_group_metrics"
+        : "get_google_ads_ad_metrics";
+
+  const toolArgs: Record<string, unknown> = {
+    customer_id: args.accountId,
+    date_range: range,
+    status_filter: "ALL",
+    page_size: 200,
+  };
+  if (args.level === "adset" && args.parentId) toolArgs["campaign_id"] = args.parentId;
+  if (args.level === "ad" && args.parentId) toolArgs["ad_group_id"] = args.parentId;
+
+  const call = await callAdsToolWithStale<Record<string, unknown>>({
+    userId: args.userId,
+    workspaceId: args.workspaceId,
+    platform: "google",
+    tool,
+    accountId: args.accountId,
+    args: toolArgs,
+    ttlMs: INSIGHTS_TTL_MS,
+    ...(args.refresh ? { refresh: true } : {}),
+  });
+
+  const payload = (call.data ?? {}) as Record<string, unknown>;
+  const listKey =
+    args.level === "campaign" ? "campaigns" : args.level === "adset" ? "ad_groups" : "ads";
+  const list = Array.isArray(payload[listKey])
+    ? (payload[listKey] as Record<string, unknown>[])
+    : adsRowsArray(payload);
+
+  const idKey =
+    args.level === "campaign" ? "campaign_id" : args.level === "adset" ? "ad_group_id" : "ad_id";
+  const nameKey =
+    args.level === "campaign"
+      ? "campaign_name"
+      : args.level === "adset"
+        ? "ad_group_name"
+        : "ad_name";
+  const statusKey =
+    args.level === "campaign"
+      ? "campaign_status"
+      : args.level === "adset"
+        ? "ad_group_status"
+        : "ad_status";
+
+  const rows: CampaignRow[] = list.map((row) => {
+    const id = String(row[idKey] ?? pickId(row) ?? "");
+    return {
+      id,
+      name: String(row[nameKey] ?? pickName(row, id || "Untitled")),
+      status: String(row[statusKey] ?? pickStatus(row)),
+      objective: typeof row["campaign_type"] === "string" ? row["campaign_type"] : null,
+      metrics: normaliseGoogleRow(row),
+      hasData: row["cost"] !== undefined || row["impressions"] !== undefined,
+    };
+  });
+  rows.sort((a, b) => Number(b.hasData) - Number(a.hasData) || b.metrics.spend - a.metrics.spend);
+
+  return { rows, cached: call.cached, stale: call.stale, fetchedAt: call.fetchedAt };
 }
 
 /** Creative for a single ad — copy, headline and any image we can surface. */
