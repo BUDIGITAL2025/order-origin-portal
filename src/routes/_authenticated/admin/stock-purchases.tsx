@@ -158,7 +158,10 @@ function AdminStockPurchasesPage() {
               </TableCell>
               <TableCell className="max-w-56">
                 <ProductCell
-                  imageUrls={(p as { products?: { image_urls?: string[] } | null }).products?.image_urls ?? []}
+                  imageUrls={
+                    (p as { products?: { image_urls?: string[] } | null }).products?.image_urls ??
+                    []
+                  }
                   name={p.product_name}
                   secondary={`${p.variant_label ?? ""} · ${formatDate(p.created_at)}`}
                 />

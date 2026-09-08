@@ -12,13 +12,7 @@ type Admin = SupabaseClient<Database>;
  * cleanup trail survives the rows it removed.
  */
 
-export type CleanupType =
-  | "quote"
-  | "product"
-  | "order"
-  | "stock_purchase"
-  | "inbound"
-  | "account";
+export type CleanupType = "quote" | "product" | "order" | "stock_purchase" | "inbound" | "account";
 
 export type CleanupCheck = {
   type: CleanupType;
@@ -31,11 +25,7 @@ export type CleanupCheck = {
   cascade: { label: string; count: number }[];
 };
 
-async function countOf(
-  admin: Admin,
-  table: string,
-  build: (q: any) => any,
-): Promise<number> {
+async function countOf(admin: Admin, table: string, build: (q: any) => any): Promise<number> {
   const { count, error } = await build(
     (admin.from(table as never) as any).select("id", { count: "exact", head: true }),
   );
@@ -89,9 +79,7 @@ async function checkQuote(admin: Admin, id: string): Promise<CleanupCheck> {
   const products = lineIds.length
     ? await countOf(admin, "products", (q) => q.in("quote_line_id", lineIds))
     : 0;
-  const purchases = await countOf(admin, "stock_purchases", (q) =>
-    q.eq("quote_request_id", id),
-  );
+  const purchases = await countOf(admin, "stock_purchases", (q) => q.eq("quote_request_id", id));
 
   const blockers: string[] = [];
   if (accepted > 0) blockers.push(`${accepted} accepted quote line(s)`);
@@ -227,9 +215,7 @@ async function checkInbound(admin: Admin, id: string): Promise<CleanupCheck> {
   if (error) throw new Error(error.message);
   if (!shipment) throw new Error("Inbound shipment not found");
 
-  const lines = await countOf(admin, "inbound_shipment_lines", (q) =>
-    q.eq("shipment_id", id),
-  );
+  const lines = await countOf(admin, "inbound_shipment_lines", (q) => q.eq("shipment_id", id));
 
   const blockers: string[] = [];
   if (shipment.fee_charged != null) blockers.push("A handling fee was charged");
@@ -415,11 +401,7 @@ export async function runCleanupCheck(
   }
 }
 
-export async function runCleanupDelete(
-  admin: Admin,
-  type: CleanupType,
-  id: string,
-): Promise<void> {
+export async function runCleanupDelete(admin: Admin, type: CleanupType, id: string): Promise<void> {
   switch (type) {
     case "quote":
       return deleteQuote(admin, id);

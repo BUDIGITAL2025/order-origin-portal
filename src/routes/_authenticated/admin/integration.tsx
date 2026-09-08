@@ -27,12 +27,14 @@ import {
 import { SimulatorPanel } from "@/components/simulator-panel";
 import { SyncPanel } from "@/components/sync-panel";
 
-
 export const Route = createFileRoute("/_authenticated/admin/integration")({
   head: () => ({
     meta: [
       { title: "Integration — FlySales Admin" },
-      { name: "description", content: "Middleware connection status, inbound events and outbound calls." },
+      {
+        name: "description",
+        content: "Middleware connection status, inbound events and outbound calls.",
+      },
       { name: "robots", content: "noindex" },
     ],
   }),
@@ -233,9 +235,7 @@ function AdminIntegrationPage() {
                         {event.event_type}
                         <div className="text-xs text-muted-foreground">{event.event_id}</div>
                       </TableCell>
-                      <TableCell className="font-mono text-xs">
-                        {event.tenant_id ?? "—"}
-                      </TableCell>
+                      <TableCell className="font-mono text-xs">{event.tenant_id ?? "—"}</TableCell>
                       <TableCell>
                         {failed ? (
                           <div>
@@ -340,9 +340,7 @@ function StatusCard({ label, ok }: { label: string; ok?: boolean | undefined }) 
           <div className="mt-1.5 text-sm font-semibold leading-none">
             {ok ? "Configured" : "Not set"}
           </div>
-          {ok ? null : (
-            <div className="mt-1 text-xs text-muted-foreground">Set in secrets</div>
-          )}
+          {ok ? null : <div className="mt-1 text-xs text-muted-foreground">Set in secrets</div>}
         </div>
       </CardContent>
     </Card>

@@ -45,10 +45,7 @@ import { orderTrackingSchema } from "@/lib/schemas";
 
 export const Route = createFileRoute("/_authenticated/admin/orders")({
   head: () => ({
-    meta: [
-      { title: "Orders — FlySales Admin" },
-      { name: "robots", content: "noindex" },
-    ],
+    meta: [{ title: "Orders — FlySales Admin" }, { name: "robots", content: "noindex" }],
   }),
   component: AdminOrdersPage,
 });
@@ -236,7 +233,11 @@ function AdminOrdersPage() {
                           <OrderStatusBadge status={order.status} />
                         </TableCell>
                         <TableCell className="tnum py-2.5 text-right">
-                          {order.total_amount != null ? formatUSD(order.total_amount) : <Value>{null}</Value>}
+                          {order.total_amount != null ? (
+                            formatUSD(order.total_amount)
+                          ) : (
+                            <Value>{null}</Value>
+                          )}
                         </TableCell>
                         <TableCell className="py-2.5">
                           {order.tracking_number ? (
@@ -263,9 +264,7 @@ function AdminOrdersPage() {
                               type="order"
                               id={order.id}
                               name={order.external_order_number ?? order.id.slice(0, 8)}
-                              archived={
-                                !!(order as { archived_at?: string | null }).archived_at
-                              }
+                              archived={!!(order as { archived_at?: string | null }).archived_at}
                               invalidateKeys={[["admin-orders"]]}
                               deletable={false}
                             />
@@ -321,9 +320,7 @@ function TrackingDialog({ order, onClose }: { order: AdminOrder | null; onClose:
     try {
       await callSetTracking({ data: parsed.data });
       toast.success(
-        order.tracking_number
-          ? "Tracking updated"
-          : "Tracking added — the client has been emailed",
+        order.tracking_number ? "Tracking updated" : "Tracking added — the client has been emailed",
       );
       await queryClient.invalidateQueries({ queryKey: ["admin-orders"] });
       onClose();
@@ -357,11 +354,7 @@ function TrackingDialog({ order, onClose }: { order: AdminOrder | null; onClose:
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="tr-number">Tracking number</Label>
-            <Input
-              id="tr-number"
-              value={number}
-              onChange={(e) => setNumber(e.target.value)}
-            />
+            <Input id="tr-number" value={number} onChange={(e) => setNumber(e.target.value)} />
           </div>
         </div>
         <DialogFooter>

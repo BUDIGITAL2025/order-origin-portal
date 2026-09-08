@@ -97,7 +97,12 @@ function AdminQuotesPage() {
       if (!showArchived && (q as { archived_at?: string | null }).archived_at) return false;
       if (!term) return true;
       const client = q.profiles as { company_name?: string } | null;
-      return [q.product_name ?? "", q.product_url ?? "", q.internal_reference ?? "", client?.company_name ?? ""]
+      return [
+        q.product_name ?? "",
+        q.product_url ?? "",
+        q.internal_reference ?? "",
+        client?.company_name ?? "",
+      ]
         .join(" ")
         .toLowerCase()
         .includes(term);
@@ -122,15 +127,13 @@ function AdminQuotesPage() {
     return t >= now && t - now < 12 * HOUR;
   }).length;
   const quotedToday = quotes.filter(
-    (q) => q.status === "quoted" && new Date(q.created_at).toDateString() === new Date().toDateString(),
+    (q) =>
+      q.status === "quoted" && new Date(q.created_at).toDateString() === new Date().toDateString(),
   ).length;
 
   return (
     <div>
-      <PageHeader
-        title="Quote queue"
-        description="Open requests first, most urgent at the top."
-      />
+      <PageHeader title="Quote queue" description="Open requests first, most urgent at the top." />
 
       <SummaryBar
         className="lg:grid-cols-4"
@@ -210,7 +213,9 @@ function AdminQuotesPage() {
                       <div className="max-w-[180px] truncate font-medium">
                         <Value>{client?.company_name}</Value>
                       </div>
-                      <TierBadge tier={effectiveTier(client?.pricing_tier, client?.tier_override)} />
+                      <TierBadge
+                        tier={effectiveTier(client?.pricing_tier, client?.tier_override)}
+                      />
                     </TableCell>
                     <TableCell className="max-w-56 py-2.5">
                       <ProductCell
@@ -297,7 +302,6 @@ function AdminQuotesPage() {
         initial={photoFor?.urls ?? []}
         invalidateKeys={[["admin-quotes"]]}
       />
-
     </div>
   );
 }

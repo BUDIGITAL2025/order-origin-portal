@@ -26,7 +26,8 @@ export const getImageUrls = createServerFn({ method: "POST" })
       _user_id: context.userId,
       _role: "admin",
     });
-    const allowed = isAdmin === true ? paths : paths.filter((p) => p.startsWith(`${context.userId}/`));
+    const allowed =
+      isAdmin === true ? paths : paths.filter((p) => p.startsWith(`${context.userId}/`));
     if (allowed.length === 0) return { urls: out };
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");

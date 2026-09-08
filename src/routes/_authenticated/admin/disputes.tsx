@@ -5,10 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowUpRight } from "lucide-react";
 import { EmptyState, PageHeader } from "@/components/app-shell";
 import { OrderStatusBadge, type OrderStatus } from "@/components/documents-ui";
-import {
-  DisputeReasonLabel,
-  DisputeStatusBadge,
-} from "@/components/DisputeThread";
+import { DisputeReasonLabel, DisputeStatusBadge } from "@/components/DisputeThread";
 import {
   AdminSearch,
   FilterTabs,
@@ -30,17 +27,11 @@ import {
 } from "@/components/ui/table";
 import { formatDateTime, formatUSD } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import {
-  adminDisputeSkuReport,
-  adminListDisputes,
-} from "@/lib/disputes.functions";
+import { adminDisputeSkuReport, adminListDisputes } from "@/lib/disputes.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/disputes")({
   head: () => ({
-    meta: [
-      { title: "Disputes — FlySales Admin" },
-      { name: "robots", content: "noindex" },
-    ],
+    meta: [{ title: "Disputes — FlySales Admin" }, { name: "robots", content: "noindex" }],
   }),
   component: AdminDisputesPage,
 });

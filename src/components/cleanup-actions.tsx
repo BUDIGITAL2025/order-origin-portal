@@ -20,19 +20,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  adminCleanupCheck,
-  adminCleanupDelete,
-  adminSetArchived,
-} from "@/lib/cleanup.functions";
+import { adminCleanupCheck, adminCleanupDelete, adminSetArchived } from "@/lib/cleanup.functions";
 
-export type CleanupType =
-  | "quote"
-  | "product"
-  | "order"
-  | "stock_purchase"
-  | "inbound"
-  | "account";
+export type CleanupType = "quote" | "product" | "order" | "stock_purchase" | "inbound" | "account";
 
 const TYPE_LABEL: Record<CleanupType, string> = {
   quote: "quote request",
@@ -147,9 +137,7 @@ function DeleteDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Delete {TYPE_LABEL[type]}</DialogTitle>
-          <DialogDescription>
-            {name} — this cannot be undone.
-          </DialogDescription>
+          <DialogDescription>{name} — this cannot be undone.</DialogDescription>
         </DialogHeader>
 
         {isPending ? (
@@ -169,9 +157,7 @@ function DeleteDialog({
                   </li>
                 ))}
             </ul>
-            <p className="text-xs text-muted-foreground">
-              A line is written to the audit trail.
-            </p>
+            <p className="text-xs text-muted-foreground">A line is written to the audit trail.</p>
           </div>
         ) : (
           <div className="space-y-2 text-sm">

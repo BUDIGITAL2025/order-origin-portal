@@ -81,7 +81,11 @@ export function ProductThumb({
       </button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-2xl p-2">
-          <img src={url} alt={name ?? ""} className="max-h-[75vh] w-full rounded-lg object-contain" />
+          <img
+            src={url}
+            alt={name ?? ""}
+            className="max-h-[75vh] w-full rounded-lg object-contain"
+          />
         </DialogContent>
       </Dialog>
     </>

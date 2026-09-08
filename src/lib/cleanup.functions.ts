@@ -38,15 +38,11 @@ export const adminCleanupDelete = createServerFn({ method: "POST" })
     const { requireAdmin, getAdminClient } = await import("./admin.server");
     await requireAdmin(context.supabase, context.userId);
     const admin = await getAdminClient();
-    const { runCleanupCheck, runCleanupDelete, writeAuditLine } = await import(
-      "./cleanup.server"
-    );
+    const { runCleanupCheck, runCleanupDelete, writeAuditLine } = await import("./cleanup.server");
 
     const check = await runCleanupCheck(admin, data.type, data.id);
     if (!check.deletable) {
-      throw new Error(
-        `This cannot be deleted: ${check.blockers.join(", ")}. Archive it instead.`,
-      );
+      throw new Error(`This cannot be deleted: ${check.blockers.join(", ")}. Archive it instead.`);
     }
     await runCleanupDelete(admin, data.type, data.id);
     await writeAuditLine(admin, {
@@ -77,9 +73,13 @@ export const adminSetArchived = createServerFn({ method: "POST" })
     // Archiving an account also suspends it, so nobody can keep using it.
     if (data.type === "account") patch["status"] = data.archived ? "suspended" : "active";
 
-    const { error } = await (admin.from(target.table as never) as never as {
-      update: (p: unknown) => { eq: (c: string, v: string) => Promise<{ error: { message: string } | null }> };
-    })
+    const { error } = await (
+      admin.from(target.table as never) as never as {
+        update: (p: unknown) => {
+          eq: (c: string, v: string) => Promise<{ error: { message: string } | null }>;
+        };
+      }
+    )
       .update(patch)
       .eq(target.column, data.id);
     if (error) throw new Error(error.message);

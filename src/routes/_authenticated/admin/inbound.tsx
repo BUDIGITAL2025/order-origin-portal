@@ -33,10 +33,7 @@ const QC_PER_PIECE = 0.2;
 
 export const Route = createFileRoute("/_authenticated/admin/inbound")({
   head: () => ({
-    meta: [
-      { title: "Inbound — FlySales admin" },
-      { name: "robots", content: "noindex" },
-    ],
+    meta: [{ title: "Inbound — FlySales admin" }, { name: "robots", content: "noindex" }],
   }),
   component: AdminInboundPage,
 });
@@ -229,9 +226,7 @@ function CountDialog({ shipment, onClose }: { shipment: Shipment | null; onClose
 
   useEffect(() => {
     if (shipment) {
-      setCounts(
-        Object.fromEntries(shipment.lines.map((l) => [l.id, String(l.declared_qty)])),
-      );
+      setCounts(Object.fromEntries(shipment.lines.map((l) => [l.id, String(l.declared_qty)])));
     }
   }, [shipment]);
 
@@ -289,13 +284,15 @@ function CountDialog({ shipment, onClose }: { shipment: Shipment | null; onClose
                     type="number"
                     min={0}
                     value={counts[l.id] ?? ""}
-                    onChange={(e) =>
-                      setCounts((prev) => ({ ...prev, [l.id]: e.target.value }))
-                    }
+                    onChange={(e) => setCounts((prev) => ({ ...prev, [l.id]: e.target.value }))}
                   />
                 </div>
-                <span className={`mb-2 w-16 text-xs ${gap ? "text-warning" : "text-muted-foreground"}`}>
-                  {gap ? `${counted > l.declared_qty ? "+" : ""}${counted - l.declared_qty}` : "match"}
+                <span
+                  className={`mb-2 w-16 text-xs ${gap ? "text-warning" : "text-muted-foreground"}`}
+                >
+                  {gap
+                    ? `${counted > l.declared_qty ? "+" : ""}${counted - l.declared_qty}`
+                    : "match"}
                 </span>
               </div>
             );
@@ -336,8 +333,7 @@ function RefuseDialog({ shipment, onClose }: { shipment: Shipment | null; onClos
 
   const refuse = useServerFn(adminRefuseInbound);
   const submit = useMutation({
-    mutationFn: () =>
-      refuse({ data: { shipment_id: shipment!.id, reason: reason.trim() } }),
+    mutationFn: () => refuse({ data: { shipment_id: shipment!.id, reason: reason.trim() } }),
     onSuccess: () => {
       toast.success("Shipment refused and the client notified.");
       void queryClient.invalidateQueries({ queryKey: ["admin-inbound"] });
