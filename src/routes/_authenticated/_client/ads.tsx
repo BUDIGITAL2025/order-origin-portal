@@ -161,7 +161,12 @@ function ClientAdsPage() {
 
   return (
     <div className="p-6">
-      <AdsDashboard accounts={data.accounts} />
+      <AdsDashboard
+        accounts={data.accounts.map((a) => ({
+          ...a,
+          platform: a.platform === "google" ? ("google" as const) : ("meta" as const),
+        }))}
+      />
     </div>
   );
 }

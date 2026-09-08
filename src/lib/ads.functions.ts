@@ -18,6 +18,7 @@ async function isAdmin(supabase: SupabaseClient<Database>, userId: string): Prom
 
 const accountId = z.string().trim().min(1).max(64);
 const days = z.union([z.literal(7), z.literal(14), z.literal(30), z.literal(90)]);
+const platform = z.enum(["meta", "google"]).default("meta");
 
 /* ------------------------------------------------------------------ */
 /* Client                                                              */
@@ -114,7 +115,7 @@ export const requestAdsActivation = createServerFn({ method: "POST" })
 export const getAdsOverview = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
-    z.object({ accountId, days, refresh: z.boolean().optional() }).parse(input),
+    z.object({ accountId, days, platform, refresh: z.boolean().optional() }).parse(input),
   )
   .handler(async ({ data, context }) => {
     const mod = await import("./ads.server");
@@ -123,13 +124,14 @@ export const getAdsOverview = createServerFn({ method: "POST" })
       userId: context.userId,
       isAdmin: admin,
       accountId: data.accountId,
-      platform: "meta",
+      platform: data.platform,
     });
     return mod.fetchOverview({
       userId: context.userId,
       workspaceId,
       accountId: data.accountId,
       days: data.days,
+      platform: data.platform,
       ...(data.refresh ? { refresh: true } : {}),
     });
   });
@@ -142,6 +144,7 @@ export const getAdsLevel = createServerFn({ method: "POST" })
       .object({
         accountId,
         days,
+        platform,
         level: z.enum(["campaign", "adset", "ad"]),
         parentId: z.string().trim().max(64).optional(),
         refresh: z.boolean().optional(),
@@ -155,13 +158,14 @@ export const getAdsLevel = createServerFn({ method: "POST" })
       userId: context.userId,
       isAdmin: admin,
       accountId: data.accountId,
-      platform: "meta",
+      platform: data.platform,
     });
     return mod.fetchLevel({
       userId: context.userId,
       workspaceId,
       accountId: data.accountId,
       days: data.days,
+      platform: data.platform,
       level: data.level,
       parentId: data.parentId ?? null,
       ...(data.refresh ? { refresh: true } : {}),
@@ -201,12 +205,33 @@ export const getAdCreative = createServerFn({ method: "POST" })
 export const adminListProviderAccounts = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
-    z.object({ refresh: z.boolean().default(false) }).parse(input ?? {}),
+    z.object({ refresh: z.boolean().default(false), platform }).parse(input ?? {}),
   )
   .handler(async ({ data, context }) => {
     const { requireAdmin } = await import("./admin.server");
     await requireAdmin(context.supabase, context.userId);
     const mod = await import("./ads.server");
+
+    if (data.platform === "google") {
+      const google = await mod.listGoogleCustomers({
+        userId: context.userId,
+        ...(data.refresh ? { refresh: true } : {}),
+      });
+      return {
+        platform: "google" as const,
+        accounts: google.accounts.map((a) => ({
+          id: a.id,
+          name: a.name,
+          status: a.canQueryMetrics ? null : "no metrics access",
+          currency: a.currency,
+        })),
+        warnings: google.warnings,
+        cached: google.cached,
+        stale: google.stale,
+        fetchedAt: google.fetchedAt,
+      };
+    }
+
     const call = await mod.callAdsToolWithStale({
       userId: context.userId,
       workspaceId: null,
@@ -227,7 +252,14 @@ export const adminListProviderAccounts = createServerFn({ method: "POST" })
         currency: typeof row["currency"] === "string" ? row["currency"] : null,
       };
     });
-    return { accounts: rows, cached: call.cached, stale: call.stale, fetchedAt: call.fetchedAt };
+    return {
+      platform: "meta" as const,
+      accounts: rows,
+      warnings: [] as string[],
+      cached: call.cached,
+      stale: call.stale,
+      fetchedAt: call.fetchedAt,
+    };
   });
 
 /** Every workspace↔account mapping, with workspace names. */
@@ -284,6 +316,7 @@ export const adminSaveMapping = createServerFn({ method: "POST" })
       .object({
         workspaceId: z.string().uuid(),
         adAccountId: accountId,
+        platform,
         label: z.string().trim().max(120).optional(),
         active: z.boolean().default(true),
       })
@@ -297,7 +330,7 @@ export const adminSaveMapping = createServerFn({ method: "POST" })
       {
         workspace_id: data.workspaceId,
         ad_account_id: data.adAccountId,
-        platform: "meta",
+        platform: data.platform,
         label: data.label ?? null,
         active: data.active,
         created_by: context.userId,
@@ -352,7 +385,7 @@ export const adminAdsUsage = createServerFn({ method: "GET" })
     const { data, error } = await supabaseAdmin
       .from("ads_api_calls")
       .select(
-        "id, workspace_id, tool, ad_account_id, ok, cached, rows_returned, duration_ms, error, created_at, stores(store_name)",
+        "id, workspace_id, platform, tool, ad_account_id, ok, cached, rows_returned, duration_ms, error, created_at, stores(store_name)",
       )
       .gte("created_at", since)
       .order("created_at", { ascending: false })
@@ -363,6 +396,7 @@ export const adminAdsUsage = createServerFn({ method: "GET" })
       id: row.id,
       workspaceId: row.workspace_id,
       workspaceName: (row.stores as { store_name: string | null } | null)?.store_name ?? null,
+      platform: row.platform,
       tool: row.tool,
       adAccountId: row.ad_account_id,
       ok: row.ok,

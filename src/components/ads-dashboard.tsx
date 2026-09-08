@@ -26,6 +26,7 @@ import { cn } from "@/lib/utils";
 export interface DashboardAccount {
   adAccountId: string;
   label: string;
+  platform?: "meta" | "google";
   workspaceId?: string;
 }
 
@@ -47,7 +48,8 @@ function friendly(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error);
   if (/not linked to your workspace/i.test(message)) return message;
   if (/not configured/i.test(message)) return "The ads connection is not configured yet.";
-  if (/timed out/i.test(message)) return "Meta took too long to answer. Try again in a moment.";
+  if (/timed out/i.test(message))
+    return "The ad platform took too long to answer. Try again in a moment.";
   return message;
 }
 
@@ -91,19 +93,26 @@ function Kpi({
   current,
   previous,
   invert,
+  comparable = true,
 }: {
   label: string;
   value: string;
   current: number;
   previous: number;
   invert?: boolean;
+  /** False when the platform gives no previous period — no fake deltas. */
+  comparable?: boolean;
 }) {
   return (
     <div className="rounded-lg border bg-card p-3">
       <div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div>
       <div className="mt-1 text-xl font-semibold tabular-nums">{value}</div>
       <div className="mt-0.5">
-        <Delta current={current} previous={previous} {...(invert ? { invert: true } : {})} />
+        {comparable ? (
+          <Delta current={current} previous={previous} {...(invert ? { invert: true } : {})} />
+        ) : (
+          <span className="text-xs text-muted-foreground">no comparison</span>
+        )}
       </div>
     </div>
   );
@@ -186,6 +195,10 @@ export function AdsDashboard({
   subheading?: string;
 }) {
   const [accountId, setAccountId] = React.useState(accounts[0]?.adAccountId ?? "");
+  const selected = accounts.find((a) => a.adAccountId === accountId) ?? accounts[0];
+  const platform = selected?.platform ?? "meta";
+  // Google Ads only offers 7/30/90-day windows, so 14d is hidden there.
+  const ranges = platform === "google" ? RANGES.filter((r) => r !== 14) : RANGES;
   const [days, setDays] = React.useState<Days>(30);
   const [crumbs, setCrumbs] = React.useState<Crumb[]>([
     { level: "campaign", parentId: null, name: "Campaigns" },
@@ -196,7 +209,9 @@ export function AdsDashboard({
 
   const overview = useMutation({
     mutationFn: (vars: { refresh?: boolean }) =>
-      overviewFn({ data: { accountId, days, ...(vars.refresh ? { refresh: true } : {}) } }),
+      overviewFn({
+        data: { accountId, days, platform, ...(vars.refresh ? { refresh: true } : {}) },
+      }),
   });
   const level = useMutation({
     mutationFn: (vars: { level: Crumb["level"]; parentId: string | null; refresh?: boolean }) =>
@@ -204,6 +219,7 @@ export function AdsDashboard({
         data: {
           accountId,
           days,
+          platform,
           level: vars.level,
           ...(vars.parentId ? { parentId: vars.parentId } : {}),
           ...(vars.refresh ? { refresh: true } : {}),
@@ -239,6 +255,8 @@ export function AdsDashboard({
 
   const o = overview.data;
   const currency = o?.currency ?? "USD";
+  const comparable = o?.hasPrevious !== false;
+  const resultsLabel = (o?.platform ?? platform) === "google" ? "Conversions" : "Purchases";
   const rows = level.data?.rows ?? [];
   const stale = o?.stale || level.data?.stale;
   const loading = overview.isPending || level.isPending;
@@ -267,13 +285,14 @@ export function AdsDashboard({
             >
               {accounts.map((a) => (
                 <option key={a.adAccountId} value={a.adAccountId}>
+                  {(a.platform ?? "meta") === "google" ? "Google · " : "Meta · "}
                   {a.label}
                 </option>
               ))}
             </select>
           ) : null}
           <div className="flex rounded-md border p-0.5">
-            {RANGES.map((r) => (
+            {ranges.map((r) => (
               <button
                 key={r}
                 type="button"
@@ -319,7 +338,8 @@ export function AdsDashboard({
 
       {stale ? (
         <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-600">
-          Meta did not answer, so these are the last numbers we stored
+          {(o?.platform ?? platform) === "google" ? "Google Ads" : "Meta"} did not answer, so these
+          are the last numbers we stored
           {o?.fetchedAt ? ` (updated ${new Date(o.fetchedAt).toLocaleString()})` : ""}.
         </div>
       ) : null}
@@ -339,55 +359,75 @@ export function AdsDashboard({
             </span>
             {o.cached ? <Badge variant="outline">cached</Badge> : null}
             <span>Updated {new Date(o.fetchedAt).toLocaleString()}</span>
+            <Badge variant="outline">{o.platform === "google" ? "Google Ads" : "Meta"}</Badge>
           </div>
+
+          {o.gaps.length > 0 ? (
+            <div className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
+              <div className="mb-1 font-medium text-foreground">What this platform reports</div>
+              <ul className="list-disc space-y-0.5 pl-4">
+                {o.gaps.map((g) => (
+                  <li key={g}>{g}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
 
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <Kpi
               label="Spend"
               value={money(o.current.spend, currency)}
+              comparable={comparable}
               current={o.current.spend}
               previous={o.previous.spend}
             />
             <Kpi
               label="Impressions"
               value={int(o.current.impressions)}
+              comparable={comparable}
               current={o.current.impressions}
               previous={o.previous.impressions}
             />
             <Kpi
               label="Clicks"
               value={int(o.current.clicks)}
+              comparable={comparable}
               current={o.current.clicks}
               previous={o.previous.clicks}
             />
             <Kpi
               label="CTR"
               value={pct(o.current.ctr)}
+              comparable={comparable}
               current={o.current.ctr}
               previous={o.previous.ctr}
             />
             <Kpi
               label="CPC"
               value={money(o.current.cpc, currency)}
+              comparable={comparable}
               current={o.current.cpc}
               previous={o.previous.cpc}
               invert
             />
             <Kpi
-              label="Purchases"
+              label={resultsLabel}
               value={int(o.current.purchases)}
+              comparable={comparable}
               current={o.current.purchases}
               previous={o.previous.purchases}
             />
             <Kpi
               label="ROAS"
               value={mult(o.current.roas)}
+              comparable={comparable}
               current={o.current.roas}
               previous={o.previous.roas}
             />
             <Kpi
               label="CPA"
               value={money(o.current.cpa, currency)}
+              comparable={comparable}
               current={o.current.cpa}
               previous={o.previous.cpa}
               invert
@@ -524,7 +564,7 @@ export function AdsDashboard({
                     <th className="px-3 py-2 text-right font-medium">CPA</th>
                     <th className="px-3 py-2 text-right font-medium">ROAS</th>
                     <th className="px-3 py-2 text-right font-medium">CTR</th>
-                    {current.level === "ad" ? (
+                    {current.level === "ad" && platform === "meta" ? (
                       <th className="px-3 py-2 text-left font-medium">Creative</th>
                     ) : null}
                   </tr>
@@ -533,7 +573,7 @@ export function AdsDashboard({
                   {rows.map((row) => (
                     <tr key={row.id} className="border-b last:border-0 hover:bg-muted/40">
                       <td className="px-3 py-2">
-                        {current.level === "ad" ? (
+                        {current.level === "ad" && platform === "meta" ? (
                           <span className="font-medium">{row.name}</span>
                         ) : (
                           <button

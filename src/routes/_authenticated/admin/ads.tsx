@@ -104,8 +104,10 @@ function AccountsTab() {
     queryFn: () => mappingsFn(),
     retry: false,
   });
+  const [platform, setPlatform] = React.useState<"meta" | "google">("meta");
   const provider = useMutation({
-    mutationFn: (refresh: boolean) => providerFn({ data: { refresh } }),
+    mutationFn: (vars: { refresh: boolean; platform: "meta" | "google" }) =>
+      providerFn({ data: vars }),
   });
 
   const [businessId, setBusinessId] = React.useState("");
@@ -116,8 +118,12 @@ function AccountsTab() {
   const invalidate = () => void queryClient.invalidateQueries({ queryKey: ["ads-mappings"] });
 
   const save = useMutation({
-    mutationFn: (vars: { workspaceId: string; adAccountId: string; label?: string }) =>
-      saveFn({ data: { ...vars, active: true } }),
+    mutationFn: (vars: {
+      workspaceId: string;
+      adAccountId: string;
+      label?: string;
+      platform: "meta" | "google";
+    }) => saveFn({ data: { ...vars, active: true } }),
     onSuccess: () => {
       toast.success("Ad account mapped");
       invalidate();
@@ -208,11 +214,31 @@ function AccountsTab() {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <div className="flex rounded-md border p-0.5">
+              {(["meta", "google"] as const).map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  className={cn(
+                    "rounded px-2.5 py-1 text-xs font-medium",
+                    platform === p
+                      ? "bg-accent text-accent-foreground"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                  onClick={() => {
+                    setPlatform(p);
+                    provider.reset();
+                  }}
+                >
+                  {p === "meta" ? "Meta" : "Google"}
+                </button>
+              ))}
+            </div>
             <Button
               size="sm"
               variant="outline"
               disabled={provider.isPending}
-              onClick={() => provider.mutate(false)}
+              onClick={() => provider.mutate({ refresh: false, platform })}
             >
               {provider.isPending ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : null}
               Load accounts
@@ -221,7 +247,7 @@ function AccountsTab() {
               size="sm"
               variant="ghost"
               disabled={provider.isPending}
-              onClick={() => provider.mutate(true)}
+              onClick={() => provider.mutate({ refresh: true, platform })}
             >
               <RefreshCw className="h-3.5 w-3.5" />
             </Button>
@@ -233,6 +259,14 @@ function AccountsTab() {
             {provider.error instanceof Error
               ? provider.error.message
               : "Could not reach the provider."}
+          </div>
+        ) : null}
+
+        {provider.data && provider.data.warnings.length > 0 ? (
+          <div className="border-b bg-amber-500/10 px-3 py-2 text-xs text-amber-600">
+            {provider.data.warnings.map((w) => (
+              <div key={w}>{w}</div>
+            ))}
           </div>
         ) : null}
 
@@ -249,7 +283,9 @@ function AccountsTab() {
               </thead>
               <tbody>
                 {provider.data.accounts.map((a) => {
-                  const mapped = data.mappings.find((m) => m.ad_account_id === a.id);
+                  const mapped = data.mappings.find(
+                    (m) => m.ad_account_id === a.id && m.platform === platform,
+                  );
                   return (
                     <tr key={a.id} className="border-b last:border-0">
                       <td className="px-3 py-2">{a.name}</td>
@@ -283,6 +319,7 @@ function AccountsTab() {
                                   workspaceId: pick[a.id] as string,
                                   adAccountId: a.id,
                                   label: a.name,
+                                  platform,
                                 })
                               }
                             >
@@ -316,6 +353,7 @@ function AccountsTab() {
             <thead className="border-b text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
                 <th className="px-3 py-2 text-left font-medium">Workspace</th>
+                <th className="px-3 py-2 text-left font-medium">Platform</th>
                 <th className="px-3 py-2 text-left font-medium">Ad account</th>
                 <th className="px-3 py-2 text-left font-medium">Label</th>
                 <th className="px-3 py-2" />
@@ -325,6 +363,9 @@ function AccountsTab() {
               {data.mappings.map((m) => (
                 <tr key={m.id} className="border-b last:border-0">
                   <td className="px-3 py-2">{m.workspace_name ?? m.workspace_id}</td>
+                  <td className="px-3 py-2">
+                    <Badge variant="outline">{m.platform === "google" ? "Google" : "Meta"}</Badge>
+                  </td>
                   <td className="px-3 py-2 font-mono text-xs">{m.ad_account_id}</td>
                   <td className="px-3 py-2">{m.label ?? "—"}</td>
                   <td className="px-3 py-2 text-right">
@@ -363,6 +404,7 @@ function OverviewTab() {
     .filter((m) => m.active)
     .map((m) => ({
       adAccountId: m.ad_account_id,
+      platform: m.platform === "google" ? ("google" as const) : ("meta" as const),
       label: `${m.workspace_name ?? m.workspace_id} · ${m.label ?? m.ad_account_id}`,
       workspaceId: m.workspace_id,
     }));
@@ -475,6 +517,7 @@ function UsageTab() {
               <tr>
                 <th className="px-3 py-2 text-left font-medium">When</th>
                 <th className="px-3 py-2 text-left font-medium">Workspace</th>
+                <th className="px-3 py-2 text-left font-medium">Platform</th>
                 <th className="px-3 py-2 text-left font-medium">Tool</th>
                 <th className="px-3 py-2 text-left font-medium">Account</th>
                 <th className="px-3 py-2 text-right font-medium">Rows</th>
@@ -487,6 +530,7 @@ function UsageTab() {
                 <tr key={c.id} className="border-b last:border-0">
                   <td className="px-3 py-1.5 text-xs">{new Date(c.createdAt).toLocaleString()}</td>
                   <td className="px-3 py-1.5">{c.workspaceName ?? "—"}</td>
+                  <td className="px-3 py-1.5 text-xs">{c.platform}</td>
                   <td className="px-3 py-1.5 font-mono text-xs">{c.tool}</td>
                   <td className="px-3 py-1.5 font-mono text-xs">{c.adAccountId ?? "—"}</td>
                   <td className="px-3 py-1.5 text-right tabular-nums">{c.rows}</td>
