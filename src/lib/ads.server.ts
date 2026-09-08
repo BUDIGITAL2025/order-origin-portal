@@ -441,7 +441,12 @@ async function mcpToolsCall(
     return { payload, statusCode: response.status };
   } catch (e) {
     if (e instanceof AdsError) throw e;
-    if (e instanceof Error && e.name === "AbortError") {
+    // Our own 30s timeout surfaces either as AbortError or as the raw
+    // "signal is aborted without reason" message depending on the runtime.
+    if (
+      e instanceof Error &&
+      (e.name === "AbortError" || /aborted without reason/i.test(e.message))
+    ) {
       throw new AdsError("The ads provider timed out", 504);
     }
     throw new AdsError(e instanceof Error ? e.message : String(e), null);
