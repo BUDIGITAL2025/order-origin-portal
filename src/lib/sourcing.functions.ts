@@ -9,6 +9,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { sourcingFee } from "./pricing";
 import {
   assignSourcerSchema,
   collaboratorInviteSchema,
@@ -26,7 +27,7 @@ const DESK_QUOTE_COLUMNS =
 
 /** Columns of a quote line a collaborator may see — no unit_price, no margin. */
 const DESK_LINE_COLUMNS =
-  "id, quote_request_id, variant_label, country_code, sku, supplier_id, supplier_unit_price, moq, production_lead_days, sourcing_notes, sourcing_image_urls, sourcing_fee_rate, sourcing_cost, sourced_at, status";
+  "id, quote_request_id, variant_label, country_code, sku, supplier_id, supplier_unit_price, supplier_cogs, supplier_shipping, supplier_tax, fee_included, moq, production_lead_days, sourcing_notes, sourcing_image_urls, sourcing_fee_rate, sourcing_cost, sourced_at, status";
 
 // ===================== Collaborator desk =====================
 
@@ -115,7 +116,10 @@ export const sourcingGetQuote = createServerFn({ method: "POST" })
 
     const supplierIds = [...new Set((lines ?? []).map((l) => l.supplier_id).filter(Boolean))];
     const { data: suppliers } = supplierIds.length
-      ? await admin.from("suppliers").select("id, name").in("id", supplierIds as string[])
+      ? await admin
+          .from("suppliers")
+          .select("id, name")
+          .in("id", supplierIds as string[])
       : { data: [] };
     const nameById = new Map((suppliers ?? []).map((s) => [s.id, s.name]));
 
@@ -142,18 +146,22 @@ export const sourcingGetQuote = createServerFn({ method: "POST" })
       lines: (lines ?? []).map((l) => ({
         ...l,
         supplier_name: l.supplier_id ? (nameById.get(l.supplier_id) ?? null) : null,
-        my_fee:
-          l.supplier_unit_price != null
-            ? feeAmount(Number(l.supplier_unit_price), Number(l.sourcing_fee_rate ?? me.fee_rate))
-            : null,
+        my_fee: l.fee_included
+          ? 0
+          : sourcingFee(
+              Number(l.supplier_cogs ?? l.supplier_unit_price ?? 0),
+              Number(l.supplier_shipping ?? 0),
+              Number(l.sourcing_fee_rate ?? me.fee_rate),
+            ),
       })),
     };
   });
 
 /**
- * Save the sourcing layer for a request: supplier, supplier unit price, MOQ,
- * production lead time. The fee rate is snapshotted from the collaborator's
- * own row — never sent by the browser — and sourcing_cost is computed here.
+ * Save the sourcing layer for a request: supplier, COGS, supplier shipping,
+ * import-tax passthrough, MOQ, production lead time. The fee rate is
+ * snapshotted from the collaborator's own row — never sent by the browser —
+ * and sourcing_cost is computed here.
  */
 export const sourcingSaveLines = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -175,75 +183,60 @@ export const sourcingSaveLines = createServerFn({ method: "POST" })
       throw new Error("This request is assigned to another collaborator");
     }
 
-    const { data: existing } = await admin
-      .from("quote_lines")
-      .select("id")
-      .eq("quote_request_id", data.quote_id);
-    const existingIds = new Set((existing ?? []).map((l) => l.id));
-
-    const now = new Date().toISOString();
-    const saved: string[] = [];
-    for (const line of data.lines) {
-      const supplier = await sourcing.upsertSupplierByName(
-        admin,
-        line.supplier_name,
-        line.production_lead_days,
-      );
-      const cost = sourcing.sourcingCost(line.supplier_unit_price, feeRate);
-      const payload = {
-        supplier_id: supplier.id,
-        supplier_unit_price: line.supplier_unit_price,
-        moq: line.moq,
-        production_lead_days: line.production_lead_days,
-        lead_time_days: line.production_lead_days,
-        sourcing_notes: line.sourcing_notes || null,
-        sourcing_image_urls: line.sourcing_image_urls ?? [],
-        sourced_by: context.userId,
-        sourcing_fee_rate: feeRate,
-        sourcing_cost: cost,
-        sourced_at: now,
-        variant_label: line.variant_label,
-        country_code: line.country_code,
-      };
-
-      if (line.id && existingIds.has(line.id)) {
-        const { error } = await admin.from("quote_lines").update(payload).eq("id", line.id);
-        if (error) throw new Error(error.message);
-        saved.push(line.id);
-      } else {
-        const { data: sku } = await admin.rpc("generate_sku", { p_prefix: "FS" });
-        const { data: created, error } = await admin
-          .from("quote_lines")
-          .insert({
-            quote_request_id: data.quote_id,
-            sku: sku ?? `FS-${Date.now()}`,
-            status: "pending",
-            ...payload,
-          })
-          .select("id")
-          .single();
-        if (error) throw new Error(error.message);
-        saved.push(created.id);
-      }
-    }
-
-    // Remove lines the collaborator deleted, but never a line a client has
-    // already responded to.
-    const toDelete = [...existingIds].filter((id) => !saved.includes(id));
-    if (toDelete.length) {
-      await admin.from("quote_lines").delete().in("id", toDelete).eq("status", "pending");
-    }
+    const saved = await sourcing.writeSourcingLines(admin, {
+      quoteId: data.quote_id,
+      lines: data.lines,
+      feeRate,
+      sourcedBy: context.userId,
+    });
 
     await admin
       .from("quote_requests")
       .update({
         status: "sourcing",
         assigned_sourcer: context.userId,
-        sourcing_submitted_at: now,
+        sourcing_submitted_at: new Date().toISOString(),
       })
       .eq("id", data.quote_id);
 
     return { ok: true, lines: saved.length };
+  });
+
+/**
+ * The admin acting as sourcing: same inputs, same chain. The fee rate is the
+ * house default, and no commission is accrued because no collaborator is
+ * attached to the line.
+ */
+export const adminSaveSourcingLines = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => sourcingSaveLinesSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const { requireAdmin, getAdminClient } = await import("./admin.server");
+    const { DEFAULT_FEE_RATE, writeSourcingLines } = await import("./sourcing.server");
+    await requireAdmin(context.supabase, context.userId);
+    const admin = await getAdminClient();
+
+    const { data: quote } = await admin
+      .from("quote_requests")
+      .select("id, status")
+      .eq("id", data.quote_id)
+      .maybeSingle();
+    if (!quote) throw new Error("Quote request not found");
+    if (!["submitted", "sourcing", "quoted"].includes(quote.status)) {
+      throw new Error("This request can no longer be edited");
+    }
+
+    const saved = await writeSourcingLines(admin, {
+      quoteId: data.quote_id,
+      lines: data.lines,
+      feeRate: DEFAULT_FEE_RATE,
+      sourcedBy: null,
+    });
+
+    if (quote.status === "submitted") {
+      await admin.from("quote_requests").update({ status: "sourcing" }).eq("id", data.quote_id);
+    }
+    return { ok: true, lines: saved };
   });
 
 /** The collaborator's own earnings — accrued and settled totals plus lines. */
@@ -391,7 +384,7 @@ export const adminPublishQuote = createServerFn({ method: "POST" })
 
     const { data: lines, error } = await admin
       .from("quote_lines")
-      .select("id, sourcing_cost, quote_request_id")
+      .select("id, sourcing_cost, supplier_tax, quote_request_id")
       .eq("quote_request_id", data.quote_id);
     if (error) throw new Error(error.message);
     const byId = new Map((lines ?? []).map((l) => [l.id, l]));
@@ -402,7 +395,11 @@ export const adminPublishQuote = createServerFn({ method: "POST" })
       if (line.sourcing_cost == null) {
         throw new Error("Every variant needs a supplier price before publishing.");
       }
-      const price = clientPrice(Number(line.sourcing_cost), input.margin_pct);
+      const price = clientPrice(
+        Number(line.sourcing_cost),
+        input.margin_pct,
+        Number(line.supplier_tax ?? 0),
+      );
       const { error: updateError } = await admin
         .from("quote_lines")
         .update({ margin_pct: input.margin_pct, unit_price: price, responded_at: null })

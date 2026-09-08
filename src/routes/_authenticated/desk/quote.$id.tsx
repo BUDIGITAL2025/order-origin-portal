@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/app-shell";
 import { Chip, PanelHeader } from "@/components/admin-ui";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { defaultImportTax, PASSTHROUGH_NOTE, sourcingFee } from "@/lib/pricing";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -36,6 +37,8 @@ type LineDraft = {
   country_code: string;
   supplier_name: string;
   supplier_unit_price: string;
+  supplier_shipping: string;
+  supplier_tax: string;
   moq: string;
   production_lead_days: string;
   sourcing_notes: string;
@@ -46,6 +49,8 @@ const emptyLine = (country: string): LineDraft => ({
   country_code: country,
   supplier_name: "",
   supplier_unit_price: "",
+  supplier_shipping: "",
+  supplier_tax: String(defaultImportTax(country)),
   moq: "",
   production_lead_days: "",
   sourcing_notes: "",
@@ -75,7 +80,17 @@ function DeskQuotePage() {
             variant_label: l.variant_label ?? "",
             country_code: l.country_code ?? country,
             supplier_name: l.supplier_name ?? "",
-            supplier_unit_price: l.supplier_unit_price != null ? String(l.supplier_unit_price) : "",
+            supplier_unit_price:
+              l.supplier_cogs != null
+                ? String(l.supplier_cogs)
+                : l.supplier_unit_price != null
+                  ? String(l.supplier_unit_price)
+                  : "",
+            supplier_shipping: l.supplier_shipping != null ? String(l.supplier_shipping) : "0",
+            supplier_tax:
+              l.supplier_tax != null
+                ? String(l.supplier_tax)
+                : String(defaultImportTax(l.country_code ?? country)),
             moq: l.moq != null ? String(l.moq) : "",
             production_lead_days:
               l.production_lead_days != null ? String(l.production_lead_days) : "",
@@ -101,6 +116,8 @@ function DeskQuotePage() {
           country_code: l.country_code,
           supplier_name: l.supplier_name,
           supplier_unit_price: Number(l.supplier_unit_price),
+          supplier_shipping: Number(l.supplier_shipping || 0),
+          supplier_tax: Number(l.supplier_tax || 0),
           moq: Number(l.moq),
           production_lead_days: Number(l.production_lead_days),
           sourcing_notes: l.sourcing_notes,
@@ -121,10 +138,12 @@ function DeskQuotePage() {
   if (isPending) return <p className="text-sm text-muted-foreground">Loading…</p>;
   if (!data) return <p className="text-sm text-muted-foreground">Request not found.</p>;
 
-  const totalFee = lines.reduce((sum, l) => {
-    const price = Number(l.supplier_unit_price);
-    return Number.isFinite(price) ? sum + price * feeRate : sum;
-  }, 0);
+  const totalFee = lines.reduce(
+    (sum, l) =>
+      sum +
+      sourcingFee(Number(l.supplier_unit_price) || 0, Number(l.supplier_shipping) || 0, feeRate),
+    0,
+  );
 
   return (
     <div>
@@ -143,8 +162,11 @@ function DeskQuotePage() {
       <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
         <div className="space-y-3">
           {lines.map((line, index) => {
-            const price = Number(line.supplier_unit_price);
-            const fee = Number.isFinite(price) ? price * feeRate : 0;
+            const fee = sourcingFee(
+              Number(line.supplier_unit_price) || 0,
+              Number(line.supplier_shipping) || 0,
+              feeRate,
+            );
             return (
               <Card key={line.id ?? `new-${index}`}>
                 <CardContent className="space-y-3 pt-5">
@@ -190,7 +212,7 @@ function DeskQuotePage() {
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label>Supplier unit price (USD)</Label>
+                      <Label>COGS — supplier unit price (USD)</Label>
                       <Input
                         inputMode="decimal"
                         value={line.supplier_unit_price}
@@ -198,6 +220,26 @@ function DeskQuotePage() {
                         onChange={(e) => setField(index, "supplier_unit_price", e.target.value)}
                       />
                     </div>
+                    <div className="space-y-1.5">
+                      <Label>Supplier shipping per unit (USD)</Label>
+                      <Input
+                        inputMode="decimal"
+                        value={line.supplier_shipping}
+                        placeholder="0.00"
+                        onChange={(e) => setField(index, "supplier_shipping", e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Import tax / IOSS per unit (USD)</Label>
+                      <Input
+                        inputMode="decimal"
+                        value={line.supplier_tax}
+                        placeholder="3.50"
+                        onChange={(e) => setField(index, "supplier_tax", e.target.value)}
+                      />
+                      <p className="text-xs text-muted-foreground">{PASSTHROUGH_NOTE}</p>
+                    </div>
+
                     <div className="space-y-1.5">
                       <Label>MOQ</Label>
                       <Input
@@ -253,7 +295,9 @@ function DeskQuotePage() {
             <CardContent className="space-y-2 pt-5 text-sm">
               <PanelHeader title="The request" />
               <p className="break-all text-xs text-muted-foreground">{data.quote.product_url}</p>
-              {data.quote.notes ? <p className="text-muted-foreground">{data.quote.notes}</p> : null}
+              {data.quote.notes ? (
+                <p className="text-muted-foreground">{data.quote.notes}</p>
+              ) : null}
               <div className="flex flex-wrap gap-1.5 pt-1">
                 {(data.quote.target_countries ?? []).map((c) => (
                   <Chip key={c}>{c}</Chip>
@@ -288,11 +332,7 @@ function DeskQuotePage() {
                 Per unit across {lines.length} variant{lines.length === 1 ? "" : "s"}, at{" "}
                 {(feeRate * 100).toFixed(1)}%. It is paid out on units the client actually buys.
               </p>
-              <Button
-                className="w-full"
-                disabled={save.isPending}
-                onClick={() => save.mutate()}
-              >
+              <Button className="w-full" disabled={save.isPending} onClick={() => save.mutate()}>
                 {save.isPending ? "Saving…" : "Submit sourcing"}
               </Button>
             </CardContent>

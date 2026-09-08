@@ -1412,11 +1412,10 @@ export type Database = {
         Row: {
           country_code: string
           created_at: string
+          fee_included: boolean
           id: string
           lead_time_days: number | null
           margin_pct: number
-          markup_product: number | null
-          markup_shipping: number | null
           moq: number | null
           production_lead_days: number | null
           quote_request_id: string
@@ -1440,11 +1439,10 @@ export type Database = {
         Insert: {
           country_code: string
           created_at?: string
+          fee_included?: boolean
           id?: string
           lead_time_days?: number | null
           margin_pct?: number
-          markup_product?: number | null
-          markup_shipping?: number | null
           moq?: number | null
           production_lead_days?: number | null
           quote_request_id: string
@@ -1468,11 +1466,10 @@ export type Database = {
         Update: {
           country_code?: string
           created_at?: string
+          fee_included?: boolean
           id?: string
           lead_time_days?: number | null
           margin_pct?: number
-          markup_product?: number | null
-          markup_shipping?: number | null
           moq?: number | null
           production_lead_days?: number | null
           quote_request_id?: string
@@ -2655,49 +2652,6 @@ export type Database = {
           to: "orders"
           isOneToOne: true
           isSetofReturn: false
-        }
-      }
-      admin_save_quote_lines: {
-        Args: {
-          p_admin_notes?: string
-          p_internal_reference?: string
-          p_lines: Json
-          p_quote_id: string
-          p_quote_valid_until?: string
-        }
-        Returns: {
-          country_code: string
-          created_at: string
-          id: string
-          lead_time_days: number | null
-          margin_pct: number
-          markup_product: number | null
-          markup_shipping: number | null
-          moq: number | null
-          production_lead_days: number | null
-          quote_request_id: string
-          responded_at: string | null
-          sku: string
-          sourced_at: string | null
-          sourced_by: string | null
-          sourcing_cost: number | null
-          sourcing_fee_rate: number | null
-          sourcing_image_urls: string[]
-          sourcing_notes: string | null
-          status: Database["public"]["Enums"]["quote_line_status"]
-          supplier_cogs: number | null
-          supplier_id: string | null
-          supplier_shipping: number | null
-          supplier_tax: number | null
-          supplier_unit_price: number | null
-          unit_price: number | null
-          variant_label: string
-        }[]
-        SetofOptions: {
-          from: "*"
-          to: "quote_lines"
-          isOneToOne: false
-          isSetofReturn: true
         }
       }
       apply_wallet_transaction: {

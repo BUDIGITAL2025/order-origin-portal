@@ -150,8 +150,8 @@ export const quoteLineInputSchema = z.object({
   supplier_cogs: z.number().min(0).max(1_000_000),
   supplier_shipping: z.number().min(0).max(1_000_000),
   supplier_tax: z.number().min(0).max(1_000_000),
-  markup_product: z.number().min(0).max(1_000_000),
-  markup_shipping: z.number().min(0).max(1_000_000),
+  supplier_name: z.string().trim().max(160).optional().or(z.literal("")),
+  sourcing_notes: z.string().trim().max(2000).optional().or(z.literal("")),
   moq: z.number().int().min(1).max(1_000_000).nullable().optional(),
   lead_time_days: z.number().int().min(0).max(365).nullable().optional(),
 });
@@ -167,6 +167,7 @@ export const adminQuoteLinesSchema = z.object({
     .optional(),
   admin_notes: z.string().trim().max(2000).optional().or(z.literal("")),
 });
+
 
 export const respondLinesSchema = z.object({
   quote_id: z.string().uuid(),
@@ -502,10 +503,11 @@ export const sourcingLineInputSchema = z.object({
   variant_label: z.string().trim().min(1, "Every variant needs a label").max(120),
   country_code: countryCodeSchema,
   supplier_name: z.string().trim().min(2, "Supplier is required").max(160),
-  supplier_unit_price: z
-    .number()
-    .min(0.01, "Enter the supplier unit price")
-    .max(1_000_000),
+  supplier_unit_price: z.number().min(0.01, "Enter the supplier unit price").max(1_000_000),
+  /** Supplier shipping per unit — the fee applies to this too. */
+  supplier_shipping: z.number().min(0).max(1_000_000).default(0),
+  /** Import tax / IOSS passthrough per unit — never marked up, never fee'd. */
+  supplier_tax: z.number().min(0).max(1_000_000).default(0),
   moq: z.number().int().min(1, "MOQ is required").max(1_000_000),
   production_lead_days: z.number().int().min(0).max(365),
   sourcing_notes: z.string().trim().max(2000).optional().or(z.literal("")),
@@ -528,6 +530,7 @@ export const publishQuoteSchema = z.object({
     )
     .min(1)
     .max(200),
+  internal_reference: z.string().trim().max(120).optional().or(z.literal("")),
   quote_valid_until: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD")
@@ -535,6 +538,7 @@ export const publishQuoteSchema = z.object({
     .optional(),
   admin_notes: z.string().trim().max(2000).optional().or(z.literal("")),
 });
+
 
 export const settleEarningsSchema = z.object({
   ids: z.array(z.string().uuid()).min(1).max(500),

@@ -24,6 +24,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { countryName, isEuCountry } from "@/lib/countries";
+import {
+  closedPrice,
+  defaultImportTax,
+  feeBase,
+  marginAmount,
+  PASSTHROUGH_NOTE,
+  sourcingCostOf,
+  sourcingFee,
+} from "@/lib/pricing";
+import { adminPublishQuote } from "@/lib/sourcing.functions";
+
+/** House sourcing fee rate, mirrored from the server default. */
+const DEFAULT_FEE_RATE = 0.08;
 import { formatDate, formatUSD } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { effectiveTier, TIER_LABELS } from "@/lib/plans";
@@ -37,10 +50,7 @@ import {
 
 export const Route = createFileRoute("/_authenticated/admin/quotes/$id")({
   head: () => ({
-    meta: [
-      { title: "Quote request — FlySales Admin" },
-      { name: "robots", content: "noindex" },
-    ],
+    meta: [{ title: "Quote request — FlySales Admin" }, { name: "robots", content: "noindex" }],
   }),
   component: AdminQuoteDetailPage,
 });
@@ -53,19 +63,13 @@ function num(value: string): number {
   return value === "" ? 0 : Number(value);
 }
 
-type GridField =
-  | "supplier_cogs"
-  | "supplier_shipping"
-  | "supplier_tax"
-  | "markup_product"
-  | "markup_shipping";
+type GridField = "supplier_cogs" | "supplier_shipping" | "supplier_tax" | "margin_pct";
 
 const GRID_FIELDS: { key: GridField; label: string; short?: string }[] = [
   { key: "supplier_cogs", label: "COGS" },
   { key: "supplier_shipping", label: "Ship" },
   { key: "supplier_tax", label: "IOSS / import tax", short: "IOSS" },
-  { key: "markup_product", label: "Mk prod" },
-  { key: "markup_shipping", label: "Mk ship" },
+  { key: "margin_pct", label: "Margin %", short: "Margin" },
 ];
 
 interface CellForm {
@@ -74,8 +78,12 @@ interface CellForm {
   supplier_cogs: string;
   supplier_shipping: string;
   supplier_tax: string;
-  markup_product: string;
-  markup_shipping: string;
+  margin_pct: string;
+  /** Snapshotted sourcing fee rate; the house default until sourcing saves one. */
+  fee_rate: number;
+  /** True for lines whose entered cost already contains the sourcing fee. */
+  fee_included: boolean;
+  supplier_name: string;
 }
 
 interface VariantRow {
@@ -87,22 +95,24 @@ interface VariantRow {
   cells: Record<string, CellForm>;
 }
 
-function emptyCell(): CellForm {
+function emptyCell(country?: string): CellForm {
   return {
     lineId: null,
     status: "pending",
     supplier_cogs: "0",
     supplier_shipping: "0",
-    supplier_tax: "0",
-    markup_product: "0",
-    markup_shipping: "0",
+    supplier_tax: country ? String(defaultImportTax(country)) : "0",
+    margin_pct: "0",
+    fee_rate: DEFAULT_FEE_RATE,
+    fee_included: false,
+    supplier_name: "",
   };
 }
 
 let rowCounter = 0;
 function emptyVariant(countries: string[]): VariantRow {
   const cells: Record<string, CellForm> = {};
-  for (const c of countries) cells[c] = emptyCell();
+  for (const c of countries) cells[c] = emptyCell(c);
   return {
     key: `new-${++rowCounter}`,
     label: "",
@@ -117,21 +127,35 @@ function cellLocked(cell: CellForm): boolean {
   return cell.lineId != null && cell.status !== "pending";
 }
 
-function cellPrice(c: CellForm): number {
-  return round2(
-    num(c.supplier_cogs) +
-      num(c.supplier_shipping) +
-      num(c.supplier_tax) +
-      num(c.markup_product) +
-      num(c.markup_shipping),
-  );
+/** COGS + supplier shipping — the base the sourcing fee applies to. */
+function cellBase(c: CellForm): number {
+  return feeBase(num(c.supplier_cogs), num(c.supplier_shipping));
 }
 
-/** Effective margin on the sell price: combined markups as % of unit price. */
-function cellMarginPct(c: CellForm): number | null {
-  const price = cellPrice(c);
-  if (price <= 0) return null;
-  return ((num(c.markup_product) + num(c.markup_shipping)) / price) * 100;
+/** The sourcing commission on this line — zero when the cost already includes it. */
+function cellFee(c: CellForm): number {
+  if (c.fee_included) return 0;
+  return sourcingFee(num(c.supplier_cogs), num(c.supplier_shipping), c.fee_rate);
+}
+
+/** Everything the goods cost us before margin. */
+function cellSourcingCost(c: CellForm): number {
+  return sourcingCostOf({
+    cogs: num(c.supplier_cogs),
+    shipping: num(c.supplier_shipping),
+    feeRate: c.fee_rate,
+    feeIncluded: c.fee_included,
+  });
+}
+
+/** Our absolute margin per unit. */
+function cellMargin(c: CellForm): number {
+  return marginAmount(cellSourcingCost(c), num(c.margin_pct));
+}
+
+/** The closed price the client sees: goods + margin + tax passthrough at cost. */
+function cellPrice(c: CellForm): number {
+  return closedPrice(cellSourcingCost(c), num(c.margin_pct), num(c.supplier_tax));
 }
 
 function AdminQuoteDetailPage() {
@@ -140,6 +164,7 @@ function AdminQuoteDetailPage() {
   const fetchQuote = useServerFn(adminGetQuote);
   const fetchImages = useServerFn(adminGetQuoteImageUrls);
   const callSave = useServerFn(adminSaveQuoteLines);
+  const callPublish = useServerFn(adminPublishQuote);
   const callSetStatus = useServerFn(adminSetQuoteStatus);
   const callRequote = useServerFn(adminRequote);
 
@@ -212,13 +237,15 @@ function AdminQuoteDetailPage() {
           supplier_cogs: l.supplier_cogs != null ? String(l.supplier_cogs) : "0",
           supplier_shipping: l.supplier_shipping != null ? String(l.supplier_shipping) : "0",
           supplier_tax: l.supplier_tax != null ? String(l.supplier_tax) : "0",
-          markup_product: l.markup_product != null ? String(l.markup_product) : "0",
-          markup_shipping: l.markup_shipping != null ? String(l.markup_shipping) : "0",
+          margin_pct: l.margin_pct != null ? String(l.margin_pct) : "0",
+          fee_rate: l.sourcing_fee_rate != null ? Number(l.sourcing_fee_rate) : DEFAULT_FEE_RATE,
+          fee_included: l.fee_included === true,
+          supplier_name: "",
         };
       }
       for (const row of byVariant.values()) {
         for (const c of targetCountries) {
-          if (!row.cells[c]) row.cells[c] = emptyCell();
+          if (!row.cells[c]) row.cells[c] = emptyCell(c);
         }
       }
       setRows([...byVariant.values()]);
@@ -246,7 +273,10 @@ function AdminQuoteDetailPage() {
     setRows((prev) =>
       prev.map((r) =>
         r.key === key
-          ? { ...r, cells: { ...r.cells, [country]: { ...emptyCell(), ...r.cells[country], ...patch } } }
+          ? {
+              ...r,
+              cells: { ...r.cells, [country]: { ...emptyCell(), ...r.cells[country], ...patch } },
+            }
           : r,
       ),
     );
@@ -274,7 +304,7 @@ function AdminQuoteDetailPage() {
   };
 
   const save = useMutation({
-    mutationFn: () => {
+    mutationFn: async () => {
       if (rows.length === 0) throw new Error("Add at least one variant");
       const labels = rows.map((r) => r.label.trim());
       if (labels.some((l) => !l)) throw new Error("Every variant needs a label");
@@ -283,7 +313,7 @@ function AdminQuoteDetailPage() {
       }
       const lines = rows.flatMap((row) =>
         countries.flatMap((country) => {
-          const cell = row.cells[country] ?? emptyCell();
+          const cell = row.cells[country] ?? emptyCell(country);
           if (cellLocked(cell)) return [];
           return [
             {
@@ -293,16 +323,16 @@ function AdminQuoteDetailPage() {
               supplier_cogs: num(cell.supplier_cogs),
               supplier_shipping: num(cell.supplier_shipping),
               supplier_tax: num(cell.supplier_tax),
-              markup_product: num(cell.markup_product),
-              markup_shipping: num(cell.markup_shipping),
+              supplier_name: cell.supplier_name,
               moq: row.moq ? Number(row.moq) : null,
               lead_time_days: row.lead_time_days ? Number(row.lead_time_days) : null,
             },
           ];
         }),
       );
+
       if (lines.length === 0) throw new Error("No editable lines to save");
-      return callSave({
+      const saved = await callSave({
         data: {
           quote_id: id,
           lines,
@@ -311,6 +341,32 @@ function AdminQuoteDetailPage() {
           admin_notes: adminNotes,
         },
       });
+
+      // Second step: the margin. Publishing writes the client price from the
+      // saved sourcing cost, so it always uses the numbers the server stored.
+      const marginByKey = new Map<string, number>();
+      for (const row of rows) {
+        for (const country of countries) {
+          const cell = row.cells[country];
+          if (cell && !cellLocked(cell)) {
+            marginByKey.set(`${row.label.trim()}::${country}`, num(cell.margin_pct));
+          }
+        }
+      }
+      const publishLines = saved.lines.map((l) => ({
+        id: l.id,
+        margin_pct: marginByKey.get(`${l.variant_label}::${l.country_code}`) ?? 0,
+      }));
+      await callPublish({
+        data: {
+          quote_id: id,
+          lines: publishLines,
+          internal_reference: internalReference,
+          quote_valid_until: validUntil || null,
+          admin_notes: adminNotes,
+        },
+      });
+      return saved;
     },
     onSuccess: (r) => {
       // Re-key local cells with the persisted line ids / SKUs so a second save
@@ -328,7 +384,7 @@ function AdminQuoteDetailPage() {
           ),
         })),
       );
-      toast.success(`Quote saved — ${r.lines.length} line(s), request is now "quoted"`);
+      toast.success(`Quote published — ${r.lines.length} line(s), request is now "quoted"`);
       void queryClient.invalidateQueries({ queryKey: ["admin-quote", id] });
       void queryClient.invalidateQueries({ queryKey: ["admin-quotes"] });
     },
@@ -367,9 +423,7 @@ function AdminQuoteDetailPage() {
   const buildBrief = (): string => {
     if (!quote) return "";
     const countriesLine =
-      countries.length > 0
-        ? countries.map((c) => `${countryName(c)} (${c})`).join(", ")
-        : "—";
+      countries.length > 0 ? countries.map((c) => `${countryName(c)} (${c})`).join(", ") : "—";
     const seen = data?.preview?.variants ?? [];
     const variantLine =
       seen.length > 0
@@ -442,7 +496,12 @@ function AdminQuoteDetailPage() {
                 </AlertDialogContent>
               </AlertDialog>
             )}
-            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => void copyBrief()}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => void copyBrief()}
+            >
               <Copy className="h-3.5 w-3.5" /> Copy sourcing brief
             </Button>
             <Button variant="outline" size="sm" className="gap-1.5" onClick={sendWhatsApp}>
@@ -463,7 +522,9 @@ function AdminQuoteDetailPage() {
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
               <div>
-                <div className="text-xs uppercase tracking-wide text-muted-foreground">Product URL</div>
+                <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Product URL
+                </div>
                 <a
                   href={quote.product_url ?? "#"}
                   target="_blank"
@@ -500,11 +561,15 @@ function AdminQuoteDetailPage() {
               )}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <div className="text-xs uppercase tracking-wide text-muted-foreground">Volume / month</div>
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Volume / month
+                  </div>
                   <div className="tnum">{quote.target_monthly_volume ?? "—"}</div>
                 </div>
                 <div>
-                  <div className="text-xs uppercase tracking-wide text-muted-foreground">Client</div>
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Client
+                  </div>
                   <div>
                     {client?.company_name ?? "—"} <TierBadge tier={clientTier} />
                   </div>
@@ -518,7 +583,9 @@ function AdminQuoteDetailPage() {
               </div>
               {((images && images.urls.length > 0) || externalImages.length > 0) && (
                 <div>
-                  <div className="mb-1.5 text-xs uppercase tracking-wide text-muted-foreground">Images</div>
+                  <div className="mb-1.5 text-xs uppercase tracking-wide text-muted-foreground">
+                    Images
+                  </div>
                   <div className="flex flex-wrap gap-2">
                     {(images?.urls ?? []).map((img) => (
                       <a key={img.path} href={img.url} target="_blank" rel="noreferrer">
@@ -590,11 +657,12 @@ function AdminQuoteDetailPage() {
               </span>
             </div>
             <CardDescription>
-              Rows are variants, columns are the requested countries — each cell is a priced
-              variant × country line. All amounts in USD. Supplier tax (IOSS / duties) passes
-              through at exact cost — it is never marked up. Cost and margin are never visible to
-              the client. Saving with at least one line moves the request to "quoted" and
-              generates one SKU per variant, shared across its country rows.
+              Rows are variants, columns are the requested countries — each cell is a priced variant
+              × country line. All amounts in USD. The chain is COGS → + ship → + sourcing fee →
+              sourcing cost, then one FlySales margin %. Supplier tax (IOSS / duties) passes through
+              at exact cost — it is never marked up. {PASSTHROUGH_NOTE} Cost and margin are never
+              visible to the client. Publishing moves the request to "quoted" and generates one SKU
+              per variant, shared across its country rows.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -723,7 +791,7 @@ function AdminQuoteDetailPage() {
                             )}
                           </div>
                           {countries.map((country) => {
-                            const cell = row.cells[country] ?? emptyCell();
+                            const cell = row.cells[country] ?? emptyCell(country);
                             const locked = cellLocked(cell);
                             const cellEditable = requestEditable && !locked;
                             return (
@@ -758,33 +826,55 @@ function AdminQuoteDetailPage() {
                                     {f.key === "supplier_tax" && (
                                       <p className="mt-0.5 pl-[4.25rem] text-[9px] leading-tight text-muted-foreground/80">
                                         {isEuCountry(country)
-                                          ? "EU destination — include IOSS"
+                                          ? "EU — $3.50/unit passthrough"
                                           : "usually 0"}
                                       </p>
                                     )}
                                   </div>
                                 ))}
+                                <div className="mt-1 space-y-0.5 rounded border border-border/60 bg-muted/30 p-1.5 text-[10px] text-muted-foreground">
+                                  <div className="flex items-center justify-between">
+                                    <span>COGS + ship</span>
+                                    <span className="tnum">{formatUSD(cellBase(cell))}</span>
+                                  </div>
+                                  <div className="flex items-center justify-between">
+                                    <span>
+                                      Sourcing fee{" "}
+                                      {cell.fee_included
+                                        ? "(included)"
+                                        : `(${(cell.fee_rate * 100).toFixed(0)}%)`}
+                                    </span>
+                                    <span className="tnum">{formatUSD(cellFee(cell))}</span>
+                                  </div>
+                                  <div className="flex items-center justify-between font-medium text-foreground">
+                                    <span>Sourcing cost</span>
+                                    <span className="tnum">
+                                      {formatUSD(cellSourcingCost(cell))}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center justify-between">
+                                    <span>Our margin</span>
+                                    <span className="tnum">{formatUSD(cellMargin(cell))}</span>
+                                  </div>
+                                  <div className="flex items-center justify-between">
+                                    <span>Tax passthrough</span>
+                                    <span className="tnum">
+                                      {formatUSD(num(cell.supplier_tax))}
+                                    </span>
+                                  </div>
+                                </div>
                                 <div className="flex items-center justify-between pt-1">
                                   <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                                    Price
+                                    Client price
                                   </span>
                                   <span className="tnum text-xs font-semibold">
                                     {formatUSD(cellPrice(cell))}
                                   </span>
                                 </div>
-                                <div className="flex items-center justify-between">
-                                  <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                                    Margin
-                                  </span>
-                                  <span className="tnum text-xs text-muted-foreground">
-                                    {(() => {
-                                      const m = cellMarginPct(cell);
-                                      return m == null ? "—" : `${m.toFixed(1)}%`;
-                                    })()}
-                                  </span>
-                                </div>
                                 {locked && (
-                                  <LineStatusBadge status={cell.status as "accepted" | "rejected"} />
+                                  <LineStatusBadge
+                                    status={cell.status as "accepted" | "rejected"}
+                                  />
                                 )}
                               </div>
                             );
@@ -812,7 +902,9 @@ function AdminQuoteDetailPage() {
               {rows.length > 0 && (
                 <div className="grid grid-cols-3 gap-px overflow-hidden rounded-md border border-border bg-border text-sm">
                   <div className="bg-muted/40 p-3">
-                    <div className="text-xs uppercase tracking-wide text-muted-foreground">Grid</div>
+                    <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                      Grid
+                    </div>
                     <div className="tnum font-medium">
                       {rows.length} variant{rows.length === 1 ? "" : "s"} × {countries.length}{" "}
                       {countries.length === 1 ? "country" : "countries"}
@@ -835,11 +927,16 @@ function AdminQuoteDetailPage() {
 
               <div className="space-y-1.5">
                 <Label htmlFor="aq-notes">Internal notes (admin only)</Label>
-                <Textarea id="aq-notes" rows={3} value={adminNotes} onChange={(e) => setAdminNotes(e.target.value)} />
+                <Textarea
+                  id="aq-notes"
+                  rows={3}
+                  value={adminNotes}
+                  onChange={(e) => setAdminNotes(e.target.value)}
+                />
               </div>
               {requestEditable && (
                 <Button type="submit" disabled={save.isPending}>
-                  {save.isPending ? "Saving…" : "Save & send quote"}
+                  {save.isPending ? "Publishing…" : "Publish quote to client"}
                 </Button>
               )}
             </form>

@@ -217,7 +217,13 @@ export const adminListQuotes = createServerFn({ method: "GET" })
           .from("quote_request_internal")
           .select("quote_request_id, admin_notes, internal_reference")
           .in("quote_request_id", ids)
-      : { data: [] as Array<{ quote_request_id: string; admin_notes: string | null; internal_reference: string | null }> };
+      : {
+          data: [] as Array<{
+            quote_request_id: string;
+            admin_notes: string | null;
+            internal_reference: string | null;
+          }>,
+        };
     const internalByQuote = new Map((internals ?? []).map((r) => [r.quote_request_id, r]));
     return {
       quotes: (quotes ?? []).map((q) => mapQuoteForAdmin(q, internalByQuote.get(q.id as string))),
@@ -271,7 +277,12 @@ export const adminGetQuote = createServerFn({ method: "GET" })
         .eq("id", previewId)
         .maybeSingle();
       // `variants` exists in the DB but not yet in the generated types.
-      preview = p ? { ...(p as Omit<typeof p, "variants">), variants: ((p as { variants?: string[] | null }).variants ?? []) } : null;
+      preview = p
+        ? {
+            ...(p as Omit<typeof p, "variants">),
+            variants: (p as { variants?: string[] | null }).variants ?? [],
+          }
+        : null;
     }
 
     const { data: lines, error: linesError } = await admin
@@ -284,25 +295,55 @@ export const adminGetQuote = createServerFn({ method: "GET" })
     return { quote: mappedQuote, lines: lines ?? [], preview };
   });
 
-/** Admin: save variant lines (SKUs generated server-side), move the request to 'quoted'. */
+/**
+ * Admin: save the sourcing layer of a quote (supplier costs, shipping, tax
+ * passthrough, MOQ, lead time) plus the internal reference and notes. Margin
+ * and publishing live in adminPublishQuote — this never sets a client price.
+ */
 export const adminSaveQuoteLines = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => adminQuoteLinesSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const { requireAdmin } = await import("./admin.server");
+    const { requireAdmin, getAdminClient } = await import("./admin.server");
+    const { DEFAULT_FEE_RATE, writeSourcingLines } = await import("./sourcing.server");
     await requireAdmin(context.supabase, context.userId);
+    const admin = await getAdminClient();
 
-    // Nullable params let the admin clear a previously set value; the generated
-    // types mark defaulted args as optional strings, so cast the explicit nulls.
-    const { data: lines, error } = await context.supabase.rpc("admin_save_quote_lines", {
-      p_quote_id: data.quote_id,
-      p_lines: data.lines,
-      p_internal_reference: (data.internal_reference || null) as string,
-      p_quote_valid_until: (data.quote_valid_until ?? null) as string,
-      p_admin_notes: (data.admin_notes || null) as string,
+    const lines = await writeSourcingLines(admin, {
+      quoteId: data.quote_id,
+      lines: data.lines.map((l) => ({
+        ...(l.id ? { id: l.id } : {}),
+        variant_label: l.variant_label,
+        country_code: l.country_code,
+        supplier_name: l.supplier_name || "Unassigned supplier",
+        supplier_unit_price: l.supplier_cogs,
+        supplier_shipping: l.supplier_shipping,
+        supplier_tax: l.supplier_tax,
+        moq: l.moq ?? 1,
+        production_lead_days: l.lead_time_days ?? 0,
+        ...(l.sourcing_notes ? { sourcing_notes: l.sourcing_notes } : {}),
+      })),
+      feeRate: DEFAULT_FEE_RATE,
+      sourcedBy: null,
     });
-    if (error) throw new Error(error.message);
-    return { ok: true, lines: lines ?? [] };
+
+    if (data.quote_valid_until !== undefined) {
+      await admin
+        .from("quote_requests")
+        .update({ quote_valid_until: data.quote_valid_until ?? null })
+        .eq("id", data.quote_id);
+    }
+    await admin.from("quote_request_internal").upsert(
+      {
+        quote_request_id: data.quote_id,
+        internal_reference: data.internal_reference || null,
+        admin_notes: data.admin_notes || null,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "quote_request_id" },
+    );
+
+    return { ok: true, lines };
   });
 
 /** Admin: requote a closed/expired quote — new row, original untouched, no quota cost. */
@@ -325,9 +366,8 @@ export const adminRequote = createServerFn({ method: "POST" })
       throw new Error("Only closed or expired quotes can be requoted");
     }
     // p_on_behalf_of expects the owning ACCOUNT id, resolved via store → entity.
-    const accountId = (
-      quote.stores as { entities?: { account_id?: string | null } | null } | null
-    )?.entities?.account_id;
+    const accountId = (quote.stores as { entities?: { account_id?: string | null } | null } | null)
+      ?.entities?.account_id;
     if (!accountId) throw new Error("Quote workspace has no owning account");
 
     const { data: created, error } = await context.supabase.rpc("submit_quote_request", {
