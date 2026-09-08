@@ -650,11 +650,13 @@ function AdminQuoteDetailPage() {
             </div>
             <CardDescription>
               Rows are variants, columns are the requested countries — each cell is a priced
-              variant × country line. All amounts in USD. Supplier tax (IOSS / duties) passes
-              through at exact cost — it is never marked up. Cost and margin are never visible to
-              the client. Saving with at least one line moves the request to "quoted" and
-              generates one SKU per variant, shared across its country rows.
+              variant × country line. All amounts in USD. The chain is COGS → + ship → + sourcing
+              fee → sourcing cost, then one FlySales margin %. Supplier tax (IOSS / duties) passes
+              through at exact cost — it is never marked up. {PASSTHROUGH_NOTE} Cost and margin are
+              never visible to the client. Publishing moves the request to "quoted" and generates
+              one SKU per variant, shared across its country rows.
             </CardDescription>
+
           </CardHeader>
           <CardContent>
             <form
