@@ -34,8 +34,9 @@ export const STRUCTURE_TTL_MS = 24 * 60 * 60 * 1000; // 24h
  * uploads or deletes can pass, even if a caller hand-crafts the tool name.
  */
 export const READ_TOOLS = new Set<string>([
-  // Meta
+  // Meta (verified against tools/list on meta-ads.mcp.pipeboard.co)
   "get_ad_accounts",
+  "list_meta_connections",
   "get_account_info",
   "get_account_pages",
   "get_campaigns",
@@ -45,10 +46,10 @@ export const READ_TOOLS = new Set<string>([
   "get_ads",
   "get_ad_details",
   "get_insights",
-  "bulk_get_insights",
   "get_ad_creatives",
+  "get_creative_details",
   "get_ad_image",
-  "get_ad_previews",
+  "get_pixels",
   // Google
   "list_google_ads_customers",
   "get_google_ads_account_info",
@@ -59,11 +60,10 @@ export const READ_TOOLS = new Set<string>([
   "get_google_ads_ad_group_metrics",
   "get_google_ads_ad_metrics",
 ]);
-
 function isReadTool(tool: string): boolean {
   if (!READ_TOOLS.has(tool)) return false;
   // Belt and braces: the allowlist is the rule, this is the sanity check.
-  return /^(get|list|bulk_get)_/.test(tool);
+  return /^(get|list)_/.test(tool);
 }
 
 export class AdsError extends Error {
@@ -273,7 +273,22 @@ function parseMcpBody(contentType: string, body: string): unknown {
 function unwrapToolResult(result: unknown): unknown {
   if (!result || typeof result !== "object") return result;
   const rec = result as Record<string, unknown>;
-  if (rec["structuredContent"] !== undefined) return rec["structuredContent"];
+  const structured = rec["structuredContent"];
+  if (structured !== undefined) {
+    // FastMCP wraps everything as { result: "<json string>" }.
+    if (structured && typeof structured === "object" && "result" in (structured as object)) {
+      const inner = (structured as { result: unknown }).result;
+      if (typeof inner === "string") {
+        try {
+          return JSON.parse(inner);
+        } catch {
+          return { text: inner };
+        }
+      }
+      return inner;
+    }
+    return structured;
+  }
   const content = rec["content"];
   if (!Array.isArray(content)) return result;
   const texts = content
@@ -295,7 +310,7 @@ export function adsRowsOf(payload: unknown): number {
   if (Array.isArray(payload)) return payload.length;
   if (payload && typeof payload === "object") {
     const rec = payload as Record<string, unknown>;
-    for (const key of ["data", "results", "items", "campaigns", "adsets", "ads", "accounts", "insights"]) {
+    for (const key of ["data", "segmented_metrics", "results", "items", "campaigns", "adsets", "ads", "accounts", "insights"]) {
       const v = rec[key];
       if (Array.isArray(v)) return v.length;
     }
@@ -308,6 +323,16 @@ export function adsRowsArray(payload: unknown): Record<string, unknown>[] {
   if (Array.isArray(payload)) return payload as Record<string, unknown>[];
   if (payload && typeof payload === "object") {
     const rec = payload as Record<string, unknown>;
+    // Daily insights come back as { segmented_metrics: [{ period, metrics }] };
+    // flatten them into ordinary rows carrying their date.
+    const segments = rec["segmented_metrics"];
+    if (Array.isArray(segments)) {
+      return segments.map((seg) => {
+        const s = (seg ?? {}) as Record<string, unknown>;
+        const metrics = (s["metrics"] ?? {}) as Record<string, unknown>;
+        return { ...metrics, date_start: s["period"] ?? s["period_start"] ?? null };
+      });
+    }
     for (const key of ["data", "results", "items", "campaigns", "adsets", "ads", "accounts", "insights"]) {
       const v = rec[key];
       if (Array.isArray(v)) return v as Record<string, unknown>[];
@@ -697,9 +722,6 @@ export function periodWindows(days: number): {
 /* High-level reads used by the dashboard                              */
 /* ------------------------------------------------------------------ */
 
-const INSIGHT_FIELDS =
-  "spend,impressions,clicks,ctr,cpc,cpm,reach,actions,action_values,purchase_roas";
-
 interface InsightsArgs {
   objectId: string;
   window: { since: string; until: string };
@@ -707,15 +729,14 @@ interface InsightsArgs {
   daily?: boolean;
 }
 
+/** Exactly the arguments get_insights declares — extra keys are rejected. */
 function insightArgs(a: InsightsArgs): Record<string, unknown> {
   return {
     object_id: a.objectId,
-    account_id: a.objectId,
     time_range: { since: a.window.since, until: a.window.until },
-    ...(a.level ? { level: a.level } : {}),
-    ...(a.daily ? { time_increment: 1 } : {}),
-    fields: INSIGHT_FIELDS,
-    limit: 500,
+    level: a.level ?? "account",
+    ...(a.daily ? { time_breakdown: "day" } : {}),
+    limit: a.daily ? 200 : 500,
   };
 }
 
@@ -773,7 +794,7 @@ export async function fetchOverview(args: {
       workspaceId: args.workspaceId,
       tool: "get_insights",
       accountId: args.accountId,
-      args: insightArgs({ objectId: args.accountId, window: windows.previous, level: "account" }),
+      args: insightArgs({ objectId: args.accountId, window: windows.previous, level: "account", daily: true }),
       ttlMs: INSIGHTS_TTL_MS,
     });
     previous = aggregateMetrics(adsRowsArray(previousCall.data).map(normaliseMetaRow));

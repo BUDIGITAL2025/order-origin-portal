@@ -207,7 +207,7 @@ export const adminListProviderAccounts = createServerFn({ method: "POST" })
       userId: context.userId,
       workspaceId: null,
       tool: "get_ad_accounts",
-      args: {},
+      args: { user_id: "me", limit: 200 },
       ttlMs: mod.STRUCTURE_TTL_MS,
       ...(data.refresh ? { refresh: true } : {}),
     });
