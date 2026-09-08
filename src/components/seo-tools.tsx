@@ -115,6 +115,7 @@ export function SeoTools({
     queryKey: ["seo-status"],
     queryFn: () => statusFn(),
     staleTime: 60_000,
+    retry: false,
   });
 
   // Free endpoint, cached permanently server-side — safe to load on render.
