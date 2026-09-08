@@ -50,7 +50,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 type Rec = Record<string, unknown>;
 const asRec = (v: unknown): Rec =>
   v && typeof v === "object" && !Array.isArray(v) ? (v as Rec) : {};
-const asArr = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
 const str = (v: unknown): string | null => (typeof v === "string" && v !== "" ? v : null);
 const num = (v: unknown): number | null => {
   if (typeof v === "number" && Number.isFinite(v)) return v;
@@ -1021,4 +1020,3 @@ export function WhHeaderChips() {
 
 export const WH_AD_PLATFORMS = PLATFORMS;
 export type { Platform as WhAdPlatform };
-export const whUnusedGuard = asArr;

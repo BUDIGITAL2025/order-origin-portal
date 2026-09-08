@@ -67,6 +67,7 @@ import {
 } from "@/lib/spymarket-tools.functions";
 
 import type { ToolOk, ToolResult } from "@/lib/spymarket-tools.server";
+import { WhAdLibraryTab, WhHeaderChips } from "@/components/spymarket-wh";
 import { cn } from "@/lib/utils";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
@@ -564,6 +565,7 @@ const TOOL_TABS: ReadonlyArray<{ id: string; label: string; badge?: string }> = 
   { id: "shops", label: "Shop explorer" },
   { id: "shop", label: "Shop detail" },
   { id: "ads", label: "Ad library" },
+  { id: "wh-ads", label: "Ad Library (WH)", badge: "new" },
   { id: "emails", label: "Emails" },
   { id: "usage", label: "Usage", badge: "free" },
 ];
@@ -669,6 +671,7 @@ export function SpyMarketTools({ tab, shopId, domain, search, go }: SpyMarketToo
         />
       )}
       {tab === "ads" && <AdsTab costs={status.endpointCosts} url={search} go={go} />}
+      {tab === "wh-ads" && <WhAdLibraryTab url={search} go={go} />}
       {tab === "emails" && (
         <EmailsTab costs={status.endpointCosts} scopeDomain={search["shop"]} />
       )}
@@ -805,6 +808,7 @@ function Header({ status }: { status: { creditsRemaining: number | null; dayTota
           <Badge variant="outline" className="rounded-full">
             You today: {fmtInt(status.dayTotal)} / {fmtInt(status.dailySoftLimit)}
           </Badge>
+          <WhHeaderChips />
         </div>
       )}
     </div>
