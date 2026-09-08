@@ -247,3 +247,79 @@ export const whTikTokProductDetail = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) =>
     (await admin(context)).whTikTokProductDetail(context.userId, data.id, data.period),
   );
+
+/**
+ * Free: usage dashboard for the WinningHunter provider, read from our own call
+ * log. Historical TrendTrack rows stay in spy_api_calls but are never shown.
+ */
+export const getWhUsage = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { requireAdmin } = await import("./admin.server");
+    await requireAdmin(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const since = new Date(Date.now() - 30 * 86_400_000).toISOString();
+    const { data, error } = await supabaseAdmin
+      .from("spy_api_calls")
+      .select(
+        "id, endpoint, credits_cost, cached, rows_returned, ok, error, credits_remaining, called_by, created_at",
+      )
+      .eq("provider", "winninghunter")
+      .gte("created_at", since)
+      .order("created_at", { ascending: false })
+      .limit(1000);
+    if (error) throw new Error(error.message);
+    const rows = data ?? [];
+
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    const dayMs = startOfDay.getTime();
+    const weekMs = Date.now() - 7 * 86_400_000;
+
+    const sum = (list: typeof rows) => list.reduce((a, r) => a + (r.credits_cost ?? 0), 0);
+    const at = (r: (typeof rows)[number]) => new Date(r.created_at).getTime();
+
+    const byEndpointMap = new Map<string, { calls: number; credits: number }>();
+    const byMemberMap = new Map<string, { calls: number; credits: number }>();
+    for (const r of rows) {
+      const e = byEndpointMap.get(r.endpoint) ?? { calls: 0, credits: 0 };
+      e.calls += 1;
+      e.credits += r.credits_cost ?? 0;
+      byEndpointMap.set(r.endpoint, e);
+      const key = r.called_by ?? "unknown";
+      const m = byMemberMap.get(key) ?? { calls: 0, credits: 0 };
+      m.calls += 1;
+      m.credits += r.credits_cost ?? 0;
+      byMemberMap.set(key, m);
+    }
+
+    const memberIds = [...byMemberMap.keys()].filter((k) => k !== "unknown");
+    const names = new Map<string, string>();
+    if (memberIds.length > 0) {
+      const { data: profiles } = await supabaseAdmin
+        .from("profiles")
+        .select("id, contact_name")
+        .in("id", memberIds);
+      for (const p of profiles ?? []) {
+        names.set(p.id, p.contact_name || p.id.slice(0, 8));
+      }
+    }
+
+    const cacheable = rows.filter((r) => r.ok);
+    return {
+      today: sum(rows.filter((r) => at(r) >= dayMs)),
+      week: sum(rows.filter((r) => at(r) >= weekMs)),
+      month: sum(rows),
+      calls30d: rows.length,
+      cacheHitRate:
+        cacheable.length === 0 ? 0 : cacheable.filter((r) => r.cached).length / cacheable.length,
+      byEndpoint: [...byEndpointMap.entries()]
+        .map(([endpoint, v]) => ({ endpoint, ...v }))
+        .sort((a, b) => b.credits - a.credits),
+      byMember: [...byMemberMap.entries()]
+        .map(([id, v]) => ({ name: names.get(id) ?? "Unknown", ...v }))
+        .sort((a, b) => b.credits - a.credits),
+      recent: rows.slice(0, 60),
+    };
+  });

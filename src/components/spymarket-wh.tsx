@@ -1,8 +1,8 @@
 /**
  * SpyMarket — WinningHunter Ad Library (phase 1 of the provider migration).
- * ADMIN-ONLY. Runs alongside the TrendTrack tabs, which are untouched.
+ * ADMIN-ONLY.
  *
- * Discipline (same as the TrendTrack side):
+ * Discipline:
  *  - Nothing fires on render. Every paid call needs a click.
  *  - The cost is shown BEFORE the call: WinningHunter charges a flat 1 credit
  *    per page whatever the page size, so we always request the biggest page
@@ -540,7 +540,7 @@ export function WhAdLibraryTab({
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Platform selector — the coverage TrendTrack never had. */}
+          {/* Platform selector. */}
           <div className="flex flex-wrap gap-2">
             {PLATFORMS.map((p) => (
               <Button
@@ -1073,7 +1073,7 @@ function CreativeLightbox({
 }
 
 // ---------------------------------------------------------------------------
-// Header chips (live alongside the TrendTrack chips)
+// Header chips — WinningHunter credits
 // ---------------------------------------------------------------------------
 
 export function WhHeaderChips() {

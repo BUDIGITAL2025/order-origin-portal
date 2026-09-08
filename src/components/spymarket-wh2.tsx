@@ -1,6 +1,6 @@
 /**
  * SpyMarket — WinningHunter phase 2: Store explorer, Brands, Trends and
- * TikTok Shop. ADMIN-ONLY, running alongside the untouched TrendTrack tabs.
+ * TikTok Shop. ADMIN-ONLY.
  *
  * Discipline is identical to phase 1:
  *  - nothing fires on render; every metered call needs a click,
