@@ -7,6 +7,7 @@
 import * as React from "react";
 import { ChevronDown, ChevronRight, PackagePlus } from "lucide-react";
 import { Chip, EmptyCell, TableShell } from "@/components/admin-ui";
+import { ProductThumb } from "@/components/product-thumb";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -21,6 +22,7 @@ export interface InventoryRow {
   reserved?: number;
   incoming?: number;
   sellable?: number;
+  image_urls?: string[];
   weight?: number | null;
   weight_unit?: string | null;
   tags?: string[];
@@ -194,11 +196,16 @@ export function InventoryTable({
                     )}
                   </td>
                   <td className="px-2 py-2">
-                    <div className="truncate font-medium leading-tight" title={row.product_name}>
-                      {row.product_name}
-                    </div>
-                    <div className="truncate text-[11px] text-muted-foreground" title={row.sku}>
-                      {row.sku}
+                    <div className="flex min-w-0 items-center gap-2">
+                      <ProductThumb imageUrls={row.image_urls ?? []} name={row.product_name} size={32} />
+                      <div className="min-w-0">
+                        <div className="truncate font-medium leading-tight" title={row.product_name}>
+                          {row.product_name}
+                        </div>
+                        <div className="truncate text-[11px] text-muted-foreground" title={row.sku}>
+                          {row.sku}
+                        </div>
+                      </div>
                     </div>
                   </td>
                   <td

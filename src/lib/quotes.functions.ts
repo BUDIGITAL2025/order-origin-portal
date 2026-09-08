@@ -77,8 +77,9 @@ export const listMyQuotes = createServerFn({ method: "GET" })
     const { data, error } = await context.supabase
       .from("quote_requests")
       .select(
-        "id, product_url, product_name, notes, target_monthly_volume, target_countries, status, quote_valid_until, quoted_at, created_at, supersedes_quote_id",
+        "id, product_url, product_name, notes, target_monthly_volume, target_countries, image_urls, status, quote_valid_until, quoted_at, created_at, supersedes_quote_id",
       )
+      .is("archived_at", null)
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
     return { quotes: data ?? [] };

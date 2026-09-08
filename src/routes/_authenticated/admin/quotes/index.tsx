@@ -10,6 +10,7 @@ import { QuoteStatusBadge, TierBadge } from "@/components/status-badges";
 import {
   AdminSearch,
   FilterTabs,
+  RowAction,
   RowActions,
   SummaryBar,
   TableShell,
@@ -25,6 +26,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { CleanupRowActions, ShowArchivedToggle } from "@/components/cleanup-actions";
+import { ProductCell } from "@/components/product-thumb";
+import { PhotoManagerDialog } from "@/components/photo-manager";
+import { ImagePlus } from "lucide-react";
 import { formatDate } from "@/lib/format";
 import { effectiveTier } from "@/lib/plans";
 import { adminListQuotes } from "@/lib/quotes.functions";
@@ -71,6 +76,10 @@ function AdminQuotesPage() {
   const navigate = useNavigate({ from: Route.fullPath });
   const fetchQuotes = useServerFn(adminListQuotes);
   const [search, setSearch] = useState("");
+  const [showArchived, setShowArchived] = useState(false);
+  const [photoFor, setPhotoFor] = useState<{ id: string; name: string; urls: string[] } | null>(
+    null,
+  );
 
   const { data, isPending } = useQuery({
     queryKey: ["admin-quotes", status ?? "all"],
@@ -85,6 +94,7 @@ function AdminQuotesPage() {
   const sorted = useMemo(() => {
     const term = search.trim().toLowerCase();
     const list = quotes.filter((q) => {
+      if (!showArchived && (q as { archived_at?: string | null }).archived_at) return false;
       if (!term) return true;
       const client = q.profiles as { company_name?: string } | null;
       return [q.product_name ?? "", q.product_url ?? "", q.internal_reference ?? "", client?.company_name ?? ""]
@@ -102,7 +112,7 @@ function AdminQuotesPage() {
       if (bOpen) return 1;
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     });
-  }, [quotes, search]);
+  }, [quotes, search, showArchived]);
 
   const now = Date.now();
   const openQuotes = quotes.filter((q) => isOpen(q.status));
@@ -148,6 +158,7 @@ function AdminQuotesPage() {
           onChange={setSearch}
           placeholder="Search by product, client or internal reference"
         />
+        <ShowArchivedToggle value={showArchived} onChange={setShowArchived} />
       </ToolBar>
 
       {isPending ? (
@@ -202,7 +213,13 @@ function AdminQuotesPage() {
                       <TierBadge tier={effectiveTier(client?.pricing_tier, client?.tier_override)} />
                     </TableCell>
                     <TableCell className="max-w-56 py-2.5">
-                      <div className="truncate">{q.product_name || q.product_url}</div>
+                      <ProductCell
+                        imageUrls={(q as { image_urls?: string[] | null }).image_urls ?? []}
+                        name={q.product_name || q.product_url}
+                        {...((q as { archived_at?: string | null }).archived_at
+                          ? { secondary: "Archived" }
+                          : {})}
+                      />
                     </TableCell>
                     <TableCell className="tnum py-2.5 text-right">
                       <Value>{q.target_monthly_volume}</Value>
@@ -244,6 +261,24 @@ function AdminQuotesPage() {
                             <ArrowUpRight className="h-3.5 w-3.5" />
                           </Link>
                         </Button>
+                        <RowAction
+                          label="Photos"
+                          icon={ImagePlus}
+                          onClick={() =>
+                            setPhotoFor({
+                              id: q.id,
+                              name: q.product_name || q.product_url,
+                              urls: (q as { image_urls?: string[] | null }).image_urls ?? [],
+                            })
+                          }
+                        />
+                        <CleanupRowActions
+                          type="quote"
+                          id={q.id}
+                          name={q.product_name || q.product_url}
+                          archived={!!(q as { archived_at?: string | null }).archived_at}
+                          invalidateKeys={[["admin-quotes"]]}
+                        />
                       </RowActions>
                     </TableCell>
                   </TableRow>
@@ -253,6 +288,16 @@ function AdminQuotesPage() {
           </Table>
         </TableShell>
       )}
+      <PhotoManagerDialog
+        open={photoFor != null}
+        onOpenChange={(v) => !v && setPhotoFor(null)}
+        target="quote"
+        id={photoFor?.id ?? ""}
+        name={photoFor?.name ?? ""}
+        initial={photoFor?.urls ?? []}
+        invalidateKeys={[["admin-quotes"]]}
+      />
+
     </div>
   );
 }

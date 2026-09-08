@@ -37,6 +37,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { CleanupRowActions, ShowArchivedToggle } from "@/components/cleanup-actions";
 import { formatDateTime, formatUSD } from "@/lib/format";
 import { adminListOrders, adminSetOrderTracking } from "@/lib/orders.functions";
 import { adminListDisputes } from "@/lib/disputes.functions";
@@ -89,6 +90,7 @@ function AdminOrdersPage() {
   const [tab, setTab] = useState<TabId>("all");
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [showArchived, setShowArchived] = useState(false);
 
   const { data: disputes } = useQuery({
     queryKey: ["admin-disputes", "all"],
@@ -118,7 +120,9 @@ function AdminOrdersPage() {
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
-    let list = rows;
+    let list = showArchived
+      ? rows
+      : rows.filter((o) => !(o as { archived_at?: string | null }).archived_at);
     if (tab === "awaiting_payment") list = list.filter((o) => o.status === "awaiting_payment");
     else if (tab === "in_transit")
       list = list.filter((o) => o.status === "processing" || o.status === "shipped");
@@ -140,7 +144,7 @@ function AdminOrdersPage() {
       );
     }
     return list;
-  }, [rows, tab, statusFilter, search, disputedOrderIds]);
+  }, [rows, tab, statusFilter, search, disputedOrderIds, showArchived]);
 
   return (
     <div>
@@ -187,6 +191,7 @@ function AdminOrdersPage() {
               onChange={setSearch}
               placeholder="Search by order reference, workspace or tracking"
             />
+            <ShowArchivedToggle value={showArchived} onChange={setShowArchived} />
           </ToolBar>
 
           <TableShell>
@@ -254,6 +259,16 @@ function AdminOrdersPage() {
                         </TableCell>
                         <TableCell className="py-2.5">
                           <RowActions>
+                            <CleanupRowActions
+                              type="order"
+                              id={order.id}
+                              name={order.external_order_number ?? order.id.slice(0, 8)}
+                              archived={
+                                !!(order as { archived_at?: string | null }).archived_at
+                              }
+                              invalidateKeys={[["admin-orders"]]}
+                              deletable={false}
+                            />
                             <RowAction
                               label={order.tracking_number ? "Edit tracking" : "Add tracking"}
                               icon={Truck}

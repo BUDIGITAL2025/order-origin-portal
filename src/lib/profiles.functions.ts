@@ -382,7 +382,7 @@ export const adminListClients = createServerFn({ method: "GET" })
     const { data, error } = await admin
       .from("profiles")
       .select(
-        `id, contact_name, phone, status, created_at, signup_source, entities(id, legal_name, vat_number, tax_id, country, address, address_line1, address_line2, postal_code, city, status, created_at, stores(*))`,
+        `id, contact_name, phone, status, archived_at, created_at, signup_source, entities(id, legal_name, vat_number, tax_id, country, address, address_line1, address_line2, postal_code, city, status, created_at, stores(*))`,
       )
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);

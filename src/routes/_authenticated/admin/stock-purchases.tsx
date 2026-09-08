@@ -6,6 +6,8 @@ import { toast } from "sonner";
 import { PageHeader } from "@/components/app-shell";
 import { SectionTabs, ADMIN_SOURCING_TABS } from "@/components/section-tabs";
 import { Chip, FilterTabs, RowActions, SummaryBar, TableShell } from "@/components/admin-ui";
+import { CleanupRowActions, ShowArchivedToggle } from "@/components/cleanup-actions";
+import { ProductCell } from "@/components/product-thumb";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -61,7 +63,10 @@ function AdminStockPurchasesPage() {
     queryFn: () => fetchPurchases({ data: filter === "all" ? {} : { status: filter } }),
   });
 
-  const purchases = rows ?? [];
+  const [showArchived, setShowArchived] = useState(false);
+  const purchases = (rows ?? []).filter(
+    (p) => showArchived || !(p as { archived_at?: string | null }).archived_at,
+  );
   const awaitingFreight = purchases.filter((p) => p.path === "direct" && p.status === "requested");
   const paidValue = purchases
     .filter((p) => p.paid_at)
@@ -122,6 +127,9 @@ function AdminStockPurchasesPage() {
             { id: "delivered", label: "Delivered" },
           ]}
         />
+        <div className="mt-2">
+          <ShowArchivedToggle value={showArchived} onChange={setShowArchived} />
+        </div>
       </div>
 
       <TableShell>
@@ -149,10 +157,11 @@ function AdminStockPurchasesPage() {
                 </div>
               </TableCell>
               <TableCell className="max-w-56">
-                <div className="truncate text-sm">{p.product_name}</div>
-                <div className="truncate text-xs text-muted-foreground">
-                  {p.variant_label ?? ""} · {formatDate(p.created_at)}
-                </div>
+                <ProductCell
+                  imageUrls={(p as { products?: { image_urls?: string[] } | null }).products?.image_urls ?? []}
+                  name={p.product_name}
+                  secondary={`${p.variant_label ?? ""} · ${formatDate(p.created_at)}`}
+                />
               </TableCell>
               <TableCell className="text-right tnum text-sm">{p.quantity}</TableCell>
               <TableCell className="text-right tnum text-sm">
@@ -169,6 +178,13 @@ function AdminStockPurchasesPage() {
               </TableCell>
               <TableCell className="text-right">
                 <RowActions>
+                  <CleanupRowActions
+                    type="stock_purchase"
+                    id={p.id}
+                    name={p.ref}
+                    archived={!!(p as { archived_at?: string | null }).archived_at}
+                    invalidateKeys={[["admin-stock-purchases"]]}
+                  />
                   {p.path === "direct" && !p.paid_at ? (
                     <Button
                       size="sm"

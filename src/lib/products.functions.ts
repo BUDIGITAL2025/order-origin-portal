@@ -16,8 +16,9 @@ export const listMyProducts = createServerFn({ method: "GET" })
     const { data: products, error } = await context.supabase
       .from("products")
       .select(
-        "id, sku, product_name, variant_label, product_type, moq, status, created_at",
+        "id, sku, product_name, variant_label, product_type, moq, status, image_urls, created_at",
       )
+      .is("archived_at", null)
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
 

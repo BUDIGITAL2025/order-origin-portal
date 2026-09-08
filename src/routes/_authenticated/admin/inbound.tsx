@@ -24,6 +24,7 @@ import {
   adminListInboundShipments,
   adminRefuseInbound,
 } from "@/lib/inbound.functions";
+import { CleanupRowActions, ShowArchivedToggle } from "@/components/cleanup-actions";
 import { friendlyError } from "@/lib/errors";
 import { formatUSD, formatDateTime } from "@/lib/format";
 
@@ -70,6 +71,7 @@ function AdminInboundPage() {
   const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("queue");
   const [counting, setCounting] = useState<Shipment | null>(null);
   const [refusing, setRefusing] = useState<Shipment | null>(null);
+  const [showArchived, setShowArchived] = useState(false);
 
   const fetchAll = useServerFn(adminListInboundShipments);
   const { data, isLoading } = useQuery({
@@ -77,7 +79,9 @@ function AdminInboundPage() {
     queryFn: () => fetchAll({}),
   });
 
-  const rows = data ?? [];
+  const rows = (data ?? []).filter(
+    (s) => showArchived || !(s as { archived_at?: string | null }).archived_at,
+  );
   const visible =
     tab === "all"
       ? rows
@@ -120,6 +124,9 @@ function AdminInboundPage() {
 
       <div className="mb-3">
         <FilterTabs tabs={TABS} value={tab} onChange={setTab} />
+        <div className="mt-2">
+          <ShowArchivedToggle value={showArchived} onChange={setShowArchived} />
+        </div>
       </div>
 
       {isLoading ? (
@@ -172,6 +179,15 @@ function AdminInboundPage() {
                     {formatDateTime(s.created_at)}
                   </td>
                   <td className="px-3 py-2 text-right">
+                    <div className="mb-1 flex justify-end">
+                      <CleanupRowActions
+                        type="inbound"
+                        id={s.id}
+                        name={s.ref}
+                        archived={!!(s as { archived_at?: string | null }).archived_at}
+                        invalidateKeys={[["admin-inbound"]]}
+                      />
+                    </div>
                     {s.status === "completed" || s.status === "refused" ? (
                       <span className="text-xs text-muted-foreground">Done</span>
                     ) : (
