@@ -26,6 +26,7 @@ export const getSeoStatus = createServerFn({ method: "GET" })
         spentToday: 0,
         dailyLimit: seo.DAILY_SOFT_LIMIT_USD,
         prices: {} as Record<string, number>,
+        perItem: seo.PER_ITEM_PRICE,
       };
     }
     const [balance, spentToday, learned] = await Promise.all([
@@ -43,6 +44,7 @@ export const getSeoStatus = createServerFn({ method: "GET" })
       spentToday,
       dailyLimit: seo.DAILY_SOFT_LIMIT_USD,
       prices,
+      perItem: seo.PER_ITEM_PRICE,
     };
   });
 
