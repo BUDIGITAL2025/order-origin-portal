@@ -55,6 +55,137 @@ export type Database = {
           },
         ]
       }
+      ads_activation_requests: {
+        Row: {
+          created_at: string
+          id: string
+          note: string | null
+          requested_by: string | null
+          status: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          note?: string | null
+          requested_by?: string | null
+          status?: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          note?: string | null
+          requested_by?: string | null
+          status?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ads_activation_requests_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ads_activation_requests_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ads_api_calls: {
+        Row: {
+          ad_account_id: string | null
+          cached: boolean
+          called_by: string | null
+          created_at: string
+          duration_ms: number | null
+          error: string | null
+          id: string
+          ok: boolean
+          params_hash: string
+          platform: string
+          rows_returned: number
+          status_code: number | null
+          summary: Json
+          tool: string
+          workspace_id: string | null
+        }
+        Insert: {
+          ad_account_id?: string | null
+          cached?: boolean
+          called_by?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          error?: string | null
+          id?: string
+          ok: boolean
+          params_hash: string
+          platform?: string
+          rows_returned?: number
+          status_code?: number | null
+          summary?: Json
+          tool: string
+          workspace_id?: string | null
+        }
+        Update: {
+          ad_account_id?: string | null
+          cached?: boolean
+          called_by?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          error?: string | null
+          id?: string
+          ok?: boolean
+          params_hash?: string
+          platform?: string
+          rows_returned?: number
+          status_code?: number | null
+          summary?: Json
+          tool?: string
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ads_api_calls_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ads_cache: {
+        Row: {
+          ad_account_id: string | null
+          cache_key: string
+          expires_at: string
+          fetched_at: string
+          payload: Json
+          tool: string
+        }
+        Insert: {
+          ad_account_id?: string | null
+          cache_key: string
+          expires_at: string
+          fetched_at?: string
+          payload: Json
+          tool: string
+        }
+        Update: {
+          ad_account_id?: string | null
+          cache_key?: string
+          expires_at?: string
+          fetched_at?: string
+          payload?: Json
+          tool?: string
+        }
+        Relationships: []
+      }
       artifacts: {
         Row: {
           created_at: string
@@ -2770,6 +2901,57 @@ export type Database = {
             columns: ["entity_id"]
             isOneToOne: false
             referencedRelation: "entities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workspace_ad_accounts: {
+        Row: {
+          active: boolean
+          ad_account_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          label: string | null
+          platform: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          active?: boolean
+          ad_account_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          label?: string | null
+          platform?: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          active?: boolean
+          ad_account_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          label?: string | null
+          platform?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workspace_ad_accounts_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workspace_ad_accounts_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
             referencedColumns: ["id"]
           },
         ]

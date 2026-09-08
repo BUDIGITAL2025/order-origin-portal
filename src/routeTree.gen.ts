@@ -19,6 +19,7 @@ import { Route as AuthenticatedClientRouteImport } from './routes/_authenticated
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedDeskRouteImport } from './routes/_authenticated/desk'
 import { Route as AuthenticatedPendingRouteImport } from './routes/_authenticated/pending'
+import { Route as AuthenticatedClientAdsRouteImport } from './routes/_authenticated/_client/ads'
 import { Route as AuthenticatedClientDashboardRouteImport } from './routes/_authenticated/_client/dashboard'
 import { Route as AuthenticatedClientDisputesRouteImport } from './routes/_authenticated/_client/disputes'
 import { Route as AuthenticatedClientDocumentsRouteImport } from './routes/_authenticated/_client/documents'
@@ -27,6 +28,7 @@ import { Route as AuthenticatedClientProductsRouteImport } from './routes/_authe
 import { Route as AuthenticatedClientSpymarketRouteImport } from './routes/_authenticated/_client/spymarket'
 import { Route as AuthenticatedClientWalletRouteImport } from './routes/_authenticated/_client/wallet'
 import { Route as AuthenticatedClientWorkspacesRouteImport } from './routes/_authenticated/_client/workspaces'
+import { Route as AuthenticatedAdminAdsRouteImport } from './routes/_authenticated/admin/ads'
 import { Route as AuthenticatedAdminClientsRouteImport } from './routes/_authenticated/admin/clients'
 import { Route as AuthenticatedAdminDisputesRouteImport } from './routes/_authenticated/admin/disputes'
 import { Route as AuthenticatedAdminDocumentsRouteImport } from './routes/_authenticated/admin/documents'
@@ -131,6 +133,11 @@ const AuthenticatedPendingRoute = AuthenticatedPendingRouteImport.update({
   path: '/pending',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedClientAdsRoute = AuthenticatedClientAdsRouteImport.update({
+  id: '/ads',
+  path: '/ads',
+  getParentRoute: () => AuthenticatedClientRoute,
+} as any)
 const AuthenticatedClientDashboardRoute =
   AuthenticatedClientDashboardRouteImport.update({
     id: '/dashboard',
@@ -179,6 +186,11 @@ const AuthenticatedClientWorkspacesRoute =
     path: '/workspaces',
     getParentRoute: () => AuthenticatedClientRoute,
   } as any)
+const AuthenticatedAdminAdsRoute = AuthenticatedAdminAdsRouteImport.update({
+  id: '/ads',
+  path: '/ads',
+  getParentRoute: () => AuthenticatedAdminRoute,
+} as any)
 const AuthenticatedAdminClientsRoute =
   AuthenticatedAdminClientsRouteImport.update({
     id: '/clients',
@@ -516,6 +528,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/desk': typeof AuthenticatedDeskRouteWithChildren
   '/pending': typeof AuthenticatedPendingRoute
+  '/ads': typeof AuthenticatedClientAdsRoute
   '/dashboard': typeof AuthenticatedClientDashboardRoute
   '/disputes': typeof AuthenticatedClientDisputesRouteWithChildren
   '/documents': typeof AuthenticatedClientDocumentsRoute
@@ -524,6 +537,7 @@ export interface FileRoutesByFullPath {
   '/spymarket': typeof AuthenticatedClientSpymarketRoute
   '/wallet': typeof AuthenticatedClientWalletRoute
   '/workspaces': typeof AuthenticatedClientWorkspacesRouteWithChildren
+  '/admin/ads': typeof AuthenticatedAdminAdsRoute
   '/admin/clients': typeof AuthenticatedAdminClientsRoute
   '/admin/disputes': typeof AuthenticatedAdminDisputesRouteWithChildren
   '/admin/documents': typeof AuthenticatedAdminDocumentsRoute
@@ -588,6 +602,7 @@ export interface FileRoutesByTo {
   '/terms': typeof TermsRoute
   '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/pending': typeof AuthenticatedPendingRoute
+  '/ads': typeof AuthenticatedClientAdsRoute
   '/dashboard': typeof AuthenticatedClientDashboardRoute
   '/disputes': typeof AuthenticatedClientDisputesRouteWithChildren
   '/documents': typeof AuthenticatedClientDocumentsRoute
@@ -596,6 +611,7 @@ export interface FileRoutesByTo {
   '/spymarket': typeof AuthenticatedClientSpymarketRoute
   '/wallet': typeof AuthenticatedClientWalletRoute
   '/workspaces': typeof AuthenticatedClientWorkspacesRouteWithChildren
+  '/admin/ads': typeof AuthenticatedAdminAdsRoute
   '/admin/clients': typeof AuthenticatedAdminClientsRoute
   '/admin/disputes': typeof AuthenticatedAdminDisputesRouteWithChildren
   '/admin/documents': typeof AuthenticatedAdminDocumentsRoute
@@ -664,6 +680,7 @@ export interface FileRoutesById {
   '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
   '/_authenticated/desk': typeof AuthenticatedDeskRouteWithChildren
   '/_authenticated/pending': typeof AuthenticatedPendingRoute
+  '/_authenticated/_client/ads': typeof AuthenticatedClientAdsRoute
   '/_authenticated/_client/dashboard': typeof AuthenticatedClientDashboardRoute
   '/_authenticated/_client/disputes': typeof AuthenticatedClientDisputesRouteWithChildren
   '/_authenticated/_client/documents': typeof AuthenticatedClientDocumentsRoute
@@ -672,6 +689,7 @@ export interface FileRoutesById {
   '/_authenticated/_client/spymarket': typeof AuthenticatedClientSpymarketRoute
   '/_authenticated/_client/wallet': typeof AuthenticatedClientWalletRoute
   '/_authenticated/_client/workspaces': typeof AuthenticatedClientWorkspacesRouteWithChildren
+  '/_authenticated/admin/ads': typeof AuthenticatedAdminAdsRoute
   '/_authenticated/admin/clients': typeof AuthenticatedAdminClientsRoute
   '/_authenticated/admin/disputes': typeof AuthenticatedAdminDisputesRouteWithChildren
   '/_authenticated/admin/documents': typeof AuthenticatedAdminDocumentsRoute
@@ -739,6 +757,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/desk'
     | '/pending'
+    | '/ads'
     | '/dashboard'
     | '/disputes'
     | '/documents'
@@ -747,6 +766,7 @@ export interface FileRouteTypes {
     | '/spymarket'
     | '/wallet'
     | '/workspaces'
+    | '/admin/ads'
     | '/admin/clients'
     | '/admin/disputes'
     | '/admin/documents'
@@ -811,6 +831,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/admin'
     | '/pending'
+    | '/ads'
     | '/dashboard'
     | '/disputes'
     | '/documents'
@@ -819,6 +840,7 @@ export interface FileRouteTypes {
     | '/spymarket'
     | '/wallet'
     | '/workspaces'
+    | '/admin/ads'
     | '/admin/clients'
     | '/admin/disputes'
     | '/admin/documents'
@@ -886,6 +908,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin'
     | '/_authenticated/desk'
     | '/_authenticated/pending'
+    | '/_authenticated/_client/ads'
     | '/_authenticated/_client/dashboard'
     | '/_authenticated/_client/disputes'
     | '/_authenticated/_client/documents'
@@ -894,6 +917,7 @@ export interface FileRouteTypes {
     | '/_authenticated/_client/spymarket'
     | '/_authenticated/_client/wallet'
     | '/_authenticated/_client/workspaces'
+    | '/_authenticated/admin/ads'
     | '/_authenticated/admin/clients'
     | '/_authenticated/admin/disputes'
     | '/_authenticated/admin/documents'
@@ -1042,6 +1066,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPendingRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/_client/ads': {
+      id: '/_authenticated/_client/ads'
+      path: '/ads'
+      fullPath: '/ads'
+      preLoaderRoute: typeof AuthenticatedClientAdsRouteImport
+      parentRoute: typeof AuthenticatedClientRoute
+    }
     '/_authenticated/_client/dashboard': {
       id: '/_authenticated/_client/dashboard'
       path: '/dashboard'
@@ -1097,6 +1128,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/workspaces'
       preLoaderRoute: typeof AuthenticatedClientWorkspacesRouteImport
       parentRoute: typeof AuthenticatedClientRoute
+    }
+    '/_authenticated/admin/ads': {
+      id: '/_authenticated/admin/ads'
+      path: '/ads'
+      fullPath: '/admin/ads'
+      preLoaderRoute: typeof AuthenticatedAdminAdsRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/admin/clients': {
       id: '/_authenticated/admin/clients'
@@ -1516,6 +1554,7 @@ const AuthenticatedClientWorkspacesRouteWithChildren =
   )
 
 interface AuthenticatedClientRouteChildren {
+  AuthenticatedClientAdsRoute: typeof AuthenticatedClientAdsRoute
   AuthenticatedClientDashboardRoute: typeof AuthenticatedClientDashboardRoute
   AuthenticatedClientDisputesRoute: typeof AuthenticatedClientDisputesRouteWithChildren
   AuthenticatedClientDocumentsRoute: typeof AuthenticatedClientDocumentsRoute
@@ -1547,6 +1586,7 @@ interface AuthenticatedClientRouteChildren {
 }
 
 const AuthenticatedClientRouteChildren: AuthenticatedClientRouteChildren = {
+  AuthenticatedClientAdsRoute: AuthenticatedClientAdsRoute,
   AuthenticatedClientDashboardRoute: AuthenticatedClientDashboardRoute,
   AuthenticatedClientDisputesRoute:
     AuthenticatedClientDisputesRouteWithChildren,
@@ -1606,6 +1646,7 @@ const AuthenticatedAdminDisputesRouteWithChildren =
   )
 
 interface AuthenticatedAdminRouteChildren {
+  AuthenticatedAdminAdsRoute: typeof AuthenticatedAdminAdsRoute
   AuthenticatedAdminClientsRoute: typeof AuthenticatedAdminClientsRoute
   AuthenticatedAdminDisputesRoute: typeof AuthenticatedAdminDisputesRouteWithChildren
   AuthenticatedAdminDocumentsRoute: typeof AuthenticatedAdminDocumentsRoute
@@ -1627,6 +1668,7 @@ interface AuthenticatedAdminRouteChildren {
 }
 
 const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
+  AuthenticatedAdminAdsRoute: AuthenticatedAdminAdsRoute,
   AuthenticatedAdminClientsRoute: AuthenticatedAdminClientsRoute,
   AuthenticatedAdminDisputesRoute: AuthenticatedAdminDisputesRouteWithChildren,
   AuthenticatedAdminDocumentsRoute: AuthenticatedAdminDocumentsRoute,

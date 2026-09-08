@@ -21,6 +21,7 @@ import {
   Plug,
   ShieldAlert,
   Sparkles,
+  Megaphone,
 
   Store,
   Telescope,
@@ -65,6 +66,7 @@ const CLIENT_NAV: NavItem[] = [
   { to: "/products", label: "Products", icon: Package },
   { to: "/fulfilment", label: "Fulfilment", icon: Truck },
   { to: "/billing", label: "Billing", icon: Wallet },
+  { to: "/ads", label: "Ads", icon: Megaphone, badge: "New" },
   { to: "/spymarket", label: "SpyMarket", icon: Telescope, badge: "New" },
 ];
 
@@ -116,6 +118,7 @@ const ADMIN_NAV: NavItem[] = [
   { to: "/admin/spymarket", label: "SpyMarket waitlist", icon: Telescope },
   { to: "/admin/spymarket-tools", label: "SpyMarket tools", icon: FlaskConical, badge: "New" },
   { to: "/admin/seo-tools", label: "FlySales SEO", icon: LineChart, badge: "New" },
+  { to: "/admin/ads", label: "Ads", icon: Megaphone, badge: "New" },
 ];
 
 /** The collaborator desk is deliberately tiny: a queue and their earnings. */
