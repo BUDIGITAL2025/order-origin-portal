@@ -50,7 +50,11 @@ export const PUBLISHED_PRICE: Record<string, number> = {
   "backlinks/backlinks/live": 0.024,
   "backlinks/referring_domains/live": 0.024,
   "backlinks/anchors/live": 0.024,
+  // Phase 3 — OnPage crawl. Billed once, at task_post, per crawled page
+  // ($0.00015/page basic). 50 pages is the study's cap.
+  "on_page/task_post": 0.0075,
 };
+
 
 /**
  * Per-returned-row surcharge (USD). Labs endpoints bill $0.00012/item, the
@@ -108,7 +112,13 @@ export interface CallOptions {
   estimatedCost?: number;
   /** User accepted going past the daily soft cap. */
   confirmOverage?: boolean;
+  /**
+   * Async task endpoints (OnPage `task_post`) carry the task id on the task
+   * envelope and leave `result` null. Set this to receive the envelope.
+   */
+  returnTaskEnvelope?: boolean;
 }
+
 
 // ---------------------------------------------------------------------------
 // helpers
