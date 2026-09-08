@@ -48,7 +48,8 @@ function friendly(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error);
   if (/not linked to your workspace/i.test(message)) return message;
   if (/not configured/i.test(message)) return "The ads connection is not configured yet.";
-  if (/timed out/i.test(message)) return "The ad platform took too long to answer. Try again in a moment.";
+  if (/timed out/i.test(message))
+    return "The ad platform took too long to answer. Try again in a moment.";
   return message;
 }
 
@@ -208,7 +209,9 @@ export function AdsDashboard({
 
   const overview = useMutation({
     mutationFn: (vars: { refresh?: boolean }) =>
-      overviewFn({ data: { accountId, days, platform, ...(vars.refresh ? { refresh: true } : {}) } }),
+      overviewFn({
+        data: { accountId, days, platform, ...(vars.refresh ? { refresh: true } : {}) },
+      }),
   });
   const level = useMutation({
     mutationFn: (vars: { level: Crumb["level"]; parentId: string | null; refresh?: boolean }) =>

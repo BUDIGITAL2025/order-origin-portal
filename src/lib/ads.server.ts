@@ -706,7 +706,10 @@ export function googleDateRange(days: number): { range: string; note?: string } 
   if (days <= 30) {
     return days === 30
       ? { range: "LAST_30_DAYS" }
-      : { range: "LAST_30_DAYS", note: "Google Ads only offers 7, 30 and 90-day ranges — showing 30 days." };
+      : {
+          range: "LAST_30_DAYS",
+          note: "Google Ads only offers 7, 30 and 90-day ranges — showing 30 days.",
+        };
   }
   return { range: "LAST_90_DAYS" };
 }
@@ -1055,10 +1058,7 @@ async function fetchGoogleOverview(args: {
 }
 
 /** Google customer accounts our connection can reach. Admin surface only. */
-export async function listGoogleCustomers(args: {
-  userId: string;
-  refresh?: boolean;
-}): Promise<{
+export async function listGoogleCustomers(args: { userId: string; refresh?: boolean }): Promise<{
   accounts: { id: string; name: string; currency: string | null; canQueryMetrics: boolean }[];
   cached: boolean;
   stale: boolean;
@@ -1078,8 +1078,12 @@ export async function listGoogleCustomers(args: {
   const connections = Array.isArray(payload["connections"])
     ? (payload["connections"] as Record<string, unknown>[])
     : [];
-  const accounts: { id: string; name: string; currency: string | null; canQueryMetrics: boolean }[] =
-    [];
+  const accounts: {
+    id: string;
+    name: string;
+    currency: string | null;
+    canQueryMetrics: boolean;
+  }[] = [];
   for (const conn of connections) {
     const customers = Array.isArray(conn["customers"])
       ? (conn["customers"] as Record<string, unknown>[])
