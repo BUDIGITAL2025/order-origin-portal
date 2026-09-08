@@ -862,6 +862,8 @@ export interface CampaignRow {
   status: string;
   objective: string | null;
   metrics: AdMetrics;
+  /** False when the provider returned no performance row for this entity. */
+  hasData: boolean;
 }
 
 function pickId(row: Record<string, unknown>): string {
@@ -951,9 +953,10 @@ export async function fetchLevel(args: {
       status: pickStatus(row),
       objective: typeof row["objective"] === "string" ? row["objective"] : null,
       metrics: byId.get(id) ?? emptyMetrics(),
+      hasData: byId.has(id),
     };
   });
-  rows.sort((a, b) => b.metrics.spend - a.metrics.spend);
+  rows.sort((a, b) => Number(b.hasData) - Number(a.hasData) || b.metrics.spend - a.metrics.spend);
 
   return {
     rows,

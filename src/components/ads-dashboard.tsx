@@ -454,11 +454,19 @@ export function AdsDashboard({
                       <td className="px-3 py-2">
                         <StatusChip status={row.status} />
                       </td>
-                      <td className="px-3 py-2 text-right tabular-nums">{money(row.metrics.spend, currency)}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{int(row.metrics.purchases)}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{money(row.metrics.cpa, currency)}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{mult(row.metrics.roas)}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{pct(row.metrics.ctr)}</td>
+                      {row.hasData ? (
+                        <>
+                          <td className="px-3 py-2 text-right tabular-nums">{money(row.metrics.spend, currency)}</td>
+                          <td className="px-3 py-2 text-right tabular-nums">{int(row.metrics.purchases)}</td>
+                          <td className="px-3 py-2 text-right tabular-nums">{money(row.metrics.cpa, currency)}</td>
+                          <td className="px-3 py-2 text-right tabular-nums">{mult(row.metrics.roas)}</td>
+                          <td className="px-3 py-2 text-right tabular-nums">{pct(row.metrics.ctr)}</td>
+                        </>
+                      ) : (
+                        <td className="px-3 py-2 text-right text-xs text-muted-foreground" colSpan={5}>
+                          no spend in this period
+                        </td>
+                      )}
                       {current.level === "ad" ? (
                         <td className="px-3 py-2">
                           <CreativePreview accountId={accountId} adId={row.id} />
