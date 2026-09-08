@@ -71,7 +71,9 @@ export const getWhRecentCalls = createServerFn({ method: "GET" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data, error } = await supabaseAdmin
       .from("spy_api_calls")
-      .select("id, endpoint, credits_cost, cached, rows_returned, ok, error, duration_ms, created_at")
+      .select(
+        "id, endpoint, credits_cost, cached, rows_returned, ok, error, duration_ms, created_at",
+      )
       .eq("provider", "winninghunter")
       .order("created_at", { ascending: false })
       .limit(50);
