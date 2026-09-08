@@ -24,6 +24,7 @@ import {
   adminListInboundShipments,
   adminRefuseInbound,
 } from "@/lib/inbound.functions";
+import { CleanupRowActions, ShowArchivedToggle } from "@/components/cleanup-actions";
 import { friendlyError } from "@/lib/errors";
 import { formatUSD, formatDateTime } from "@/lib/format";
 
@@ -32,10 +33,7 @@ const QC_PER_PIECE = 0.2;
 
 export const Route = createFileRoute("/_authenticated/admin/inbound")({
   head: () => ({
-    meta: [
-      { title: "Inbound — FlySales admin" },
-      { name: "robots", content: "noindex" },
-    ],
+    meta: [{ title: "Inbound — FlySales admin" }, { name: "robots", content: "noindex" }],
   }),
   component: AdminInboundPage,
 });
@@ -70,6 +68,7 @@ function AdminInboundPage() {
   const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("queue");
   const [counting, setCounting] = useState<Shipment | null>(null);
   const [refusing, setRefusing] = useState<Shipment | null>(null);
+  const [showArchived, setShowArchived] = useState(false);
 
   const fetchAll = useServerFn(adminListInboundShipments);
   const { data, isLoading } = useQuery({
@@ -77,7 +76,9 @@ function AdminInboundPage() {
     queryFn: () => fetchAll({}),
   });
 
-  const rows = data ?? [];
+  const rows = (data ?? []).filter(
+    (s) => showArchived || !(s as { archived_at?: string | null }).archived_at,
+  );
   const visible =
     tab === "all"
       ? rows
@@ -120,6 +121,9 @@ function AdminInboundPage() {
 
       <div className="mb-3">
         <FilterTabs tabs={TABS} value={tab} onChange={setTab} />
+        <div className="mt-2">
+          <ShowArchivedToggle value={showArchived} onChange={setShowArchived} />
+        </div>
       </div>
 
       {isLoading ? (
@@ -172,6 +176,15 @@ function AdminInboundPage() {
                     {formatDateTime(s.created_at)}
                   </td>
                   <td className="px-3 py-2 text-right">
+                    <div className="mb-1 flex justify-end">
+                      <CleanupRowActions
+                        type="inbound"
+                        id={s.id}
+                        name={s.ref}
+                        archived={!!(s as { archived_at?: string | null }).archived_at}
+                        invalidateKeys={[["admin-inbound"]]}
+                      />
+                    </div>
                     {s.status === "completed" || s.status === "refused" ? (
                       <span className="text-xs text-muted-foreground">Done</span>
                     ) : (
@@ -213,9 +226,7 @@ function CountDialog({ shipment, onClose }: { shipment: Shipment | null; onClose
 
   useEffect(() => {
     if (shipment) {
-      setCounts(
-        Object.fromEntries(shipment.lines.map((l) => [l.id, String(l.declared_qty)])),
-      );
+      setCounts(Object.fromEntries(shipment.lines.map((l) => [l.id, String(l.declared_qty)])));
     }
   }, [shipment]);
 
@@ -273,13 +284,15 @@ function CountDialog({ shipment, onClose }: { shipment: Shipment | null; onClose
                     type="number"
                     min={0}
                     value={counts[l.id] ?? ""}
-                    onChange={(e) =>
-                      setCounts((prev) => ({ ...prev, [l.id]: e.target.value }))
-                    }
+                    onChange={(e) => setCounts((prev) => ({ ...prev, [l.id]: e.target.value }))}
                   />
                 </div>
-                <span className={`mb-2 w-16 text-xs ${gap ? "text-warning" : "text-muted-foreground"}`}>
-                  {gap ? `${counted > l.declared_qty ? "+" : ""}${counted - l.declared_qty}` : "match"}
+                <span
+                  className={`mb-2 w-16 text-xs ${gap ? "text-warning" : "text-muted-foreground"}`}
+                >
+                  {gap
+                    ? `${counted > l.declared_qty ? "+" : ""}${counted - l.declared_qty}`
+                    : "match"}
                 </span>
               </div>
             );
@@ -320,8 +333,7 @@ function RefuseDialog({ shipment, onClose }: { shipment: Shipment | null; onClos
 
   const refuse = useServerFn(adminRefuseInbound);
   const submit = useMutation({
-    mutationFn: () =>
-      refuse({ data: { shipment_id: shipment!.id, reason: reason.trim() } }),
+    mutationFn: () => refuse({ data: { shipment_id: shipment!.id, reason: reason.trim() } }),
     onSuccess: () => {
       toast.success("Shipment refused and the client notified.");
       void queryClient.invalidateQueries({ queryKey: ["admin-inbound"] });

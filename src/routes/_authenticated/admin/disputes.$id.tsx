@@ -39,10 +39,7 @@ import {
 
 export const Route = createFileRoute("/_authenticated/admin/disputes/$id")({
   head: () => ({
-    meta: [
-      { title: "Dispute — FlySales Admin" },
-      { name: "robots", content: "noindex" },
-    ],
+    meta: [{ title: "Dispute — FlySales Admin" }, { name: "robots", content: "noindex" }],
   }),
   component: AdminDisputeDetailPage,
 });
@@ -267,10 +264,7 @@ function AdminDisputeDetailPage() {
               <div className="space-y-3">
                 <div>
                   <Label htmlFor="resolution">Resolution</Label>
-                  <Select
-                    value={resolution}
-                    onValueChange={(v) => setResolution(v as Resolution)}
-                  >
+                  <Select value={resolution} onValueChange={(v) => setResolution(v as Resolution)}>
                     <SelectTrigger id="resolution">
                       <SelectValue />
                     </SelectTrigger>
@@ -294,8 +288,8 @@ function AdminDisputeDetailPage() {
                       placeholder="0.00"
                     />
                     <p className="mt-1 text-xs text-muted-foreground">
-                      Credited to the client's entity wallet. The dispute id is the
-                      idempotency reference — it can never be credited twice.
+                      Credited to the client's entity wallet. The dispute id is the idempotency
+                      reference — it can never be credited twice.
                     </p>
                   </div>
                 )}

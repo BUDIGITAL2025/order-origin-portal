@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { ProductCell } from "@/components/product-thumb";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
@@ -212,10 +213,14 @@ function StockPurchasesPage() {
               <TableRow key={p.id}>
                 <TableCell className="whitespace-nowrap font-mono text-xs">{p.ref}</TableCell>
                 <TableCell className="max-w-64">
-                  <div className="truncate text-sm">{p.product_name}</div>
-                  {p.variant_label ? (
-                    <div className="truncate text-xs text-muted-foreground">{p.variant_label}</div>
-                  ) : null}
+                  <ProductCell
+                    imageUrls={
+                      (p as { products?: { image_urls?: string[] } | null }).products?.image_urls ??
+                      []
+                    }
+                    name={p.product_name}
+                    {...(p.variant_label ? { secondary: p.variant_label } : {})}
+                  />
                   <div className="text-[11px] text-muted-foreground">{formatDate(p.created_at)}</div>
                 </TableCell>
                 <TableCell className="text-right tnum text-sm">{p.quantity}</TableCell>

@@ -128,8 +128,9 @@ export const listMyStockPurchases = createServerFn({ method: "POST" })
     // RLS scopes stock_purchases to workspaces the caller owns.
     const { data: rows, error } = await context.supabase
       .from("stock_purchases")
-      .select("*")
+      .select("*, products(image_urls)")
       .eq("store_id", data.storeId)
+      .is("archived_at", null)
       .order("created_at", { ascending: false })
       .limit(200);
     if (error) throw new Error(error.message);
@@ -404,7 +405,7 @@ export const adminListStockPurchases = createServerFn({ method: "POST" })
 
     let query = admin
       .from("stock_purchases")
-      .select("*, stores(store_name, entities(legal_name))")
+      .select("*, products(image_urls), stores(store_name, entities(legal_name))")
       .order("created_at", { ascending: false })
       .limit(300);
     if (data.status) query = query.eq("status", data.status);

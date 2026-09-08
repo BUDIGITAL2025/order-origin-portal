@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ProductCell } from "@/components/product-thumb";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -100,7 +101,16 @@ function OrderDetailPage() {
             <TableBody>
               {order.order_items.map((item) => (
                 <TableRow key={item.id}>
-                  <TableCell className="tnum text-xs font-medium">{item.sku ?? "—"}</TableCell>
+                  <TableCell>
+                    <ProductCell
+                      imageUrls={
+                        (item as { products?: { image_urls?: string[] } | null }).products
+                          ?.image_urls ?? []
+                      }
+                      name={item.sku ?? "—"}
+                      size={32}
+                    />
+                  </TableCell>
                   <TableCell className="text-right tnum text-sm">
                     {Math.max(1, item.quantity ?? 1)}
                   </TableCell>

@@ -21,9 +21,9 @@ import {
 const uuid = z.string().uuid();
 
 const SHIPMENT_COLUMNS =
-  "id, store_id, entity_id, status, qc, tracking_number, tracking_carrier, warehouse_reference, declared_pieces, counted_pieces, has_discrepancy, fee_charged, wallet_reference, refusal_reason, in_transit_at, received_at, completed_at, created_at";
+  "id, store_id, entity_id, status, qc, tracking_number, tracking_carrier, warehouse_reference, declared_pieces, counted_pieces, has_discrepancy, fee_charged, archived_at, wallet_reference, refusal_reason, in_transit_at, received_at, completed_at, created_at";
 
-const LINE_COLUMNS = "id, shipment_id, product_id, sku, product_name, declared_qty, counted_qty";
+const LINE_COLUMNS = "id, shipment_id, product_id, sku, product_name, declared_qty, counted_qty, products(image_urls)";
 
 /** Short human reference used in labels, emails and the UI. */
 export function shipmentRef(id: string): string {
@@ -72,6 +72,7 @@ export const listMyInboundShipments = createServerFn({ method: "POST" })
       .from("inbound_shipments")
       .select(SHIPMENT_COLUMNS)
       .eq("store_id", data.storeId)
+      .is("archived_at", null)
       .order("created_at", { ascending: false })
       .limit(100);
     if (error) throw new Error(error.message);

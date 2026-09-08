@@ -52,9 +52,12 @@ function AdminInventoryPage() {
   const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("all");
   const [search, setSearch] = useState("");
   const [planningProductId, setPlanningProductId] = useState<string | null>(null);
-  const [defaultsFor, setDefaultsFor] = useState<
-    { storeId: string; production: number; transit: number; safety: number } | null
-  >(null);
+  const [defaultsFor, setDefaultsFor] = useState<{
+    storeId: string;
+    production: number;
+    transit: number;
+    safety: number;
+  } | null>(null);
 
   const callDefaults = useServerFn(setWorkspacePlanningDefaults);
   const saveDefaults = useMutation({
@@ -126,14 +129,14 @@ function AdminInventoryPage() {
             disabled={sync.isPending}
             onClick={() => sync.mutate()}
           >
-            <RefreshCw className={sync.isPending ? "mr-2 h-3.5 w-3.5 animate-spin" : "mr-2 h-3.5 w-3.5"} />
+            <RefreshCw
+              className={sync.isPending ? "mr-2 h-3.5 w-3.5 animate-spin" : "mr-2 h-3.5 w-3.5"}
+            />
             Sync now
           </Button>
         }
       />
       <SectionTabs tabs={ADMIN_FULFILMENT_TABS} />
-
-
 
       {error && (
         <Card className="mb-4 border-destructive/30">
@@ -281,10 +284,7 @@ function AdminInventoryPage() {
         </DialogContent>
       </Dialog>
 
-      <PlanningDialog
-        productId={planningProductId}
-        onClose={() => setPlanningProductId(null)}
-      />
+      <PlanningDialog productId={planningProductId} onClose={() => setPlanningProductId(null)} />
     </div>
   );
 }

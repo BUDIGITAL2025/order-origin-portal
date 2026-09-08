@@ -14,6 +14,47 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_audit_log: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          detail: Json | null
+          entity_id: string | null
+          entity_type: string
+          id: string
+          summary: string
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          detail?: Json | null
+          entity_id?: string | null
+          entity_type: string
+          id?: string
+          summary: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          detail?: Json | null
+          entity_id?: string | null
+          entity_type?: string
+          id?: string
+          summary?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_audit_log_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bundle_components: {
         Row: {
           bundle_product_id: string
@@ -328,6 +369,7 @@ export type Database = {
           address: string | null
           address_line1: string | null
           address_line2: string | null
+          archived_at: string | null
           auto_topup_amount: number | null
           auto_topup_enabled: boolean
           auto_topup_threshold: number | null
@@ -354,6 +396,7 @@ export type Database = {
           address?: string | null
           address_line1?: string | null
           address_line2?: string | null
+          archived_at?: string | null
           auto_topup_amount?: number | null
           auto_topup_enabled?: boolean
           auto_topup_threshold?: number | null
@@ -380,6 +423,7 @@ export type Database = {
           address?: string | null
           address_line1?: string | null
           address_line2?: string | null
+          archived_at?: string | null
           auto_topup_amount?: number | null
           auto_topup_enabled?: boolean
           auto_topup_threshold?: number | null
@@ -492,6 +536,7 @@ export type Database = {
       }
       inbound_shipments: {
         Row: {
+          archived_at: string | null
           completed_at: string | null
           counted_pieces: number | null
           created_at: string
@@ -518,6 +563,7 @@ export type Database = {
           warehouse_reference: string
         }
         Insert: {
+          archived_at?: string | null
           completed_at?: string | null
           counted_pieces?: number | null
           created_at?: string
@@ -544,6 +590,7 @@ export type Database = {
           warehouse_reference?: string
         }
         Update: {
+          archived_at?: string | null
           completed_at?: string | null
           counted_pieces?: number | null
           created_at?: string
@@ -1021,6 +1068,7 @@ export type Database = {
       }
       orders: {
         Row: {
+          archived_at: string | null
           cancelled_at: string | null
           created_at: string
           delivered_at: string | null
@@ -1053,6 +1101,7 @@ export type Database = {
           tracking_number: string | null
         }
         Insert: {
+          archived_at?: string | null
           cancelled_at?: string | null
           created_at?: string
           delivered_at?: string | null
@@ -1085,6 +1134,7 @@ export type Database = {
           tracking_number?: string | null
         }
         Update: {
+          archived_at?: string | null
           cancelled_at?: string | null
           created_at?: string
           delivered_at?: string | null
@@ -1215,6 +1265,7 @@ export type Database = {
       }
       products: {
         Row: {
+          archived_at: string | null
           client_owned: boolean
           created_at: string
           fulfilment_model: Database["public"]["Enums"]["fulfilment_model"]
@@ -1241,6 +1292,7 @@ export type Database = {
           weight_unit: string | null
         }
         Insert: {
+          archived_at?: string | null
           client_owned?: boolean
           created_at?: string
           fulfilment_model?: Database["public"]["Enums"]["fulfilment_model"]
@@ -1267,6 +1319,7 @@ export type Database = {
           weight_unit?: string | null
         }
         Update: {
+          archived_at?: string | null
           client_owned?: boolean
           created_at?: string
           fulfilment_model?: Database["public"]["Enums"]["fulfilment_model"]
@@ -1318,6 +1371,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          archived_at: string | null
           cancel_notice_sent_at: string | null
           contact_name: string
           created_at: string
@@ -1329,6 +1383,7 @@ export type Database = {
           terms_version: string | null
         }
         Insert: {
+          archived_at?: string | null
           cancel_notice_sent_at?: string | null
           contact_name: string
           created_at?: string
@@ -1340,6 +1395,7 @@ export type Database = {
           terms_version?: string | null
         }
         Update: {
+          archived_at?: string | null
           cancel_notice_sent_at?: string | null
           contact_name?: string
           created_at?: string
@@ -1485,6 +1541,7 @@ export type Database = {
       }
       quote_requests: {
         Row: {
+          archived_at: string | null
           assigned_sourcer: string | null
           created_at: string
           id: string
@@ -1507,6 +1564,7 @@ export type Database = {
           target_monthly_volume: number | null
         }
         Insert: {
+          archived_at?: string | null
           assigned_sourcer?: string | null
           created_at?: string
           id?: string
@@ -1529,6 +1587,7 @@ export type Database = {
           target_monthly_volume?: number | null
         }
         Update: {
+          archived_at?: string | null
           assigned_sourcer?: string | null
           created_at?: string
           id?: string
@@ -2020,6 +2079,7 @@ export type Database = {
       stock_purchases: {
         Row: {
           admin_notes: string | null
+          archived_at: string | null
           created_at: string
           created_by: string | null
           delivered_at: string | null
@@ -2055,6 +2115,7 @@ export type Database = {
         }
         Insert: {
           admin_notes?: string | null
+          archived_at?: string | null
           created_at?: string
           created_by?: string | null
           delivered_at?: string | null
@@ -2090,6 +2151,7 @@ export type Database = {
         }
         Update: {
           admin_notes?: string | null
+          archived_at?: string | null
           created_at?: string
           created_by?: string | null
           delivered_at?: string | null
@@ -2484,6 +2546,7 @@ export type Database = {
       admin_confirm_inbound_receipt: {
         Args: { p_counts: Json; p_shipment_id: string }
         Returns: {
+          archived_at: string | null
           completed_at: string | null
           counted_pieces: number | null
           created_at: string
@@ -2519,6 +2582,7 @@ export type Database = {
       admin_refuse_inbound: {
         Args: { p_reason: string; p_shipment_id: string }
         Returns: {
+          archived_at: string | null
           completed_at: string | null
           counted_pieces: number | null
           created_at: string
@@ -2554,6 +2618,7 @@ export type Database = {
       admin_resolve_order_item: {
         Args: { p_item_id: string; p_product_id: string }
         Returns: {
+          archived_at: string | null
           cancelled_at: string | null
           created_at: string
           delivered_at: string | null
@@ -2706,6 +2771,7 @@ export type Database = {
       create_bundle: {
         Args: { p_components: Json; p_name: string; p_store_id: string }
         Returns: {
+          archived_at: string | null
           client_owned: boolean
           created_at: string
           fulfilment_model: Database["public"]["Enums"]["fulfilment_model"]
@@ -2746,6 +2812,7 @@ export type Database = {
           p_variants: Json
         }
         Returns: {
+          archived_at: string | null
           client_owned: boolean
           created_at: string
           fulfilment_model: Database["public"]["Enums"]["fulfilment_model"]
@@ -2787,6 +2854,7 @@ export type Database = {
           p_store_id: string
         }
         Returns: {
+          archived_at: string | null
           cancelled_at: string | null
           created_at: string
           delivered_at: string | null
@@ -2834,6 +2902,7 @@ export type Database = {
           p_store_id: string
         }
         Returns: {
+          archived_at: string | null
           cancelled_at: string | null
           created_at: string
           delivered_at: string | null
@@ -2875,6 +2944,7 @@ export type Database = {
       declare_inbound_shipment: {
         Args: { p_lines: Json; p_qc: boolean; p_store_id: string }
         Returns: {
+          archived_at: string | null
           completed_at: string | null
           counted_pieces: number | null
           created_at: string
@@ -2958,6 +3028,7 @@ export type Database = {
           p_tenant_id: string
         }
         Returns: {
+          archived_at: string | null
           cancelled_at: string | null
           created_at: string
           delivered_at: string | null
@@ -3006,6 +3077,7 @@ export type Database = {
           p_store_id: string
         }
         Returns: {
+          archived_at: string | null
           cancelled_at: string | null
           created_at: string
           delivered_at: string | null
@@ -3167,6 +3239,7 @@ export type Database = {
           p_tracking_number: string
         }
         Returns: {
+          archived_at: string | null
           completed_at: string | null
           counted_pieces: number | null
           created_at: string
@@ -3217,6 +3290,7 @@ export type Database = {
           p_target_monthly_volume?: number
         }
         Returns: {
+          archived_at: string | null
           assigned_sourcer: string | null
           created_at: string
           id: string
@@ -3248,6 +3322,7 @@ export type Database = {
       update_bundle: {
         Args: { p_bundle_id: string; p_components: Json; p_name: string }
         Returns: {
+          archived_at: string | null
           client_owned: boolean
           created_at: string
           fulfilment_model: Database["public"]["Enums"]["fulfilment_model"]
@@ -3295,6 +3370,7 @@ export type Database = {
           p_weight_unit: string
         }
         Returns: {
+          archived_at: string | null
           client_owned: boolean
           created_at: string
           fulfilment_model: Database["public"]["Enums"]["fulfilment_model"]

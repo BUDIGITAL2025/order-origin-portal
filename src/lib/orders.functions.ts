@@ -117,7 +117,7 @@ export const adminListOrders = createServerFn({ method: "GET" })
     const { data, error } = await admin
       .from("orders")
       .select(
-        "id, external_order_number, status, total_amount, destination_country, tracking_number, tracking_carrier, shipped_at, created_at, stores(store_name, entities(legal_name))",
+        "id, external_order_number, status, archived_at, total_amount, destination_country, tracking_number, tracking_carrier, shipped_at, created_at, stores(store_name, entities(legal_name))",
       )
       .order("created_at", { ascending: false })
       .limit(200);
@@ -199,8 +199,9 @@ export const listMyOrders = createServerFn({ method: "GET" })
     const { data, error } = await context.supabase
       .from("orders")
       .select(
-        "id, external_order_number, status, payment_method, total_amount, destination_country, shipping_address, paid_at, shipped_at, delivered_at, tracking_number, tracking_carrier, created_at, order_items(id, sku, quantity, unit_price, line_total)",
+        "id, external_order_number, status, payment_method, total_amount, destination_country, shipping_address, paid_at, shipped_at, delivered_at, tracking_number, tracking_carrier, created_at, order_items(id, sku, quantity, unit_price, line_total, products(image_urls))",
       )
+      .is("archived_at", null)
       .order("created_at", { ascending: false })
       .limit(200);
     if (error) throw new Error(error.message);
@@ -220,7 +221,7 @@ export const getMyOrder = createServerFn({ method: "GET" })
     const { data: order, error } = await context.supabase
       .from("orders")
       .select(
-        "id, external_order_number, status, payment_method, total_amount, destination_country, shipping_address, paid_at, shipped_at, delivered_at, tracking_number, tracking_carrier, created_at, store_id, order_items(id, sku, product_id, quantity, unit_price, line_total)",
+        "id, external_order_number, status, payment_method, total_amount, destination_country, shipping_address, paid_at, shipped_at, delivered_at, tracking_number, tracking_carrier, created_at, store_id, order_items(id, sku, product_id, quantity, unit_price, line_total, products(image_urls))",
       )
       .eq("id", data.order_id)
       .maybeSingle();

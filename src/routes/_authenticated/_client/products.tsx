@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { ProductCell } from "@/components/product-thumb";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, ChevronDown, ChevronRight, Copy, Pencil, Plus, X } from "lucide-react";
@@ -438,10 +439,11 @@ function MyProductsPageInner() {
                         )}
                       </TableCell>
                       <TableCell>
-                        <div className="text-sm font-medium">{p.product_name}</div>
-                        {p.variant_label && (
-                          <div className="text-xs text-muted-foreground">{p.variant_label}</div>
-                        )}
+                        <ProductCell
+                          imageUrls={(p as unknown as { image_urls?: string[] }).image_urls ?? []}
+                          name={p.product_name}
+                          {...(p.variant_label ? { secondary: p.variant_label } : {})}
+                        />
                         {isBundle && (
                           <div className="text-xs text-muted-foreground">
                             {bundleComponents.length} component{bundleComponents.length === 1 ? "" : "s"}

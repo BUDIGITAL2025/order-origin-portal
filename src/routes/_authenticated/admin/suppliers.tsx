@@ -37,7 +37,10 @@ export const Route = createFileRoute("/_authenticated/admin/suppliers")({
   head: () => ({
     meta: [
       { title: "Suppliers — FlySales admin" },
-      { name: "description", content: "Suppliers and their default production and transit lead times." },
+      {
+        name: "description",
+        content: "Suppliers and their default production and transit lead times.",
+      },
       { name: "robots", content: "noindex" },
     ],
   }),
@@ -128,7 +131,9 @@ function SuppliersPage() {
 
       {isLoading ? (
         <Card>
-          <CardContent className="p-6 text-sm text-muted-foreground">Loading suppliers…</CardContent>
+          <CardContent className="p-6 text-sm text-muted-foreground">
+            Loading suppliers…
+          </CardContent>
         </Card>
       ) : visible.length === 0 ? (
         <Card>

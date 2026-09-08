@@ -37,6 +37,7 @@ export interface SkuRow {
   incoming: number;
   /** total_stock − reserved, floored at 0. Drives cover and the stock bar. */
   sellable: number;
+  image_urls: string[];
   weight: number | null;
   weight_unit: string | null;
   tags: string[];
@@ -180,7 +181,7 @@ export async function computeWorkspaceInventory(
         .eq("store_id", store.id),
       admin
         .from("products")
-        .select("id, sku, tags, weight, weight_unit, product_shipping_routes(destination, handling_time_days, is_default)")
+        .select("id, sku, tags, weight, weight_unit, image_urls, product_shipping_routes(destination, handling_time_days, is_default)")
         .eq("store_id", store.id)
         .limit(2000),
     ]);
@@ -272,6 +273,7 @@ export async function computeWorkspaceInventory(
       reserved,
       incoming,
       sellable,
+      image_urls: product?.image_urls ?? [],
       weight: product?.weight ?? null,
       weight_unit: product?.weight_unit ?? null,
       tags: product?.tags ?? [],

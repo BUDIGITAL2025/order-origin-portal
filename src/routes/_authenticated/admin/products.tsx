@@ -1,15 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Ban, RefreshCw, RotateCcw, Tag } from "lucide-react";
+import { Ban, ImagePlus, RefreshCw, RotateCcw, Tag } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { EmptyState, PageHeader } from "@/components/app-shell";
-import {
-  ProductStatusBadge,
-  ProductTypeBadge,
-  PushStatusBadge,
-} from "@/components/status-badges";
+import { ProductStatusBadge, ProductTypeBadge, PushStatusBadge } from "@/components/status-badges";
 import {
   AdminSearch,
   EmptyCell,
@@ -40,6 +36,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { CleanupRowActions, ShowArchivedToggle } from "@/components/cleanup-actions";
+import { ProductCell } from "@/components/product-thumb";
+import { PhotoManagerDialog } from "@/components/photo-manager";
 import { formatDate, formatUSD } from "@/lib/format";
 import {
   adminListProducts,
@@ -50,10 +49,7 @@ import {
 
 export const Route = createFileRoute("/_authenticated/admin/products")({
   head: () => ({
-    meta: [
-      { title: "Products — FlySales Admin" },
-      { name: "robots", content: "noindex" },
-    ],
+    meta: [{ title: "Products — FlySales Admin" }, { name: "robots", content: "noindex" }],
   }),
   component: AdminProductsPage,
 });
@@ -119,7 +115,10 @@ function AdminProductsPage() {
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
   const [search, setSearch] = useState("");
-
+  const [showArchived, setShowArchived] = useState(false);
+  const [photoFor, setPhotoFor] = useState<{ id: string; name: string; urls: string[] } | null>(
+    null,
+  );
 
   const { data, isPending } = useQuery({
     queryKey: ["admin-products", statusFilter ?? "all", typeFilter ?? "all"],
@@ -195,6 +194,8 @@ function AdminProductsPage() {
 
   const term = search.trim().toLowerCase();
   const rows = products.filter((p) => {
+    if (!showArchived && (p as unknown as { archived_at?: string | null }).archived_at)
+      return false;
     if (!term) return true;
     return [p.product_name, p.sku, p.variant_label ?? "", p.profiles?.company_name ?? ""]
       .join(" ")
@@ -234,8 +235,7 @@ function AdminProductsPage() {
             label: "Discontinued",
             value: countBy((p) => p.status === "discontinued"),
             active: statusFilter === "discontinued",
-            onClick: () =>
-              setStatusFilter(statusFilter === "discontinued" ? null : "discontinued"),
+            onClick: () => setStatusFilter(statusFilter === "discontinued" ? null : "discontinued"),
           },
           {
             key: "push_failed",
@@ -264,12 +264,16 @@ function AdminProductsPage() {
           onChange={setSearch}
           placeholder="Search by product, SKU or client"
         />
+        <ShowArchivedToggle value={showArchived} onChange={setShowArchived} />
       </ToolBar>
 
       {isPending ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
       ) : rows.length === 0 ? (
-        <EmptyState title="No products" hint="Products appear when clients accept quote lines or create bundles." />
+        <EmptyState
+          title="No products"
+          hint="Products appear when clients accept quote lines or create bundles."
+        />
       ) : (
         <TableShell>
           <Table className="text-[13px]">
@@ -297,12 +301,11 @@ function AdminProductsPage() {
                       <Value>{p.profiles?.company_name}</Value>
                     </TableCell>
                     <TableCell className="max-w-56 py-2.5">
-                      <div className="truncate font-medium">{p.product_name}</div>
-                      {p.variant_label && (
-                        <div className="truncate text-xs text-muted-foreground">
-                          {p.variant_label}
-                        </div>
-                      )}
+                      <ProductCell
+                        imageUrls={(p as unknown as { image_urls?: string[] }).image_urls ?? []}
+                        name={p.product_name}
+                        {...(p.variant_label ? { secondary: p.variant_label } : {})}
+                      />
                       {isBundle && (
                         <div className="text-xs text-muted-foreground">
                           {bundlePrices[0]?.component_count ?? 0} components
@@ -371,6 +374,24 @@ function AdminProductsPage() {
                     </TableCell>
                     <TableCell className="py-2.5">
                       <RowActions>
+                        <RowAction
+                          label="Photos"
+                          icon={ImagePlus}
+                          onClick={() =>
+                            setPhotoFor({
+                              id: p.id,
+                              name: p.product_name,
+                              urls: (p as unknown as { image_urls?: string[] }).image_urls ?? [],
+                            })
+                          }
+                        />
+                        <CleanupRowActions
+                          type="product"
+                          id={p.id}
+                          name={`${p.product_name} (${p.sku})`}
+                          archived={!!(p as unknown as { archived_at?: string | null }).archived_at}
+                          invalidateKeys={[["admin-products"]]}
+                        />
                         {isBundle && (
                           <RowAction
                             label="Set price override"
@@ -412,6 +433,15 @@ function AdminProductsPage() {
         </TableShell>
       )}
 
+      <PhotoManagerDialog
+        open={photoFor != null}
+        onOpenChange={(v) => !v && setPhotoFor(null)}
+        target="product"
+        id={photoFor?.id ?? ""}
+        name={photoFor?.name ?? ""}
+        initial={photoFor?.urls ?? []}
+        invalidateKeys={[["admin-products"]]}
+      />
 
       <Dialog open={overrideFor != null} onOpenChange={(open) => !open && setOverrideFor(null)}>
         <DialogContent>
@@ -419,8 +449,13 @@ function AdminProductsPage() {
             <DialogTitle>Price override — {overrideFor?.product_name}</DialogTitle>
             <DialogDescription>
               Set a fixed sell price for this bundle. Leave empty to clear the override and use the
-              calculated price ({overrideFor && (priceByBundle.get(overrideFor.id) ?? []).map((r) => `${r.country_code} ${formatUSD(r.calculated_price ?? 0)}`).join(", ") || "—"}).
-              Only admins can change this.
+              calculated price (
+              {(overrideFor &&
+                (priceByBundle.get(overrideFor.id) ?? [])
+                  .map((r) => `${r.country_code} ${formatUSD(r.calculated_price ?? 0)}`)
+                  .join(", ")) ||
+                "—"}
+              ). Only admins can change this.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-1.5">

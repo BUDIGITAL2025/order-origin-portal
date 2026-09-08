@@ -37,6 +37,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { CleanupRowActions, ShowArchivedToggle } from "@/components/cleanup-actions";
 import { formatDateTime, formatUSD } from "@/lib/format";
 import { adminListOrders, adminSetOrderTracking } from "@/lib/orders.functions";
 import { adminListDisputes } from "@/lib/disputes.functions";
@@ -44,10 +45,7 @@ import { orderTrackingSchema } from "@/lib/schemas";
 
 export const Route = createFileRoute("/_authenticated/admin/orders")({
   head: () => ({
-    meta: [
-      { title: "Orders — FlySales Admin" },
-      { name: "robots", content: "noindex" },
-    ],
+    meta: [{ title: "Orders — FlySales Admin" }, { name: "robots", content: "noindex" }],
   }),
   component: AdminOrdersPage,
 });
@@ -89,6 +87,7 @@ function AdminOrdersPage() {
   const [tab, setTab] = useState<TabId>("all");
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [showArchived, setShowArchived] = useState(false);
 
   const { data: disputes } = useQuery({
     queryKey: ["admin-disputes", "all"],
@@ -118,7 +117,9 @@ function AdminOrdersPage() {
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
-    let list = rows;
+    let list = showArchived
+      ? rows
+      : rows.filter((o) => !(o as { archived_at?: string | null }).archived_at);
     if (tab === "awaiting_payment") list = list.filter((o) => o.status === "awaiting_payment");
     else if (tab === "in_transit")
       list = list.filter((o) => o.status === "processing" || o.status === "shipped");
@@ -140,7 +141,7 @@ function AdminOrdersPage() {
       );
     }
     return list;
-  }, [rows, tab, statusFilter, search, disputedOrderIds]);
+  }, [rows, tab, statusFilter, search, disputedOrderIds, showArchived]);
 
   return (
     <div>
@@ -187,6 +188,7 @@ function AdminOrdersPage() {
               onChange={setSearch}
               placeholder="Search by order reference, workspace or tracking"
             />
+            <ShowArchivedToggle value={showArchived} onChange={setShowArchived} />
           </ToolBar>
 
           <TableShell>
@@ -231,7 +233,11 @@ function AdminOrdersPage() {
                           <OrderStatusBadge status={order.status} />
                         </TableCell>
                         <TableCell className="tnum py-2.5 text-right">
-                          {order.total_amount != null ? formatUSD(order.total_amount) : <Value>{null}</Value>}
+                          {order.total_amount != null ? (
+                            formatUSD(order.total_amount)
+                          ) : (
+                            <Value>{null}</Value>
+                          )}
                         </TableCell>
                         <TableCell className="py-2.5">
                           {order.tracking_number ? (
@@ -254,6 +260,14 @@ function AdminOrdersPage() {
                         </TableCell>
                         <TableCell className="py-2.5">
                           <RowActions>
+                            <CleanupRowActions
+                              type="order"
+                              id={order.id}
+                              name={order.external_order_number ?? order.id.slice(0, 8)}
+                              archived={!!(order as { archived_at?: string | null }).archived_at}
+                              invalidateKeys={[["admin-orders"]]}
+                              deletable={false}
+                            />
                             <RowAction
                               label={order.tracking_number ? "Edit tracking" : "Add tracking"}
                               icon={Truck}
@@ -306,9 +320,7 @@ function TrackingDialog({ order, onClose }: { order: AdminOrder | null; onClose:
     try {
       await callSetTracking({ data: parsed.data });
       toast.success(
-        order.tracking_number
-          ? "Tracking updated"
-          : "Tracking added — the client has been emailed",
+        order.tracking_number ? "Tracking updated" : "Tracking added — the client has been emailed",
       );
       await queryClient.invalidateQueries({ queryKey: ["admin-orders"] });
       onClose();
@@ -342,11 +354,7 @@ function TrackingDialog({ order, onClose }: { order: AdminOrder | null; onClose:
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="tr-number">Tracking number</Label>
-            <Input
-              id="tr-number"
-              value={number}
-              onChange={(e) => setNumber(e.target.value)}
-            />
+            <Input id="tr-number" value={number} onChange={(e) => setNumber(e.target.value)} />
           </div>
         </div>
         <DialogFooter>

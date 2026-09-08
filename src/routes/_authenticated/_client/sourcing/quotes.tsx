@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { ProductCell } from "@/components/product-thumb";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { EmptyState, PageHeader } from "@/components/app-shell";
@@ -76,7 +77,10 @@ function MyQuotesPageInner() {
                     {formatDate(q.created_at)}
                   </TableCell>
                   <TableCell className="max-w-64">
-                    <div className="truncate text-sm">{q.product_name || q.product_url}</div>
+                    <ProductCell
+                      imageUrls={(q as { image_urls?: string[] | null }).image_urls ?? []}
+                      name={q.product_name || q.product_url}
+                    />
                   </TableCell>
                   <TableCell className="text-right tnum text-sm">
                     {q.target_monthly_volume ?? "—"}

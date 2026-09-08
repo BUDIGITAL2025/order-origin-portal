@@ -144,8 +144,8 @@ function AdminWalletPage() {
             <CardTitle className="text-base">New adjustment</CardTitle>
             <CardDescription>
               Ledger-only — never touches Stripe or moves real money. Credits are recorded as
-              “Adjustment”, distinct from Stripe top-ups. Debits are rejected if they would take
-              the balance below zero. A duplicate reference is ignored (idempotent).
+              “Adjustment”, distinct from Stripe top-ups. Debits are rejected if they would take the
+              balance below zero. A duplicate reference is ignored (idempotent).
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -251,7 +251,9 @@ function AdminWalletPage() {
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Ledger</CardTitle>
             <CardDescription>
-              {entityId ? "Recent entries for the selected entity." : "Select an entity to view their ledger."}
+              {entityId
+                ? "Recent entries for the selected entity."
+                : "Select an entity to view their ledger."}
             </CardDescription>
           </CardHeader>
           <CardContent className="p-0">

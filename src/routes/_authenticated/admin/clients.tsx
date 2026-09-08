@@ -17,6 +17,7 @@ import {
   ToolBar,
   Value,
 } from "@/components/admin-ui";
+import { CleanupRowActions, ShowArchivedToggle } from "@/components/cleanup-actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -75,6 +76,7 @@ function AdminClientsPage() {
   const queryClient = useQueryClient();
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [showArchived, setShowArchived] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [fiscalEntity, setFiscalEntity] = useState<FiscalEntity | null>(null);
   const fetchClients = useServerFn(adminListClients);
@@ -164,6 +166,7 @@ function AdminClientsPage() {
 
   const term = search.trim().toLowerCase();
   const clients = allClients.filter((c) => {
+    if (!showArchived && (c as { archived_at?: string | null }).archived_at) return false;
     if (statusFilter && c.status !== statusFilter) return false;
     if (!term) return true;
     return [
@@ -248,6 +251,7 @@ function AdminClientsPage() {
           onChange={setSearch}
           placeholder="Search by contact, entity or workspace"
         />
+        <ShowArchivedToggle value={showArchived} onChange={setShowArchived} />
       </ToolBar>
 
       {isPending ? (
@@ -281,6 +285,13 @@ function AdminClientsPage() {
                       onClick={() => setStatus.mutate({ client_id: c.id, status: "suspended" })}
                     />
                   )}
+                  <CleanupRowActions
+                    type="account"
+                    id={c.id}
+                    name={c.entities[0]?.legal_name ?? c.contact_name}
+                    archived={!!(c as { archived_at?: string | null }).archived_at}
+                    invalidateKeys={[["admin-clients"]]}
+                  />
                   {c.status === "suspended" && (
                     <RowAction
                       label="Reactivate account"

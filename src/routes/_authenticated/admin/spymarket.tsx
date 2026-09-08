@@ -96,7 +96,9 @@ function AdminSpyMarketPage() {
                     {entry.entity_name ?? "—"}
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline">{PLAN_LABEL[entry.plan_interest] ?? entry.plan_interest}</Badge>
+                    <Badge variant="outline">
+                      {PLAN_LABEL[entry.plan_interest] ?? entry.plan_interest}
+                    </Badge>
                   </TableCell>
                   <TableCell className="text-muted-foreground">
                     {formatDateTime(entry.created_at)}

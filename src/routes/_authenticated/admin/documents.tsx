@@ -64,16 +64,14 @@ function AdminDocumentsPage() {
 
   const search = clientSearch.trim().toLowerCase();
   const documents = (data ?? []).filter(
-    (doc) =>
-      !search || (doc.entities?.legal_name ?? "").toLowerCase().includes(search),
+    (doc) => !search || (doc.entities?.legal_name ?? "").toLowerCase().includes(search),
   );
 
   const now = new Date();
   const monthDocs = (allDocs ?? []).filter((d) => {
     const issued = new Date(d.issued_at);
     return (
-      issued.getUTCMonth() === now.getUTCMonth() &&
-      issued.getUTCFullYear() === now.getUTCFullYear()
+      issued.getUTCMonth() === now.getUTCMonth() && issued.getUTCFullYear() === now.getUTCFullYear()
     );
   });
   const monthTotal = monthDocs.reduce((acc, d) => acc + Number(d.amount ?? 0), 0);
@@ -171,9 +169,7 @@ function AdminDocumentsPage() {
                         ? "Wallet credit"
                         : "Monthly plan"}
                   </TableCell>
-                  <TableCell className="tnum py-2.5 text-right">
-                    {formatUSD(doc.amount)}
-                  </TableCell>
+                  <TableCell className="tnum py-2.5 text-right">{formatUSD(doc.amount)}</TableCell>
                   <TableCell className="py-2.5">
                     <RowActions>
                       <DocumentDownloadButton id={doc.id} label="" />
