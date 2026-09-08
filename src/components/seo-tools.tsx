@@ -12,15 +12,7 @@
 import * as React from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  AlertTriangle,
-  Database,
-  Download,
-  Globe,
-  Loader2,
-  Play,
-  Wallet,
-} from "lucide-react";
+import { AlertTriangle, Database, Download, Globe, Loader2, Play, Wallet } from "lucide-react";
 import {
   getSeoStatus,
   seoDomainOverview,
@@ -87,7 +79,6 @@ import {
   usd,
 } from "@/components/seo-common";
 import { SeoPhase2Tab } from "@/components/seo-phase2";
-
 
 // ---------------------------------------------------------------------------
 // root
@@ -182,8 +173,8 @@ export function SeoTools({
         <div>
           <h1 className="text-xl font-semibold tracking-tight">FlySales SEO</h1>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Internal SEO research on the DataForSEO live API. Every paid call shows its price
-            first, is cached server-side and logged with the exact cost the API charged.
+            Internal SEO research on the DataForSEO live API. Every paid call shows its price first,
+            is cached server-side and logged with the exact cost the API charged.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -287,7 +278,6 @@ export function SeoTools({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
 
       <AlertDialog open={overage != null} onOpenChange={(o) => !o && setOverage(null)}>
         <AlertDialogContent>
@@ -529,9 +519,7 @@ function DomainTab({
               {
                 key: "top3",
                 label: "Top 3 positions",
-                value: int(
-                  (asNum(organic["pos_1"]) ?? 0) + (asNum(organic["pos_2_3"]) ?? 0),
-                ),
+                value: int((asNum(organic["pos_1"]) ?? 0) + (asNum(organic["pos_2_3"]) ?? 0)),
               },
               {
                 key: "top10",
@@ -683,8 +671,7 @@ function KeywordsTab({
     copy.sort((a, b) => {
       if (sort === "keyword") return a.keyword.localeCompare(b.keyword);
       if (sort === "cpc") return (b.cpc ?? -1) - (a.cpc ?? -1);
-      if (sort === "competition")
-        return (b.competitionIndex ?? -1) - (a.competitionIndex ?? -1);
+      if (sort === "competition") return (b.competitionIndex ?? -1) - (a.competitionIndex ?? -1);
       return (b.volume ?? -1) - (a.volume ?? -1);
     });
     return copy;
@@ -1154,4 +1141,3 @@ function UsageTab() {
     </div>
   );
 }
-

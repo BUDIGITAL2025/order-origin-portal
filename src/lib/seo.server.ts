@@ -14,12 +14,7 @@
  */
 
 export type JsonValue =
-  | string
-  | number
-  | boolean
-  | null
-  | JsonValue[]
-  | { [key: string]: JsonValue };
+  string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
 
 const BASE_URL = "https://api.dataforseo.com";
 const TIMEOUT_MS = 30_000;
@@ -78,7 +73,6 @@ export async function estimateFor(endpoint: string, limit = 0): Promise<number> 
   const perItem = PER_ITEM_PRICE[endpoint] ?? 0;
   return round6(base + perItem * limit);
 }
-
 
 export interface SeoOk<T = JsonValue> {
   status: "ok";

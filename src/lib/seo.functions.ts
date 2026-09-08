@@ -69,7 +69,13 @@ export const seoDomainOverview = createServerFn({ method: "POST" })
           .trim()
           .min(3)
           .max(200)
-          .transform((v) => v.replace(/^https?:\/\//i, "").replace(/^www\./i, "").replace(/\/.*$/, "").toLowerCase()),
+          .transform((v) =>
+            v
+              .replace(/^https?:\/\//i, "")
+              .replace(/^www\./i, "")
+              .replace(/\/.*$/, "")
+              .toLowerCase(),
+          ),
         confirmOverage: z.boolean().optional(),
       })
       .parse(input),
@@ -403,8 +409,7 @@ export const seoBacklinksDrilldown = createServerFn({ method: "POST" })
     await requireAdmin(context.supabase, context.userId);
     const seo = await import("./seo.server");
     const endpoint = `backlinks/${data.kind}/live`;
-    const orderBy =
-      data.kind === "backlinks" ? ["rank,desc"] : ["backlinks,desc"];
+    const orderBy = data.kind === "backlinks" ? ["rank,desc"] : ["backlinks,desc"];
     return seo.dataforseoCall({
       userId: context.userId,
       endpoint,

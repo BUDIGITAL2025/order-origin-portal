@@ -157,7 +157,9 @@ function CompetitorsTab({
       setError(null);
       try {
         const res = readResult(
-          await call({ data: { target: domain, locationCode, languageCode, limit, confirmOverage } }),
+          await call({
+            data: { target: domain, locationCode, languageCode, limit, confirmOverage },
+          }),
         );
         if (res.kind === "confirm") {
           askOverage(
@@ -237,9 +239,7 @@ function CompetitorsTab({
           running={running}
           disabled={!target.trim()}
           onClick={() =>
-            price > BIG_SPEND_USD
-              ? confirmSpend(price, () => void run(false))
-              : void run(false)
+            price > BIG_SPEND_USD ? confirmSpend(price, () => void run(false)) : void run(false)
           }
           label="Find competitors"
         />
@@ -541,9 +541,7 @@ function GapTab({
             running={running}
             disabled={!yours.trim() || !list.length}
             onClick={() =>
-              total > BIG_SPEND_USD
-                ? confirmSpend(total, () => void run(false))
-                : void run(false)
+              total > BIG_SPEND_USD ? confirmSpend(total, () => void run(false)) : void run(false)
             }
             label={`Run gap (${list.length || 1} call${list.length === 1 ? "" : "s"})`}
           />
@@ -580,8 +578,22 @@ function GapTab({
               onClick={() =>
                 downloadCsv(
                   "flysales-keyword-gap",
-                  ["keyword", "search_volume", "cpc", "competitor", "their_position", "your_position"],
-                  sorted.map((r) => [r.keyword, r.volume, r.cpc, r.competitor, r.theirPos, r.yourPos]),
+                  [
+                    "keyword",
+                    "search_volume",
+                    "cpc",
+                    "competitor",
+                    "their_position",
+                    "your_position",
+                  ],
+                  sorted.map((r) => [
+                    r.keyword,
+                    r.volume,
+                    r.cpc,
+                    r.competitor,
+                    r.theirPos,
+                    r.yourPos,
+                  ]),
                 )
               }
             >
@@ -629,11 +641,7 @@ function GapTab({
                     </TableCell>
                     <TableCell className="text-right tabular-nums">{int(r.theirPos)}</TableCell>
                     <TableCell className="text-right tabular-nums">
-                      {r.yourPos == null ? (
-                        <Chip tone="warning">not ranking</Chip>
-                      ) : (
-                        int(r.yourPos)
-                      )}
+                      {r.yourPos == null ? <Chip tone="warning">not ranking</Chip> : int(r.yourPos)}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -911,13 +919,7 @@ function RankedTab({
 
 type DrillKind = "referring_domains" | "backlinks" | "anchors";
 
-function BacklinksTab({
-  prices,
-  perItem,
-  onSpend,
-  askOverage,
-  confirmSpend,
-}: CommonProps) {
+function BacklinksTab({ prices, perItem, onSpend, askOverage, confirmSpend }: CommonProps) {
   const summaryFn = useServerFn(seoBacklinksSummary);
   const drillFn = useServerFn(seoBacklinksDrilldown);
   const [target, setTarget] = React.useState("");
@@ -1058,9 +1060,7 @@ function BacklinksTab({
       {summary && (
         <>
           <div className="flex items-center justify-end">
-            {summaryMeta && (
-              <ResultMeta cost={summaryMeta.cost} cacheHit={summaryMeta.cacheHit} />
-            )}
+            {summaryMeta && <ResultMeta cost={summaryMeta.cost} cacheHit={summaryMeta.cacheHit} />}
           </div>
           <SummaryBar
             items={[
@@ -1086,8 +1086,7 @@ function BacklinksTab({
                 key: "spam",
                 label: "Spam score",
                 value: int(asNum(summary["backlinks_spam_score"])),
-                tone:
-                  (asNum(summary["backlinks_spam_score"]) ?? 0) > 30 ? "danger" : "neutral",
+                tone: (asNum(summary["backlinks_spam_score"]) ?? 0) > 30 ? "danger" : "neutral",
               },
               {
                 key: "broken",
