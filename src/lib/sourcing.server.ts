@@ -12,6 +12,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import { round2 } from "./admin.server";
+import { closedPrice, sourcingCostOf } from "./pricing";
+
 
 type Admin = SupabaseClient<Database>;
 
@@ -24,20 +26,25 @@ export const DEFAULT_MARGIN_PCT = 15;
 /** Minimum units when stock ships into the FlySales warehouse. */
 export const WAREHOUSE_MIN_UNITS = 10;
 
-/** supplier price + the collaborator's commission. */
-export function sourcingCost(supplierUnitPrice: number, feeRate: number): number {
-  return round2(supplierUnitPrice * (1 + feeRate));
+/** supplier price (goods + supplier shipping) + the collaborator's commission. */
+export function sourcingCost(
+  supplierUnitPrice: number,
+  feeRate: number,
+  feeIncluded = false,
+): number {
+  return sourcingCostOf({ cogs: supplierUnitPrice, shipping: 0, feeRate, feeIncluded });
 }
 
-/** what the client pays per unit, product only. */
-export function clientPrice(cost: number, marginPct: number): number {
-  return round2(cost * (1 + marginPct / 100));
+/** what the client pays per unit: goods + margin + the tax passthrough at cost. */
+export function clientPrice(cost: number, marginPct: number, importTax = 0): number {
+  return closedPrice(cost, marginPct, importTax);
 }
 
 /** the collaborator's commission on a number of units. */
 export function feeAmount(supplierUnitPrice: number, feeRate: number, units = 1): number {
   return round2(supplierUnitPrice * feeRate * units);
 }
+
 
 /** Throws unless the caller is an active sourcing collaborator. */
 export async function requireCollaborator(admin: Admin, userId: string): Promise<Collaborator> {
@@ -87,6 +94,119 @@ export async function upsertSupplierByName(
   if (error) throw new Error(error.message);
   return data;
 }
+
+export type SourcingLineInput = {
+  id?: string | undefined;
+  variant_label: string;
+  country_code: string;
+  supplier_name: string;
+  supplier_unit_price: number;
+  supplier_shipping?: number | undefined;
+  supplier_tax?: number | undefined;
+  moq: number;
+  production_lead_days: number;
+  sourcing_notes?: string | undefined;
+  sourcing_image_urls?: string[] | undefined;
+};
+
+
+export type SavedSourcingLine = {
+  id: string;
+  variant_label: string;
+  country_code: string;
+  sku: string | null;
+  status: string;
+};
+
+/**
+ * Write the sourcing layer of a quote: COGS, supplier shipping, the import-tax
+ * passthrough and the derived sourcing cost. Shared by the collaborator desk
+ * and by an admin sourcing a request themselves, so both produce identical
+ * rows. Lines a client already responded to are never touched.
+ */
+export async function writeSourcingLines(
+  admin: Admin,
+  args: {
+    quoteId: string;
+    lines: SourcingLineInput[];
+    feeRate: number;
+    sourcedBy: string | null;
+  },
+): Promise<SavedSourcingLine[]> {
+  const { data: existing } = await admin
+    .from("quote_lines")
+    .select("id, status")
+    .eq("quote_request_id", args.quoteId);
+  const existingIds = new Set((existing ?? []).map((l) => l.id));
+
+  const now = new Date().toISOString();
+  const saved: SavedSourcingLine[] = [];
+
+  for (const line of args.lines) {
+    const supplier = await upsertSupplierByName(
+      admin,
+      line.supplier_name,
+      line.production_lead_days,
+    );
+    const cogs = line.supplier_unit_price;
+    const shipping = line.supplier_shipping ?? 0;
+    const cost = sourcingCostOf({ cogs, shipping, feeRate: args.feeRate });
+    const payload = {
+      supplier_id: supplier.id,
+      supplier_unit_price: round2(cogs + shipping),
+      supplier_cogs: cogs,
+      supplier_shipping: shipping,
+      supplier_tax: line.supplier_tax ?? 0,
+      fee_included: false,
+      moq: line.moq,
+      production_lead_days: line.production_lead_days,
+      lead_time_days: line.production_lead_days,
+      sourcing_notes: line.sourcing_notes || null,
+      sourcing_image_urls: line.sourcing_image_urls ?? [],
+      sourcing_fee_rate: args.feeRate,
+      sourcing_cost: cost,
+      sourced_at: now,
+      variant_label: line.variant_label,
+      country_code: line.country_code,
+      ...(args.sourcedBy ? { sourced_by: args.sourcedBy } : {}),
+    };
+
+    if (line.id && existingIds.has(line.id)) {
+      const { data: updated, error } = await admin
+        .from("quote_lines")
+        .update(payload)
+        .eq("id", line.id)
+        .select("id, variant_label, country_code, sku, status")
+        .single();
+      if (error) throw new Error(error.message);
+      saved.push(updated);
+    } else {
+      const { data: sku } = await admin.rpc("generate_sku", { p_prefix: "FS" });
+      const { data: created, error } = await admin
+        .from("quote_lines")
+        .insert({
+          quote_request_id: args.quoteId,
+          sku: sku ?? `FS-${Date.now()}`,
+          status: "pending",
+          ...payload,
+        })
+        .select("id, variant_label, country_code, sku, status")
+        .single();
+      if (error) throw new Error(error.message);
+      saved.push(created);
+    }
+  }
+
+  // Remove lines that were deleted in the form, but never one a client has
+  // already accepted or rejected.
+  const keep = new Set(saved.map((l) => l.id));
+  const toDelete = [...existingIds].filter((id) => !keep.has(id));
+  if (toDelete.length) {
+    await admin.from("quote_lines").delete().in("id", toDelete).eq("status", "pending");
+  }
+  return saved;
+}
+
 
 /**
  * Accrue a collaborator's commission exactly once per reference. Replays
