@@ -1,12 +1,12 @@
 /**
  * Server-only gateway for the WinningHunter API — phase 1 of the SpyMarket
- * provider migration. The TrendTrack gateway (spymarket-tools.server.ts) is
+ * provider gateway — WinningHunter is now the single SpyMarket provider and is
  * untouched and keeps running in parallel; this module is the ONLY place that
  * talks to app.winninghunter.com.
  *
  * Source of truth: docs/winninghunter-api-reference.md.
  *
- * Cost model (differs from TrendTrack): a flat 1 credit per successful metered
+ * Cost model: a flat 1 credit per successful metered
  * call, whatever the page size — so we always ask for the biggest page the
  * endpoint allows instead of trimming rows. Every call (cache hits included)
  * is written to public.spy_api_calls with provider='winninghunter'.
