@@ -37,7 +37,6 @@ type UntypedQuery = {
   error: { message: string } | null;
 }>;
 
-
 async function countOf(
   admin: Admin,
   table: string,
@@ -52,7 +51,6 @@ async function countOf(
   if (error) throw new Error(error.message);
   return count ?? 0;
 }
-
 
 export async function writeAuditLine(
   admin: Admin,
