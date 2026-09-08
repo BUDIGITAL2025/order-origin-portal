@@ -11,7 +11,15 @@
  * same cache, same seo_api_calls log, same real cost from the API envelope.
  * The job row accumulates that cost.
  */
-import type { Admin, ArtifactRow, JobRow, Json, PhaseDef, TickResult } from "./jobs.server";
+import type {
+  Admin,
+  ArtifactRow,
+  JobRow,
+  Json,
+  PhaseDef,
+  PhaseOutcome,
+  TickResult,
+} from "./jobs.server";
 
 export const SEO_MODULE = "seo";
 export const SEO_STUDY_KIND = "seo_study";
@@ -41,13 +49,22 @@ export interface StudyParams {
 // ---------------------------------------------------------------------------
 
 /** Worst-case total: every phase fires live (nothing served from cache). */
-export async function estimateStudyCost(): Promise<{ total: number; lines: Array<{ label: string; cost: number }> }> {
+export async function estimateStudyCost(): Promise<{
+  total: number;
+  lines: Array<{ label: string; cost: number }>;
+}> {
   const seo = await import("./seo.server");
   const L = STUDY_LIMITS;
   const lines = [
     { label: "Domain overview", cost: await seo.estimateFor(seo_endpoints.overview, 1) },
-    { label: `Ranked keywords (${L.rankedKeywords})`, cost: await seo.estimateFor(seo_endpoints.ranked, L.rankedKeywords) },
-    { label: `Competitors (${L.competitors})`, cost: await seo.estimateFor(seo_endpoints.competitors, L.competitors) },
+    {
+      label: `Ranked keywords (${L.rankedKeywords})`,
+      cost: await seo.estimateFor(seo_endpoints.ranked, L.rankedKeywords),
+    },
+    {
+      label: `Competitors (${L.competitors})`,
+      cost: await seo.estimateFor(seo_endpoints.competitors, L.competitors),
+    },
     {
       label: `Keyword gap (${L.gapCompetitors} competitors)`,
       cost:
@@ -55,7 +72,10 @@ export async function estimateStudyCost(): Promise<{ total: number; lines: Array
         1e6,
     },
     { label: "Backlinks summary", cost: await seo.estimateFor(seo_endpoints.backlinks) },
-    { label: `Site crawl (${L.crawlPages} pages)`, cost: await seo.estimateFor(seo_endpoints.crawl) },
+    {
+      label: `Site crawl (${L.crawlPages} pages)`,
+      cost: await seo.estimateFor(seo_endpoints.crawl),
+    },
   ];
   const total = Math.round(lines.reduce((s, l) => s + l.cost, 0) * 1e6) / 1e6;
   return { total, lines };
@@ -196,7 +216,12 @@ export interface OnPageData {
 export interface SynthesisData {
   headline: string[];
   trafficEstimate: number | null;
-  topOpportunities: Array<{ keyword: string; volume: number | null; competitor: string; cpc: number | null }>;
+  topOpportunities: Array<{
+    keyword: string;
+    volume: number | null;
+    competitor: string;
+    cpc: number | null;
+  }>;
   topIssues: Array<{ label: string; pages: number; severity: string }>;
   strongestPages: Array<{ url: string; note: string }>;
   weakestPages: Array<{ url: string; note: string }>;
@@ -253,8 +278,7 @@ export function studyPhases(userId: string, params: StudyParams): PhaseDef[] {
           organicKeywords: num(organic["count"]),
           organicEtv: num(organic["etv"]),
           paidKeywords: num(paid["count"]),
-          pos1_3:
-            (num(organic["pos_1"]) ?? 0) + (num(organic["pos_2_3"]) ?? 0) || null,
+          pos1_3: (num(organic["pos_1"]) ?? 0) + (num(organic["pos_2_3"]) ?? 0) || null,
           pos4_10: num(organic["pos_4_10"]),
           pos11_100:
             (num(organic["pos_11_20"]) ?? 0) +
@@ -380,9 +404,7 @@ export function studyPhases(userId: string, params: StudyParams): PhaseDef[] {
               ...locale,
               limit: L.gapRows,
               order_by: ["keyword_data.keyword_info.search_volume,desc"],
-              filters: [
-                ["keyword_data.keyword_info.search_volume", ">=", L.gapMinVolume],
-              ],
+              filters: [["keyword_data.keyword_info.search_volume", ">=", L.gapMinVolume]],
             },
             summary: { competitor: competitor.domain, you: params.target },
             ttlMs: seo.TTL.domain,
@@ -480,36 +502,43 @@ export function studyPhases(userId: string, params: StudyParams): PhaseDef[] {
           return { kind: "wait", state: { taskId, postedAt: new Date().toISOString() }, cost };
         }
 
-        // Step 2 — poll the (free) summary until the crawl finishes.
-        const summary = await call<unknown>({
-          userId,
-          endpoint: seo_endpoints.crawlSummary,
-          path: `/v3/on_page/summary/${taskId}`,
-          method: "GET",
-          metered: false,
-          ttlMs: 0,
-          summary: { taskId },
-        });
+        // How long we have been waiting; the crawl is abandoned after 20 min
+        // rather than holding the job forever.
+        const postedAt = typeof state["postedAt"] === "string" ? Date.parse(state["postedAt"]) : 0;
+        const timedOut = postedAt > 0 && Date.now() - postedAt > 20 * 60_000;
+        const keepWaiting = (extra: Record<string, Json>): PhaseOutcome => {
+          if (timedOut) throw new Error("The site crawl did not finish within 20 minutes.");
+          return { kind: "wait", state: { ...state, taskId: taskId!, ...extra }, cost };
+        };
+
+        // Step 2 — poll the (free) summary until the crawl finishes. While the
+        // task sits in DataForSEO's queue the endpoint answers with a "task in
+        // queue" status rather than data: that is waiting, not a failure.
+        let summary: { data: unknown };
+        try {
+          summary = await call<unknown>({
+            userId,
+            endpoint: seo_endpoints.crawlSummary,
+            path: `/v3/on_page/summary/${taskId}`,
+            method: "GET",
+            metered: false,
+            ttlMs: 0,
+            summary: { taskId },
+          });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          if (/in queue|handed|in progress|not ready/i.test(message)) return keepWaiting({});
+          throw error;
+        }
         const result = rec(arr(summary.data)[0]);
         const progress = str(result["crawl_progress"]);
         const crawlStatus = rec(result["crawl_status"]);
 
         if (progress !== "finished") {
-          const postedAt = typeof state["postedAt"] === "string" ? Date.parse(state["postedAt"]) : 0;
-          // Give up after 20 minutes rather than holding the job forever.
-          if (postedAt && Date.now() - postedAt > 20 * 60_000) {
-            throw new Error("The site crawl did not finish within 20 minutes.");
-          }
-          return {
-            kind: "wait",
-            state: {
-              ...state,
-              taskId,
-              pagesCrawled: num(crawlStatus["pages_crawled"]),
-              pagesInQueue: num(crawlStatus["pages_in_queue"]),
-            },
-            cost,
-          };
+          return keepWaiting({
+            pagesCrawled: num(crawlStatus["pages_crawled"]),
+            pagesInQueue: num(crawlStatus["pages_in_queue"]),
+          });
         }
 
         // Step 3 — the crawl is done: aggregate checks (free) + page list (free).
@@ -631,7 +660,10 @@ export function studyPhases(userId: string, params: StudyParams): PhaseDef[] {
         }
         if (competitors?.length) {
           headline.push(
-            `Top competing domains: ${competitors.slice(0, 3).map((c) => c.domain).join(", ")}.`,
+            `Top competing domains: ${competitors
+              .slice(0, 3)
+              .map((c) => c.domain)
+              .join(", ")}.`,
           );
         }
         if (topOpportunities.length) {

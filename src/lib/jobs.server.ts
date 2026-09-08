@@ -145,11 +145,7 @@ export async function claimNextJob(
 
   let query = admin
     .from("jobs")
-    .update({
-      status: "running",
-      lease_until: leaseUntil,
-      started_at: now.toISOString(),
-    })
+    .update({ status: "running", lease_until: leaseUntil })
     .eq("module", args.module)
     .eq("kind", args.kind)
     .in("status", ["queued", "running"])
@@ -167,7 +163,12 @@ export async function claimNextJob(
   if (error) throw new Error(error.message);
   const row = (data ?? [])[0];
   if (!row) return null;
-  // `started_at` must stay the first start; restore it when resuming.
+  // `started_at` records the FIRST start, so a resume must not overwrite it.
+  if (!row.started_at) {
+    const startedAt = now.toISOString();
+    await admin.from("jobs").update({ started_at: startedAt }).eq("id", row.id);
+    row.started_at = startedAt;
+  }
   return row as unknown as JobRow;
 }
 
@@ -195,7 +196,10 @@ export async function updateJob(
     row["lease_until"] = new Date(Date.now() + patch.extendLeaseMs).toISOString();
   }
   if (Object.keys(row).length === 0) return;
-  const { error } = await admin.from("jobs").update(row as never).eq("id", jobId);
+  const { error } = await admin
+    .from("jobs")
+    .update(row as never)
+    .eq("id", jobId);
   if (error) console.error("[jobs] update failed:", error.message);
 }
 
@@ -203,13 +207,16 @@ export async function updateJob(
 export async function addJobCost(admin: Admin, jobId: string, cost: number): Promise<void> {
   if (!cost) return;
   const { data } = await admin.from("jobs").select("total_cost").eq("id", jobId).maybeSingle();
-  const next = Math.round(((Number(data?.total_cost ?? 0) + cost) + Number.EPSILON) * 1e6) / 1e6;
+  const next = Math.round((Number(data?.total_cost ?? 0) + cost + Number.EPSILON) * 1e6) / 1e6;
   const { error } = await admin.from("jobs").update({ total_cost: next }).eq("id", jobId);
   if (error) console.error("[jobs] cost accumulation failed:", error.message);
 }
 
 export async function incrementAttempts(admin: Admin, jobId: string, current: number) {
-  await admin.from("jobs").update({ attempts: current + 1 }).eq("id", jobId);
+  await admin
+    .from("jobs")
+    .update({ attempts: current + 1 })
+    .eq("id", jobId);
 }
 
 // ---------------------------------------------------------------------------
@@ -261,7 +268,10 @@ export async function finishArtifact(
 ): Promise<void> {
   const patch: Record<string, unknown> = { status };
   if (storageRef !== undefined) patch["storage_ref"] = storageRef;
-  const { error } = await admin.from("artifacts").update(patch as never).eq("id", artifactId);
+  const { error } = await admin
+    .from("artifacts")
+    .update(patch as never)
+    .eq("id", artifactId);
   if (error) console.error("[jobs] artifact finish failed:", error.message);
 }
 

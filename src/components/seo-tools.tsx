@@ -79,6 +79,7 @@ import {
   usd,
 } from "@/components/seo-common";
 import { SeoPhase2Tab } from "@/components/seo-phase2";
+import { SeoStudyTab } from "@/components/seo-study";
 
 // ---------------------------------------------------------------------------
 // root
@@ -92,15 +93,18 @@ const TABS = [
   { id: "gap", label: "Keyword gap" },
   { id: "ranked", label: "Ranked keywords" },
   { id: "backlinks", label: "Backlinks" },
+  { id: "study", label: "Full SEO study" },
   { id: "usage", label: "Usage" },
 ] as const;
 type TabId = (typeof TABS)[number]["id"];
 
 export function SeoTools({
   tab,
+  study,
   go,
 }: {
   tab: string;
+  study?: string | undefined;
   go: (patch: Record<string, string | undefined>) => void;
 }) {
   const queryClient = useQueryClient();
@@ -156,6 +160,11 @@ export function SeoTools({
   const active = (TABS.some((t) => t.id === tab) ? tab : "domain") as TabId;
   const prices = status.data?.prices ?? {};
   const perItem = status.data?.perItem ?? {};
+
+  const marketLabel =
+    (locations.data ?? []).find((l) => l.code === locationCode)?.name ??
+    QUICK_MARKETS.find((m) => m.code === locationCode)?.label ??
+    `Location ${locationCode}`;
 
   const marketCtl = (
     <MarketSelector
@@ -250,6 +259,17 @@ export function SeoTools({
           askOverage={askOverage}
           confirmSpend={confirmSpend}
           onOpenDomain={openDomain}
+        />
+      )}
+      {active === "study" && (
+        <SeoStudyTab
+          locationCode={locationCode}
+          languageCode={languageCode}
+          marketLabel={marketLabel}
+          market={marketCtl}
+          studyId={study}
+          onOpen={(id) => go({ tab: "study", study: id })}
+          onSpend={refreshCost}
         />
       )}
       {active === "usage" && <UsageTab />}
