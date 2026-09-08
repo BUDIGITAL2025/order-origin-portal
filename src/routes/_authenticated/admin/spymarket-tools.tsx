@@ -65,6 +65,9 @@ export const Route = createFileRoute("/_authenticated/admin/spymarket-tools")({
     armax: str(search, "armax"),
     arwin: str(search, "arwin"),
     armin: str(search, "armin"),
+    // WinningHunter ad library (parallel provider)
+    whp: str(search, "whp"),
+    whq: str(search, "whq"),
   }),
   head: () => ({
     meta: [

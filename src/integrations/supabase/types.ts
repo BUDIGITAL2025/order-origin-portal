@@ -2053,24 +2053,78 @@ export type Database = {
           },
         ]
       }
+      spy_api_calls: {
+        Row: {
+          cached: boolean
+          called_by: string | null
+          created_at: string
+          credits_cost: number
+          credits_remaining: number | null
+          duration_ms: number | null
+          endpoint: string
+          error: string | null
+          id: string
+          ok: boolean
+          provider: string
+          rows_returned: number
+          status_code: number | null
+          summary: Json
+        }
+        Insert: {
+          cached?: boolean
+          called_by?: string | null
+          created_at?: string
+          credits_cost?: number
+          credits_remaining?: number | null
+          duration_ms?: number | null
+          endpoint: string
+          error?: string | null
+          id?: string
+          ok?: boolean
+          provider: string
+          rows_returned?: number
+          status_code?: number | null
+          summary?: Json
+        }
+        Update: {
+          cached?: boolean
+          called_by?: string | null
+          created_at?: string
+          credits_cost?: number
+          credits_remaining?: number | null
+          duration_ms?: number | null
+          endpoint?: string
+          error?: string | null
+          id?: string
+          ok?: boolean
+          provider?: string
+          rows_returned?: number
+          status_code?: number | null
+          summary?: Json
+        }
+        Relationships: []
+      }
       spymarket_cache: {
         Row: {
           cache_key: string
           endpoint: string
           fetched_at: string
           payload: Json
+          provider: string
         }
         Insert: {
           cache_key: string
           endpoint: string
           fetched_at?: string
           payload: Json
+          provider?: string
         }
         Update: {
           cache_key?: string
           endpoint?: string
           fetched_at?: string
           payload?: Json
+          provider?: string
         }
         Relationships: []
       }
