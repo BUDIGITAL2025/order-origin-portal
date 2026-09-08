@@ -375,7 +375,10 @@ export async function dataforseoCall<T = JsonValue>(opts: CallOptions): Promise<
     );
   }
 
-  const result = (taskEntry?.result ?? null) as T;
+  const result = (opts.returnTaskEnvelope
+    ? ((taskEntry ?? null) as unknown)
+    : (taskEntry?.result ?? null)) as T;
+
 
   if (ttlMs > 0) {
     const { error: cacheErr } = await admin.from("seo_cache").upsert(
