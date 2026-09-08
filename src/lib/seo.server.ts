@@ -245,11 +245,13 @@ interface Envelope {
   status_message?: string;
   cost?: number;
   tasks?: Array<{
+    id?: string;
     status_code?: number;
     status_message?: string;
     cost?: number;
     result?: unknown;
   }>;
+
 }
 
 export async function dataforseoCall<T = JsonValue>(opts: CallOptions): Promise<SeoResult<T>> {
