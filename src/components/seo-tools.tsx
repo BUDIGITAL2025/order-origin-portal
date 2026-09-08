@@ -354,6 +354,7 @@ function DomainTab({
   market,
   onSpend,
   askOverage,
+  seed,
 }: {
   price: number | undefined;
   locationCode: number;
@@ -361,9 +362,10 @@ function DomainTab({
   market: React.ReactNode;
   onSpend: () => void;
   askOverage: (ask: NonNullable<OverageAsk>, retry: () => void) => void;
+  seed?: string;
 }) {
   const call = useServerFn(seoDomainOverview);
-  const [target, setTarget] = React.useState("");
+  const [target, setTarget] = React.useState(seed ?? "");
   const [running, setRunning] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [meta, setMeta] = React.useState<{ cost: number; cacheHit: boolean } | null>(null);
