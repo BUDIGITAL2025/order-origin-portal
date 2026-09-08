@@ -55,6 +55,60 @@ export type Database = {
           },
         ]
       }
+      artifacts: {
+        Row: {
+          created_at: string
+          id: string
+          job_id: string
+          kind: string
+          module: string
+          payload: Json
+          status: string
+          storage_ref: string | null
+          updated_at: string
+          workspace_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          job_id: string
+          kind: string
+          module: string
+          payload?: Json
+          status?: string
+          storage_ref?: string | null
+          updated_at?: string
+          workspace_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          job_id?: string
+          kind?: string
+          module?: string
+          payload?: Json
+          status?: string
+          storage_ref?: string | null
+          updated_at?: string
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "artifacts_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "artifacts_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bundle_components: {
         Row: {
           bundle_product_id: string
@@ -778,6 +832,81 @@ export type Database = {
           {
             foreignKeyName: "inventory_snapshots_store_id_fkey"
             columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      jobs: {
+        Row: {
+          attempts: number
+          created_at: string
+          created_by: string | null
+          error: string | null
+          finished_at: string | null
+          id: string
+          kind: string
+          lease_until: string | null
+          module: string
+          params: Json
+          phase: string | null
+          progress_pct: number
+          started_at: string | null
+          status: string
+          total_cost: number
+          updated_at: string
+          workspace_id: string | null
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          created_by?: string | null
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          kind: string
+          lease_until?: string | null
+          module: string
+          params?: Json
+          phase?: string | null
+          progress_pct?: number
+          started_at?: string | null
+          status?: string
+          total_cost?: number
+          updated_at?: string
+          workspace_id?: string | null
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          created_by?: string | null
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          kind?: string
+          lease_until?: string | null
+          module?: string
+          params?: Json
+          phase?: string | null
+          progress_pct?: number
+          started_at?: string | null
+          status?: string
+          total_cost?: number
+          updated_at?: string
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "jobs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jobs_workspace_id_fkey"
+            columns: ["workspace_id"]
             isOneToOne: false
             referencedRelation: "stores"
             referencedColumns: ["id"]
