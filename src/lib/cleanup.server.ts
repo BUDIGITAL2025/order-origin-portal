@@ -25,13 +25,28 @@ export type CleanupCheck = {
   cascade: { label: string; count: number }[];
 };
 
-async function countOf(admin: Admin, table: string, build: (q: any) => any): Promise<number> {
-  const { count, error } = await build(
-    (admin.from(table as never) as any).select("id", { count: "exact", head: true }),
-  );
+// Supabase's generated types can't express a table name chosen at runtime, so
+// the query builder is treated as untyped here and re-narrowed by the caller.
+type UntypedQuery = { eq: (c: string, v: unknown) => UntypedQuery } & PromiseLike<{
+  count: number | null;
+  error: { message: string } | null;
+}>;
+
+async function countOf(
+  admin: Admin,
+  table: string,
+  build: (q: UntypedQuery) => UntypedQuery,
+): Promise<number> {
+  const query = (
+    admin.from(table as never) as unknown as {
+      select: (c: string, o: { count: "exact"; head: boolean }) => UntypedQuery;
+    }
+  ).select("id", { count: "exact", head: true });
+  const { count, error } = await build(query);
   if (error) throw new Error(error.message);
   return count ?? 0;
 }
+
 
 export async function writeAuditLine(
   admin: Admin,
