@@ -50,10 +50,7 @@ import {
 
 export const Route = createFileRoute("/_authenticated/admin/quotes/$id")({
   head: () => ({
-    meta: [
-      { title: "Quote request — FlySales Admin" },
-      { name: "robots", content: "noindex" },
-    ],
+    meta: [{ title: "Quote request — FlySales Admin" }, { name: "robots", content: "noindex" }],
   }),
   component: AdminQuoteDetailPage,
 });
@@ -161,7 +158,6 @@ function cellPrice(c: CellForm): number {
   return closedPrice(cellSourcingCost(c), num(c.margin_pct), num(c.supplier_tax));
 }
 
-
 function AdminQuoteDetailPage() {
   const { id } = Route.useParams();
   const queryClient = useQueryClient();
@@ -251,7 +247,6 @@ function AdminQuoteDetailPage() {
         for (const c of targetCountries) {
           if (!row.cells[c]) row.cells[c] = emptyCell(c);
         }
-
       }
       setRows([...byVariant.values()]);
     } else {
@@ -278,7 +273,10 @@ function AdminQuoteDetailPage() {
     setRows((prev) =>
       prev.map((r) =>
         r.key === key
-          ? { ...r, cells: { ...r.cells, [country]: { ...emptyCell(), ...r.cells[country], ...patch } } }
+          ? {
+              ...r,
+              cells: { ...r.cells, [country]: { ...emptyCell(), ...r.cells[country], ...patch } },
+            }
           : r,
       ),
     );
@@ -393,7 +391,6 @@ function AdminQuoteDetailPage() {
     onError: (err) => toast.error(err.message),
   });
 
-
   const setStatus = useMutation({
     mutationFn: (status: "submitted" | "sourcing" | "expired") =>
       callSetStatus({ data: { quote_id: id, status } }),
@@ -426,9 +423,7 @@ function AdminQuoteDetailPage() {
   const buildBrief = (): string => {
     if (!quote) return "";
     const countriesLine =
-      countries.length > 0
-        ? countries.map((c) => `${countryName(c)} (${c})`).join(", ")
-        : "—";
+      countries.length > 0 ? countries.map((c) => `${countryName(c)} (${c})`).join(", ") : "—";
     const seen = data?.preview?.variants ?? [];
     const variantLine =
       seen.length > 0
@@ -501,7 +496,12 @@ function AdminQuoteDetailPage() {
                 </AlertDialogContent>
               </AlertDialog>
             )}
-            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => void copyBrief()}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => void copyBrief()}
+            >
               <Copy className="h-3.5 w-3.5" /> Copy sourcing brief
             </Button>
             <Button variant="outline" size="sm" className="gap-1.5" onClick={sendWhatsApp}>
@@ -522,7 +522,9 @@ function AdminQuoteDetailPage() {
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
               <div>
-                <div className="text-xs uppercase tracking-wide text-muted-foreground">Product URL</div>
+                <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Product URL
+                </div>
                 <a
                   href={quote.product_url ?? "#"}
                   target="_blank"
@@ -559,11 +561,15 @@ function AdminQuoteDetailPage() {
               )}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <div className="text-xs uppercase tracking-wide text-muted-foreground">Volume / month</div>
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Volume / month
+                  </div>
                   <div className="tnum">{quote.target_monthly_volume ?? "—"}</div>
                 </div>
                 <div>
-                  <div className="text-xs uppercase tracking-wide text-muted-foreground">Client</div>
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Client
+                  </div>
                   <div>
                     {client?.company_name ?? "—"} <TierBadge tier={clientTier} />
                   </div>
@@ -577,7 +583,9 @@ function AdminQuoteDetailPage() {
               </div>
               {((images && images.urls.length > 0) || externalImages.length > 0) && (
                 <div>
-                  <div className="mb-1.5 text-xs uppercase tracking-wide text-muted-foreground">Images</div>
+                  <div className="mb-1.5 text-xs uppercase tracking-wide text-muted-foreground">
+                    Images
+                  </div>
                   <div className="flex flex-wrap gap-2">
                     {(images?.urls ?? []).map((img) => (
                       <a key={img.path} href={img.url} target="_blank" rel="noreferrer">
@@ -649,14 +657,13 @@ function AdminQuoteDetailPage() {
               </span>
             </div>
             <CardDescription>
-              Rows are variants, columns are the requested countries — each cell is a priced
-              variant × country line. All amounts in USD. The chain is COGS → + ship → + sourcing
-              fee → sourcing cost, then one FlySales margin %. Supplier tax (IOSS / duties) passes
-              through at exact cost — it is never marked up. {PASSTHROUGH_NOTE} Cost and margin are
-              never visible to the client. Publishing moves the request to "quoted" and generates
-              one SKU per variant, shared across its country rows.
+              Rows are variants, columns are the requested countries — each cell is a priced variant
+              × country line. All amounts in USD. The chain is COGS → + ship → + sourcing fee →
+              sourcing cost, then one FlySales margin %. Supplier tax (IOSS / duties) passes through
+              at exact cost — it is never marked up. {PASSTHROUGH_NOTE} Cost and margin are never
+              visible to the client. Publishing moves the request to "quoted" and generates one SKU
+              per variant, shared across its country rows.
             </CardDescription>
-
           </CardHeader>
           <CardContent>
             <form
@@ -841,7 +848,9 @@ function AdminQuoteDetailPage() {
                                   </div>
                                   <div className="flex items-center justify-between font-medium text-foreground">
                                     <span>Sourcing cost</span>
-                                    <span className="tnum">{formatUSD(cellSourcingCost(cell))}</span>
+                                    <span className="tnum">
+                                      {formatUSD(cellSourcingCost(cell))}
+                                    </span>
                                   </div>
                                   <div className="flex items-center justify-between">
                                     <span>Our margin</span>
@@ -849,7 +858,9 @@ function AdminQuoteDetailPage() {
                                   </div>
                                   <div className="flex items-center justify-between">
                                     <span>Tax passthrough</span>
-                                    <span className="tnum">{formatUSD(num(cell.supplier_tax))}</span>
+                                    <span className="tnum">
+                                      {formatUSD(num(cell.supplier_tax))}
+                                    </span>
                                   </div>
                                 </div>
                                 <div className="flex items-center justify-between pt-1">
@@ -861,12 +872,13 @@ function AdminQuoteDetailPage() {
                                   </span>
                                 </div>
                                 {locked && (
-                                  <LineStatusBadge status={cell.status as "accepted" | "rejected"} />
+                                  <LineStatusBadge
+                                    status={cell.status as "accepted" | "rejected"}
+                                  />
                                 )}
                               </div>
                             );
                           })}
-
                         </div>
                       );
                     })}
@@ -890,7 +902,9 @@ function AdminQuoteDetailPage() {
               {rows.length > 0 && (
                 <div className="grid grid-cols-3 gap-px overflow-hidden rounded-md border border-border bg-border text-sm">
                   <div className="bg-muted/40 p-3">
-                    <div className="text-xs uppercase tracking-wide text-muted-foreground">Grid</div>
+                    <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                      Grid
+                    </div>
                     <div className="tnum font-medium">
                       {rows.length} variant{rows.length === 1 ? "" : "s"} × {countries.length}{" "}
                       {countries.length === 1 ? "country" : "countries"}
@@ -913,7 +927,12 @@ function AdminQuoteDetailPage() {
 
               <div className="space-y-1.5">
                 <Label htmlFor="aq-notes">Internal notes (admin only)</Label>
-                <Textarea id="aq-notes" rows={3} value={adminNotes} onChange={(e) => setAdminNotes(e.target.value)} />
+                <Textarea
+                  id="aq-notes"
+                  rows={3}
+                  value={adminNotes}
+                  onChange={(e) => setAdminNotes(e.target.value)}
+                />
               </div>
               {requestEditable && (
                 <Button type="submit" disabled={save.isPending}>

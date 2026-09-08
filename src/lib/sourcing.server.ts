@@ -14,7 +14,6 @@ import type { Database } from "@/integrations/supabase/types";
 import { round2 } from "./admin.server";
 import { closedPrice, sourcingCostOf } from "./pricing";
 
-
 type Admin = SupabaseClient<Database>;
 
 export type Collaborator = Database["public"]["Tables"]["sourcing_collaborators"]["Row"];
@@ -44,7 +43,6 @@ export function clientPrice(cost: number, marginPct: number, importTax = 0): num
 export function feeAmount(supplierUnitPrice: number, feeRate: number, units = 1): number {
   return round2(supplierUnitPrice * feeRate * units);
 }
-
 
 /** Throws unless the caller is an active sourcing collaborator. */
 export async function requireCollaborator(admin: Admin, userId: string): Promise<Collaborator> {
@@ -108,7 +106,6 @@ export type SourcingLineInput = {
   sourcing_notes?: string | undefined;
   sourcing_image_urls?: string[] | undefined;
 };
-
 
 export type SavedSourcingLine = {
   id: string;
@@ -206,7 +203,6 @@ export async function writeSourcingLines(
   }
   return saved;
 }
-
 
 /**
  * Accrue a collaborator's commission exactly once per reference. Replays

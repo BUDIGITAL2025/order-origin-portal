@@ -217,7 +217,13 @@ export const adminListQuotes = createServerFn({ method: "GET" })
           .from("quote_request_internal")
           .select("quote_request_id, admin_notes, internal_reference")
           .in("quote_request_id", ids)
-      : { data: [] as Array<{ quote_request_id: string; admin_notes: string | null; internal_reference: string | null }> };
+      : {
+          data: [] as Array<{
+            quote_request_id: string;
+            admin_notes: string | null;
+            internal_reference: string | null;
+          }>,
+        };
     const internalByQuote = new Map((internals ?? []).map((r) => [r.quote_request_id, r]));
     return {
       quotes: (quotes ?? []).map((q) => mapQuoteForAdmin(q, internalByQuote.get(q.id as string))),
@@ -271,7 +277,12 @@ export const adminGetQuote = createServerFn({ method: "GET" })
         .eq("id", previewId)
         .maybeSingle();
       // `variants` exists in the DB but not yet in the generated types.
-      preview = p ? { ...(p as Omit<typeof p, "variants">), variants: ((p as { variants?: string[] | null }).variants ?? []) } : null;
+      preview = p
+        ? {
+            ...(p as Omit<typeof p, "variants">),
+            variants: (p as { variants?: string[] | null }).variants ?? [],
+          }
+        : null;
     }
 
     const { data: lines, error: linesError } = await admin
@@ -335,7 +346,6 @@ export const adminSaveQuoteLines = createServerFn({ method: "POST" })
     return { ok: true, lines };
   });
 
-
 /** Admin: requote a closed/expired quote — new row, original untouched, no quota cost. */
 export const adminRequote = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -356,9 +366,8 @@ export const adminRequote = createServerFn({ method: "POST" })
       throw new Error("Only closed or expired quotes can be requoted");
     }
     // p_on_behalf_of expects the owning ACCOUNT id, resolved via store → entity.
-    const accountId = (
-      quote.stores as { entities?: { account_id?: string | null } | null } | null
-    )?.entities?.account_id;
+    const accountId = (quote.stores as { entities?: { account_id?: string | null } | null } | null)
+      ?.entities?.account_id;
     if (!accountId) throw new Error("Quote workspace has no owning account");
 
     const { data: created, error } = await context.supabase.rpc("submit_quote_request", {

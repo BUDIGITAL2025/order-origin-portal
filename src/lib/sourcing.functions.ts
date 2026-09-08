@@ -29,7 +29,6 @@ const DESK_QUOTE_COLUMNS =
 const DESK_LINE_COLUMNS =
   "id, quote_request_id, variant_label, country_code, sku, supplier_id, supplier_unit_price, supplier_cogs, supplier_shipping, supplier_tax, fee_included, moq, production_lead_days, sourcing_notes, sourcing_image_urls, sourcing_fee_rate, sourcing_cost, sourced_at, status";
 
-
 // ===================== Collaborator desk =====================
 
 /** Who am I on the sourcing desk? Returns null for everyone else. */
@@ -117,7 +116,10 @@ export const sourcingGetQuote = createServerFn({ method: "POST" })
 
     const supplierIds = [...new Set((lines ?? []).map((l) => l.supplier_id).filter(Boolean))];
     const { data: suppliers } = supplierIds.length
-      ? await admin.from("suppliers").select("id, name").in("id", supplierIds as string[])
+      ? await admin
+          .from("suppliers")
+          .select("id, name")
+          .in("id", supplierIds as string[])
       : { data: [] };
     const nameById = new Map((suppliers ?? []).map((s) => [s.id, s.name]));
 
@@ -236,7 +238,6 @@ export const adminSaveSourcingLines = createServerFn({ method: "POST" })
     }
     return { ok: true, lines: saved };
   });
-
 
 /** The collaborator's own earnings — accrued and settled totals plus lines. */
 export const sourcingMyEarnings = createServerFn({ method: "GET" })

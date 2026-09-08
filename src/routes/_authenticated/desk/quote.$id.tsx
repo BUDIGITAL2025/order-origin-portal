@@ -139,7 +139,9 @@ function DeskQuotePage() {
   if (!data) return <p className="text-sm text-muted-foreground">Request not found.</p>;
 
   const totalFee = lines.reduce(
-    (sum, l) => sum + sourcingFee(Number(l.supplier_unit_price) || 0, Number(l.supplier_shipping) || 0, feeRate),
+    (sum, l) =>
+      sum +
+      sourcingFee(Number(l.supplier_unit_price) || 0, Number(l.supplier_shipping) || 0, feeRate),
     0,
   );
 
@@ -293,7 +295,9 @@ function DeskQuotePage() {
             <CardContent className="space-y-2 pt-5 text-sm">
               <PanelHeader title="The request" />
               <p className="break-all text-xs text-muted-foreground">{data.quote.product_url}</p>
-              {data.quote.notes ? <p className="text-muted-foreground">{data.quote.notes}</p> : null}
+              {data.quote.notes ? (
+                <p className="text-muted-foreground">{data.quote.notes}</p>
+              ) : null}
               <div className="flex flex-wrap gap-1.5 pt-1">
                 {(data.quote.target_countries ?? []).map((c) => (
                   <Chip key={c}>{c}</Chip>
@@ -328,11 +332,7 @@ function DeskQuotePage() {
                 Per unit across {lines.length} variant{lines.length === 1 ? "" : "s"}, at{" "}
                 {(feeRate * 100).toFixed(1)}%. It is paid out on units the client actually buys.
               </p>
-              <Button
-                className="w-full"
-                disabled={save.isPending}
-                onClick={() => save.mutate()}
-              >
+              <Button className="w-full" disabled={save.isPending} onClick={() => save.mutate()}>
                 {save.isPending ? "Saving…" : "Submit sourcing"}
               </Button>
             </CardContent>
