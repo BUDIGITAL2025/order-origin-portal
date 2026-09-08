@@ -570,7 +570,7 @@ export function AdsDashboard({
                   {rows.map((row) => (
                     <tr key={row.id} className="border-b last:border-0 hover:bg-muted/40">
                       <td className="px-3 py-2">
-                        {current.level === "ad" ? (
+                        {current.level === "ad" && platform === "meta" ? (
                           <span className="font-medium">{row.name}</span>
                         ) : (
                           <button
