@@ -145,11 +145,7 @@ export async function claimNextJob(
 
   let query = admin
     .from("jobs")
-    .update({
-      status: "running",
-      lease_until: leaseUntil,
-      started_at: now.toISOString(),
-    })
+    .update({ status: "running", lease_until: leaseUntil })
     .eq("module", args.module)
     .eq("kind", args.kind)
     .in("status", ["queued", "running"])
@@ -167,7 +163,12 @@ export async function claimNextJob(
   if (error) throw new Error(error.message);
   const row = (data ?? [])[0];
   if (!row) return null;
-  // `started_at` must stay the first start; restore it when resuming.
+  // `started_at` records the FIRST start, so a resume must not overwrite it.
+  if (!row.started_at) {
+    const startedAt = now.toISOString();
+    await admin.from("jobs").update({ started_at: startedAt }).eq("id", row.id);
+    row.started_at = startedAt;
+  }
   return row as unknown as JobRow;
 }
 

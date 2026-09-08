@@ -15,6 +15,7 @@ const str = (search: Record<string, unknown>, key: string): string | undefined =
 export const Route = createFileRoute("/_authenticated/admin/seo-tools")({
   validateSearch: (search: Record<string, unknown>) => ({
     tab: str(search, "tab") ?? "domain",
+    study: str(search, "study"),
   }),
   head: () => ({
     meta: [
@@ -38,6 +39,7 @@ function AdminSeoToolsPage() {
     <div className="p-6">
       <SeoTools
         tab={search.tab}
+        study={search.study}
         go={(patch) =>
           void navigate({ search: (prev) => ({ ...prev, ...patch }), replace: true })
         }

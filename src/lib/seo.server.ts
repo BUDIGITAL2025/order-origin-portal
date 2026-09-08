@@ -353,7 +353,10 @@ export async function dataforseoCall<T = JsonValue>(opts: CallOptions): Promise<
   // 4. Real cost from the API's own field — never estimated.
   const cost = round6(Number(envelope.cost ?? 0));
   const taskEntry = envelope.tasks?.[0];
-  const ok = envelope.status_code === 20000 && (taskEntry?.status_code ?? 20000) === 20000;
+  // 20000 = done. 20100 = "Task Created": the async OnPage flow's success code,
+  // where the payload is the task id and the result arrives on a later poll.
+  const okCodes = new Set([20000, 20100]);
+  const ok = okCodes.has(envelope.status_code ?? 0) && okCodes.has(taskEntry?.status_code ?? 20000);
 
   await logCall({
     userId,

@@ -11,7 +11,15 @@
  * same cache, same seo_api_calls log, same real cost from the API envelope.
  * The job row accumulates that cost.
  */
-import type { Admin, ArtifactRow, JobRow, Json, PhaseDef, TickResult } from "./jobs.server";
+import type {
+  Admin,
+  ArtifactRow,
+  JobRow,
+  Json,
+  PhaseDef,
+  PhaseOutcome,
+  TickResult,
+} from "./jobs.server";
 
 export const SEO_MODULE = "seo";
 export const SEO_STUDY_KIND = "seo_study";
@@ -480,36 +488,43 @@ export function studyPhases(userId: string, params: StudyParams): PhaseDef[] {
           return { kind: "wait", state: { taskId, postedAt: new Date().toISOString() }, cost };
         }
 
-        // Step 2 — poll the (free) summary until the crawl finishes.
-        const summary = await call<unknown>({
-          userId,
-          endpoint: seo_endpoints.crawlSummary,
-          path: `/v3/on_page/summary/${taskId}`,
-          method: "GET",
-          metered: false,
-          ttlMs: 0,
-          summary: { taskId },
-        });
+        // How long we have been waiting; the crawl is abandoned after 20 min
+        // rather than holding the job forever.
+        const postedAt = typeof state["postedAt"] === "string" ? Date.parse(state["postedAt"]) : 0;
+        const timedOut = postedAt > 0 && Date.now() - postedAt > 20 * 60_000;
+        const keepWaiting = (extra: Record<string, Json>): PhaseOutcome => {
+          if (timedOut) throw new Error("The site crawl did not finish within 20 minutes.");
+          return { kind: "wait", state: { ...state, taskId: taskId!, ...extra }, cost };
+        };
+
+        // Step 2 — poll the (free) summary until the crawl finishes. While the
+        // task sits in DataForSEO's queue the endpoint answers with a "task in
+        // queue" status rather than data: that is waiting, not a failure.
+        let summary: { data: unknown };
+        try {
+          summary = await call<unknown>({
+            userId,
+            endpoint: seo_endpoints.crawlSummary,
+            path: `/v3/on_page/summary/${taskId}`,
+            method: "GET",
+            metered: false,
+            ttlMs: 0,
+            summary: { taskId },
+          });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          if (/in queue|handed|in progress|not ready/i.test(message)) return keepWaiting({});
+          throw error;
+        }
         const result = rec(arr(summary.data)[0]);
         const progress = str(result["crawl_progress"]);
         const crawlStatus = rec(result["crawl_status"]);
 
         if (progress !== "finished") {
-          const postedAt = typeof state["postedAt"] === "string" ? Date.parse(state["postedAt"]) : 0;
-          // Give up after 20 minutes rather than holding the job forever.
-          if (postedAt && Date.now() - postedAt > 20 * 60_000) {
-            throw new Error("The site crawl did not finish within 20 minutes.");
-          }
-          return {
-            kind: "wait",
-            state: {
-              ...state,
-              taskId,
-              pagesCrawled: num(crawlStatus["pages_crawled"]),
-              pagesInQueue: num(crawlStatus["pages_in_queue"]),
-            },
-            cost,
-          };
+          return keepWaiting({
+            pagesCrawled: num(crawlStatus["pages_crawled"]),
+            pagesInQueue: num(crawlStatus["pages_in_queue"]),
+          });
         }
 
         // Step 3 — the crawl is done: aggregate checks (free) + page list (free).

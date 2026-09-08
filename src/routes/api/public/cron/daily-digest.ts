@@ -89,6 +89,17 @@ export const Route = createFileRoute("/api/public/cron/daily-digest")({
           const redCount = (inventoryAlerts.data ?? []).filter((s) => s.state === "red").length;
           const amberCount = (inventoryAlerts.data ?? []).filter((s) => s.state === "amber").length;
 
+          // Phase 3 — SEO studies still running, or that ended incomplete.
+          const seoStudies = await supabaseAdmin
+            .from("jobs")
+            .select("id, status, phase, progress_pct, params, total_cost, error", {
+              count: "exact",
+            })
+            .eq("kind", "seo_study")
+            .in("status", ["queued", "running", "failed", "partial"])
+            .gte("created_at", since)
+            .limit(10);
+
           const summary = {
             failed_webhooks: webhooks.count ?? 0,
             failed_crons: crons.count ?? 0,
@@ -100,6 +111,7 @@ export const Route = createFileRoute("/api/public/cron/daily-digest")({
             tenants_sync_down: syncDown.count ?? 0,
             skus_red: redCount,
             skus_amber: amberCount,
+            seo_studies_needing_attention: seoStudies.count ?? 0,
           };
 
           const lines: string[] = [
@@ -147,6 +159,14 @@ export const Route = createFileRoute("/api/public/cron/daily-digest")({
             ...(inventoryAlerts.data ?? []).map(
               (s) => `  • ${s.sku} (${s.state}) since ${s.updated_at}`,
             ),
+            "",
+            `SEO studies running or incomplete (24h): ${summary.seo_studies_needing_attention}`,
+            ...(seoStudies.data ?? []).map((s) => {
+              const target =
+                (s.params as { target?: string } | null)?.target ?? "unknown domain";
+              const detail = s.error ? ` — ${s.error}` : "";
+              return `  • ${target}: ${s.status} at ${s.phase ?? "queued"} (${s.progress_pct}%, $${Number(s.total_cost).toFixed(4)})${detail}`;
+            }),
             "",
             "https://app.flysales.app/admin/integration",
           ];
