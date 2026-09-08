@@ -32,8 +32,13 @@ export interface DashboardAccount {
 type Days = 7 | 14 | 30 | 90;
 const RANGES: Days[] = [7, 14, 30, 90];
 
-const usd = (n: number) =>
-  `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const money = (n: number, currency = "USD") =>
+  new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(n);
 const int = (n: number) => Math.round(n).toLocaleString("en-US");
 const pct = (n: number) => `${n.toFixed(2)}%`;
 const mult = (n: number) => `${n.toFixed(2)}x`;
@@ -215,6 +220,7 @@ export function AdsDashboard({
   };
 
   const o = overview.data;
+  const currency = o?.currency ?? "USD";
   const rows = level.data?.rows ?? [];
   const stale = o?.stale || level.data?.stale;
   const loading = overview.isPending || level.isPending;
@@ -316,7 +322,7 @@ export function AdsDashboard({
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <Kpi label="Spend" value={usd(o.current.spend)} current={o.current.spend} previous={o.previous.spend} />
+            <Kpi label="Spend" value={money(o.current.spend, currency)} current={o.current.spend} previous={o.previous.spend} />
             <Kpi
               label="Impressions"
               value={int(o.current.impressions)}
@@ -325,7 +331,7 @@ export function AdsDashboard({
             />
             <Kpi label="Clicks" value={int(o.current.clicks)} current={o.current.clicks} previous={o.previous.clicks} />
             <Kpi label="CTR" value={pct(o.current.ctr)} current={o.current.ctr} previous={o.previous.ctr} />
-            <Kpi label="CPC" value={usd(o.current.cpc)} current={o.current.cpc} previous={o.previous.cpc} invert />
+            <Kpi label="CPC" value={money(o.current.cpc, currency)} current={o.current.cpc} previous={o.previous.cpc} invert />
             <Kpi
               label="Purchases"
               value={int(o.current.purchases)}
@@ -333,7 +339,7 @@ export function AdsDashboard({
               previous={o.previous.purchases}
             />
             <Kpi label="ROAS" value={mult(o.current.roas)} current={o.current.roas} previous={o.previous.roas} />
-            <Kpi label="CPA" value={usd(o.current.cpa)} current={o.current.cpa} previous={o.previous.cpa} invert />
+            <Kpi label="CPA" value={money(o.current.cpa, currency)} current={o.current.cpa} previous={o.previous.cpa} invert />
           </div>
 
           {o.series.length > 0 ? (
@@ -346,7 +352,7 @@ export function AdsDashboard({
                       <CartesianGrid strokeDasharray="3 3" className="stroke-muted" vertical={false} />
                       <XAxis dataKey="date" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
                       <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={48} />
-                      <Tooltip formatter={(v: number) => usd(v)} />
+                      <Tooltip formatter={(v: number) => money(v, currency)} />
                       <Area
                         type="monotone"
                         dataKey="spend"
@@ -448,9 +454,9 @@ export function AdsDashboard({
                       <td className="px-3 py-2">
                         <StatusChip status={row.status} />
                       </td>
-                      <td className="px-3 py-2 text-right tabular-nums">{usd(row.metrics.spend)}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{money(row.metrics.spend, currency)}</td>
                       <td className="px-3 py-2 text-right tabular-nums">{int(row.metrics.purchases)}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{usd(row.metrics.cpa)}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{money(row.metrics.cpa, currency)}</td>
                       <td className="px-3 py-2 text-right tabular-nums">{mult(row.metrics.roas)}</td>
                       <td className="px-3 py-2 text-right tabular-nums">{pct(row.metrics.ctr)}</td>
                       {current.level === "ad" ? (

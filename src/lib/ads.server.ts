@@ -752,6 +752,7 @@ export interface OverviewSeriesPoint {
 
 export interface OverviewResult {
   accountId: string;
+  currency: string;
   days: number;
   current: AdMetrics;
   previous: AdMetrics;
@@ -775,6 +776,27 @@ export async function fetchOverview(args: {
   refresh?: boolean;
 }): Promise<OverviewResult> {
   const windows = periodWindows(args.days);
+
+  // Account currency, so the dashboard never labels euros as dollars.
+  // Structure data: one call a day at most.
+  let currency = "USD";
+  try {
+    const info = await callAdsTool({
+      userId: args.userId,
+      workspaceId: args.workspaceId,
+      tool: "get_account_info",
+      accountId: args.accountId,
+      args: { account_id: args.accountId },
+      ttlMs: STRUCTURE_TTL_MS,
+    });
+    const rec = (info.data ?? {}) as Record<string, unknown>;
+    const found =
+      (typeof rec["currency"] === "string" && rec["currency"]) ||
+      (adsRowsArray(info.data)[0]?.["currency"] as string | undefined);
+    if (typeof found === "string" && found) currency = found;
+  } catch {
+    /* currency is cosmetic — never block the dashboard on it */
+  }
 
   const currentCall = await callAdsToolWithStale({
     userId: args.userId,
@@ -822,6 +844,7 @@ export async function fetchOverview(args: {
 
   return {
     accountId: args.accountId,
+    currency,
     days: args.days,
     current: aggregateMetrics(rows.map(normaliseMetaRow)),
     previous,
