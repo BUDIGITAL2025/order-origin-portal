@@ -185,8 +185,7 @@ function StudyLauncher({
   }, [anyRunning, tickFn, queryClient]);
 
   const start = useMutation({
-    mutationFn: () =>
-      startFn({ data: { target, locationCode, languageCode, marketLabel } }),
+    mutationFn: () => startFn({ data: { target, locationCode, languageCode, marketLabel } }),
     onSuccess: (res) => {
       toast.success("Study started — it runs in the background, roughly 5-15 minutes.");
       onSpend();
@@ -347,7 +346,9 @@ function SectionHeader({
           <Clock className="h-3 w-3" /> not collected yet
         </Chip>
       ) : section.status === "ok" ? (
-        <Chip tone="success">collected at “{section.phase}” · {when(section.collectedAt)}</Chip>
+        <Chip tone="success">
+          collected at “{section.phase}” · {when(section.collectedAt)}
+        </Chip>
       ) : section.status === "pending" ? (
         <Chip tone="info">
           <Loader2 className="h-3 w-3 animate-spin" /> collecting…
@@ -656,7 +657,14 @@ function StudyDossierView({ jobId, onBack }: { jobId: string; onBack: () => void
                 onClick={() =>
                   downloadCsv(
                     `${job.target}-gap`,
-                    ["Keyword", "Volume", "CPC", "Competitor position", "Your position", "Competitor"],
+                    [
+                      "Keyword",
+                      "Volume",
+                      "CPC",
+                      "Competitor position",
+                      "Your position",
+                      "Competitor",
+                    ],
                     gapRows.map((raw) => {
                       const g = asRec(raw);
                       return [
@@ -741,10 +749,7 @@ function StudyDossierView({ jobId, onBack }: { jobId: string; onBack: () => void
         <SectionHeader title="Technical / on-page" section={sec("onpage")} />
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           <Kpi label="Pages crawled" value={int(asNum(onpage["pagesCrawled"]))} />
-          <Kpi
-            label="On-page score"
-            value={asNum(onpage["onPageScore"])?.toFixed(1) ?? "—"}
-          />
+          <Kpi label="On-page score" value={asNum(onpage["onPageScore"])?.toFixed(1) ?? "—"} />
           <Kpi label="Broken pages" value={int(asNum(onpage["brokenPages"]))} />
           <Kpi label="Broken resources" value={int(asNum(onpage["brokenResources"]))} />
         </div>

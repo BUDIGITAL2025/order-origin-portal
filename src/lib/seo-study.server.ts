@@ -49,13 +49,22 @@ export interface StudyParams {
 // ---------------------------------------------------------------------------
 
 /** Worst-case total: every phase fires live (nothing served from cache). */
-export async function estimateStudyCost(): Promise<{ total: number; lines: Array<{ label: string; cost: number }> }> {
+export async function estimateStudyCost(): Promise<{
+  total: number;
+  lines: Array<{ label: string; cost: number }>;
+}> {
   const seo = await import("./seo.server");
   const L = STUDY_LIMITS;
   const lines = [
     { label: "Domain overview", cost: await seo.estimateFor(seo_endpoints.overview, 1) },
-    { label: `Ranked keywords (${L.rankedKeywords})`, cost: await seo.estimateFor(seo_endpoints.ranked, L.rankedKeywords) },
-    { label: `Competitors (${L.competitors})`, cost: await seo.estimateFor(seo_endpoints.competitors, L.competitors) },
+    {
+      label: `Ranked keywords (${L.rankedKeywords})`,
+      cost: await seo.estimateFor(seo_endpoints.ranked, L.rankedKeywords),
+    },
+    {
+      label: `Competitors (${L.competitors})`,
+      cost: await seo.estimateFor(seo_endpoints.competitors, L.competitors),
+    },
     {
       label: `Keyword gap (${L.gapCompetitors} competitors)`,
       cost:
@@ -63,7 +72,10 @@ export async function estimateStudyCost(): Promise<{ total: number; lines: Array
         1e6,
     },
     { label: "Backlinks summary", cost: await seo.estimateFor(seo_endpoints.backlinks) },
-    { label: `Site crawl (${L.crawlPages} pages)`, cost: await seo.estimateFor(seo_endpoints.crawl) },
+    {
+      label: `Site crawl (${L.crawlPages} pages)`,
+      cost: await seo.estimateFor(seo_endpoints.crawl),
+    },
   ];
   const total = Math.round(lines.reduce((s, l) => s + l.cost, 0) * 1e6) / 1e6;
   return { total, lines };
@@ -204,7 +216,12 @@ export interface OnPageData {
 export interface SynthesisData {
   headline: string[];
   trafficEstimate: number | null;
-  topOpportunities: Array<{ keyword: string; volume: number | null; competitor: string; cpc: number | null }>;
+  topOpportunities: Array<{
+    keyword: string;
+    volume: number | null;
+    competitor: string;
+    cpc: number | null;
+  }>;
   topIssues: Array<{ label: string; pages: number; severity: string }>;
   strongestPages: Array<{ url: string; note: string }>;
   weakestPages: Array<{ url: string; note: string }>;
@@ -261,8 +278,7 @@ export function studyPhases(userId: string, params: StudyParams): PhaseDef[] {
           organicKeywords: num(organic["count"]),
           organicEtv: num(organic["etv"]),
           paidKeywords: num(paid["count"]),
-          pos1_3:
-            (num(organic["pos_1"]) ?? 0) + (num(organic["pos_2_3"]) ?? 0) || null,
+          pos1_3: (num(organic["pos_1"]) ?? 0) + (num(organic["pos_2_3"]) ?? 0) || null,
           pos4_10: num(organic["pos_4_10"]),
           pos11_100:
             (num(organic["pos_11_20"]) ?? 0) +
@@ -388,9 +404,7 @@ export function studyPhases(userId: string, params: StudyParams): PhaseDef[] {
               ...locale,
               limit: L.gapRows,
               order_by: ["keyword_data.keyword_info.search_volume,desc"],
-              filters: [
-                ["keyword_data.keyword_info.search_volume", ">=", L.gapMinVolume],
-              ],
+              filters: [["keyword_data.keyword_info.search_volume", ">=", L.gapMinVolume]],
             },
             summary: { competitor: competitor.domain, you: params.target },
             ttlMs: seo.TTL.domain,
@@ -646,7 +660,10 @@ export function studyPhases(userId: string, params: StudyParams): PhaseDef[] {
         }
         if (competitors?.length) {
           headline.push(
-            `Top competing domains: ${competitors.slice(0, 3).map((c) => c.domain).join(", ")}.`,
+            `Top competing domains: ${competitors
+              .slice(0, 3)
+              .map((c) => c.domain)
+              .join(", ")}.`,
           );
         }
         if (topOpportunities.length) {

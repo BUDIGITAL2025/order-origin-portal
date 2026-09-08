@@ -52,7 +52,10 @@ const FOLD: Record<string, string> = {
 
 function s(value: unknown): string {
   return String(value ?? "")
-    .replace(/[\u2022\u2013\u2014\u2018\u2019\u201C\u201D\u2026\u00A0\u2192\u2248]/g, (c) => FOLD[c]!)
+    .replace(
+      /[\u2022\u2013\u2014\u2018\u2019\u201C\u201D\u2026\u00A0\u2192\u2248]/g,
+      (c) => FOLD[c]!,
+    )
     .replace(/[^\x20-\x7E\xA0-\xFF]|[\x80-\x9F]/g, "?");
 }
 
@@ -108,10 +111,13 @@ export async function renderStudyPdf(dossier: StudyDossier): Promise<Uint8Array>
       thickness: 0.5,
       color: HAIRLINE,
     });
-    page.drawText(
-      s(`FlySales SEO study · ${dossier.job.target} · ${dossier.job.market}`),
-      { x: MARGIN, y: 38, size: 8, font: regular, color: MUTED },
-    );
+    page.drawText(s(`FlySales SEO study · ${dossier.job.target} · ${dossier.job.market}`), {
+      x: MARGIN,
+      y: 38,
+      size: 8,
+      font: regular,
+      color: MUTED,
+    });
     drawRight(page, `Page ${pageNumber}`, RIGHT, 38, regular, 8, MUTED);
   };
 
@@ -174,15 +180,7 @@ export async function renderStudyPdf(dossier: StudyDossier): Promise<Uint8Array>
           : section.status === "pending"
             ? "still collecting"
             : `skipped — ${section.error ?? "phase failed"}`;
-    drawRight(
-      page,
-      state,
-      RIGHT,
-      y,
-      regular,
-      7.5,
-      section?.status === "skipped" ? DANGER : MUTED,
-    );
+    drawRight(page, state, RIGHT, y, regular, 7.5, section?.status === "skipped" ? DANGER : MUTED);
     y -= 10;
     page.drawLine({
       start: { x: MARGIN, y },

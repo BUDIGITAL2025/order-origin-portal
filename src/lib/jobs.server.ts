@@ -196,7 +196,10 @@ export async function updateJob(
     row["lease_until"] = new Date(Date.now() + patch.extendLeaseMs).toISOString();
   }
   if (Object.keys(row).length === 0) return;
-  const { error } = await admin.from("jobs").update(row as never).eq("id", jobId);
+  const { error } = await admin
+    .from("jobs")
+    .update(row as never)
+    .eq("id", jobId);
   if (error) console.error("[jobs] update failed:", error.message);
 }
 
@@ -204,13 +207,16 @@ export async function updateJob(
 export async function addJobCost(admin: Admin, jobId: string, cost: number): Promise<void> {
   if (!cost) return;
   const { data } = await admin.from("jobs").select("total_cost").eq("id", jobId).maybeSingle();
-  const next = Math.round(((Number(data?.total_cost ?? 0) + cost) + Number.EPSILON) * 1e6) / 1e6;
+  const next = Math.round((Number(data?.total_cost ?? 0) + cost + Number.EPSILON) * 1e6) / 1e6;
   const { error } = await admin.from("jobs").update({ total_cost: next }).eq("id", jobId);
   if (error) console.error("[jobs] cost accumulation failed:", error.message);
 }
 
 export async function incrementAttempts(admin: Admin, jobId: string, current: number) {
-  await admin.from("jobs").update({ attempts: current + 1 }).eq("id", jobId);
+  await admin
+    .from("jobs")
+    .update({ attempts: current + 1 })
+    .eq("id", jobId);
 }
 
 // ---------------------------------------------------------------------------
@@ -262,7 +268,10 @@ export async function finishArtifact(
 ): Promise<void> {
   const patch: Record<string, unknown> = { status };
   if (storageRef !== undefined) patch["storage_ref"] = storageRef;
-  const { error } = await admin.from("artifacts").update(patch as never).eq("id", artifactId);
+  const { error } = await admin
+    .from("artifacts")
+    .update(patch as never)
+    .eq("id", artifactId);
   if (error) console.error("[jobs] artifact finish failed:", error.message);
 }
 
