@@ -53,7 +53,6 @@ function intOr(value: string, fallback: number): number {
   return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : fallback;
 }
 
-
 export function InventoryItemDialog({
   open,
   storeId,
@@ -123,7 +122,6 @@ export function InventoryItemDialog({
     setError(null);
   }, [open, item]);
 
-
   const reset = () => {
     setSku("");
     setProductName("");
@@ -151,9 +149,7 @@ export function InventoryItemDialog({
     [warehouses],
   );
   const duplicateWarehouse = useMemo(() => {
-    const names = warehouses
-      .map((w) => w.location.trim().toLowerCase())
-      .filter(Boolean);
+    const names = warehouses.map((w) => w.location.trim().toLowerCase()).filter(Boolean);
     return new Set(names).size !== names.length;
   }, [warehouses]);
 
@@ -189,7 +185,10 @@ export function InventoryItemDialog({
           storeId: storeId!,
           sku: sku.trim(),
           product_name: productName.trim(),
-          tags: tagsInput.split(",").map((t) => t.trim()).filter(Boolean),
+          tags: tagsInput
+            .split(",")
+            .map((t) => t.trim())
+            .filter(Boolean),
           warehouses: warehouses
             .filter((w) => w.location.trim() !== "")
             .map((w) => ({ location: w.location.trim(), quantity: intOr(w.quantity, 0) })),
@@ -236,7 +235,6 @@ export function InventoryItemDialog({
     setError(null);
     create.mutate();
   };
-
 
   return (
     <Dialog
@@ -295,7 +293,9 @@ export function InventoryItemDialog({
                 onChange={(e) => setSku(e.target.value)}
                 placeholder="FS-0001"
               />
-              {synced && <p className="mt-1 text-[12px] text-muted-foreground">Synced from Shopify</p>}
+              {synced && (
+                <p className="mt-1 text-[12px] text-muted-foreground">Synced from Shopify</p>
+              )}
               {!editing && duplicate && sku.trim() !== "" && (
                 <p className="mt-1 text-[12px] text-warning">
                   This SKU already exists in this workspace — saving updates it.
@@ -312,7 +312,9 @@ export function InventoryItemDialog({
                 onChange={(e) => setProductName(e.target.value)}
                 placeholder="Sleep mask"
               />
-              {synced && <p className="mt-1 text-[12px] text-muted-foreground">Synced from Shopify</p>}
+              {synced && (
+                <p className="mt-1 text-[12px] text-muted-foreground">Synced from Shopify</p>
+              )}
             </div>
           </div>
 
@@ -324,7 +326,9 @@ export function InventoryItemDialog({
               onChange={(e) => setTagsInput(e.target.value)}
               placeholder="winter, bestseller"
             />
-            <p className="mt-1 text-[12px] text-muted-foreground">Separate with commas. Optional.</p>
+            <p className="mt-1 text-[12px] text-muted-foreground">
+              Separate with commas. Optional.
+            </p>
           </div>
 
           <div className="rounded-xl border border-border p-3">
@@ -381,14 +385,11 @@ export function InventoryItemDialog({
             </div>
 
             {duplicateWarehouse && (
-              <p className="mt-2 text-[12px] text-warning">
-                Each warehouse can only appear once.
-              </p>
+              <p className="mt-2 text-[12px] text-warning">Each warehouse can only appear once.</p>
             )}
 
             <p className="mt-3 text-[13px] text-muted-foreground">
-              Total stock:{" "}
-              <span className="font-medium text-foreground">{totalStock} units</span>
+              Total stock: <span className="font-medium text-foreground">{totalStock} units</span>
             </p>
           </div>
 
@@ -414,7 +415,6 @@ export function InventoryItemDialog({
               />
             </div>
           </div>
-
 
           <div className="grid gap-3 sm:grid-cols-3">
             <div className="sm:col-span-2">
@@ -515,8 +515,8 @@ export function InventoryItemDialog({
             <p className="mt-3 text-[13px] text-muted-foreground">
               Total lead time:{" "}
               <span className="font-medium text-foreground">{production + handling} days</span>{" "}
-              (production: {production}d + shipping to {mainRoute?.destination.trim() || "your main destination"}:{" "}
-              {handling}d)
+              (production: {production}d + shipping to{" "}
+              {mainRoute?.destination.trim() || "your main destination"}: {handling}d)
             </p>
           </div>
 

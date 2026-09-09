@@ -327,7 +327,9 @@ export async function computeWorkspaceInventory(
 
     const rawTotal = locations.reduce((sum, l) => sum + l.quantity, 0);
     // Hand-counted stock is reduced by whatever sold after the count.
-    const totalStock = manualRow ? Math.max(0, rawTotal - (soldSinceBySku.get(sku) ?? 0)) : rawTotal;
+    const totalStock = manualRow
+      ? Math.max(0, rawTotal - (soldSinceBySku.get(sku) ?? 0))
+      : rawTotal;
     const reserved = (manualRow?.reserved ?? 0) + (reservedBySku.get(sku) ?? 0);
     const incoming = (manualRow?.incoming ?? 0) + (incomingBySku.get(sku) ?? 0);
     const sellable = Math.max(0, totalStock - reserved);
@@ -394,9 +396,7 @@ export async function computeWorkspaceInventory(
   // Photos live in a private area: turn stored paths into temporary links.
   const storedPaths = [
     ...new Set(
-      rows
-        .map((r) => r.image_url)
-        .filter((u): u is string => Boolean(u) && !u!.startsWith("http")),
+      rows.map((r) => r.image_url).filter((u): u is string => Boolean(u) && !u!.startsWith("http")),
     ),
   ];
   if (storedPaths.length > 0) {
