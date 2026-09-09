@@ -379,12 +379,15 @@ export const adminPublishQuote = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { requireAdmin, getAdminClient } = await import("./admin.server");
     const { clientPrice } = await import("./sourcing.server");
+    const { sourcingCostOf } = await import("./pricing");
     await requireAdmin(context.supabase, context.userId);
     const admin = await getAdminClient();
 
     const { data: lines, error } = await admin
       .from("quote_lines")
-      .select("id, sourcing_cost, supplier_tax, quote_request_id")
+      .select(
+        "id, sourcing_cost, supplier_cogs, supplier_shipping, supplier_tax, sourcing_fee_rate, fee_included, quote_request_id",
+      )
       .eq("quote_request_id", data.quote_id);
     if (error) throw new Error(error.message);
     const byId = new Map((lines ?? []).map((l) => [l.id, l]));
@@ -395,17 +398,39 @@ export const adminPublishQuote = createServerFn({ method: "POST" })
       if (line.sourcing_cost == null) {
         throw new Error("Every variant needs a supplier price before publishing.");
       }
-      const price = clientPrice(
-        Number(line.sourcing_cost),
-        input.margin_pct,
-        Number(line.supplier_tax ?? 0),
-      );
+
+      // The owner may adjust the sourcing fee per line before publishing; the
+      // chain is then recomputed here so the stored cost matches what was shown.
+      let cost = Number(line.sourcing_cost);
+      const feeFields: { sourcing_fee_rate?: number; sourcing_cost?: number } = {};
+      if (input.fee_rate_pct != null) {
+        const feeRate = input.fee_rate_pct / 100;
+        cost = sourcingCostOf({
+          cogs: Number(line.supplier_cogs ?? 0),
+          shipping: Number(line.supplier_shipping ?? 0),
+          feeRate,
+          // A cost that already contains the fee never gets a second one.
+          feeIncluded: line.fee_included === true,
+        });
+        feeFields.sourcing_fee_rate = feeRate;
+        feeFields.sourcing_cost = cost;
+      }
+
+      const price = clientPrice(cost, input.margin_pct, Number(line.supplier_tax ?? 0));
       const { error: updateError } = await admin
         .from("quote_lines")
-        .update({ margin_pct: input.margin_pct, unit_price: price, responded_at: null })
+        .update({
+          ...feeFields,
+          margin_pct: input.margin_pct,
+          unit_price: price,
+          responded_at: null,
+        })
         .eq("id", input.id);
       if (updateError) throw new Error(updateError.message);
     }
+
+    // Left empty, a published quote stays open for 7 days.
+    const validUntil = data.quote_valid_until ?? defaultValidUntil();
 
     const { error: quoteError } = await admin
       .from("quote_requests")
@@ -413,7 +438,7 @@ export const adminPublishQuote = createServerFn({ method: "POST" })
         status: "quoted",
         quoted_at: new Date().toISOString(),
         quoted_by: context.userId,
-        quote_valid_until: data.quote_valid_until ?? null,
+        quote_valid_until: validUntil,
       })
       .eq("id", data.quote_id);
     if (quoteError) throw new Error(quoteError.message);
