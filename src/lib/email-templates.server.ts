@@ -489,3 +489,23 @@ export function quoteRequestReceivedEmail(args: {
   });
 }
 
+
+/** A collaborator has news on one of their assigned quotes (client stays masked). */
+export function sourcingThreadEmail(args: {
+  quoteId: string;
+  productName: string;
+  clientLabel: string;
+  headline: string;
+  excerpt: string;
+}): BuiltEmail {
+  return build(`${args.headline}: ${args.productName}`, {
+    heading: args.headline,
+    preheader: args.excerpt || `${args.clientLabel} posted on a quote you are sourcing.`,
+    paragraphs: [
+      `${args.clientLabel} posted on the quote you are sourcing for ${args.productName}.`,
+      ...(args.excerpt ? [`"${args.excerpt}"`] : []),
+    ],
+    button: { label: "Open the request", url: portalUrl(`/desk/quote/${args.quoteId}`) },
+    note: "Reply from the sourcing desk. Client identity stays hidden by design.",
+  });
+}
