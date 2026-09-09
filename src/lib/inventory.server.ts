@@ -192,6 +192,7 @@ export async function computeWorkspaceInventory(
     { data: incomingLines },
     { data: purchaseCosts },
     { data: clientPrices },
+    { data: soldSinceRows },
   ] = await Promise.all([
     admin
       .from("inventory_snapshots")
@@ -208,7 +209,7 @@ export async function computeWorkspaceInventory(
     admin
       .from("products")
       .select(
-        "id, sku, tags, weight, weight_unit, weight_grams, image_urls, product_shipping_routes(destination, handling_time_days, is_default)",
+        "id, sku, tags, weight, weight_unit, weight_grams, image_urls, image_url, product_shipping_routes(destination, handling_time_days, is_default)",
       )
       .eq("store_id", store.id)
       .limit(2000),
@@ -237,7 +238,16 @@ export async function computeWorkspaceInventory(
       .select("unit_price, products!inner(sku, store_id)")
       .eq("products.store_id", store.id)
       .limit(5000),
+    // Units already sold since stock was last counted by hand.
+    admin.rpc("manual_stock_units_sold_since", { p_store_id: store.id }),
   ]);
+
+  const soldSinceBySku = new Map(
+    ((soldSinceRows ?? []) as { sku: string; units_sold: number }[]).map((r) => [
+      r.sku,
+      r.units_sold,
+    ]),
+  );
 
   const reservedBySku = new Map<string, number>();
   for (const item of openOrderItems ?? []) {
