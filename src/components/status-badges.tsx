@@ -9,7 +9,7 @@ const QUOTE_STYLES: Record<QuoteStatus, string> = {
   submitted: "bg-muted text-muted-foreground border-border",
   sourcing: "bg-info/10 text-info border-info/25",
   quoted: "bg-purple/10 text-purple border-purple/25",
-  closed: "bg-success/10 text-success border-success/25",
+  closed: "bg-muted/60 text-muted-foreground/80 border-border",
   expired: "bg-muted/60 text-muted-foreground/80 border-border",
 };
 
