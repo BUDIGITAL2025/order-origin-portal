@@ -444,6 +444,16 @@ export const declareInboundSchema = z.object({
     )
     .min(1, "Add at least one variation")
     .max(100),
+  /** Cartons the client declares — warehouses receive cartons first. */
+  cartons: z.number().int().min(1).max(100_000).optional(),
+  /** Client-declared expected arrival date (YYYY-MM-DD). */
+  expected_arrival: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+});
+
+export const inboundExpectedArrivalSchema = z.object({
+  shipment_id: z.string().uuid(),
+  expected_arrival: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  cartons: z.number().int().min(1).max(100_000).optional(),
 });
 
 export const inboundIdSchema = z.object({
@@ -465,6 +475,8 @@ export const confirmInboundSchema = inboundIdSchema.extend({
     )
     .min(1)
     .max(100),
+  /** Cartons physically counted at the dock. */
+  counted_cartons: z.number().int().min(0).max(100_000).optional(),
 });
 
 export const refuseInboundSchema = inboundIdSchema.extend({
