@@ -368,6 +368,15 @@ export const adminAssignSourcer = createServerFn({ method: "POST" })
 
 // ===================== Admin: publish the chain =====================
 
+/** Quotes published without an explicit date stay valid for 7 days. */
+export const DEFAULT_QUOTE_VALID_DAYS = 7;
+
+function defaultValidUntil(): string {
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() + DEFAULT_QUOTE_VALID_DAYS);
+  return d.toISOString().slice(0, 10);
+}
+
 /**
  * The owner's step: set the margin per variant and publish. client_price is
  * computed here from the stored sourcing_cost — the browser only ever sends
