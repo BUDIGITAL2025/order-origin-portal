@@ -690,6 +690,7 @@ function AdminQuoteDetailPage() {
               )}
             </CardContent>
           </Card>
+          <QuoteThread quoteId={id} mode="admin" />
           {data?.preview && (
             <UrlPreviewCard
               url={data.preview.url_normalized}
@@ -722,6 +723,114 @@ function AdminQuoteDetailPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            <div className="mb-4 space-y-3 rounded-lg border border-border p-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Offers
+                </span>
+                {options.map((o) => (
+                  <button
+                    key={o.id}
+                    type="button"
+                    onClick={() => setOptionId(o.id)}
+                    className={cn(
+                      "rounded-full border border-border px-3 py-1 text-xs font-medium",
+                      o.id === activeOption?.id
+                        ? "bg-primary text-primary-foreground"
+                        : "hover:bg-muted",
+                    )}
+                  >
+                    Option {o.letter}
+                    {o.recommended ? " ★" : ""}
+                    {o.published ? "" : " · draft"}
+                  </button>
+                ))}
+                {options.length < 3 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="gap-1"
+                    disabled={saveOption.isPending}
+                    onClick={() => {
+                      setOptionId(null);
+                      saveOption.mutate({});
+                    }}
+                  >
+                    <Plus className="h-3.5 w-3.5" /> Add option
+                  </Button>
+                )}
+              </div>
+              {activeOption && (
+                <div className="grid gap-3 sm:grid-cols-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Supplier (internal)</Label>
+                    <Input
+                      defaultValue={activeOption.supplier_name}
+                      placeholder="Supplier name"
+                      onBlur={(e) => {
+                        if (e.target.value.trim() !== activeOption.supplier_name) {
+                          saveOption.mutate({ supplier_name: e.target.value.trim() });
+                        }
+                      }}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Quality</Label>
+                    <div className="flex gap-1">
+                      {[1, 2, 3].map((q) => (
+                        <Button
+                          key={q}
+                          type="button"
+                          size="sm"
+                          variant={activeOption.quality === q ? "default" : "outline"}
+                          onClick={() => saveOption.mutate({ quality: q })}
+                        >
+                          {q === 1 ? "Low" : q === 2 ? "Med" : "High"}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Shipping lead (days)</Label>
+                    <Input
+                      type="number"
+                      step="0.1"
+                      defaultValue={activeOption.shipping_lead_days ?? ""}
+                      onBlur={(e) =>
+                        saveOption.mutate({
+                          shipping_lead_days: e.target.value === "" ? null : Number(e.target.value),
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="flex items-end gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={activeOption.recommended ? "default" : "outline"}
+                      onClick={() => saveOption.mutate({ recommended: !activeOption.recommended })}
+                    >
+                      {activeOption.recommended ? "Recommended" : "Mark recommended"}
+                    </Button>
+                    {!activeOption.accepted_at && options.length > 1 && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => deleteOption.mutate(activeOption.id)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Clients see these as anonymous Option A/B/C — never the supplier, the cost chain or
+                the margin. Publishing the grid below publishes the selected option.
+              </p>
+            </div>
             <form
               onSubmit={(e) => {
                 e.preventDefault();
