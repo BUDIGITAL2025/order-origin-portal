@@ -777,12 +777,13 @@ function AdminQuoteDetailPage() {
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs">Quality</Label>
-                    <div className="flex gap-1">
+                    <div className="grid grid-cols-3 gap-1">
                       {[1, 2, 3].map((q) => (
                         <Button
                           key={q}
                           type="button"
                           size="sm"
+                          className="px-0"
                           variant={activeOption.quality === q ? "default" : "outline"}
                           onClick={() => saveOption.mutate({ quality: q })}
                         >
