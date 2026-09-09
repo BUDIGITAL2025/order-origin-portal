@@ -91,7 +91,7 @@ export const sourcingListQueue = createServerFn({ method: "GET" })
     return {
       feeRate: Number(me.fee_rate),
       quotes: (quotes ?? []).map((q) => ({
-        ...q,
+        ...maskClientSiteUrl(q),
         mine: q.assigned_sourcer === context.userId,
         priced_lines: pricedByQuote.get(q.id) ?? 0,
       })),
