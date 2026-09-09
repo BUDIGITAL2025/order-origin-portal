@@ -79,6 +79,9 @@ export async function renderLabelsPdf(args: {
   shipmentRef: string;
   warehouseReference: string;
   workspaceName: string;
+  /** Cartons declared for the whole shipment — printed on every label. */
+  cartons?: number | null;
+  expectedArrival?: string | null;
   lines: LabelLine[];
 }): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
@@ -150,6 +153,23 @@ export async function renderLabelsPdf(args: {
     });
     page.drawText("QUANTITY", { x: 28, y: y + 18, size: 8, font: regular, color: muted });
     page.drawText(`${line.quantity} units`, { x: 28, y, size: 17, font: bold, color: ink });
+
+    // Cartons block — warehouses count cartons before pieces.
+    y -= 46;
+    page.drawRectangle({
+      x: 18, y: y - 12, width: W - 36, height: 44,
+      borderColor: rgb(0.8, 0.82, 0.86), borderWidth: 1,
+    });
+    page.drawText("CARTONS IN SHIPMENT", { x: 28, y: y + 18, size: 8, font: regular, color: muted });
+    page.drawText(args.cartons != null ? `${args.cartons} cartons` : "Not declared", {
+      x: 28, y, size: 17, font: bold, color: ink,
+    });
+    if (args.expectedArrival) {
+      page.drawText(clean(`Expected ${args.expectedArrival}`), {
+        x: W - 18 - regular.widthOfTextAtSize(`Expected ${args.expectedArrival}`, 8),
+        y: y + 18, size: 8, font: regular, color: muted,
+      });
+    }
 
     y -= 40;
     page.drawText(clean(`Shipment ${args.shipmentRef} · ${args.workspaceName}`), {
