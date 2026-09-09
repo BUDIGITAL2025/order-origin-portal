@@ -65,6 +65,7 @@ function DeskQuotePage() {
   const { id } = useParams({ from: "/_authenticated/desk/quote/$id" });
   const fetchQuote = useServerFn(sourcingGetQuote);
   const callSave = useServerFn(sourcingSaveLines);
+  const callAskDetails = useServerFn(sourcingRequestProductDetails);
   const queryClient = useQueryClient();
 
   const { data, isPending } = useQuery({
