@@ -15,7 +15,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { friendlyError } from "@/lib/errors";
 import { formatUSD } from "@/lib/format";
-import { sourcingGetQuote, sourcingSaveLines } from "@/lib/sourcing.functions";
+import {
+  sourcingGetQuote,
+  sourcingRequestProductDetails,
+  sourcingSaveLines,
+} from "@/lib/sourcing.functions";
 import { sourcingSaveLinesSchema } from "@/lib/schemas";
 
 export const Route = createFileRoute("/_authenticated/desk/quote/$id")({
