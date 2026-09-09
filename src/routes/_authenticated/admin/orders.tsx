@@ -6,6 +6,12 @@ import { Truck } from "lucide-react";
 import { toast } from "sonner";
 import { EmptyState, PageHeader } from "@/components/app-shell";
 import { SectionTabs, ADMIN_FULFILMENT_TABS } from "@/components/section-tabs";
+import {
+  OrdersFunnel,
+  countStages,
+  matchesStage,
+  type FunnelStage,
+} from "@/components/orders-funnel";
 import { OrderStatusBadge } from "@/components/documents-ui";
 import {
   AdminSearch,
@@ -44,6 +50,8 @@ import { adminListDisputes } from "@/lib/disputes.functions";
 import { orderTrackingSchema } from "@/lib/schemas";
 
 export const Route = createFileRoute("/_authenticated/admin/orders")({
+  validateSearch: (search: Record<string, unknown>): { stage?: string } =>
+    typeof search["stage"] === "string" ? { stage: search["stage"] as string } : {},
   head: () => ({
     meta: [{ title: "Orders — FlySales Admin" }, { name: "robots", content: "noindex" }],
   }),
@@ -51,23 +59,6 @@ export const Route = createFileRoute("/_authenticated/admin/orders")({
 });
 
 type AdminOrder = Awaited<ReturnType<typeof adminListOrders>>["orders"][number];
-
-const SUMMARY = [
-  { key: "awaiting_payment", label: "Awaiting payment", tone: "warning" },
-  { key: "processing", label: "Processing", tone: "info" },
-  { key: "shipped", label: "Shipped", tone: "info" },
-  { key: "needs_review", label: "Needs review", tone: "warning" },
-  { key: "disputed", label: "Disputed", tone: "danger" },
-] as const satisfies readonly { key: string; label: string; tone: StatTone }[];
-
-const TABS = [
-  { id: "all", label: "All" },
-  { id: "awaiting_payment", label: "Awaiting payment" },
-  { id: "in_transit", label: "In transit" },
-  { id: "delivered", label: "Delivered" },
-  { id: "needs_review", label: "Needs review" },
-] as const;
-type TabId = (typeof TABS)[number]["id"];
 
 function workspaceOf(order: AdminOrder) {
   return order.stores as {
@@ -84,8 +75,12 @@ function AdminOrdersPage() {
     queryFn: fetchOrders,
   });
   const [trackingOrder, setTrackingOrder] = useState<AdminOrder | null>(null);
-  const [tab, setTab] = useState<TabId>("all");
-  const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const navigate = Route.useNavigate();
+  const { stage: stageParam } = Route.useSearch();
+  const stage = (stageParam ?? null) as FunnelStage | null;
+  const setStage = (next: FunnelStage | null) => {
+    void navigate({ search: next ? { stage: next } : {}, replace: true } as never);
+  };
   const [search, setSearch] = useState("");
   const [showArchived, setShowArchived] = useState(false);
 
@@ -100,33 +95,15 @@ function AdminOrdersPage() {
     [disputes],
   );
 
-  const counts = useMemo(() => {
-    const base: Record<string, number> = {
-      awaiting_payment: 0,
-      processing: 0,
-      shipped: 0,
-      needs_review: 0,
-      disputed: 0,
-    };
-    for (const o of rows) {
-      if (o.status in base) base[o.status] = (base[o.status] ?? 0) + 1;
-    }
-    base["disputed"] = disputedOrderIds.size;
-    return base;
-  }, [rows, disputedOrderIds]);
+  const counts = useMemo(() => countStages(rows.map((o) => o.status)), [rows]);
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
     let list = showArchived
       ? rows
       : rows.filter((o) => !(o as { archived_at?: string | null }).archived_at);
-    if (tab === "awaiting_payment") list = list.filter((o) => o.status === "awaiting_payment");
-    else if (tab === "in_transit")
-      list = list.filter((o) => o.status === "processing" || o.status === "shipped");
-    else if (tab === "delivered") list = list.filter((o) => o.status === "delivered");
-    else if (tab === "needs_review") list = list.filter((o) => o.status === "needs_review");
-    if (statusFilter === "disputed") list = list.filter((o) => disputedOrderIds.has(o.id));
-    else if (statusFilter) list = list.filter((o) => o.status === statusFilter);
+    if (stage === "disputed") list = list.filter((o) => disputedOrderIds.has(o.id));
+    else if (stage) list = list.filter((o) => matchesStage(o.status, stage));
     if (term) {
       list = list.filter((o) =>
         [
@@ -141,7 +118,7 @@ function AdminOrdersPage() {
       );
     }
     return list;
-  }, [rows, tab, statusFilter, search, disputedOrderIds, showArchived]);
+  }, [rows, stage, search, disputedOrderIds, showArchived]);
 
   return (
     <div>
@@ -160,29 +137,15 @@ function AdminOrdersPage() {
         />
       ) : (
         <>
-          <SummaryBar
-            items={SUMMARY.map((s) => ({
-              key: s.key,
-              label: s.label,
-              value: counts[s.key] ?? 0,
-              tone: s.tone,
-              active: statusFilter === s.key,
-              onClick: () => {
-                setTab("all");
-                setStatusFilter((cur) => (cur === s.key ? null : s.key));
-              },
-            }))}
+          <OrdersFunnel
+            counts={counts}
+            value={stage}
+            onChange={setStage}
+            showDisputed
+            disputedCount={disputedOrderIds.size}
           />
 
           <ToolBar>
-            <FilterTabs
-              tabs={TABS}
-              value={statusFilter ? ("all" as TabId) : tab}
-              onChange={(id) => {
-                setTab(id);
-                setStatusFilter(null);
-              }}
-            />
             <AdminSearch
               value={search}
               onChange={setSearch}
