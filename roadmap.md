@@ -2,12 +2,9 @@
 
 ## Done
 - [x] Sourcing collaborator: hide client-site product URLs (detection, essentials view, "Need more product details" to admin, backfill)
+- [x] Product photos on inventory (private storage area + access rules, `products.image_url`, thumbnails, upload in the item dialog)
+- [x] Automatic stock deduction from orders placed after the last manual count
+- [x] Inventory saver updated (photo + stock timestamp)
 
-## In progress
-- [ ] Product photos on inventory (storage bucket + policies, `products.image_url`)
-- [ ] Automatic stock deduction from orders since `stock_set_at`
-- [ ] Update `upsert_manual_inventory_item` RPC (image + stock_set_at)
-- [ ] `inventory.server.ts`: sold-since deduction + image column
-- [ ] `inventory-table.tsx`: thumbnail column
-- [ ] `inventory-item-dialog.tsx`: photo upload
-- [ ] `inventory.functions.ts`: `image_url` input
+## Open
+- [ ] Optional: enable public file links in Settings → Privacy & Security if permanent photo URLs are preferred (currently temporary signed links)
