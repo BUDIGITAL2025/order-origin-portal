@@ -158,3 +158,50 @@ export const getThreadAttachmentUrls = createServerFn({ method: "POST" })
         .map((s) => ({ path: s.path ?? "", url: s.signedUrl! })),
     };
   });
+
+/** Client: mark the team's messages on one quote as read. */
+export const markQuoteThreadRead = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => quoteIdSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const owns = await context.supabase.rpc("owns_quote", { p_quote: data.quote_id });
+    if (owns.data !== true) return { ok: false };
+    const { getAdminClient } = await import("./admin.server");
+    const admin = await getAdminClient();
+    await admin
+      .from("quote_messages")
+      .update({ read_by_client_at: new Date().toISOString() })
+      .eq("quote_request_id", data.quote_id)
+      .eq("author_role", "admin")
+      .is("read_by_client_at", null);
+    return { ok: true };
+  });
+
+/**
+ * Client: unread-message counts across my quotes, for the saved views and the
+ * dashboard widget.
+ */
+export const listMyQuoteSignals = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data: quotes } = await context.supabase
+      .from("quote_requests")
+      .select("id")
+      .is("archived_at", null);
+    const ids = (quotes ?? []).map((q) => q.id);
+    if (ids.length === 0) return { unread: {} as Record<string, number> };
+
+    const { getAdminClient } = await import("./admin.server");
+    const admin = await getAdminClient();
+    const { data: rows } = await admin
+      .from("quote_messages")
+      .select("quote_request_id")
+      .in("quote_request_id", ids)
+      .eq("author_role", "admin")
+      .is("read_by_client_at", null);
+    const unread: Record<string, number> = {};
+    for (const r of rows ?? []) {
+      unread[r.quote_request_id] = (unread[r.quote_request_id] ?? 0) + 1;
+    }
+    return { unread };
+  });
