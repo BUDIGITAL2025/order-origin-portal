@@ -169,6 +169,7 @@ export const sourcingSaveLines = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { getAdminClient } = await import("./admin.server");
     const sourcing = await import("./sourcing.server");
+    const { ensureDefaultOption } = await import("./quote-offers.server");
     const admin = await getAdminClient();
     const me = await sourcing.requireCollaborator(admin, context.userId);
     const feeRate = Number(me.fee_rate);
@@ -214,6 +215,7 @@ export const adminSaveSourcingLines = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { requireAdmin, getAdminClient } = await import("./admin.server");
     const { DEFAULT_FEE_RATE, writeSourcingLines } = await import("./sourcing.server");
+    const { ensureDefaultOption } = await import("./quote-offers.server");
     await requireAdmin(context.supabase, context.userId);
     const admin = await getAdminClient();
 
