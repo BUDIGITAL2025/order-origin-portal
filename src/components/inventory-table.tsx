@@ -49,7 +49,6 @@ export interface InventoryRow {
   safety_origin?: string;
 }
 
-
 const STATE_LABEL: Record<InventoryState, string> = {
   green: "Healthy",
   amber: "Reorder soon",
@@ -203,9 +202,16 @@ export function InventoryTable({
                   </td>
                   <td className="px-2 py-2">
                     <div className="flex min-w-0 items-center gap-2">
-                      <ProductThumb imageUrls={row.image_urls ?? []} name={row.product_name} size={32} />
+                      <ProductThumb
+                        imageUrls={row.image_urls ?? []}
+                        name={row.product_name}
+                        size={32}
+                      />
                       <div className="min-w-0">
-                        <div className="truncate font-medium leading-tight" title={row.product_name}>
+                        <div
+                          className="truncate font-medium leading-tight"
+                          title={row.product_name}
+                        >
                           {row.product_name}
                         </div>
                         <div className="truncate text-[11px] text-muted-foreground" title={row.sku}>
@@ -234,7 +240,10 @@ export function InventoryTable({
                       <EmptyCell label="None reserved" />
                     )}
                   </td>
-                  <td className="tnum px-2 py-2 text-right text-xs font-medium" title="In warehouse minus reserved">
+                  <td
+                    className="tnum px-2 py-2 text-right text-xs font-medium"
+                    title="In warehouse minus reserved"
+                  >
                     {row.sellable ?? Math.max(0, row.total_stock - (row.reserved ?? 0))}
                   </td>
                   <td className="tnum px-2 py-2 text-right text-xs">
@@ -251,7 +260,11 @@ export function InventoryTable({
                   </td>
                   <td className="tnum px-2 py-2 text-right text-xs">{row.units_30d}</td>
                   <td className="tnum px-2 py-2 text-right text-xs">
-                    {row.daily_velocity > 0 ? row.daily_velocity.toFixed(2) : <EmptyCell label="No recent sales" />}
+                    {row.daily_velocity > 0 ? (
+                      row.daily_velocity.toFixed(2)
+                    ) : (
+                      <EmptyCell label="No recent sales" />
+                    )}
                   </td>
                   <td className="tnum px-2 py-2 text-right text-xs">
                     {row.days_of_cover == null ? "∞" : `${row.days_of_cover}d`}
@@ -259,13 +272,22 @@ export function InventoryTable({
                   <td className="tnum px-2 py-2 text-right text-xs">{row.total_lead}d</td>
 
                   <td className="px-2 py-2 text-right text-xs">
-                    <LeadCell days={row.production_lead} origin={showOrigin ? row.production_origin : undefined} />
+                    <LeadCell
+                      days={row.production_lead}
+                      origin={showOrigin ? row.production_origin : undefined}
+                    />
                   </td>
                   <td className="px-2 py-2 text-right text-xs">
-                    <LeadCell days={row.transit_lead} origin={showOrigin ? row.transit_origin : undefined} />
+                    <LeadCell
+                      days={row.transit_lead}
+                      origin={showOrigin ? row.transit_origin : undefined}
+                    />
                   </td>
                   <td className="px-2 py-2 text-right text-xs">
-                    <LeadCell days={row.safety_margin} origin={showOrigin ? row.safety_origin : undefined} />
+                    <LeadCell
+                      days={row.safety_margin}
+                      origin={showOrigin ? row.safety_origin : undefined}
+                    />
                   </td>
                   <td className="px-2 py-2 text-xs">
                     {row.reorder_by ? (
@@ -305,7 +327,6 @@ export function InventoryTable({
                       <EmptyCell label="No action" />
                     )}
                   </td>
-
                 </tr>
                 {open && (
                   <tr className="border-b border-border/60 bg-muted/30">

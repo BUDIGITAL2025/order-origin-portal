@@ -17,7 +17,6 @@ import { useMyContext } from "../../_client";
 import { friendlyError } from "@/lib/errors";
 import { formatUSD } from "@/lib/format";
 
-
 export const Route = createFileRoute("/_authenticated/_client/fulfilment/inventory")({
   head: () => ({
     meta: [
@@ -48,7 +47,6 @@ function InventoryPage() {
   const [addOpen, setAddOpen] = useState(false);
   const [editing, setEditing] = useState<InventoryRow | null>(null);
   const queryClient = useQueryClient();
-
 
   useEffect(() => {
     const read = () => setStoreId(getCurrentStoreId());
@@ -106,9 +104,7 @@ function InventoryPage() {
 
       {error && (
         <Card className="mb-4 border-destructive/30">
-          <CardContent className="p-4 text-sm text-destructive">
-            {friendlyError(error)}
-          </CardContent>
+          <CardContent className="p-4 text-sm text-destructive">{friendlyError(error)}</CardContent>
         </Card>
       )}
 
@@ -235,5 +231,4 @@ function InventoryPage() {
       />
     </div>
   );
-
 }
