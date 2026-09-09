@@ -169,6 +169,14 @@ function AdminInventoryPage() {
         </Card>
       )}
 
+      {growthPercent > 0 && (
+        <div className="mb-4 flex items-center gap-2 rounded-xl border border-warning/30 bg-warning/10 px-4 py-2.5 text-sm text-warning">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          A mostrar projeção com +{growthPercent}% de vendas em todas as workspaces — reflete um
+          cenário, não apenas o histórico real.
+        </div>
+      )}
+
       <SummaryBar
         items={[
           { key: "ws", label: "Workspaces", value: workspaces.length },
