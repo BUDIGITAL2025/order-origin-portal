@@ -73,7 +73,7 @@ function AdminStockPurchasesPage() {
   const purchases = (rows ?? []).filter(
     (p) => showArchived || !(p as { archived_at?: string | null }).archived_at,
   );
-  const awaitingFreight = purchases.filter((p) => p.path === "direct" && p.status === "requested");
+  const awaitingFreight = purchases.filter((p) => p.status === "requested");
   const paidValue = purchases
     .filter((p) => p.paid_at)
     .reduce((s, p) => s + Number(p.total_amount ?? 0), 0);
