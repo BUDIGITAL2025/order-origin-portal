@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
-import { AlertTriangle, PackageSearch, Plus, RefreshCw } from "lucide-react";
+import { AlertTriangle, Info, PackageSearch, Plus, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/app-shell";
 import { SectionTabs, FULFILMENT_TABS } from "@/components/section-tabs";
@@ -16,6 +16,7 @@ import { getWorkspaceInventory, syncWorkspaceInventory } from "@/lib/inventory.f
 import { useMyContext } from "../../_client";
 import { friendlyError } from "@/lib/errors";
 import { formatUSD } from "@/lib/format";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/_client/fulfilment/inventory")({
   head: () => ({
