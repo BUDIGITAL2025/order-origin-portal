@@ -38,6 +38,8 @@ export interface SkuRow {
   /** total_stock − reserved, floored at 0. Drives cover and the stock bar. */
   sellable: number;
   image_urls: string[];
+  /** Main product photo, ready to display (signed link for stored uploads). */
+  image_url: string | null;
   weight: number | null;
   weight_unit: string | null;
   /** Per-variation weight in grams (fulfilment data foundation). */
