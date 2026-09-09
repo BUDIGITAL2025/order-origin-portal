@@ -80,6 +80,9 @@ export interface WorkspaceInventory {
   rows: SkuRow[];
   last_captured_at: string | null;
   stale: boolean;
+  /** Sellable units × unit value, and how many SKUs had no value to price. */
+  inventory_value: number;
+  inventory_value_unpriced: number;
 }
 
 /** Days of extra cover a suggested reorder aims to buy on top of the lead. */
@@ -172,8 +175,17 @@ export async function computeWorkspaceInventory(
   store: { id: string; store_name?: string | null },
   now = new Date(),
 ): Promise<WorkspaceInventory> {
-  const [{ data: snapshots }, { data: velocity }, { data: leads }, { data: manual }, { data: catalogue }] =
-    await Promise.all([
+  const [
+    { data: snapshots },
+    { data: velocity },
+    { data: leads },
+    { data: manual },
+    { data: catalogue },
+    { data: openOrderItems },
+    { data: incomingLines },
+    { data: purchaseCosts },
+    { data: clientPrices },
+  ] = await Promise.all([
       admin
         .from("inventory_snapshots")
         .select("sku, location, quantity, captured_at")
@@ -188,10 +200,60 @@ export async function computeWorkspaceInventory(
         .eq("store_id", store.id),
       admin
         .from("products")
-        .select("id, sku, tags, weight, weight_unit, image_urls, product_shipping_routes(destination, handling_time_days, is_default)")
+        .select(
+          "id, sku, tags, weight, weight_unit, weight_grams, image_urls, product_shipping_routes(destination, handling_time_days, is_default)",
+        )
         .eq("store_id", store.id)
         .limit(2000),
+      // RESERVED: units on paid orders that have not shipped yet.
+      admin
+        .from("order_items")
+        .select("sku, quantity, orders!inner(store_id, status)")
+        .eq("orders.store_id", store.id)
+        .in("orders.status", ["paid", "processing"])
+        .limit(5000),
+      // INCOMING: units on inbound shipments not yet received.
+      admin
+        .from("inbound_shipment_lines")
+        .select("sku, declared_qty, inbound_shipments!inner(store_id, status)")
+        .eq("inbound_shipments.store_id", store.id)
+        .in("inbound_shipments.status", ["declared", "in_transit"])
+        .limit(5000),
+      admin
+        .from("stock_purchases")
+        .select("sku, unit_price, created_at")
+        .eq("store_id", store.id)
+        .order("created_at", { ascending: false })
+        .limit(2000),
+      admin
+        .from("product_country_prices")
+        .select("unit_price, products!inner(sku, store_id)")
+        .eq("products.store_id", store.id)
+        .limit(5000),
     ]);
+
+  const reservedBySku = new Map<string, number>();
+  for (const item of openOrderItems ?? []) {
+    if (!item.sku) continue;
+    reservedBySku.set(item.sku, (reservedBySku.get(item.sku) ?? 0) + (item.quantity ?? 0));
+  }
+  const incomingBySku = new Map<string, number>();
+  for (const line of incomingLines ?? []) {
+    incomingBySku.set(line.sku, (incomingBySku.get(line.sku) ?? 0) + (line.declared_qty ?? 0));
+  }
+  // Unit value: the most recent purchase cost we know, else the client price.
+  const costBySku = new Map<string, number>();
+  for (const row of purchaseCosts ?? []) {
+    if (!row.sku || row.unit_price == null) continue;
+    if (!costBySku.has(row.sku)) costBySku.set(row.sku, Number(row.unit_price));
+  }
+  const priceBySku = new Map<string, number>();
+  for (const row of clientPrices ?? []) {
+    const sku = (row.products as unknown as { sku?: string } | null)?.sku;
+    if (!sku || row.unit_price == null) continue;
+    const value = Number(row.unit_price);
+    priceBySku.set(sku, Math.min(priceBySku.get(sku) ?? value, value));
+  }
 
   const snapshotRows = snapshots ?? [];
   const lastCapturedAt = snapshotRows[0]?.captured_at ?? null;
@@ -246,8 +308,8 @@ export async function computeWorkspaceInventory(
       : (bySku.get(sku) ?? []).sort((a, b) => a.location.localeCompare(b.location));
 
     const totalStock = locations.reduce((sum, l) => sum + l.quantity, 0);
-    const reserved = manualRow?.reserved ?? 0;
-    const incoming = manualRow?.incoming ?? 0;
+    const reserved = (manualRow?.reserved ?? 0) + (reservedBySku.get(sku) ?? 0);
+    const incoming = (manualRow?.incoming ?? 0) + (incomingBySku.get(sku) ?? 0);
     const sellable = Math.max(0, totalStock - reserved);
     const vel = velocityBySku.get(sku) ?? { units_7d: 0, units_30d: 0 };
     const product = catalogueBySku.get(sku);
@@ -283,6 +345,13 @@ export async function computeWorkspaceInventory(
       image_urls: product?.image_urls ?? [],
       weight: product?.weight ?? null,
       weight_unit: product?.weight_unit ?? null,
+      weight_grams: product?.weight_grams ?? null,
+      unit_value: costBySku.get(sku) ?? priceBySku.get(sku) ?? null,
+      value_basis: costBySku.has(sku)
+        ? ("purchase_cost" as const)
+        : priceBySku.has(sku)
+          ? ("client_price" as const)
+          : null,
       tags: product?.tags ?? [],
       routes,
       manual: manualRow != null,
@@ -311,10 +380,17 @@ export async function computeWorkspaceInventory(
   // Manually entered stock counts as a fresh update for the staleness banner.
   const freshest = [lastCapturedAt, manualUpdatedAt].filter(Boolean).sort().at(-1) ?? null;
 
+  const inventoryValue = rows.reduce(
+    (sum, r) => sum + (r.unit_value != null ? r.unit_value * r.sellable : 0),
+    0,
+  );
+
   return {
     store_id: store.id,
     store_name: store.store_name ?? null,
     rows,
+    inventory_value: Math.round(inventoryValue * 100) / 100,
+    inventory_value_unpriced: rows.filter((r) => r.unit_value == null && r.sellable > 0).length,
     last_captured_at: freshest,
     stale: freshest ? Date.now() - new Date(freshest).getTime() > STALE_AFTER_MS : true,
   };
