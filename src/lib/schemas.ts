@@ -535,6 +535,8 @@ export const publishQuoteSchema = z.object({
       z.object({
         id: z.string().uuid(),
         margin_pct: z.number().min(0, "Margin cannot be negative").max(500),
+        /** Owner-adjusted sourcing fee for this line, in percent. */
+        fee_rate_pct: z.number().min(0, "Fee cannot be negative").max(100).optional(),
       }),
     )
     .min(1)
