@@ -27,6 +27,7 @@ import {
 } from "@/lib/inventory.functions";
 import { PlanningDialog } from "@/components/planning-dialog";
 import { friendlyError } from "@/lib/errors";
+import { formatUSD } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/admin/inventory")({
   head: () => ({
@@ -105,6 +106,11 @@ function AdminInventoryPage() {
     green: allRows.filter((r) => r.state === "green").length,
   };
 
+  const inventoryValue = workspaces.reduce(
+    (sum, w) => sum + Number((w as { inventory_value?: number }).inventory_value ?? 0),
+    0,
+  );
+
   const term = search.trim().toLowerCase();
   const filterRows = (rows: InventoryRow[]) =>
     rows
@@ -151,6 +157,12 @@ function AdminInventoryPage() {
           { key: "red", label: "Reorder now", value: counts.red, tone: "danger" },
           { key: "amber", label: "Reorder soon", value: counts.amber, tone: "warning" },
           { key: "green", label: "Healthy", value: counts.green, tone: "success" },
+          {
+            key: "value",
+            label: "Total inventory value",
+            value: formatUSD(inventoryValue),
+            hint: "Sellable units × purchase cost where known, else client price",
+          },
         ]}
       />
 
