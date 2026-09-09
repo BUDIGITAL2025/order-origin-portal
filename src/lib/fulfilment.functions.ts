@@ -72,7 +72,9 @@ async function buildCatalog(
   if (error) throw new Error(error.message);
 
   // Photo fallback: variation photos → originating quote request photos.
-  const lineIds = (products ?? []).map((p) => p.quote_line_id).filter(Boolean);
+  const lineIds = (products ?? [])
+    .map((p) => p.quote_line_id)
+    .filter((id): id is string => id != null);
   const fallback = new Map<string, string[]>();
   if (lineIds.length > 0) {
     const { data: lines } = await admin
@@ -120,7 +122,7 @@ async function buildCatalog(
       fulfilment_model: p.fulfilment_model,
       status: p.status,
       archived_at: p.archived_at,
-      image_urls: own.length > 0 ? own : (fallback.get(p.quote_line_id) ?? []),
+      image_urls: own.length > 0 ? own : (fallback.get(p.quote_line_id ?? "") ?? []),
       client_owned: p.client_owned,
       store_id: p.store_id,
       store_name: nameById.get(p.store_id) ?? null,
@@ -152,7 +154,7 @@ async function buildSkuDetail(admin: AdminClient, productId: string, full: boole
       admin
         .from("order_items")
         .select(
-          "quantity, unit_price, line_total, orders(id, order_number, status, created_at, store_id)",
+          "quantity, unit_price, line_total, orders(id, external_order_number, status, created_at, store_id)",
         )
         .eq("sku", product.sku)
         .limit(100),
@@ -233,7 +235,7 @@ async function buildSkuDetail(admin: AdminClient, productId: string, full: boole
       .filter((r) => r.orders)
       .map((r) => ({
         id: r.orders.id,
-        order_number: r.orders.order_number,
+        order_number: r.orders.external_order_number,
         status: r.orders.status,
         created_at: r.orders.created_at,
         quantity: r.quantity,
