@@ -24,7 +24,8 @@ const uuid = z.string().uuid();
 const SHIPMENT_COLUMNS =
   "id, store_id, entity_id, status, qc, tracking_number, tracking_carrier, warehouse_reference, declared_pieces, counted_pieces, declared_cartons, counted_cartons, expected_arrival_date, has_discrepancy, fee_charged, archived_at, wallet_reference, refusal_reason, in_transit_at, received_at, completed_at, created_at";
 
-const LINE_COLUMNS = "id, shipment_id, product_id, sku, product_name, declared_qty, counted_qty, products(image_urls)";
+const LINE_COLUMNS =
+  "id, shipment_id, product_id, sku, product_name, declared_qty, counted_qty, products(image_urls)";
 
 /** Short human reference used in labels, emails and the UI. */
 export function shipmentRef(id: string): string {
@@ -239,9 +240,8 @@ export const adminConfirmInboundReceipt = createServerFn({ method: "POST" })
     });
 
     const { sendClientEmail } = await import("./email.server");
-    const { inboundReceivedEmail, inboundPaymentNeededEmail } = await import(
-      "./email-templates.server"
-    );
+    const { inboundReceivedEmail, inboundPaymentNeededEmail } =
+      await import("./email-templates.server");
 
     if (error) {
       if (error.message.includes("Insufficient funds")) {

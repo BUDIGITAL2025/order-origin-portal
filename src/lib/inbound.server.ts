@@ -32,17 +32,113 @@ export function inboundWalletReference(shipmentId: string): string {
 // ---------- Code 128 (subset B) ----------
 
 const CODE128_PATTERNS = [
-  "212222","222122","222221","121223","121322","131222","122213","122312","132212","221213",
-  "221312","231212","112232","122132","122231","113222","123122","123221","223211","221132",
-  "221231","213212","223112","312131","311222","321122","321221","312212","322112","322211",
-  "212123","212321","232121","111323","131123","131321","112313","132113","132311","211313",
-  "231113","231311","112133","112331","132131","113123","113321","133121","313121","211331",
-  "231131","213113","213311","213131","311123","311321","331121","312113","312311","332111",
-  "314111","221411","431111","111224","111422","121124","121421","141122","141221","112214",
-  "112412","122114","122411","142112","142211","241211","221114","413111","241112","134111",
-  "111242","121142","121241","114212","124112","124211","411212","421112","421211","212141",
-  "214121","412121","111143","111341","131141","114113","114311","411113","411311","113141",
-  "114131","311141","411131","211412","211214","211232","2331112",
+  "212222",
+  "222122",
+  "222221",
+  "121223",
+  "121322",
+  "131222",
+  "122213",
+  "122312",
+  "132212",
+  "221213",
+  "221312",
+  "231212",
+  "112232",
+  "122132",
+  "122231",
+  "113222",
+  "123122",
+  "123221",
+  "223211",
+  "221132",
+  "221231",
+  "213212",
+  "223112",
+  "312131",
+  "311222",
+  "321122",
+  "321221",
+  "312212",
+  "322112",
+  "322211",
+  "212123",
+  "212321",
+  "232121",
+  "111323",
+  "131123",
+  "131321",
+  "112313",
+  "132113",
+  "132311",
+  "211313",
+  "231113",
+  "231311",
+  "112133",
+  "112331",
+  "132131",
+  "113123",
+  "113321",
+  "133121",
+  "313121",
+  "211331",
+  "231131",
+  "213113",
+  "213311",
+  "213131",
+  "311123",
+  "311321",
+  "331121",
+  "312113",
+  "312311",
+  "332111",
+  "314111",
+  "221411",
+  "431111",
+  "111224",
+  "111422",
+  "121124",
+  "121421",
+  "141122",
+  "141221",
+  "112214",
+  "112412",
+  "122114",
+  "122411",
+  "142112",
+  "142211",
+  "241211",
+  "221114",
+  "413111",
+  "241112",
+  "134111",
+  "111242",
+  "121142",
+  "121241",
+  "114212",
+  "124112",
+  "124211",
+  "411212",
+  "421112",
+  "421211",
+  "212141",
+  "214121",
+  "412121",
+  "111143",
+  "111341",
+  "131141",
+  "114113",
+  "114311",
+  "411113",
+  "411311",
+  "113141",
+  "114131",
+  "311141",
+  "411131",
+  "211412",
+  "211214",
+  "211232",
+  "2331112",
 ];
 
 /** Bar widths (modules) for a Code128-B encoding of `value`. */
@@ -100,7 +196,11 @@ export async function renderLabelsPdf(args: {
     let y = H - 34;
 
     page.drawText(clean(args.warehouseReference), {
-      x: 18, y, size: 9, font: bold, color: muted,
+      x: 18,
+      y,
+      size: 9,
+      font: bold,
+      color: muted,
     });
     y -= 26;
 
@@ -148,8 +248,12 @@ export async function renderLabelsPdf(args: {
 
     y -= 34;
     page.drawRectangle({
-      x: 18, y: y - 12, width: W - 36, height: 44,
-      borderColor: rgb(0.8, 0.82, 0.86), borderWidth: 1,
+      x: 18,
+      y: y - 12,
+      width: W - 36,
+      height: 44,
+      borderColor: rgb(0.8, 0.82, 0.86),
+      borderWidth: 1,
     });
     page.drawText("QUANTITY", { x: 28, y: y + 18, size: 8, font: regular, color: muted });
     page.drawText(`${line.quantity} units`, { x: 28, y, size: 17, font: bold, color: ink });
@@ -157,23 +261,44 @@ export async function renderLabelsPdf(args: {
     // Cartons block — warehouses count cartons before pieces.
     y -= 46;
     page.drawRectangle({
-      x: 18, y: y - 12, width: W - 36, height: 44,
-      borderColor: rgb(0.8, 0.82, 0.86), borderWidth: 1,
+      x: 18,
+      y: y - 12,
+      width: W - 36,
+      height: 44,
+      borderColor: rgb(0.8, 0.82, 0.86),
+      borderWidth: 1,
     });
-    page.drawText("CARTONS IN SHIPMENT", { x: 28, y: y + 18, size: 8, font: regular, color: muted });
+    page.drawText("CARTONS IN SHIPMENT", {
+      x: 28,
+      y: y + 18,
+      size: 8,
+      font: regular,
+      color: muted,
+    });
     page.drawText(args.cartons != null ? `${args.cartons} cartons` : "Not declared", {
-      x: 28, y, size: 17, font: bold, color: ink,
+      x: 28,
+      y,
+      size: 17,
+      font: bold,
+      color: ink,
     });
     if (args.expectedArrival) {
       page.drawText(clean(`Expected ${args.expectedArrival}`), {
         x: W - 18 - regular.widthOfTextAtSize(`Expected ${args.expectedArrival}`, 8),
-        y: y + 18, size: 8, font: regular, color: muted,
+        y: y + 18,
+        size: 8,
+        font: regular,
+        color: muted,
       });
     }
 
     y -= 40;
     page.drawText(clean(`Shipment ${args.shipmentRef} · ${args.workspaceName}`), {
-      x: 18, y, size: 8, font: regular, color: muted,
+      x: 18,
+      y,
+      size: 8,
+      font: regular,
+      color: muted,
     });
   }
 
@@ -200,7 +325,9 @@ export async function issueInboundFeeReceipt(
 ): Promise<"issued" | "exists" | "skipped"> {
   const { data: shipment, error } = await admin
     .from("inbound_shipments")
-    .select("id, entity_id, store_id, counted_pieces, fee_charged, qc, wallet_reference, completed_at")
+    .select(
+      "id, entity_id, store_id, counted_pieces, fee_charged, qc, wallet_reference, completed_at",
+    )
     .eq("id", shipmentId)
     .maybeSingle();
   if (error) throw new Error(error.message);

@@ -62,10 +62,10 @@ export const adminOperationsToday = createServerFn({ method: "GET" })
       inbounds_arriving: inTransit.length,
       next_arrival: nextArrival,
       to_receive: shipRows.filter((s) => s.status === "received").length,
-      discrepancies_open: shipRows.filter((s) => s.has_discrepancy && s.status !== "refused").length,
+      discrepancies_open: shipRows.filter((s) => s.has_discrepancy && s.status !== "refused")
+        .length,
       low_stock: lowStock,
-      claims_open: disputeRows.filter(
-        (d) => d.status === "open" || d.status === "investigating",
-      ).length,
+      claims_open: disputeRows.filter((d) => d.status === "open" || d.status === "investigating")
+        .length,
     };
   });

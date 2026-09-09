@@ -100,7 +100,9 @@ export function OperationsToday() {
               {c.value}
             </span>
             {"hint" in c && c.hint ? (
-              <span className="mt-1 block truncate text-[11px] text-muted-foreground">{c.hint}</span>
+              <span className="mt-1 block truncate text-[11px] text-muted-foreground">
+                {c.hint}
+              </span>
             ) : null}
           </Link>
         );

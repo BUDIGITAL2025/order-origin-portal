@@ -193,12 +193,16 @@ function InboundPage() {
             <Truck className="h-8 w-8 text-muted-foreground" />
             <h2 className="text-base font-semibold">No inbound shipments yet</h2>
             <p className="max-w-xl text-sm text-muted-foreground">
-              Declare what you are sending, print our SKU labels and add supplier tracking. We
-              count every piece on arrival and charge {formatUSD(FEE_PER_PIECE)} per piece (
+              Declare what you are sending, print our SKU labels and add supplier tracking. We count
+              every piece on arrival and charge {formatUSD(FEE_PER_PIECE)} per piece (
               {formatUSD(FEE_PER_PIECE + QC_PER_PIECE)} with quality control) on the quantity we
               count.
             </p>
-            <Button className="rounded-full" disabled={!storeId} onClick={() => setDeclareOpen(true)}>
+            <Button
+              className="rounded-full"
+              disabled={!storeId}
+              onClick={() => setDeclareOpen(true)}
+            >
               Declare a shipment
             </Button>
           </CardContent>
@@ -241,9 +245,7 @@ function InboundPage() {
                   <td className="px-3 py-2 text-right tabular-nums">{s.declared_pieces}</td>
                   <td className="px-3 py-2 text-right tabular-nums">
                     {s.counted_pieces ?? "—"}
-                    {s.has_discrepancy && (
-                      <span className="ml-1 text-xs text-warning">≠</span>
-                    )}
+                    {s.has_discrepancy && <span className="ml-1 text-xs text-warning">≠</span>}
                   </td>
                   <td className="px-3 py-2 text-right tabular-nums text-xs">
                     {s.declared_cartons ?? "—"}
@@ -265,8 +267,7 @@ function InboundPage() {
                         type="date"
                         value={s.expected_arrival_date ?? ""}
                         onChange={(e) =>
-                          e.target.value &&
-                          saveArrival.mutate({ id: s.id, date: e.target.value })
+                          e.target.value && saveArrival.mutate({ id: s.id, date: e.target.value })
                         }
                         className="rounded-md border border-border bg-background px-2 py-1 text-xs"
                       />
@@ -390,8 +391,7 @@ function DeclareDialog({
   );
   const fee = pieces * (FEE_PER_PIECE + (qc ? QC_PER_PIECE : 0));
   const belowMin = lines.some((l) => l.quantity !== "" && Number(l.quantity) < MIN_UNITS);
-  const ready =
-    lines.some((l) => l.product_id && Number(l.quantity) >= MIN_UNITS) && !belowMin;
+  const ready = lines.some((l) => l.product_id && Number(l.quantity) >= MIN_UNITS) && !belowMin;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -438,9 +438,7 @@ function DeclareDialog({
                   value={line.quantity}
                   onChange={(e) =>
                     setLines((prev) =>
-                      prev.map((l, idx) =>
-                        idx === i ? { ...l, quantity: e.target.value } : l,
-                      ),
+                      prev.map((l, idx) => (idx === i ? { ...l, quantity: e.target.value } : l)),
                     )
                   }
                 />
@@ -521,7 +519,9 @@ function DeclareDialog({
             </p>
           </div>
           {belowMin && (
-            <p className="text-xs text-destructive">Every variation needs at least {MIN_UNITS} units.</p>
+            <p className="text-xs text-destructive">
+              Every variation needs at least {MIN_UNITS} units.
+            </p>
           )}
         </div>
 
@@ -633,9 +633,7 @@ function AddProductDialog({
             Cancel
           </Button>
           <Button
-            disabled={
-              submit.isPending || name.trim().length < 2 || !variants.some((v) => v.trim())
-            }
+            disabled={submit.isPending || name.trim().length < 2 || !variants.some((v) => v.trim())}
             onClick={() => submit.mutate()}
           >
             {submit.isPending ? "Adding…" : "Add product"}

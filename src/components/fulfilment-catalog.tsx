@@ -316,7 +316,9 @@ export function SkuDetailDialog({
                 {isAdmin ? (
                   <WeightEditor
                     productId={data.product.id as string}
-                    initial={(data.product as { weight_grams?: number | null }).weight_grams ?? null}
+                    initial={
+                      (data.product as { weight_grams?: number | null }).weight_grams ?? null
+                    }
                     invalidateKeys={invalidateKeys}
                   />
                 ) : (
