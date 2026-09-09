@@ -388,6 +388,30 @@ export async function computeWorkspaceInventory(
     });
   }
 
+  // Photos live in a private area: turn stored paths into temporary links.
+  const storedPaths = [
+    ...new Set(
+      rows
+        .map((r) => r.image_url)
+        .filter((u): u is string => Boolean(u) && !u!.startsWith("http")),
+    ),
+  ];
+  if (storedPaths.length > 0) {
+    const { data: signed } = await admin.storage
+      .from("product-images")
+      .createSignedUrls(storedPaths, 60 * 60);
+    const signedByPath = new Map(
+      (signed ?? [])
+        .filter((s) => s.signedUrl)
+        .map((s) => [s.path ?? "", s.signedUrl as string] as const),
+    );
+    for (const row of rows) {
+      if (row.image_url && signedByPath.has(row.image_url)) {
+        row.image_url = signedByPath.get(row.image_url)!;
+      }
+    }
+  }
+
   const order: Record<InventoryState, number> = { red: 0, amber: 1, green: 2, idle: 3 };
   rows.sort(
     (a, b) =>
