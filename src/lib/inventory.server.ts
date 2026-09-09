@@ -31,17 +31,24 @@ export interface SkuRow {
   product_name: string;
   locations: SkuLocation[];
   total_stock: number;
-  /** Manually tracked reservations (0 when the workspace is middleware-fed). */
+  /** Units on PAID, not-yet-shipped orders, plus any manual reservation. */
   reserved: number;
-  /** Units already on their way in. */
+  /** Units on inbound shipments still declared or in transit. */
   incoming: number;
   /** total_stock − reserved, floored at 0. Drives cover and the stock bar. */
   sellable: number;
   image_urls: string[];
   weight: number | null;
   weight_unit: string | null;
+  /** Per-variation weight in grams (fulfilment data foundation). */
+  weight_grams: number | null;
+  /** Unit value used for the inventory-value roll-up. */
+  unit_value: number | null;
+  /** Where that unit value came from. */
+  value_basis: "purchase_cost" | "client_price" | null;
   tags: string[];
   routes: ShippingRoute[];
+
   /** True when the stock figure came from a manual entry, not the middleware. */
   manual: boolean;
   /** Where the product record came from: typed in here, or synced from the store. */
