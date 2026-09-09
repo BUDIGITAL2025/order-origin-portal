@@ -239,7 +239,7 @@ async function buildSkuDetail(admin: AdminClient, productId: string, full: boole
         quantity: r.quantity,
         line_total: r.line_total,
       }))
-      .sort((a: any, b: any) => (a.created_at < b.created_at ? 1 : -1)),
+      .sort((a, b) => (a.created_at < b.created_at ? 1 : -1)),
     inbound: (inboundLines ?? [])
       .filter((r) => r.inbound_shipments)
       .map((r) => ({
@@ -250,7 +250,7 @@ async function buildSkuDetail(admin: AdminClient, productId: string, full: boole
         declared_qty: r.declared_qty,
         counted_qty: r.counted_qty,
       }))
-      .sort((a: any, b: any) => (a.created_at < b.created_at ? 1 : -1)),
+      .sort((a, b) => (a.created_at < b.created_at ? 1 : -1)),
   };
 }
 
