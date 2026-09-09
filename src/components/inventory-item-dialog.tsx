@@ -28,6 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { InventoryRow } from "@/components/inventory-table";
+import { supabase } from "@/integrations/supabase/client";
 import { createInventoryItem } from "@/lib/inventory.functions";
 import { friendlyError } from "@/lib/errors";
 
@@ -203,7 +204,8 @@ export function InventoryItemDialog({
             is_default: r.isDefault || (!routes.some((x) => x.isDefault) && i === 0),
           })),
         },
-      }),
+      });
+    },
     onSuccess: () => {
       toast.success(editing ? "Product updated" : "Product added to your inventory");
       void queryClient.invalidateQueries({ queryKey: ["inventory"] });
