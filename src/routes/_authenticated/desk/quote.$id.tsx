@@ -323,9 +323,9 @@ function DeskQuotePage() {
                   Target volume: {data.quote.target_monthly_volume} units / month
                 </p>
               ) : null}
-              {data.preview?.image_urls?.length ? (
+              {photos.length ? (
                 <div className="grid grid-cols-3 gap-1.5 pt-2">
-                  {data.preview.image_urls.slice(0, 6).map((url) => (
+                  {photos.slice(0, 9).map((url) => (
                     <img
                       key={url}
                       src={url}
@@ -336,8 +336,29 @@ function DeskQuotePage() {
                   ))}
                 </div>
               ) : null}
+              {data.essentialsOnly ? (
+                <div className="space-y-2 rounded-md border border-border bg-muted/40 p-3">
+                  <p className="text-xs text-muted-foreground">
+                    Source from the photos and specs — original listing withheld for privacy.
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    disabled={!data.quote.assigned_sourcer || askDetails.isPending}
+                    onClick={() => askDetails.mutate()}
+                  >
+                    {askDetails.isPending ? "Sending…" : "Need more product details"}
+                  </Button>
+                  <p className="text-[11px] text-muted-foreground">
+                    This goes to the FlySales team, not the client.
+                  </p>
+                </div>
+              ) : null}
             </CardContent>
           </Card>
+
 
           <Card>
             <CardContent className="space-y-2 pt-5">
