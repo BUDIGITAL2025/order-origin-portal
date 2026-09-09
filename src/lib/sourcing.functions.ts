@@ -149,10 +149,16 @@ export const sourcingGetQuote = createServerFn({ method: "POST" })
         .maybeSingle();
       if (p) preview = { ...p, variants: p.variants ?? [] };
     }
+    // On a client-site listing the scraped title/description carry the brand,
+    // so only the neutral essentials (photos, variants) survive.
+    if (quote.client_site && preview) {
+      preview = { ...preview, title: null, description: null, price_hint: null };
+    }
 
     return {
       feeRate: Number(me.fee_rate),
-      quote,
+      quote: maskClientSiteUrl(quote),
+      essentialsOnly: quote.client_site === true,
       preview,
       lines: (lines ?? []).map((l) => ({
         ...l,
