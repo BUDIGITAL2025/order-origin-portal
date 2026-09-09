@@ -132,9 +132,12 @@ export async function writeSourcingLines(
 ): Promise<SavedSourcingLine[]> {
   const { data: existing } = await admin
     .from("quote_lines")
-    .select("id, status")
+    .select("id, status, fee_included")
     .eq("quote_request_id", args.quoteId);
   const existingIds = new Set((existing ?? []).map((l) => l.id));
+  // A line whose entered cost already contains the sourcing fee keeps that
+  // flag across re-saves, so the fee is never applied a second time.
+  const feeIncludedById = new Map((existing ?? []).map((l) => [l.id, l.fee_included === true]));
 
   const now = new Date().toISOString();
   const saved: SavedSourcingLine[] = [];
@@ -147,14 +150,15 @@ export async function writeSourcingLines(
     );
     const cogs = line.supplier_unit_price;
     const shipping = line.supplier_shipping ?? 0;
-    const cost = sourcingCostOf({ cogs, shipping, feeRate: args.feeRate });
+    const feeIncluded = line.id ? (feeIncludedById.get(line.id) ?? false) : false;
+    const cost = sourcingCostOf({ cogs, shipping, feeRate: args.feeRate, feeIncluded });
     const payload = {
       supplier_id: supplier.id,
       supplier_unit_price: round2(cogs + shipping),
       supplier_cogs: cogs,
       supplier_shipping: shipping,
       supplier_tax: line.supplier_tax ?? 0,
-      fee_included: false,
+      fee_included: feeIncluded,
       moq: line.moq,
       production_lead_days: line.production_lead_days,
       lead_time_days: line.production_lead_days,
