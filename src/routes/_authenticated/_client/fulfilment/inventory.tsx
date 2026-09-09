@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
-import { AlertTriangle, PackageSearch, Plus, RefreshCw } from "lucide-react";
+import { AlertTriangle, Info, PackageSearch, Plus, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/app-shell";
 import { SectionTabs, FULFILMENT_TABS } from "@/components/section-tabs";
@@ -16,6 +16,7 @@ import { getWorkspaceInventory, syncWorkspaceInventory } from "@/lib/inventory.f
 import { useMyContext } from "../../_client";
 import { friendlyError } from "@/lib/errors";
 import { formatUSD } from "@/lib/format";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/_client/fulfilment/inventory")({
   head: () => ({
@@ -39,11 +40,20 @@ const TABS = [
   { id: "idle", label: "No sales" },
 ] as const;
 
+const SCENARIOS = [
+  { value: 0, label: "Normal" },
+  { value: 10, label: "+10%" },
+  { value: 20, label: "+20%" },
+  { value: 30, label: "+30%" },
+  { value: 50, label: "+50%" },
+] as const;
+
 function InventoryPage() {
   const { data: ctx } = useMyContext();
   const navigate = useNavigate();
   const [storeId, setStoreId] = useState<string | null>(null);
   const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("all");
+  const [growthPercent, setGrowthPercent] = useState(0);
   const [addOpen, setAddOpen] = useState(false);
   const [editing, setEditing] = useState<InventoryRow | null>(null);
   const queryClient = useQueryClient();
@@ -60,10 +70,10 @@ function InventoryPage() {
 
   const fetchInventory = useServerFn(getWorkspaceInventory);
   const { data, isLoading, error, refetch, isFetching } = useQuery({
-    queryKey: ["inventory", currentStore?.id],
+    queryKey: ["inventory", currentStore?.id, growthPercent],
     enabled: currentStore != null,
     staleTime: 60_000,
-    queryFn: () => fetchInventory({ data: { storeId: currentStore!.id } }),
+    queryFn: () => fetchInventory({ data: { storeId: currentStore!.id, growthPercent } }),
   });
 
   const callSync = useServerFn(syncWorkspaceInventory);
@@ -175,6 +185,23 @@ function InventoryPage() {
 
           <div className="mb-3 flex flex-wrap items-center gap-2">
             <FilterTabs tabs={TABS} value={tab} onChange={setTab} />
+            <div className="flex flex-wrap items-center gap-1 rounded-full border border-border bg-card p-1">
+              {SCENARIOS.map((s) => (
+                <button
+                  key={s.value}
+                  type="button"
+                  onClick={() => setGrowthPercent(s.value)}
+                  className={cn(
+                    "rounded-full px-3 py-1 text-[13px] font-medium transition-colors",
+                    growthPercent === s.value
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
             <div className="ml-auto flex items-center gap-2">
               <button
                 type="button"
@@ -207,6 +234,14 @@ function InventoryPage() {
               </Button>
             </div>
           </div>
+
+          {growthPercent > 0 && (
+            <div className="mb-4 flex items-center gap-2 rounded-xl border border-info/30 bg-info/10 px-4 py-2.5 text-sm text-info">
+              <Info className="h-4 w-4 shrink-0" />A mostrar projeção com +{growthPercent}% de
+              vendas — os números de cobertura e reorder refletem este cenário, não apenas o
+              histórico real.
+            </div>
+          )}
 
           <InventoryTable
             rows={visible}
