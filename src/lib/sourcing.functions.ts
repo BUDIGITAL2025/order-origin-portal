@@ -169,6 +169,7 @@ export const sourcingSaveLines = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { getAdminClient } = await import("./admin.server");
     const sourcing = await import("./sourcing.server");
+    const { ensureDefaultOption } = await import("./quote-offers.server");
     const admin = await getAdminClient();
     const me = await sourcing.requireCollaborator(admin, context.userId);
     const feeRate = Number(me.fee_rate);
@@ -188,6 +189,7 @@ export const sourcingSaveLines = createServerFn({ method: "POST" })
       lines: data.lines,
       feeRate,
       sourcedBy: context.userId,
+      optionId: data.option_id ?? (await ensureDefaultOption(admin, data.quote_id)),
     });
 
     await admin
@@ -213,6 +215,7 @@ export const adminSaveSourcingLines = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { requireAdmin, getAdminClient } = await import("./admin.server");
     const { DEFAULT_FEE_RATE, writeSourcingLines } = await import("./sourcing.server");
+    const { ensureDefaultOption } = await import("./quote-offers.server");
     await requireAdmin(context.supabase, context.userId);
     const admin = await getAdminClient();
 
@@ -231,6 +234,7 @@ export const adminSaveSourcingLines = createServerFn({ method: "POST" })
       lines: data.lines,
       feeRate: DEFAULT_FEE_RATE,
       sourcedBy: null,
+      optionId: data.option_id ?? (await ensureDefaultOption(admin, data.quote_id)),
     });
 
     if (quote.status === "submitted") {
@@ -395,7 +399,7 @@ export const adminPublishQuote = createServerFn({ method: "POST" })
     const { data: lines, error } = await admin
       .from("quote_lines")
       .select(
-        "id, sourcing_cost, supplier_cogs, supplier_shipping, supplier_tax, sourcing_fee_rate, fee_included, quote_request_id",
+        "id, option_id, sourcing_cost, supplier_cogs, supplier_shipping, supplier_tax, sourcing_fee_rate, fee_included, quote_request_id",
       )
       .eq("quote_request_id", data.quote_id);
     if (error) throw new Error(error.message);
@@ -436,6 +440,26 @@ export const adminPublishQuote = createServerFn({ method: "POST" })
         })
         .eq("id", input.id);
       if (updateError) throw new Error(updateError.message);
+    }
+
+    // Publishing a line publishes the offer it belongs to, so the client sees
+    // exactly the options that were priced.
+    const publishedOptions = [
+      ...new Set(
+        data.lines.map((input) => byId.get(input.id)?.option_id).filter((v): v is string => !!v),
+      ),
+    ];
+    if (publishedOptions.length > 0) {
+      await admin.from("quote_options").update({ published: true }).in("id", publishedOptions);
+      const { postSystemEvent } = await import("./quote-thread.server");
+      await postSystemEvent(
+        admin,
+        data.quote_id,
+        "options_published",
+        publishedOptions.length > 1
+          ? `${publishedOptions.length} pricing options were published.`
+          : "Your pricing was published.",
+      );
     }
 
     // Left empty, a published quote stays open for 7 days.

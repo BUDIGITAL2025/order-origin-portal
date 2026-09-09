@@ -306,6 +306,7 @@ export const adminSaveQuoteLines = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { requireAdmin, getAdminClient } = await import("./admin.server");
     const { DEFAULT_FEE_RATE, writeSourcingLines } = await import("./sourcing.server");
+    const { ensureDefaultOption } = await import("./quote-offers.server");
     await requireAdmin(context.supabase, context.userId);
     const admin = await getAdminClient();
 
@@ -325,6 +326,7 @@ export const adminSaveQuoteLines = createServerFn({ method: "POST" })
       })),
       feeRate: DEFAULT_FEE_RATE,
       sourcedBy: null,
+      optionId: data.option_id ?? (await ensureDefaultOption(admin, data.quote_id)),
     });
 
     if (data.quote_valid_until !== undefined) {

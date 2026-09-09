@@ -1885,6 +1885,63 @@ export type Database = {
         }
         Relationships: []
       }
+      quote_intents: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          handled_at: string | null
+          handled_by: string | null
+          id: string
+          payload: Json
+          quote_request_id: string
+          status: string
+          store_id: string | null
+          type: Database["public"]["Enums"]["quote_intent_type"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          handled_at?: string | null
+          handled_by?: string | null
+          id?: string
+          payload?: Json
+          quote_request_id: string
+          status?: string
+          store_id?: string | null
+          type: Database["public"]["Enums"]["quote_intent_type"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          handled_at?: string | null
+          handled_by?: string | null
+          id?: string
+          payload?: Json
+          quote_request_id?: string
+          status?: string
+          store_id?: string | null
+          type?: Database["public"]["Enums"]["quote_intent_type"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_intents_quote_request_id_fkey"
+            columns: ["quote_request_id"]
+            isOneToOne: false
+            referencedRelation: "quote_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quote_intents_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quote_lines: {
         Row: {
           country_code: string
@@ -1894,6 +1951,7 @@ export type Database = {
           lead_time_days: number | null
           margin_pct: number
           moq: number | null
+          option_id: string | null
           production_lead_days: number | null
           quote_request_id: string
           responded_at: string | null
@@ -1921,6 +1979,7 @@ export type Database = {
           lead_time_days?: number | null
           margin_pct?: number
           moq?: number | null
+          option_id?: string | null
           production_lead_days?: number | null
           quote_request_id: string
           responded_at?: string | null
@@ -1948,6 +2007,7 @@ export type Database = {
           lead_time_days?: number | null
           margin_pct?: number
           moq?: number | null
+          option_id?: string | null
           production_lead_days?: number | null
           quote_request_id?: string
           responded_at?: string | null
@@ -1969,6 +2029,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "quote_lines_option_id_fkey"
+            columns: ["option_id"]
+            isOneToOne: false
+            referencedRelation: "quote_options"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "quote_lines_quote_request_id_fkey"
             columns: ["quote_request_id"]
             isOneToOne: false
@@ -1977,6 +2044,131 @@ export type Database = {
           },
           {
             foreignKeyName: "quote_lines_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quote_messages: {
+        Row: {
+          attachments: string[]
+          author_role: string
+          author_user_id: string | null
+          body: string | null
+          created_at: string
+          id: string
+          kind: string
+          pinned: boolean
+          quote_request_id: string
+          read_by_admin_at: string | null
+          read_by_client_at: string | null
+          system_code: string | null
+        }
+        Insert: {
+          attachments?: string[]
+          author_role: string
+          author_user_id?: string | null
+          body?: string | null
+          created_at?: string
+          id?: string
+          kind?: string
+          pinned?: boolean
+          quote_request_id: string
+          read_by_admin_at?: string | null
+          read_by_client_at?: string | null
+          system_code?: string | null
+        }
+        Update: {
+          attachments?: string[]
+          author_role?: string
+          author_user_id?: string | null
+          body?: string | null
+          created_at?: string
+          id?: string
+          kind?: string
+          pinned?: boolean
+          quote_request_id?: string
+          read_by_admin_at?: string | null
+          read_by_client_at?: string | null
+          system_code?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_messages_quote_request_id_fkey"
+            columns: ["quote_request_id"]
+            isOneToOne: false
+            referencedRelation: "quote_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quote_options: {
+        Row: {
+          accepted_at: string | null
+          archived_at: string | null
+          created_at: string
+          id: string
+          internal_notes: string | null
+          letter: string
+          margin_pct: number
+          moq: number | null
+          production_lead_days: number | null
+          published: boolean
+          quality: number
+          quote_request_id: string
+          recommended: boolean
+          shipping_lead_days: number | null
+          supplier_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          archived_at?: string | null
+          created_at?: string
+          id?: string
+          internal_notes?: string | null
+          letter: string
+          margin_pct?: number
+          moq?: number | null
+          production_lead_days?: number | null
+          published?: boolean
+          quality?: number
+          quote_request_id: string
+          recommended?: boolean
+          shipping_lead_days?: number | null
+          supplier_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          archived_at?: string | null
+          created_at?: string
+          id?: string
+          internal_notes?: string | null
+          letter?: string
+          margin_pct?: number
+          moq?: number | null
+          production_lead_days?: number | null
+          published?: boolean
+          quality?: number
+          quote_request_id?: string
+          recommended?: boolean
+          shipping_lead_days?: number | null
+          supplier_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_options_quote_request_id_fkey"
+            columns: ["quote_request_id"]
+            isOneToOne: false
+            referencedRelation: "quote_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quote_options_supplier_id_fkey"
             columns: ["supplier_id"]
             isOneToOne: false
             referencedRelation: "suppliers"
@@ -3191,6 +3383,10 @@ export type Database = {
       }
     }
     Functions: {
+      accept_quote_option: {
+        Args: { p_option_id: string; p_product_name: string }
+        Returns: number
+      }
       admin_confirm_inbound_receipt: {
         Args: {
           p_counted_cartons?: number
@@ -3775,6 +3971,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      owns_quote: { Args: { p_quote: string }; Returns: boolean }
       pay_orders_from_wallet: {
         Args: { p_order_ids: string[] }
         Returns: {
@@ -4119,6 +4316,14 @@ export type Database = {
       profile_status: "pending" | "active" | "suspended" | "draft"
       provisioning_status: "not_started" | "in_progress" | "complete" | "failed"
       push_status: "pending" | "pushed" | "failed"
+      quote_intent_type:
+        | "price_too_high"
+        | "add_country"
+        | "size_chart"
+        | "factory_photos"
+        | "materials_list"
+        | "new_variant"
+        | "stop_quoting"
       quote_line_status: "pending" | "accepted" | "rejected"
       quote_status: "submitted" | "sourcing" | "quoted" | "closed" | "expired"
       spymarket_plan: "starter" | "plus" | "max"
@@ -4307,6 +4512,15 @@ export const Constants = {
       profile_status: ["pending", "active", "suspended", "draft"],
       provisioning_status: ["not_started", "in_progress", "complete", "failed"],
       push_status: ["pending", "pushed", "failed"],
+      quote_intent_type: [
+        "price_too_high",
+        "add_country",
+        "size_chart",
+        "factory_photos",
+        "materials_list",
+        "new_variant",
+        "stop_quoting",
+      ],
       quote_line_status: ["pending", "accepted", "rejected"],
       quote_status: ["submitted", "sourcing", "quoted", "closed", "expired"],
       spymarket_plan: ["starter", "plus", "max"],

@@ -161,7 +161,10 @@ export const quoteLineInputSchema = z.object({
 
 export const adminQuoteLinesSchema = z.object({
   quote_id: z.string().uuid(),
+  /** Which publishable option these lines belong to. */
+  option_id: z.string().uuid().optional(),
   lines: z.array(quoteLineInputSchema).min(1, "Add at least one variant line").max(200),
+
   internal_reference: z.string().trim().max(120).optional().or(z.literal("")),
   quote_valid_until: z
     .string()
@@ -525,8 +528,57 @@ export const sourcingLineInputSchema = z.object({
 
 export const sourcingSaveLinesSchema = z.object({
   quote_id: z.string().uuid(),
+  option_id: z.string().uuid().optional(),
   lines: z.array(sourcingLineInputSchema).min(1, "Add at least one variant").max(200),
 });
+
+// ============= Multi-offer quotes =============
+
+/** One publishable offer on a quote. Suppliers stay internal — clients see A/B/C. */
+export const quoteOptionSchema = z.object({
+  quote_id: z.string().uuid(),
+  option_id: z.string().uuid().optional(),
+  letter: z.enum(["A", "B", "C"]).optional(),
+  supplier_name: z.string().trim().max(160).optional().or(z.literal("")),
+  /** 1 = low, 2 = medium, 3 = high. Admin-set, shown as an anonymous bar. */
+  quality: z.number().int().min(1).max(3).optional(),
+  recommended: z.boolean().optional(),
+  published: z.boolean().optional(),
+  moq: z.number().int().min(1).max(1_000_000).nullable().optional(),
+  /** Decimals allowed on purpose: "8.8 days" reads as measured, not promised. */
+  production_lead_days: z.number().min(0).max(365).nullable().optional(),
+  shipping_lead_days: z.number().min(0).max(365).nullable().optional(),
+  margin_pct: z.number().min(0).max(500).optional(),
+  internal_notes: z.string().trim().max(2000).optional().or(z.literal("")),
+});
+
+export const acceptOptionSchema = z.object({
+  option_id: z.string().uuid(),
+  product_name: z.string().trim().min(2, "Name the product").max(200),
+});
+
+export const quoteMessageSchema = z.object({
+  quote_id: z.string().uuid(),
+  body: z.string().trim().max(4000).optional().or(z.literal("")),
+  attachments: z.array(z.string().max(500)).max(10).optional(),
+});
+
+export const quoteIntentSchema = z.object({
+  quote_id: z.string().uuid(),
+  type: z.enum([
+    "price_too_high",
+    "add_country",
+    "size_chart",
+    "factory_photos",
+    "materials_list",
+    "new_variant",
+    "stop_quoting",
+  ]),
+  /** Up to three extra destinations for "add a country"; free note otherwise. */
+  countries: z.array(countryCodeSchema).max(3).optional(),
+  note: z.string().trim().max(1000).optional().or(z.literal("")),
+});
+
 
 export const publishQuoteSchema = z.object({
   quote_id: z.string().uuid(),

@@ -453,3 +453,39 @@ export function adsActivationRequestedEmail(args: {
     button: { label: "Open admin Ads", url: portalUrl("/admin/ads") },
   });
 }
+
+/** The FlySales team replied in a quote conversation. */
+export function quoteMessageEmail(args: {
+  quoteId: string;
+  productName: string;
+  excerpt: string;
+}): BuiltEmail {
+  return build(`New message on your quote: ${args.productName}`, {
+    heading: "The FlySales team replied",
+    preheader: args.excerpt || "There is a new message on your quote request.",
+    paragraphs: [
+      `We posted a new message on your quote request for ${args.productName}.`,
+      ...(args.excerpt ? [`"${args.excerpt}"`] : []),
+    ],
+    button: { label: "Open the conversation", url: portalUrl(`/quotes/${args.quoteId}`) },
+    note: "Reply in the portal so everything stays on one thread with your quote.",
+  });
+}
+
+/** Confirmation that a structured request on a quote reached the team. */
+export function quoteRequestReceivedEmail(args: {
+  quoteId: string;
+  productName: string;
+  requestLabel: string;
+}): BuiltEmail {
+  return build(`We received your request: ${args.requestLabel}`, {
+    heading: "Your request is with the team",
+    preheader: `${args.requestLabel} on ${args.productName}.`,
+    paragraphs: [
+      `We logged your request — ${args.requestLabel} — on the quote for ${args.productName}.`,
+      "You will see our answer in the quote conversation.",
+    ],
+    button: { label: "Open the quote", url: portalUrl(`/quotes/${args.quoteId}`) },
+  });
+}
+

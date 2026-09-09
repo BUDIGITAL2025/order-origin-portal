@@ -34,6 +34,12 @@ import {
   sourcingFee,
 } from "@/lib/pricing";
 import { adminPublishQuote } from "@/lib/sourcing.functions";
+import { QuoteThread } from "@/components/quote-thread";
+import {
+  adminDeleteQuoteOption,
+  adminListQuoteOptions,
+  adminSaveQuoteOption,
+} from "@/lib/quote-offers.functions";
 
 /** House sourcing fee rate, mirrored from the server default. */
 const DEFAULT_FEE_RATE = 0.08;
@@ -205,6 +211,48 @@ function AdminQuoteDetailPage() {
   const [rows, setRows] = useState<VariantRow[]>([]);
   const [hydrated, setHydrated] = useState(false);
 
+  // ===== Offers: a quote holds up to three publishable options =====
+  const fetchOptions = useServerFn(adminListQuoteOptions);
+  const callSaveOption = useServerFn(adminSaveQuoteOption);
+  const callDeleteOption = useServerFn(adminDeleteQuoteOption);
+  const { data: optionsData } = useQuery({
+    queryKey: ["admin-quote-options", id],
+    queryFn: () => fetchOptions({ data: { quote_id: id } }),
+  });
+  const options = optionsData?.options ?? [];
+  const [optionId, setOptionId] = useState<string | null>(null);
+  const activeOption = options.find((o) => o.id === optionId) ?? options[0] ?? null;
+
+  useEffect(() => {
+    if (!optionId && options[0]) setOptionId(options[0].id);
+  }, [optionId, options]);
+  // Switching offer re-hydrates the grid from that offer's own lines.
+  useEffect(() => {
+    setHydrated(false);
+  }, [optionId]);
+
+  const saveOption = useMutation({
+    mutationFn: (patch: Record<string, unknown>) =>
+      callSaveOption({
+        data: { quote_id: id, ...(optionId ? { option_id: optionId } : {}), ...patch },
+      }),
+    onSuccess: (r) => {
+      if (r.option_id) setOptionId(r.option_id);
+      void queryClient.invalidateQueries({ queryKey: ["admin-quote-options", id] });
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const deleteOption = useMutation({
+    mutationFn: (oid: string) => callDeleteOption({ data: { option_id: oid } }),
+    onSuccess: () => {
+      setOptionId(null);
+      void queryClient.invalidateQueries({ queryKey: ["admin-quote-options", id] });
+      void queryClient.invalidateQueries({ queryKey: ["admin-quote", id] });
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
   const countries = useMemo<string[]>(
     () => (quote?.target_countries ?? []) as string[],
     [quote?.target_countries],
@@ -216,9 +264,12 @@ function AdminQuoteDetailPage() {
     setValidUntil(data.quote.quote_valid_until ?? "");
     setAdminNotes(data.quote.admin_notes ?? "");
     const targetCountries = (data.quote.target_countries ?? []) as string[];
-    if (data.lines.length > 0) {
+    const optionLines = optionId
+      ? data.lines.filter((l) => (l as { option_id?: string | null }).option_id === optionId)
+      : data.lines;
+    if (optionLines.length > 0) {
       const byVariant = new Map<string, VariantRow>();
-      for (const l of data.lines) {
+      for (const l of optionLines) {
         let row = byVariant.get(l.variant_label);
         if (!row) {
           row = {
@@ -253,7 +304,7 @@ function AdminQuoteDetailPage() {
       setRows([emptyVariant(targetCountries)]);
     }
     setHydrated(true);
-  }, [data, hydrated]);
+  }, [data, hydrated, optionId]);
 
   const requestEditable =
     quote != null && ["submitted", "sourcing", "quoted"].includes(quote.status);
@@ -335,6 +386,7 @@ function AdminQuoteDetailPage() {
       const saved = await callSave({
         data: {
           quote_id: id,
+          ...(optionId ? { option_id: optionId } : {}),
           lines,
           internal_reference: internalReference,
           quote_valid_until: validUntil || null,
@@ -389,6 +441,7 @@ function AdminQuoteDetailPage() {
       );
       toast.success(`Quote published — ${r.lines.length} line(s), request is now "quoted"`);
       void queryClient.invalidateQueries({ queryKey: ["admin-quote", id] });
+      void queryClient.invalidateQueries({ queryKey: ["admin-quote-options", id] });
       void queryClient.invalidateQueries({ queryKey: ["admin-quotes"] });
     },
     onError: (err) => toast.error(err.message),
@@ -637,6 +690,7 @@ function AdminQuoteDetailPage() {
               )}
             </CardContent>
           </Card>
+          <QuoteThread quoteId={id} mode="admin" />
           {data?.preview && (
             <UrlPreviewCard
               url={data.preview.url_normalized}
@@ -669,6 +723,114 @@ function AdminQuoteDetailPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            <div className="mb-4 space-y-3 rounded-lg border border-border p-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Offers
+                </span>
+                {options.map((o) => (
+                  <button
+                    key={o.id}
+                    type="button"
+                    onClick={() => setOptionId(o.id)}
+                    className={cn(
+                      "rounded-full border border-border px-3 py-1 text-xs font-medium",
+                      o.id === activeOption?.id
+                        ? "bg-primary text-primary-foreground"
+                        : "hover:bg-muted",
+                    )}
+                  >
+                    Option {o.letter}
+                    {o.recommended ? " ★" : ""}
+                    {o.published ? "" : " · draft"}
+                  </button>
+                ))}
+                {options.length < 3 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="gap-1"
+                    disabled={saveOption.isPending}
+                    onClick={() => {
+                      setOptionId(null);
+                      saveOption.mutate({});
+                    }}
+                  >
+                    <Plus className="h-3.5 w-3.5" /> Add option
+                  </Button>
+                )}
+              </div>
+              {activeOption && (
+                <div className="grid gap-3 sm:grid-cols-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Supplier (internal)</Label>
+                    <Input
+                      defaultValue={activeOption.supplier_name}
+                      placeholder="Supplier name"
+                      onBlur={(e) => {
+                        if (e.target.value.trim() !== activeOption.supplier_name) {
+                          saveOption.mutate({ supplier_name: e.target.value.trim() });
+                        }
+                      }}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Quality</Label>
+                    <div className="flex gap-1">
+                      {[1, 2, 3].map((q) => (
+                        <Button
+                          key={q}
+                          type="button"
+                          size="sm"
+                          variant={activeOption.quality === q ? "default" : "outline"}
+                          onClick={() => saveOption.mutate({ quality: q })}
+                        >
+                          {q === 1 ? "Low" : q === 2 ? "Med" : "High"}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Shipping lead (days)</Label>
+                    <Input
+                      type="number"
+                      step="0.1"
+                      defaultValue={activeOption.shipping_lead_days ?? ""}
+                      onBlur={(e) =>
+                        saveOption.mutate({
+                          shipping_lead_days: e.target.value === "" ? null : Number(e.target.value),
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="flex items-end gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={activeOption.recommended ? "default" : "outline"}
+                      onClick={() => saveOption.mutate({ recommended: !activeOption.recommended })}
+                    >
+                      {activeOption.recommended ? "Recommended" : "Mark recommended"}
+                    </Button>
+                    {!activeOption.accepted_at && options.length > 1 && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => deleteOption.mutate(activeOption.id)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Clients see these as anonymous Option A/B/C — never the supplier, the cost chain or
+                the margin. Publishing the grid below publishes the selected option.
+              </p>
+            </div>
             <form
               onSubmit={(e) => {
                 e.preventDefault();
