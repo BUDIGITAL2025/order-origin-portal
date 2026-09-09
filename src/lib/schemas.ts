@@ -579,6 +579,8 @@ export const finalizeStockPurchaseSchema = payStockPurchaseSchema.extend({
 
 export const freightQuoteSchema = stockPurchaseIdSchema.extend({
   freight_cost: z.number().min(0).max(1_000_000),
+  /** Import duties / customs charges — passthrough, never marked up. */
+  import_cost: z.number().min(0).max(1_000_000).optional().default(0),
 });
 
 export const purchaseStatusSchema = stockPurchaseIdSchema.extend({

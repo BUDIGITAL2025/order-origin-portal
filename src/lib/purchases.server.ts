@@ -2,10 +2,11 @@
  * Stock purchases — server-only helpers.
  *
  * A stock purchase is what a client buys after accepting a quote:
- *   PATH A "flysales" — stock ships to our warehouse, an inbound shipment is
- *                       created automatically on payment.
- *   PATH B "direct"   — stock ships to the client's own address; admin quotes
- *                       freight first, then the client pays the full total.
+ *   PATH A "flysales" — stock ships to our warehouse; admin quotes freight and
+ *                       import/duties first, then the client pays and an
+ *                       inbound shipment is created automatically.
+ *   PATH B "direct"   — stock ships to the client's own address; same freight
+ *                       and import quoting step before payment.
  *
  * Money always moves through the existing wallet path, idempotent on
  * `purchase:<id>`, so a replayed payment can never double-charge.
@@ -26,16 +27,19 @@ export function purchaseWalletReference(id: string): string {
   return `purchase:${id}`;
 }
 
-/** What the client owes right now — null while freight is still pending. */
+/**
+ * What the client owes right now — null while freight is still pending.
+ * Both paths wait for the quote: EXW goods never include freight or import.
+ */
 export function purchaseTotal(p: {
   path: string;
   goods_total: number | string;
   freight_cost: number | string | null;
+  import_cost?: number | string | null;
 }): number | null {
   const goods = Number(p.goods_total);
-  if (p.path === "flysales") return round2(goods);
   if (p.freight_cost == null) return null;
-  return round2(goods + Number(p.freight_cost));
+  return round2(goods + Number(p.freight_cost) + Number(p.import_cost ?? 0));
 }
 
 export function isPayable(p: StockPurchase): boolean {
@@ -45,7 +49,7 @@ export function isPayable(p: StockPurchase): boolean {
 
 /** Human-readable timeline steps, in order, for the client and admin views. */
 export const PURCHASE_STEPS: Record<string, string[]> = {
-  flysales: ["requested", "paid", "in_production", "shipped", "delivered"],
+  flysales: ["requested", "freight_quoted", "paid", "in_production", "shipped", "delivered"],
   direct: ["requested", "freight_quoted", "paid", "in_production", "shipped", "delivered"],
 };
 
@@ -162,6 +166,7 @@ export async function settlePaidPurchase(
       unitPrice: Number(purchase.unit_price),
       goodsTotal: Number(purchase.goods_total),
       freightCost: purchase.freight_cost != null ? Number(purchase.freight_cost) : null,
+      importCost: purchase.import_cost != null ? Number(purchase.import_cost) : null,
       total,
       paidAt,
       path: purchase.path,
