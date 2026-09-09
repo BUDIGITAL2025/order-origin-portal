@@ -39,6 +39,7 @@ export const SOURCING_TABS: SectionTab[] = [
 ];
 
 export const FULFILMENT_TABS: SectionTab[] = [
+  { to: "/fulfilment/products", label: "Products" },
   { to: "/fulfilment/orders", label: "Orders" },
   { to: "/fulfilment/inventory", label: "Inventory" },
   { to: "/fulfilment/inbound", label: "Inbound" },
@@ -53,6 +54,7 @@ export const BILLING_TABS: SectionTab[] = [
 ];
 
 export const ADMIN_FULFILMENT_TABS: SectionTab[] = [
+  { to: "/admin/fulfilment/products", label: "Products" },
   { to: "/admin/orders", label: "Orders" },
   { to: "/admin/inventory", label: "Inventory" },
   { to: "/admin/inbound", label: "Inbound" },

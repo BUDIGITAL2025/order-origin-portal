@@ -58,6 +58,7 @@ import { Route as AuthenticatedClientFulfilmentClaimsRouteImport } from './route
 import { Route as AuthenticatedClientFulfilmentInboundRouteImport } from './routes/_authenticated/_client/fulfilment/inbound'
 import { Route as AuthenticatedClientFulfilmentInventoryRouteImport } from './routes/_authenticated/_client/fulfilment/inventory'
 import { Route as AuthenticatedClientFulfilmentOrdersRouteImport } from './routes/_authenticated/_client/fulfilment/orders'
+import { Route as AuthenticatedClientFulfilmentProductsRouteImport } from './routes/_authenticated/_client/fulfilment/products'
 import { Route as AuthenticatedClientFulfilmentStockPurchasesRouteImport } from './routes/_authenticated/_client/fulfilment/stock-purchases'
 import { Route as AuthenticatedClientOrdersIndexRouteImport } from './routes/_authenticated/_client/orders/index'
 import { Route as AuthenticatedClientOrdersIdRouteImport } from './routes/_authenticated/_client/orders.$id'
@@ -71,6 +72,7 @@ import { Route as AuthenticatedClientSourcingNewRouteImport } from './routes/_au
 import { Route as AuthenticatedClientSourcingQuotesRouteImport } from './routes/_authenticated/_client/sourcing/quotes'
 import { Route as AuthenticatedClientWorkspacesNewRouteImport } from './routes/_authenticated/_client/workspaces/new'
 import { Route as AuthenticatedAdminDisputesIdRouteImport } from './routes/_authenticated/admin/disputes.$id'
+import { Route as AuthenticatedAdminFulfilmentProductsRouteImport } from './routes/_authenticated/admin/fulfilment.products'
 import { Route as AuthenticatedAdminQuotesIndexRouteImport } from './routes/_authenticated/admin/quotes/index'
 import { Route as AuthenticatedAdminQuotesIdRouteImport } from './routes/_authenticated/admin/quotes/$id'
 import { Route as AuthenticatedDeskQuoteIdRouteImport } from './routes/_authenticated/desk/quote.$id'
@@ -363,6 +365,12 @@ const AuthenticatedClientFulfilmentOrdersRoute =
     path: '/fulfilment/orders',
     getParentRoute: () => AuthenticatedClientRoute,
   } as any)
+const AuthenticatedClientFulfilmentProductsRoute =
+  AuthenticatedClientFulfilmentProductsRouteImport.update({
+    id: '/fulfilment/products',
+    path: '/fulfilment/products',
+    getParentRoute: () => AuthenticatedClientRoute,
+  } as any)
 const AuthenticatedClientFulfilmentStockPurchasesRoute =
   AuthenticatedClientFulfilmentStockPurchasesRouteImport.update({
     id: '/fulfilment/stock-purchases',
@@ -440,6 +448,12 @@ const AuthenticatedAdminDisputesIdRoute =
     id: '/$id',
     path: '/$id',
     getParentRoute: () => AuthenticatedAdminDisputesRoute,
+  } as any)
+const AuthenticatedAdminFulfilmentProductsRoute =
+  AuthenticatedAdminFulfilmentProductsRouteImport.update({
+    id: '/fulfilment/products',
+    path: '/fulfilment/products',
+    getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 const AuthenticatedAdminQuotesIndexRoute =
   AuthenticatedAdminQuotesIndexRouteImport.update({
@@ -565,6 +579,7 @@ export interface FileRoutesByFullPath {
   '/fulfilment/inbound': typeof AuthenticatedClientFulfilmentInboundRoute
   '/fulfilment/inventory': typeof AuthenticatedClientFulfilmentInventoryRoute
   '/fulfilment/orders': typeof AuthenticatedClientFulfilmentOrdersRoute
+  '/fulfilment/products': typeof AuthenticatedClientFulfilmentProductsRoute
   '/fulfilment/stock-purchases': typeof AuthenticatedClientFulfilmentStockPurchasesRoute
   '/orders/$id': typeof AuthenticatedClientOrdersIdRoute
   '/orders/import': typeof AuthenticatedClientOrdersImportRoute
@@ -575,6 +590,7 @@ export interface FileRoutesByFullPath {
   '/sourcing/quotes': typeof AuthenticatedClientSourcingQuotesRoute
   '/workspaces/new': typeof AuthenticatedClientWorkspacesNewRoute
   '/admin/disputes/$id': typeof AuthenticatedAdminDisputesIdRoute
+  '/admin/fulfilment/products': typeof AuthenticatedAdminFulfilmentProductsRoute
   '/admin/quotes/$id': typeof AuthenticatedAdminQuotesIdRoute
   '/desk/quote/$id': typeof AuthenticatedDeskQuoteIdRoute
   '/api/public/cron/auto-topup': typeof ApiPublicCronAutoTopupRoute
@@ -639,6 +655,7 @@ export interface FileRoutesByTo {
   '/fulfilment/inbound': typeof AuthenticatedClientFulfilmentInboundRoute
   '/fulfilment/inventory': typeof AuthenticatedClientFulfilmentInventoryRoute
   '/fulfilment/orders': typeof AuthenticatedClientFulfilmentOrdersRoute
+  '/fulfilment/products': typeof AuthenticatedClientFulfilmentProductsRoute
   '/fulfilment/stock-purchases': typeof AuthenticatedClientFulfilmentStockPurchasesRoute
   '/orders/$id': typeof AuthenticatedClientOrdersIdRoute
   '/orders/import': typeof AuthenticatedClientOrdersImportRoute
@@ -649,6 +666,7 @@ export interface FileRoutesByTo {
   '/sourcing/quotes': typeof AuthenticatedClientSourcingQuotesRoute
   '/workspaces/new': typeof AuthenticatedClientWorkspacesNewRoute
   '/admin/disputes/$id': typeof AuthenticatedAdminDisputesIdRoute
+  '/admin/fulfilment/products': typeof AuthenticatedAdminFulfilmentProductsRoute
   '/admin/quotes/$id': typeof AuthenticatedAdminQuotesIdRoute
   '/desk/quote/$id': typeof AuthenticatedDeskQuoteIdRoute
   '/api/public/cron/auto-topup': typeof ApiPublicCronAutoTopupRoute
@@ -717,6 +735,7 @@ export interface FileRoutesById {
   '/_authenticated/_client/fulfilment/inbound': typeof AuthenticatedClientFulfilmentInboundRoute
   '/_authenticated/_client/fulfilment/inventory': typeof AuthenticatedClientFulfilmentInventoryRoute
   '/_authenticated/_client/fulfilment/orders': typeof AuthenticatedClientFulfilmentOrdersRoute
+  '/_authenticated/_client/fulfilment/products': typeof AuthenticatedClientFulfilmentProductsRoute
   '/_authenticated/_client/fulfilment/stock-purchases': typeof AuthenticatedClientFulfilmentStockPurchasesRoute
   '/_authenticated/_client/orders/$id': typeof AuthenticatedClientOrdersIdRoute
   '/_authenticated/_client/orders/import': typeof AuthenticatedClientOrdersImportRoute
@@ -727,6 +746,7 @@ export interface FileRoutesById {
   '/_authenticated/_client/sourcing/quotes': typeof AuthenticatedClientSourcingQuotesRoute
   '/_authenticated/_client/workspaces/new': typeof AuthenticatedClientWorkspacesNewRoute
   '/_authenticated/admin/disputes/$id': typeof AuthenticatedAdminDisputesIdRoute
+  '/_authenticated/admin/fulfilment/products': typeof AuthenticatedAdminFulfilmentProductsRoute
   '/_authenticated/admin/quotes/$id': typeof AuthenticatedAdminQuotesIdRoute
   '/_authenticated/desk/quote/$id': typeof AuthenticatedDeskQuoteIdRoute
   '/api/public/cron/auto-topup': typeof ApiPublicCronAutoTopupRoute
@@ -794,6 +814,7 @@ export interface FileRouteTypes {
     | '/fulfilment/inbound'
     | '/fulfilment/inventory'
     | '/fulfilment/orders'
+    | '/fulfilment/products'
     | '/fulfilment/stock-purchases'
     | '/orders/$id'
     | '/orders/import'
@@ -804,6 +825,7 @@ export interface FileRouteTypes {
     | '/sourcing/quotes'
     | '/workspaces/new'
     | '/admin/disputes/$id'
+    | '/admin/fulfilment/products'
     | '/admin/quotes/$id'
     | '/desk/quote/$id'
     | '/api/public/cron/auto-topup'
@@ -868,6 +890,7 @@ export interface FileRouteTypes {
     | '/fulfilment/inbound'
     | '/fulfilment/inventory'
     | '/fulfilment/orders'
+    | '/fulfilment/products'
     | '/fulfilment/stock-purchases'
     | '/orders/$id'
     | '/orders/import'
@@ -878,6 +901,7 @@ export interface FileRouteTypes {
     | '/sourcing/quotes'
     | '/workspaces/new'
     | '/admin/disputes/$id'
+    | '/admin/fulfilment/products'
     | '/admin/quotes/$id'
     | '/desk/quote/$id'
     | '/api/public/cron/auto-topup'
@@ -945,6 +969,7 @@ export interface FileRouteTypes {
     | '/_authenticated/_client/fulfilment/inbound'
     | '/_authenticated/_client/fulfilment/inventory'
     | '/_authenticated/_client/fulfilment/orders'
+    | '/_authenticated/_client/fulfilment/products'
     | '/_authenticated/_client/fulfilment/stock-purchases'
     | '/_authenticated/_client/orders/$id'
     | '/_authenticated/_client/orders/import'
@@ -955,6 +980,7 @@ export interface FileRouteTypes {
     | '/_authenticated/_client/sourcing/quotes'
     | '/_authenticated/_client/workspaces/new'
     | '/_authenticated/admin/disputes/$id'
+    | '/_authenticated/admin/fulfilment/products'
     | '/_authenticated/admin/quotes/$id'
     | '/_authenticated/desk/quote/$id'
     | '/api/public/cron/auto-topup'
@@ -1339,6 +1365,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedClientFulfilmentOrdersRouteImport
       parentRoute: typeof AuthenticatedClientRoute
     }
+    '/_authenticated/_client/fulfilment/products': {
+      id: '/_authenticated/_client/fulfilment/products'
+      path: '/fulfilment/products'
+      fullPath: '/fulfilment/products'
+      preLoaderRoute: typeof AuthenticatedClientFulfilmentProductsRouteImport
+      parentRoute: typeof AuthenticatedClientRoute
+    }
     '/_authenticated/_client/fulfilment/stock-purchases': {
       id: '/_authenticated/_client/fulfilment/stock-purchases'
       path: '/fulfilment/stock-purchases'
@@ -1429,6 +1462,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/disputes/$id'
       preLoaderRoute: typeof AuthenticatedAdminDisputesIdRouteImport
       parentRoute: typeof AuthenticatedAdminDisputesRoute
+    }
+    '/_authenticated/admin/fulfilment/products': {
+      id: '/_authenticated/admin/fulfilment/products'
+      path: '/fulfilment/products'
+      fullPath: '/admin/fulfilment/products'
+      preLoaderRoute: typeof AuthenticatedAdminFulfilmentProductsRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/admin/quotes/': {
       id: '/_authenticated/admin/quotes/'
@@ -1570,6 +1610,7 @@ interface AuthenticatedClientRouteChildren {
   AuthenticatedClientFulfilmentInboundRoute: typeof AuthenticatedClientFulfilmentInboundRoute
   AuthenticatedClientFulfilmentInventoryRoute: typeof AuthenticatedClientFulfilmentInventoryRoute
   AuthenticatedClientFulfilmentOrdersRoute: typeof AuthenticatedClientFulfilmentOrdersRoute
+  AuthenticatedClientFulfilmentProductsRoute: typeof AuthenticatedClientFulfilmentProductsRoute
   AuthenticatedClientFulfilmentStockPurchasesRoute: typeof AuthenticatedClientFulfilmentStockPurchasesRoute
   AuthenticatedClientOrdersIdRoute: typeof AuthenticatedClientOrdersIdRoute
   AuthenticatedClientOrdersImportRoute: typeof AuthenticatedClientOrdersImportRoute
@@ -1610,6 +1651,8 @@ const AuthenticatedClientRouteChildren: AuthenticatedClientRouteChildren = {
     AuthenticatedClientFulfilmentInventoryRoute,
   AuthenticatedClientFulfilmentOrdersRoute:
     AuthenticatedClientFulfilmentOrdersRoute,
+  AuthenticatedClientFulfilmentProductsRoute:
+    AuthenticatedClientFulfilmentProductsRoute,
   AuthenticatedClientFulfilmentStockPurchasesRoute:
     AuthenticatedClientFulfilmentStockPurchasesRoute,
   AuthenticatedClientOrdersIdRoute: AuthenticatedClientOrdersIdRoute,
@@ -1663,6 +1706,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminStockPurchasesRoute: typeof AuthenticatedAdminStockPurchasesRoute
   AuthenticatedAdminSuppliersRoute: typeof AuthenticatedAdminSuppliersRoute
   AuthenticatedAdminWalletRoute: typeof AuthenticatedAdminWalletRoute
+  AuthenticatedAdminFulfilmentProductsRoute: typeof AuthenticatedAdminFulfilmentProductsRoute
   AuthenticatedAdminQuotesIdRoute: typeof AuthenticatedAdminQuotesIdRoute
   AuthenticatedAdminQuotesIndexRoute: typeof AuthenticatedAdminQuotesIndexRoute
 }
@@ -1685,6 +1729,8 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminStockPurchasesRoute: AuthenticatedAdminStockPurchasesRoute,
   AuthenticatedAdminSuppliersRoute: AuthenticatedAdminSuppliersRoute,
   AuthenticatedAdminWalletRoute: AuthenticatedAdminWalletRoute,
+  AuthenticatedAdminFulfilmentProductsRoute:
+    AuthenticatedAdminFulfilmentProductsRoute,
   AuthenticatedAdminQuotesIdRoute: AuthenticatedAdminQuotesIdRoute,
   AuthenticatedAdminQuotesIndexRoute: AuthenticatedAdminQuotesIndexRoute,
 }
