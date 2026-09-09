@@ -6,6 +6,7 @@ import { Truck } from "lucide-react";
 import { toast } from "sonner";
 import { EmptyState, PageHeader } from "@/components/app-shell";
 import { SectionTabs, ADMIN_FULFILMENT_TABS } from "@/components/section-tabs";
+import { OperationsToday } from "@/components/operations-today";
 import {
   OrdersFunnel,
   countStages,
@@ -127,6 +128,7 @@ function AdminOrdersPage() {
         description="Every workspace order. Add tracking here — the client is emailed the first time tracking appears."
       />
       <SectionTabs tabs={ADMIN_FULFILMENT_TABS} />
+      <OperationsToday />
 
       {isPending ? (
         <p className="text-sm text-muted-foreground">Loading…</p>

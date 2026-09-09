@@ -6,6 +6,7 @@ import { AlertTriangle, RefreshCw, SlidersHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/app-shell";
 import { SectionTabs, ADMIN_FULFILMENT_TABS } from "@/components/section-tabs";
+import { OperationsToday } from "@/components/operations-today";
 import { AdminSearch, FilterTabs, PanelHeader, SummaryBar } from "@/components/admin-ui";
 import { InventoryTable, type InventoryRow } from "@/components/inventory-table";
 import { Button } from "@/components/ui/button";
@@ -30,6 +31,8 @@ import { friendlyError } from "@/lib/errors";
 import { formatUSD } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/admin/inventory")({
+  validateSearch: (search: Record<string, unknown>): { state?: string } =>
+    typeof search["state"] === "string" ? { state: search["state"] as string } : {},
   head: () => ({
     meta: [
       { title: "Inventory — FlySales admin" },
@@ -50,7 +53,12 @@ const TABS = [
 
 function AdminInventoryPage() {
   const queryClient = useQueryClient();
-  const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("all");
+  const navigate = Route.useNavigate();
+  const { state: stateParam } = Route.useSearch();
+  const tab = (stateParam ?? "all") as (typeof TABS)[number]["id"];
+  const setTab = (next: (typeof TABS)[number]["id"]) => {
+    void navigate({ search: next === "all" ? {} : { state: next }, replace: true } as never);
+  };
   const [search, setSearch] = useState("");
   const [planningProductId, setPlanningProductId] = useState<string | null>(null);
   const [defaultsFor, setDefaultsFor] = useState<{
@@ -143,6 +151,7 @@ function AdminInventoryPage() {
         }
       />
       <SectionTabs tabs={ADMIN_FULFILMENT_TABS} />
+      <OperationsToday />
 
       {error && (
         <Card className="mb-4 border-destructive/30">

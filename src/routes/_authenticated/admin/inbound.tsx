@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/app-shell";
 import { SectionTabs, ADMIN_FULFILMENT_TABS } from "@/components/section-tabs";
+import { OperationsToday } from "@/components/operations-today";
 import { SummaryBar, FilterTabs, TableShell, Chip } from "@/components/admin-ui";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -32,6 +33,8 @@ const FEE_PER_PIECE = 0.5;
 const QC_PER_PIECE = 0.2;
 
 export const Route = createFileRoute("/_authenticated/admin/inbound")({
+  validateSearch: (search: Record<string, unknown>): { tab?: string } =>
+    typeof search["tab"] === "string" ? { tab: search["tab"] as string } : {},
   head: () => ({
     meta: [{ title: "Inbound — FlySales admin" }, { name: "robots", content: "noindex" }],
   }),
@@ -66,7 +69,12 @@ const STATUS_TONE: Record<string, "neutral" | "info" | "warning" | "success" | "
 };
 
 function AdminInboundPage() {
-  const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("queue");
+  const navigate = Route.useNavigate();
+  const { tab: tabParam } = Route.useSearch();
+  const tab = (tabParam ?? "queue") as (typeof TABS)[number]["id"];
+  const setTab = (next: (typeof TABS)[number]["id"]) => {
+    void navigate({ search: { tab: next }, replace: true } as never);
+  };
   const [counting, setCounting] = useState<Shipment | null>(null);
   const [refusing, setRefusing] = useState<Shipment | null>(null);
   const [showArchived, setShowArchived] = useState(false);
@@ -99,6 +107,7 @@ function AdminInboundPage() {
     <div>
       <PageHeader title="Inbound" description="Shipments arriving at the fulfilment centre." />
       <SectionTabs tabs={ADMIN_FULFILMENT_TABS} />
+      <OperationsToday />
 
       <SummaryBar
         items={[

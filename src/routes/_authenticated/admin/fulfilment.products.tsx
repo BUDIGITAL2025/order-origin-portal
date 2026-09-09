@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { SectionTabs, ADMIN_FULFILMENT_TABS } from "@/components/section-tabs";
+import { OperationsToday } from "@/components/operations-today";
 import { AdminSearch, ToolBar } from "@/components/admin-ui";
 import { FulfilmentCatalog, type CatalogRow } from "@/components/fulfilment-catalog";
 import {
@@ -57,6 +58,7 @@ function AdminFulfilmentProductsPage() {
         description="Every fulfilment-managed SKU across all workspaces. Direct-to-client purchases never appear here."
       />
       <SectionTabs tabs={ADMIN_FULFILMENT_TABS} />
+      <OperationsToday />
       <ToolBar>
         <Select value={workspace} onValueChange={setWorkspace}>
           <SelectTrigger className="h-9 w-56">
