@@ -107,6 +107,7 @@ export function evaluateSku(input: {
   transit_lead: number;
   safety_margin: number;
   now?: Date;
+  growth_percent?: number;
 }): Pick<
   SkuRow,
   "daily_velocity" | "days_of_cover" | "total_lead" | "reorder_by" | "state" | "gap_days" | "suggested_qty"
@@ -133,7 +134,9 @@ export function evaluateSku(input: {
     };
   }
 
-  const cover = input.total_stock / daily;
+  const adjustedDaily = daily * (1 + (input.growth_percent ?? 0) / 100);
+
+  const cover = input.total_stock / adjustedDaily;
   const daysUntilReorder = cover - totalLead;
   const reorderBy = new Date(now.getTime() + daysUntilReorder * MS_PER_DAY);
 
@@ -141,13 +144,13 @@ export function evaluateSku(input: {
     daysUntilReorder > AMBER_WINDOW_DAYS ? "green" : daysUntilReorder > 0 ? "amber" : "red";
 
   return {
-    daily_velocity: Math.round(daily * 100) / 100,
+    daily_velocity: Math.round(adjustedDaily * 100) / 100,
     days_of_cover: Math.round(cover * 10) / 10,
     total_lead: totalLead,
     reorder_by: isoDate(reorderBy),
     state,
     gap_days: state === "red" ? Math.max(0, Math.round(totalLead - cover)) : null,
-    suggested_qty: Math.max(1, Math.ceil(daily * (totalLead + COVERAGE_TARGET_DAYS))),
+    suggested_qty: Math.max(1, Math.ceil(adjustedDaily * (totalLead + COVERAGE_TARGET_DAYS))),
   };
 }
 
