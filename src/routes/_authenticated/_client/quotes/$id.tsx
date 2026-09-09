@@ -140,14 +140,19 @@ function MyQuoteDetailPage() {
             </p>
           )}
 
-          <QuoteThread quoteId={id} mode="client" />
         </div>
 
-        <Card className="h-fit">
+        <div className="flex min-h-0 flex-col gap-4 lg:col-span-2">
+          <Card className="max-h-[40%] shrink-0 overflow-y-auto">
           <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <CardTitle className="text-base">Request</CardTitle>
-              <QuoteStatusBadge status={quote.status} validUntil={quote.quote_valid_until} />
+              <div className="flex items-center gap-2">
+                <QuoteStatusBadge status={quote.status} validUntil={quote.quote_valid_until} />
+                {quote.status === "quoted" && (
+                  <QuoteValidityChip validUntil={quote.quote_valid_until} />
+                )}
+              </div>
             </div>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
