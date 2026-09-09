@@ -69,6 +69,7 @@ function AdminInventoryPage() {
     void navigate({ search: next === "all" ? {} : { state: next }, replace: true } as never);
   };
   const [search, setSearch] = useState("");
+  const [growthPercent, setGrowthPercent] = useState(0);
   const [planningProductId, setPlanningProductId] = useState<string | null>(null);
   const [defaultsFor, setDefaultsFor] = useState<{
     storeId: string;
@@ -98,9 +99,9 @@ function AdminInventoryPage() {
 
   const fetchInventory = useServerFn(getAdminInventory);
   const { data, isLoading, error } = useQuery({
-    queryKey: ["admin-inventory"],
+    queryKey: ["admin-inventory", growthPercent],
     staleTime: 60_000,
-    queryFn: () => fetchInventory(),
+    queryFn: () => fetchInventory({ data: { growthPercent } }),
   });
 
   const callSync = useServerFn(syncInventoryNow);
