@@ -252,8 +252,10 @@ function StockPurchasesPage() {
                     >
                       Pay {formatUSD(p.payable_total)}
                     </Button>
-                  ) : p.status === "requested" && p.path === "direct" ? (
-                    <span className="text-xs text-muted-foreground">Quoting freight…</span>
+                  ) : p.status === "requested" ? (
+                    <span className="text-xs text-muted-foreground">
+                      Quoting freight and import…
+                    </span>
                   ) : null}
                 </TableCell>
               </TableRow>
@@ -327,8 +329,8 @@ function OrderStockDialog({
     onSuccess: async (r) => {
       toast.success(
         path === "flysales"
-          ? `Purchase ${r.purchase.ref} created. Pay it to start production.`
-          : `Purchase ${r.purchase.ref} created. We will quote the freight to your address.`,
+          ? `Purchase ${r.purchase.ref} created. We will quote freight and import first.`
+          : `Purchase ${r.purchase.ref} created. We will quote freight and import to your address.`,
       );
       onOpenChange(false);
       setQuantity("");
@@ -379,13 +381,13 @@ function OrderStockDialog({
                     value: "flysales" as const,
                     icon: Warehouse,
                     title: "FlySales warehouse",
-                    hint: "We store, pick and ship each order. Minimum 10 units.",
+                    hint: "We store, pick and ship each order. Minimum 10 units. Freight quoted first.",
                   },
                   {
                     value: "direct" as const,
                     icon: Building2,
                     title: "Direct to you",
-                    hint: "Straight to your address. We quote the freight first.",
+                    hint: "Straight to your address. Freight and import quoted first.",
                   },
                 ]
               ).map((option) => (
@@ -467,8 +469,8 @@ function OrderStockDialog({
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">
                   {path === "flysales"
-                    ? "Shipping to our warehouse is included in this price. Fulfilment fees apply per order later."
-                    : "Freight to your address is quoted separately before you pay."}
+                    ? "Goods are Ex Works. Freight to our warehouse and any import duties are quoted separately before you pay; fulfilment fees apply per order later."
+                    : "Goods are Ex Works. Freight to your address and any import duties are quoted separately before you pay."}
                 </p>
               </div>
             ) : null}
