@@ -68,9 +68,8 @@ import {
 } from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/_authenticated/_client/fulfilment/orders")({
-  validateSearch: (search: Record<string, unknown>) => ({
-    stage: typeof search["stage"] === "string" ? (search["stage"] as string) : undefined,
-  }),
+  validateSearch: (search: Record<string, unknown>): { stage?: string } =>
+    typeof search["stage"] === "string" ? { stage: search["stage"] as string } : {},
   head: () => ({
     meta: [
       { title: "Orders — FlySales" },
@@ -201,7 +200,7 @@ function OrdersPage() {
   const stage = (stageParam ?? null) as FunnelStage | null;
   const setStage = (next: FunnelStage | null) => {
     setPage(0);
-    void navigate({ search: next ? { stage: next } : {}, replace: true });
+    void navigate({ search: next ? { stage: next } : {}, replace: true } as never);
   };
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState("date_desc");
