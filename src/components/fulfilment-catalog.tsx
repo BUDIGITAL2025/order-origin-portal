@@ -55,6 +55,7 @@ export type CatalogRow = {
   store_name: string | null;
   sellable: number | null;
   days_of_cover: number | null;
+  weight_grams?: number | null;
 };
 
 function ModelChip({ model }: { model: string }) {
@@ -420,7 +421,7 @@ function WeightEditor({
 }: {
   productId: string;
   initial: number | null;
-  invalidateKeys?: string[][];
+  invalidateKeys?: unknown[][];
 }) {
   const queryClient = useQueryClient();
   const [value, setValue] = useState(initial != null ? String(initial) : "");
