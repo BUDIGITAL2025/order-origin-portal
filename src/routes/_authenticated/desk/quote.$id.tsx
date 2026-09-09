@@ -299,9 +299,19 @@ function DeskQuotePage() {
           <Card>
             <CardContent className="space-y-2 pt-5 text-sm">
               <PanelHeader title="The request" />
-              <p className="break-all text-xs text-muted-foreground">{data.quote.product_url}</p>
+              <p className="text-sm font-medium">{data.quote.product_name || "Product request"}</p>
+              {data.quote.product_url ? (
+                <p className="break-all text-xs text-muted-foreground">{data.quote.product_url}</p>
+              ) : null}
               {data.quote.notes ? (
                 <p className="text-muted-foreground">{data.quote.notes}</p>
+              ) : null}
+              {(data.preview?.variants ?? []).length ? (
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {(data.preview?.variants ?? []).slice(0, 12).map((v) => (
+                    <Chip key={v}>{v}</Chip>
+                  ))}
+                </div>
               ) : null}
               <div className="flex flex-wrap gap-1.5 pt-1">
                 {(data.quote.target_countries ?? []).map((c) => (
