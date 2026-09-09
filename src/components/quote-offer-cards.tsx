@@ -113,7 +113,8 @@ export function QuoteOfferCards({
             key={offer.id}
             className={cn(
               "transition-colors",
-              (isSelected || isAccepted) && "border-primary ring-1 ring-primary/40",
+              (isSelected || isAccepted) &&
+                "border-primary bg-primary/[0.06] ring-1 ring-primary/40",
             )}
           >
             <CardContent className="space-y-4 p-4">
