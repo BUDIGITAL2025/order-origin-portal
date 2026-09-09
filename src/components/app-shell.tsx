@@ -24,7 +24,6 @@ import {
   ShieldAlert,
   Sparkles,
   Megaphone,
-
   Store,
   Telescope,
   Truck,
@@ -71,7 +70,6 @@ const CLIENT_NAV: NavItem[] = [
   { to: "/ads", label: "Ads", icon: Megaphone, badge: "New" },
   { to: "/spymarket", label: "SpyMarket", icon: Telescope, badge: "New" },
 ];
-
 
 /**
  * Persistent portal banner while a subscription is past_due. Nothing is
@@ -302,7 +300,6 @@ function WalletChip() {
 
   if (!mounted) return null;
 
-
   const entities = ctx?.entities ?? [];
   const storeId = getCurrentStoreId();
   const entity =
@@ -392,7 +389,8 @@ export function AppShell({
     if (to === "/dashboard" || to === "/admin/quotes") return pathname === to;
     // Detail pages that live outside their section prefix still light up the
     // section they belong to.
-    if (to === "/sourcing") return pathname.startsWith("/sourcing") || pathname.startsWith("/quotes");
+    if (to === "/sourcing")
+      return pathname.startsWith("/sourcing") || pathname.startsWith("/quotes");
     if (to === "/fulfilment")
       return (
         pathname.startsWith("/fulfilment") ||
@@ -401,7 +399,11 @@ export function AppShell({
         pathname.startsWith("/disputes")
       );
     if (to === "/billing")
-      return pathname.startsWith("/billing") || pathname.startsWith("/wallet") || pathname.startsWith("/documents");
+      return (
+        pathname.startsWith("/billing") ||
+        pathname.startsWith("/wallet") ||
+        pathname.startsWith("/documents")
+      );
     if (to === "/admin/orders")
       return (
         pathname.startsWith("/admin/orders") ||
@@ -413,7 +415,6 @@ export function AppShell({
       return pathname.startsWith("/admin/wallet") || pathname.startsWith("/admin/documents");
     return pathname === to || pathname.startsWith(to + "/");
   };
-
 
   const handleSignOut = async () => {
     // Sign-out hygiene: tear down queries first so none refetch against a
@@ -431,11 +432,7 @@ export function AppShell({
       <aside className="flex w-60 shrink-0 flex-col border-r border-sidebar-border bg-sidebar">
         <div className="flex h-14 items-center gap-2 border-b border-sidebar-border px-5">
           <a href={MARKETING_URL} className="flex items-center gap-2">
-            <img
-              src={logoAsset.url}
-              alt="FlySales"
-              className="h-7 w-auto sm:h-8"
-            />
+            <img src={logoAsset.url} alt="FlySales" className="h-7 w-auto sm:h-8" />
           </a>
           <span className="ml-auto rounded border border-sidebar-border px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-sidebar-foreground">
             {role === "admin" ? "Admin" : role === "sourcing" ? "Sourcing" : "Client"}
@@ -477,17 +474,18 @@ export function AppShell({
           <div className="ml-auto flex items-center gap-2">
             {role === "client" && <WalletChip />}
             <ThemeToggle />
-            <AccountMenu email={email} companyName={companyName} onSignOut={() => void handleSignOut()} />
+            <AccountMenu
+              email={email}
+              companyName={companyName}
+              onSignOut={() => void handleSignOut()}
+            />
           </div>
         </header>
 
         <main className="min-w-0 flex-1">
           <PaymentTestModeBanner />
           {role === "client" && <PastDueBanner />}
-          <div className="mx-auto max-w-[1800px] px-6 py-6">
-            {children}
-          </div>
-
+          <div className="mx-auto max-w-[1800px] px-6 py-6">{children}</div>
         </main>
 
         <LegalFooter className="border-t border-border" />
@@ -546,4 +544,3 @@ export function EmptyState({
     </div>
   );
 }
-

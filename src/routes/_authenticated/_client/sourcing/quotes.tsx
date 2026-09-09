@@ -39,10 +39,7 @@ function hoursLeft(validUntil: string | null): number | null {
 
 export const Route = createFileRoute("/_authenticated/_client/sourcing/quotes")({
   head: () => ({
-    meta: [
-      { title: "Quote requests — FlySales" },
-      { name: "robots", content: "noindex" },
-    ],
+    meta: [{ title: "Quote requests — FlySales" }, { name: "robots", content: "noindex" }],
   }),
   component: MyQuotesPageInner,
 });
@@ -173,7 +170,11 @@ function MyQuotesPageInner() {
                     })()}
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button asChild size="sm" variant={q.status === "quoted" ? "default" : "outline"}>
+                    <Button
+                      asChild
+                      size="sm"
+                      variant={q.status === "quoted" ? "default" : "outline"}
+                    >
                       <Link to="/quotes/$id" params={{ id: q.id }}>
                         {q.status === "quoted" ? "Review prices" : "Open"}
                       </Link>
@@ -188,4 +189,3 @@ function MyQuotesPageInner() {
     </div>
   );
 }
-

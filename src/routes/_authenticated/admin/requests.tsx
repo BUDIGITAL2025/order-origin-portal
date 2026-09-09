@@ -23,10 +23,7 @@ import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/admin/requests")({
   head: () => ({
-    meta: [
-      { title: "Client requests — FlySales Admin" },
-      { name: "robots", content: "noindex" },
-    ],
+    meta: [{ title: "Client requests — FlySales Admin" }, { name: "robots", content: "noindex" }],
   }),
   component: AdminRequestsPage,
 });
@@ -115,7 +112,9 @@ function AdminRequestsPage() {
                     {(i.payload.countries ?? []).length > 0 && (
                       <div>{(i.payload.countries ?? []).map((c) => countryName(c)).join(", ")}</div>
                     )}
-                    {i.payload.note ? <div className="whitespace-pre-wrap">{i.payload.note}</div> : null}
+                    {i.payload.note ? (
+                      <div className="whitespace-pre-wrap">{i.payload.note}</div>
+                    ) : null}
                   </TableCell>
                   <TableCell className="space-x-2 text-right">
                     <Button asChild size="sm" variant="outline">

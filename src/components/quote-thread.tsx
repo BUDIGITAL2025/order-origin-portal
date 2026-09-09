@@ -63,8 +63,7 @@ export function QuoteThread({ quoteId, mode }: { quoteId: string; mode: "client"
   const urlByPath = new Map((urlData?.urls ?? []).map((u) => [u.path, u.url]));
 
   const post = useMutation({
-    mutationFn: () =>
-      callPost({ data: { quote_id: quoteId, body, attachments: pending } }),
+    mutationFn: () => callPost({ data: { quote_id: quoteId, body, attachments: pending } }),
     onSuccess: () => {
       setBody("");
       setPending([]);
