@@ -186,6 +186,51 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_calls: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          duration_ms: number | null
+          error: string | null
+          id: string
+          model: string
+          operation: string
+          pages: number | null
+          provider: string
+          ref_id: string | null
+          ref_table: string | null
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          duration_ms?: number | null
+          error?: string | null
+          id?: string
+          model: string
+          operation: string
+          pages?: number | null
+          provider: string
+          ref_id?: string | null
+          ref_table?: string | null
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          duration_ms?: number | null
+          error?: string | null
+          id?: string
+          model?: string
+          operation?: string
+          pages?: number | null
+          provider?: string
+          ref_id?: string | null
+          ref_table?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
       artifacts: {
         Row: {
           created_at: string
@@ -289,6 +334,166 @@ export type Database = {
             columns: ["component_product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      catalog_import_rows: {
+        Row: {
+          available_qty: number | null
+          bbox: Json | null
+          color: string | null
+          converted_product_id: string | null
+          converted_quote_id: string | null
+          created_at: string
+          description: string | null
+          id: string
+          image_urls: string[]
+          import_id: string
+          included: boolean
+          inner_qty: number | null
+          item_no: string | null
+          low_confidence: string[]
+          outer_qty: number | null
+          packaging: string | null
+          page_no: number
+          row_ref: string | null
+          size_text: string | null
+          sort_order: number
+          unit_price: number | null
+          weight_g: number | null
+        }
+        Insert: {
+          available_qty?: number | null
+          bbox?: Json | null
+          color?: string | null
+          converted_product_id?: string | null
+          converted_quote_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_urls?: string[]
+          import_id: string
+          included?: boolean
+          inner_qty?: number | null
+          item_no?: string | null
+          low_confidence?: string[]
+          outer_qty?: number | null
+          packaging?: string | null
+          page_no?: number
+          row_ref?: string | null
+          size_text?: string | null
+          sort_order?: number
+          unit_price?: number | null
+          weight_g?: number | null
+        }
+        Update: {
+          available_qty?: number | null
+          bbox?: Json | null
+          color?: string | null
+          converted_product_id?: string | null
+          converted_quote_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_urls?: string[]
+          import_id?: string
+          included?: boolean
+          inner_qty?: number | null
+          item_no?: string | null
+          low_confidence?: string[]
+          outer_qty?: number | null
+          packaging?: string | null
+          page_no?: number
+          row_ref?: string | null
+          size_text?: string | null
+          sort_order?: number
+          unit_price?: number | null
+          weight_g?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "catalog_import_rows_converted_product_id_fkey"
+            columns: ["converted_product_id"]
+            isOneToOne: false
+            referencedRelation: "bundle_prices"
+            referencedColumns: ["bundle_product_id"]
+          },
+          {
+            foreignKeyName: "catalog_import_rows_converted_product_id_fkey"
+            columns: ["converted_product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "catalog_import_rows_converted_quote_id_fkey"
+            columns: ["converted_quote_id"]
+            isOneToOne: false
+            referencedRelation: "quote_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "catalog_import_rows_import_id_fkey"
+            columns: ["import_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_imports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      catalog_imports: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          duration_ms: number | null
+          error: string | null
+          file_name: string
+          file_path: string
+          id: string
+          mime_type: string
+          model: string | null
+          page_count: number
+          raw_response: string | null
+          status: string
+          store_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          duration_ms?: number | null
+          error?: string | null
+          file_name: string
+          file_path: string
+          id?: string
+          mime_type: string
+          model?: string | null
+          page_count?: number
+          raw_response?: string | null
+          status?: string
+          store_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          duration_ms?: number | null
+          error?: string | null
+          file_name?: string
+          file_path?: string
+          id?: string
+          mime_type?: string
+          model?: string | null
+          page_count?: number
+          raw_response?: string | null
+          status?: string
+          store_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "catalog_imports_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
             referencedColumns: ["id"]
           },
         ]

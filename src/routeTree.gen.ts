@@ -29,6 +29,7 @@ import { Route as AuthenticatedClientSpymarketRouteImport } from './routes/_auth
 import { Route as AuthenticatedClientWalletRouteImport } from './routes/_authenticated/_client/wallet'
 import { Route as AuthenticatedClientWorkspacesRouteImport } from './routes/_authenticated/_client/workspaces'
 import { Route as AuthenticatedAdminAdsRouteImport } from './routes/_authenticated/admin/ads'
+import { Route as AuthenticatedAdminCatalogImportRouteImport } from './routes/_authenticated/admin/catalog-import'
 import { Route as AuthenticatedAdminClientsRouteImport } from './routes/_authenticated/admin/clients'
 import { Route as AuthenticatedAdminDisputesRouteImport } from './routes/_authenticated/admin/disputes'
 import { Route as AuthenticatedAdminDocumentsRouteImport } from './routes/_authenticated/admin/documents'
@@ -193,6 +194,12 @@ const AuthenticatedAdminAdsRoute = AuthenticatedAdminAdsRouteImport.update({
   path: '/ads',
   getParentRoute: () => AuthenticatedAdminRoute,
 } as any)
+const AuthenticatedAdminCatalogImportRoute =
+  AuthenticatedAdminCatalogImportRouteImport.update({
+    id: '/catalog-import',
+    path: '/catalog-import',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminClientsRoute =
   AuthenticatedAdminClientsRouteImport.update({
     id: '/clients',
@@ -552,6 +559,7 @@ export interface FileRoutesByFullPath {
   '/wallet': typeof AuthenticatedClientWalletRoute
   '/workspaces': typeof AuthenticatedClientWorkspacesRouteWithChildren
   '/admin/ads': typeof AuthenticatedAdminAdsRoute
+  '/admin/catalog-import': typeof AuthenticatedAdminCatalogImportRoute
   '/admin/clients': typeof AuthenticatedAdminClientsRoute
   '/admin/disputes': typeof AuthenticatedAdminDisputesRouteWithChildren
   '/admin/documents': typeof AuthenticatedAdminDocumentsRoute
@@ -628,6 +636,7 @@ export interface FileRoutesByTo {
   '/wallet': typeof AuthenticatedClientWalletRoute
   '/workspaces': typeof AuthenticatedClientWorkspacesRouteWithChildren
   '/admin/ads': typeof AuthenticatedAdminAdsRoute
+  '/admin/catalog-import': typeof AuthenticatedAdminCatalogImportRoute
   '/admin/clients': typeof AuthenticatedAdminClientsRoute
   '/admin/disputes': typeof AuthenticatedAdminDisputesRouteWithChildren
   '/admin/documents': typeof AuthenticatedAdminDocumentsRoute
@@ -708,6 +717,7 @@ export interface FileRoutesById {
   '/_authenticated/_client/wallet': typeof AuthenticatedClientWalletRoute
   '/_authenticated/_client/workspaces': typeof AuthenticatedClientWorkspacesRouteWithChildren
   '/_authenticated/admin/ads': typeof AuthenticatedAdminAdsRoute
+  '/_authenticated/admin/catalog-import': typeof AuthenticatedAdminCatalogImportRoute
   '/_authenticated/admin/clients': typeof AuthenticatedAdminClientsRoute
   '/_authenticated/admin/disputes': typeof AuthenticatedAdminDisputesRouteWithChildren
   '/_authenticated/admin/documents': typeof AuthenticatedAdminDocumentsRoute
@@ -787,6 +797,7 @@ export interface FileRouteTypes {
     | '/wallet'
     | '/workspaces'
     | '/admin/ads'
+    | '/admin/catalog-import'
     | '/admin/clients'
     | '/admin/disputes'
     | '/admin/documents'
@@ -863,6 +874,7 @@ export interface FileRouteTypes {
     | '/wallet'
     | '/workspaces'
     | '/admin/ads'
+    | '/admin/catalog-import'
     | '/admin/clients'
     | '/admin/disputes'
     | '/admin/documents'
@@ -942,6 +954,7 @@ export interface FileRouteTypes {
     | '/_authenticated/_client/wallet'
     | '/_authenticated/_client/workspaces'
     | '/_authenticated/admin/ads'
+    | '/_authenticated/admin/catalog-import'
     | '/_authenticated/admin/clients'
     | '/_authenticated/admin/disputes'
     | '/_authenticated/admin/documents'
@@ -1160,6 +1173,13 @@ declare module '@tanstack/react-router' {
       path: '/ads'
       fullPath: '/admin/ads'
       preLoaderRoute: typeof AuthenticatedAdminAdsRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/catalog-import': {
+      id: '/_authenticated/admin/catalog-import'
+      path: '/catalog-import'
+      fullPath: '/admin/catalog-import'
+      preLoaderRoute: typeof AuthenticatedAdminCatalogImportRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/admin/clients': {
@@ -1690,6 +1710,7 @@ const AuthenticatedAdminDisputesRouteWithChildren =
 
 interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminAdsRoute: typeof AuthenticatedAdminAdsRoute
+  AuthenticatedAdminCatalogImportRoute: typeof AuthenticatedAdminCatalogImportRoute
   AuthenticatedAdminClientsRoute: typeof AuthenticatedAdminClientsRoute
   AuthenticatedAdminDisputesRoute: typeof AuthenticatedAdminDisputesRouteWithChildren
   AuthenticatedAdminDocumentsRoute: typeof AuthenticatedAdminDocumentsRoute
@@ -1713,6 +1734,7 @@ interface AuthenticatedAdminRouteChildren {
 
 const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminAdsRoute: AuthenticatedAdminAdsRoute,
+  AuthenticatedAdminCatalogImportRoute: AuthenticatedAdminCatalogImportRoute,
   AuthenticatedAdminClientsRoute: AuthenticatedAdminClientsRoute,
   AuthenticatedAdminDisputesRoute: AuthenticatedAdminDisputesRouteWithChildren,
   AuthenticatedAdminDocumentsRoute: AuthenticatedAdminDocumentsRoute,
