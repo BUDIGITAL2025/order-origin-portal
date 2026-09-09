@@ -40,6 +40,8 @@ export interface SkuRow {
   image_urls: string[];
   /** Main product photo, ready to display (signed link for stored uploads). */
   image_url: string | null;
+  /** What is stored on the product: an object path or an absolute URL. */
+  image_path: string | null;
   weight: number | null;
   weight_unit: string | null;
   /** Per-variation weight in grams (fulfilment data foundation). */
@@ -363,6 +365,7 @@ export async function computeWorkspaceInventory(
       sellable,
       image_urls: product?.image_urls ?? [],
       image_url: product?.image_url ?? null,
+      image_path: product?.image_url ?? null,
       weight: product?.weight ?? null,
       weight_unit: product?.weight_unit ?? null,
       weight_grams: product?.weight_grams ?? null,

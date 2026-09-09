@@ -25,6 +25,7 @@ export interface InventoryRow {
   sellable?: number;
   image_urls?: string[];
   image_url?: string | null;
+  image_path?: string | null;
   weight?: number | null;
   weight_unit?: string | null;
   weight_grams?: number | null;
