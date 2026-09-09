@@ -797,6 +797,7 @@ export async function issueStockPurchaseReceipt(
     unitPrice: number;
     goodsTotal: number;
     freightCost: number | null;
+    importCost?: number | null;
     total: number;
     paidAt: Date;
     path: "flysales" | "direct";
@@ -815,11 +816,21 @@ export async function issueStockPurchaseReceipt(
   ];
   if (args.freightCost != null && args.freightCost > 0) {
     lines.push({
-      description: "Freight to your address",
-      detail: null,
+      description:
+        args.path === "flysales" ? "Freight to the FlySales warehouse" : "Freight to your address",
+      detail: "Charged at cost — never marked up",
       quantity: 1,
       unitPrice: args.freightCost,
       total: args.freightCost,
+    });
+  }
+  if (args.importCost != null && args.importCost > 0) {
+    lines.push({
+      description: "Import duties and customs",
+      detail: "Charged at cost — never marked up",
+      quantity: 1,
+      unitPrice: args.importCost,
+      total: args.importCost,
     });
   }
 
