@@ -165,3 +165,34 @@ export function QuoteTimeline({ status }: { status: string }) {
     </ol>
   );
 }
+
+/**
+ * How long the published offers stay valid. Amber inside the last 24 hours so
+ * the urgency is visible next to the status, not buried in a date.
+ */
+export function QuoteValidityChip({ validUntil }: { validUntil: string | null }) {
+  const now = useNow(30_000);
+  if (!validUntil) return null;
+  // Validity is a date: it runs to the end of that day.
+  const end = new Date(validUntil).setHours(23, 59, 59, 999);
+  const remaining = end - now;
+  if (remaining <= 0) {
+    return (
+      <Badge variant="destructive" className="whitespace-nowrap">
+        Expired
+      </Badge>
+    );
+  }
+  const urgent = remaining < 24 * 3600 * 1000;
+  return (
+    <Badge
+      variant="outline"
+      className={cn(
+        "tnum whitespace-nowrap",
+        urgent && "border-amber-500/50 bg-amber-500/10 text-amber-600 dark:text-amber-400",
+      )}
+    >
+      {formatSlaDuration(remaining, false)} left
+    </Badge>
+  );
+}
