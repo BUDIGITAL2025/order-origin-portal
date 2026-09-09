@@ -251,9 +251,17 @@ export function QuoteOfferCards({
       })}
 
       {canRespond && !acceptedOption && (
-        <div className="sticky bottom-4 rounded-xl border border-border bg-card p-3 shadow-sm">
+        <div className="sticky bottom-0 -mx-1 flex items-center gap-2 border-t border-border bg-card/95 px-1 py-3 backdrop-blur supports-[backdrop-filter]:bg-card/80">
           <Button
-            className="w-full"
+            variant="outline"
+            className="shrink-0"
+            disabled={cancel.isPending}
+            onClick={() => setCancelling(true)}
+          >
+            Cancel request
+          </Button>
+          <Button
+            className="flex-1"
             disabled={!selected}
             onClick={() => {
               setName(productName);
@@ -264,6 +272,30 @@ export function QuoteOfferCards({
           </Button>
         </div>
       )}
+
+      <Dialog open={cancelling} onOpenChange={setCancelling}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancel this request?</DialogTitle>
+            <DialogDescription>
+              We stop quoting this product. The offers here stay visible until they expire, and you
+              can always submit a new request later.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCancelling(false)}>
+              Keep it open
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={cancel.isPending}
+              onClick={() => cancel.mutate()}
+            >
+              {cancel.isPending ? "Cancelling…" : "Cancel request"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={confirming} onOpenChange={setConfirming}>
         <DialogContent>
