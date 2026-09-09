@@ -2064,6 +2064,7 @@ export type Database = {
           quote_request_id: string
           read_by_admin_at: string | null
           read_by_client_at: string | null
+          read_by_sourcer_at: string | null
           system_code: string | null
         }
         Insert: {
@@ -2078,6 +2079,7 @@ export type Database = {
           quote_request_id: string
           read_by_admin_at?: string | null
           read_by_client_at?: string | null
+          read_by_sourcer_at?: string | null
           system_code?: string | null
         }
         Update: {
@@ -2092,6 +2094,7 @@ export type Database = {
           quote_request_id?: string
           read_by_admin_at?: string | null
           read_by_client_at?: string | null
+          read_by_sourcer_at?: string | null
           system_code?: string | null
         }
         Relationships: [
@@ -3942,6 +3945,7 @@ export type Database = {
         Args: { p_job: string; p_method?: string; p_path: string }
         Returns: undefined
       }
+      is_assigned_sourcer: { Args: { p_quote: string }; Returns: boolean }
       is_sourcing: { Args: { _user_id: string }; Returns: boolean }
       open_dispute: {
         Args: {

@@ -6,6 +6,7 @@ import { ArrowLeft, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/app-shell";
 import { Chip, PanelHeader } from "@/components/admin-ui";
+import { QuoteThread } from "@/components/quote-thread";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { defaultImportTax, PASSTHROUGH_NOTE, sourcingFee } from "@/lib/pricing";
@@ -341,6 +342,18 @@ function DeskQuotePage() {
               </Button>
             </CardContent>
           </Card>
+
+          {/* The client's thread, with the client masked. No final prices here. */}
+          {data.quote.assigned_sourcer ? (
+            <QuoteThread quoteId={id} mode="sourcing" className="h-[32rem]" />
+          ) : (
+            <Card>
+              <CardContent className="pt-5 text-sm text-muted-foreground">
+                Submit your sourcing to take this request — the client conversation opens once it is
+                assigned to you.
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
     </div>

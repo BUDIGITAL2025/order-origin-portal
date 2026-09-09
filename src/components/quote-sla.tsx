@@ -53,12 +53,7 @@ export function QuoteSlaCountdown({
 
   if (remaining <= 0) {
     return (
-      <div
-        className={cn(
-          "rounded-2xl border border-border bg-card p-6 text-center",
-          className,
-        )}
-      >
+      <div className={cn("rounded-2xl border border-border bg-card p-6 text-center", className)}>
         <p className="text-sm font-semibold">Taking longer than usual</p>
         <p className="mt-1 text-sm text-muted-foreground">
           Our sourcing team is on it — you'll be notified as soon as your quote arrives.
@@ -68,12 +63,7 @@ export function QuoteSlaCountdown({
   }
 
   return (
-    <div
-      className={cn(
-        "rounded-2xl border border-border bg-card p-6 text-center",
-        className,
-      )}
-    >
+    <div className={cn("rounded-2xl border border-border bg-card p-6 text-center", className)}>
       <p className="flex items-center justify-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
         <AlarmClock className="h-3.5 w-3.5" />
         Expected quote within
@@ -86,13 +76,7 @@ export function QuoteSlaCountdown({
 }
 
 /** Admin queue: compact time-against-target badge. Red once overdue. */
-export function QuoteSlaBadge({
-  dueAt,
-  status,
-}: {
-  dueAt: string | null;
-  status: string;
-}) {
+export function QuoteSlaBadge({ dueAt, status }: { dueAt: string | null; status: string }) {
   const now = useNow(30_000);
   if (!dueAt || !isQuoteOpenForSla(status)) {
     return <span className="text-xs text-muted-foreground">—</span>;
@@ -163,5 +147,36 @@ export function QuoteTimeline({ status }: { status: string }) {
         );
       })}
     </ol>
+  );
+}
+
+/**
+ * How long the published offers stay valid. Amber inside the last 24 hours so
+ * the urgency is visible next to the status, not buried in a date.
+ */
+export function QuoteValidityChip({ validUntil }: { validUntil: string | null }) {
+  const now = useNow(30_000);
+  if (!validUntil) return null;
+  // Validity is a date: it runs to the end of that day.
+  const end = new Date(validUntil).setHours(23, 59, 59, 999);
+  const remaining = end - now;
+  if (remaining <= 0) {
+    return (
+      <Badge variant="destructive" className="whitespace-nowrap">
+        Expired
+      </Badge>
+    );
+  }
+  const urgent = remaining < 24 * 3600 * 1000;
+  return (
+    <Badge
+      variant="outline"
+      className={cn(
+        "tnum whitespace-nowrap",
+        urgent && "border-amber-500/50 bg-amber-500/10 text-amber-600 dark:text-amber-400",
+      )}
+    >
+      {formatSlaDuration(remaining, false)} left
+    </Badge>
   );
 }

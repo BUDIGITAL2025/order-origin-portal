@@ -51,16 +51,112 @@ export const postQuoteMessage = createServerFn({ method: "POST" })
 
     const { getAdminClient } = await import("./admin.server");
     const { sendAdminEmail } = await import("./email.server");
+    const { assignedSourcer, notifySourcerOfClientMessage } = await import("./quote-thread.server");
     const admin = await getAdminClient();
     const { data: quote } = await admin
       .from("quote_requests")
       .select("product_name, product_url")
       .eq("id", data.quote_id)
       .maybeSingle();
-    await sendAdminEmail({
-      subject: `New client message on a quote: ${quote?.product_name ?? quote?.product_url ?? data.quote_id}`,
-      text: `${body || "(image only)"}\n\nQuote: ${data.quote_id}`,
+
+    // The assigned collaborator owns the conversation on their own quotes; the
+    // admin is only pulled in when nobody is sourcing it yet, so ordinary
+    // messages do not drown the internal mailbox.
+    const sourcerId = await assignedSourcer(admin, data.quote_id);
+    if (sourcerId) {
+      await notifySourcerOfClientMessage(
+        admin,
+        data.quote_id,
+        "New client message",
+        body || "(image only)",
+      );
+    } else {
+      await sendAdminEmail({
+        subject: `New client message on a quote: ${quote?.product_name ?? quote?.product_url ?? data.quote_id}`,
+        text: `${body || "(image only)"}\n\nQuote: ${data.quote_id}`,
+      });
+    }
+    return { ok: true };
+  });
+
+/**
+ * Sourcing collaborator: read the thread of a quote assigned to me. The client
+ * is masked here and never identified anywhere in the payload.
+ */
+export const sourcingListQuoteMessages = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => quoteIdSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const { getAdminClient } = await import("./admin.server");
+    const { requireCollaborator } = await import("./sourcing.server");
+    const { clientShortLabel } = await import("./quote-thread.server");
+    await requireCollaborator(await getAdminClient(), context.userId);
+    const admin = await getAdminClient();
+
+    const { data: quote } = await admin
+      .from("quote_requests")
+      .select("assigned_sourcer, store_id")
+      .eq("id", data.quote_id)
+      .maybeSingle();
+    if (!quote || quote.assigned_sourcer !== context.userId) {
+      throw new Error("This request is assigned to another collaborator");
+    }
+
+    const { data: rows, error } = await admin
+      .from("quote_messages")
+      .select("id, author_role, kind, system_code, body, attachments, pinned, created_at")
+      .eq("quote_request_id", data.quote_id)
+      .order("created_at", { ascending: true });
+    if (error) throw new Error(error.message);
+
+    await admin
+      .from("quote_messages")
+      .update({ read_by_sourcer_at: new Date().toISOString() })
+      .eq("quote_request_id", data.quote_id)
+      .eq("author_role", "client")
+      .is("read_by_sourcer_at", null);
+
+    return {
+      client_label: clientShortLabel(quote.store_id),
+      messages: (rows ?? []).map((m) => ({ ...m, pinned: m.pinned })) as ThreadMessage[],
+    };
+  });
+
+/** Sourcing collaborator: reply on a quote assigned to me, as FlySales Sourcing. */
+export const sourcingPostQuoteMessage = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => quoteMessageSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const { getAdminClient } = await import("./admin.server");
+    const { requireCollaborator } = await import("./sourcing.server");
+    const { notifyClientOfReply } = await import("./quote-thread.server");
+    const admin = await getAdminClient();
+    await requireCollaborator(admin, context.userId);
+
+    const { data: quote } = await admin
+      .from("quote_requests")
+      .select("assigned_sourcer")
+      .eq("id", data.quote_id)
+      .maybeSingle();
+    if (!quote || quote.assigned_sourcer !== context.userId) {
+      throw new Error("This request is assigned to another collaborator");
+    }
+
+    const body = (data.body ?? "").trim();
+    const attachments = data.attachments ?? [];
+    if (!body && attachments.length === 0) throw new Error("Write a message or attach an image");
+
+    // The real author is always stored, even though both sides see a role.
+    const { error } = await admin.from("quote_messages").insert({
+      quote_request_id: data.quote_id,
+      author_user_id: context.userId,
+      author_role: "sourcing",
+      kind: "message",
+      body: body || null,
+      attachments,
     });
+    if (error) throw new Error(error.message);
+    await notifyClientOfReply(admin, data.quote_id, body || "The team attached new images.");
     return { ok: true };
   });
 
@@ -144,7 +240,8 @@ export const getThreadAttachmentUrls = createServerFn({ method: "POST" })
     const admin = await getAdminClient();
     const allowed =
       (await callerIsAdmin(context.supabase, context.userId)) ||
-      (await context.supabase.rpc("owns_quote", { p_quote: data.quote_id })).data === true;
+      (await context.supabase.rpc("owns_quote", { p_quote: data.quote_id })).data === true ||
+      (await context.supabase.rpc("is_assigned_sourcer", { p_quote: data.quote_id })).data === true;
     if (!allowed) throw new Error("Forbidden");
 
     if (data.paths.length === 0) return { urls: [] };

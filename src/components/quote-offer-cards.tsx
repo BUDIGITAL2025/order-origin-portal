@@ -24,6 +24,7 @@ import { Label } from "@/components/ui/label";
 import { countryName } from "@/lib/countries";
 import { formatUSD } from "@/lib/format";
 import { friendlyError } from "@/lib/errors";
+import { createQuoteIntent } from "@/lib/quote-intents.functions";
 import { acceptQuoteOption, listQuoteOffers } from "@/lib/quote-offers.functions";
 import { cn } from "@/lib/utils";
 
@@ -75,11 +76,24 @@ export function QuoteOfferCards({
   const [selected, setSelected] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
   const [name, setName] = useState(productName);
 
+  // "Cancel request" is the client asking us to stop quoting — it goes through
+  // the same typed-request queue as every other structured ask.
+  const callIntent = useServerFn(createQuoteIntent);
+  const cancel = useMutation({
+    mutationFn: () => callIntent({ data: { quote_id: quoteId, type: "stop_quoting" } }),
+    onSuccess: () => {
+      setCancelling(false);
+      toast.success("We'll stop quoting this product.");
+      void queryClient.invalidateQueries({ queryKey: ["quote-thread", quoteId] });
+    },
+    onError: (err) => toast.error(friendlyError(err)),
+  });
+
   const accept = useMutation({
-    mutationFn: () =>
-      callAccept({ data: { option_id: selected!, product_name: name.trim() } }),
+    mutationFn: () => callAccept({ data: { option_id: selected!, product_name: name.trim() } }),
     onSuccess: () => {
       setConfirming(false);
       toast.success("Offer accepted — the product and its SKUs are in your catalogue.");
@@ -113,7 +127,8 @@ export function QuoteOfferCards({
             key={offer.id}
             className={cn(
               "transition-colors",
-              (isSelected || isAccepted) && "border-primary ring-1 ring-primary/40",
+              (isSelected || isAccepted) &&
+                "border-primary bg-primary/[0.06] ring-1 ring-primary/40",
             )}
           >
             <CardContent className="space-y-4 p-4">
@@ -198,7 +213,10 @@ export function QuoteOfferCards({
                 onClick={() => setExpanded(expanded === offer.id ? null : offer.id)}
               >
                 <ChevronDown
-                  className={cn("h-3.5 w-3.5 transition-transform", expanded === offer.id && "rotate-180")}
+                  className={cn(
+                    "h-3.5 w-3.5 transition-transform",
+                    expanded === offer.id && "rotate-180",
+                  )}
                 />
                 Variant pricing by country
               </button>
@@ -250,9 +268,17 @@ export function QuoteOfferCards({
       })}
 
       {canRespond && !acceptedOption && (
-        <div className="sticky bottom-4 rounded-xl border border-border bg-card p-3 shadow-sm">
+        <div className="sticky bottom-0 -mx-1 flex items-center gap-2 border-t border-border bg-card/95 px-1 py-3 backdrop-blur supports-[backdrop-filter]:bg-card/80">
           <Button
-            className="w-full"
+            variant="outline"
+            className="shrink-0"
+            disabled={cancel.isPending}
+            onClick={() => setCancelling(true)}
+          >
+            Cancel request
+          </Button>
+          <Button
+            className="flex-1"
             disabled={!selected}
             onClick={() => {
               setName(productName);
@@ -263,6 +289,30 @@ export function QuoteOfferCards({
           </Button>
         </div>
       )}
+
+      <Dialog open={cancelling} onOpenChange={setCancelling}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancel this request?</DialogTitle>
+            <DialogDescription>
+              We stop quoting this product. The offers here stay visible until they expire, and you
+              can always submit a new request later.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCancelling(false)}>
+              Keep it open
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={cancel.isPending}
+              onClick={() => cancel.mutate()}
+            >
+              {cancel.isPending ? "Cancelling…" : "Cancel request"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={confirming} onOpenChange={setConfirming}>
         <DialogContent>

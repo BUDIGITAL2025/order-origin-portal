@@ -216,9 +216,7 @@ export function spymarketActiveEmail(args: { planLabel: string }): BuiltEmail {
 }
 
 /** Subscription cancellation confirmed. */
-export function subscriptionCancelledEmail(args: {
-  periodEndDate: string | null;
-}): BuiltEmail {
+export function subscriptionCancelledEmail(args: { periodEndDate: string | null }): BuiltEmail {
   return build("Your subscription cancellation is confirmed", {
     heading: "Your cancellation is confirmed",
     preheader: args.periodEndDate
@@ -380,10 +378,7 @@ export function inboundReceivedEmail(args: {
 }
 
 /** Inbound shipment refused at the warehouse (no tracking, no labels). */
-export function inboundRefusedEmail(args: {
-  shipmentRef: string;
-  reason: string;
-}): BuiltEmail {
+export function inboundRefusedEmail(args: { shipmentRef: string; reason: string }): BuiltEmail {
   return build(`Shipment ${args.shipmentRef} was refused`, {
     heading: "Your shipment was refused at the warehouse",
     preheader: args.reason,
@@ -489,3 +484,22 @@ export function quoteRequestReceivedEmail(args: {
   });
 }
 
+/** A collaborator has news on one of their assigned quotes (client stays masked). */
+export function sourcingThreadEmail(args: {
+  quoteId: string;
+  productName: string;
+  clientLabel: string;
+  headline: string;
+  excerpt: string;
+}): BuiltEmail {
+  return build(`${args.headline}: ${args.productName}`, {
+    heading: args.headline,
+    preheader: args.excerpt || `${args.clientLabel} posted on a quote you are sourcing.`,
+    paragraphs: [
+      `${args.clientLabel} posted on the quote you are sourcing for ${args.productName}.`,
+      ...(args.excerpt ? [`"${args.excerpt}"`] : []),
+    ],
+    button: { label: "Open the request", url: portalUrl(`/desk/quote/${args.quoteId}`) },
+    note: "Reply from the sourcing desk. Client identity stays hidden by design.",
+  });
+}
