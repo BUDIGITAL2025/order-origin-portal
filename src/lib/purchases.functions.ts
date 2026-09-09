@@ -213,7 +213,9 @@ export const createStockPurchase = createServerFn({ method: "POST" })
         quantity: data.quantity,
         unit_price: unitPrice,
         goods_total: goodsTotal,
-        total_amount: data.path === "flysales" ? goodsTotal : null,
+        // Goods are Ex Works on both paths: the payable total only exists once
+        // freight and import have been quoted.
+        total_amount: null,
         delivery_address: data.path === "direct" ? (data.delivery_address ?? null) : null,
         supplier_unit_price: line.supplier_unit_price,
         sourcing_fee_rate: line.sourcing_fee_rate,
