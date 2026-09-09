@@ -2478,6 +2478,7 @@ export type Database = {
           freight_quoted_at: string | null
           goods_total: number
           id: string
+          import_cost: number | null
           in_production_at: string | null
           inbound_shipment_id: string | null
           paid_at: string | null
@@ -2514,6 +2515,7 @@ export type Database = {
           freight_quoted_at?: string | null
           goods_total: number
           id?: string
+          import_cost?: number | null
           in_production_at?: string | null
           inbound_shipment_id?: string | null
           paid_at?: string | null
@@ -2550,6 +2552,7 @@ export type Database = {
           freight_quoted_at?: string | null
           goods_total?: number
           id?: string
+          import_cost?: number | null
           in_production_at?: string | null
           inbound_shipment_id?: string | null
           paid_at?: string | null

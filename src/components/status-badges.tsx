@@ -3,12 +3,14 @@ import { cn } from "@/lib/utils";
 
 type QuoteStatus = "submitted" | "sourcing" | "quoted" | "closed" | "expired";
 
+// One distinct colour per status: received grey, sourcing blue, quoted purple,
+// published green, expired/closed-out muted.
 const QUOTE_STYLES: Record<QuoteStatus, string> = {
-  submitted: "bg-info/10 text-info border-info/25",
+  submitted: "bg-muted text-muted-foreground border-border",
   sourcing: "bg-info/10 text-info border-info/25",
-  quoted: "bg-warning/10 text-warning border-warning/25",
-  closed: "bg-success/10 text-success border-success/25",
-  expired: "bg-muted text-muted-foreground border-border",
+  quoted: "bg-purple/10 text-purple border-purple/25",
+  closed: "bg-muted/60 text-muted-foreground/80 border-border",
+  expired: "bg-muted/60 text-muted-foreground/80 border-border",
 };
 
 const QUOTE_LABELS: Record<QuoteStatus, string> = {

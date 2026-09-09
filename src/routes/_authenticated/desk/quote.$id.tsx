@@ -212,13 +212,17 @@ function DeskQuotePage() {
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label>COGS — supplier unit price (USD)</Label>
+                      <Label>COGS (EXW) — supplier unit price (USD)</Label>
                       <Input
                         inputMode="decimal"
                         value={line.supplier_unit_price}
                         placeholder="4.20"
                         onChange={(e) => setField(index, "supplier_unit_price", e.target.value)}
                       />
+                      <p className="text-xs text-muted-foreground">
+                        Supplier unit price Ex Works — excludes all freight. Per-order shipping goes
+                        in Ship; bulk freight is quoted on the purchase.
+                      </p>
                     </div>
                     <div className="space-y-1.5">
                       <Label>Supplier shipping per unit (USD)</Label>
@@ -230,7 +234,7 @@ function DeskQuotePage() {
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label>Import tax / IOSS per unit (USD)</Label>
+                      <Label>IOSS / import per unit (USD)</Label>
                       <Input
                         inputMode="decimal"
                         value={line.supplier_tax}

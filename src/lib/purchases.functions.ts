@@ -2,7 +2,7 @@
  * Stock purchases — server functions.
  *
  * Clients buy stock against an accepted quote line and pay from the wallet
- * (cover-the-difference applies). Admins quote freight on direct shipments
+ * (cover-the-difference applies). Admins quote freight and import on both paths
  * and advance the timeline. The card always funds the wallet; the wallet
  * always pays the purchase.
  */
@@ -213,7 +213,9 @@ export const createStockPurchase = createServerFn({ method: "POST" })
         quantity: data.quantity,
         unit_price: unitPrice,
         goods_total: goodsTotal,
-        total_amount: data.path === "flysales" ? goodsTotal : null,
+        // Goods are Ex Works on both paths: the payable total only exists once
+        // freight and import have been quoted.
+        total_amount: null,
         delivery_address: data.path === "direct" ? (data.delivery_address ?? null) : null,
         supplier_unit_price: line.supplier_unit_price,
         sourcing_fee_rate: line.sourcing_fee_rate,
@@ -427,7 +429,7 @@ export const adminListStockPurchases = createServerFn({ method: "POST" })
     });
   });
 
-/** Direct shipments: quote the freight so the client can pay the full total. */
+/** Both paths: quote freight and import so the client can pay the full total. */
 export const adminQuoteFreight = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => freightQuoteSchema.parse(input))
@@ -439,11 +441,10 @@ export const adminQuoteFreight = createServerFn({ method: "POST" })
 
     const { data: row } = await admin
       .from("stock_purchases")
-      .select("id, path, goods_total, status")
+      .select("id, goods_total, status")
       .eq("id", data.purchase_id)
       .maybeSingle();
     if (!row) throw new Error("Stock purchase not found");
-    if (row.path !== "direct") throw new Error("Freight only applies to direct shipments");
     if (row.status !== "requested" && row.status !== "freight_quoted") {
       throw new Error("This purchase is already paid");
     }
@@ -452,7 +453,8 @@ export const adminQuoteFreight = createServerFn({ method: "POST" })
       .from("stock_purchases")
       .update({
         freight_cost: data.freight_cost,
-        total_amount: round2(Number(row.goods_total) + data.freight_cost),
+        import_cost: data.import_cost,
+        total_amount: round2(Number(row.goods_total) + data.freight_cost + data.import_cost),
         status: "freight_quoted",
         freight_quoted_at: new Date().toISOString(),
       })

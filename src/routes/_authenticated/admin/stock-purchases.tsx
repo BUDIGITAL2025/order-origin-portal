@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/app-shell";
 import { SectionTabs, ADMIN_SOURCING_TABS } from "@/components/section-tabs";
@@ -53,9 +53,13 @@ function AdminStockPurchasesPage() {
   const callAdvance = useServerFn(adminAdvancePurchase);
 
   const [filter, setFilter] = useState<StatusFilter>("all");
-  const [freightFor, setFreightFor] = useState<{ id: string; ref: string; goods: number } | null>(
-    null,
-  );
+  const [freightFor, setFreightFor] = useState<{
+    id: string;
+    ref: string;
+    goods: number;
+    freight: string;
+    importCost: string;
+  } | null>(null);
   const [trackingFor, setTrackingFor] = useState<{ id: string; ref: string } | null>(null);
 
   const { data: rows } = useQuery({
@@ -67,7 +71,7 @@ function AdminStockPurchasesPage() {
   const purchases = (rows ?? []).filter(
     (p) => showArchived || !(p as { archived_at?: string | null }).archived_at,
   );
-  const awaitingFreight = purchases.filter((p) => p.path === "direct" && p.status === "requested");
+  const awaitingFreight = purchases.filter((p) => p.status === "requested");
   const paidValue = purchases
     .filter((p) => p.paid_at)
     .reduce((s, p) => s + Number(p.total_amount ?? 0), 0);
@@ -91,7 +95,7 @@ function AdminStockPurchasesPage() {
     <div>
       <PageHeader
         title="Stock purchases"
-        description="Bulk stock bought against a quote. Quote the freight on direct shipments, then move each purchase through production to delivery."
+        description="Bulk stock bought against a quote. Quote freight and import on every purchase, then move each one through production to delivery."
       />
       <SectionTabs tabs={ADMIN_SOURCING_TABS} />
 
@@ -188,7 +192,7 @@ function AdminStockPurchasesPage() {
                     archived={!!(p as { archived_at?: string | null }).archived_at}
                     invalidateKeys={[["admin-stock-purchases"]]}
                   />
-                  {p.path === "direct" && !p.paid_at ? (
+                  {!p.paid_at ? (
                     <Button
                       size="sm"
                       variant="outline"
@@ -197,6 +201,11 @@ function AdminStockPurchasesPage() {
                           id: p.id,
                           ref: p.ref,
                           goods: Number(p.goods_total),
+                          freight: p.freight_cost != null ? String(p.freight_cost) : "",
+                          importCost:
+                            (p as { import_cost?: number | null }).import_cost != null
+                              ? String((p as { import_cost?: number | null }).import_cost)
+                              : "",
                         })
                       }
                     >
@@ -306,23 +315,50 @@ function FreightDialog({
   purchase,
   onClose,
 }: {
-  purchase: { id: string; ref: string; goods: number } | null;
+  purchase: {
+    id: string;
+    ref: string;
+    goods: number;
+    freight: string;
+    importCost: string;
+  } | null;
   onClose: () => void;
 }) {
   const queryClient = useQueryClient();
   const callQuote = useServerFn(adminQuoteFreight);
   const [cost, setCost] = useState("");
+  const [importCost, setImportCost] = useState("");
+
+  useEffect(() => {
+    setCost(purchase?.freight ?? "");
+    setImportCost(purchase?.importCost ?? "");
+  }, [purchase]);
+
+  const freightValue = cost === "" ? 0 : Number(cost);
+  const importValue = importCost === "" ? 0 : Number(importCost);
+  const previewTotal = (purchase?.goods ?? 0) + (freightValue || 0) + (importValue || 0);
 
   const quote = useMutation({
     mutationFn: async () => {
       if (!purchase) throw new Error("No purchase selected");
-      const value = Number(cost);
-      if (!Number.isFinite(value) || value < 0) throw new Error("Enter a valid freight cost");
-      return callQuote({ data: { purchase_id: purchase.id, freight_cost: value } });
+      if (!Number.isFinite(freightValue) || freightValue < 0) {
+        throw new Error("Enter a valid freight cost");
+      }
+      if (!Number.isFinite(importValue) || importValue < 0) {
+        throw new Error("Enter a valid import cost");
+      }
+      return callQuote({
+        data: {
+          purchase_id: purchase.id,
+          freight_cost: freightValue,
+          import_cost: importValue,
+        },
+      });
     },
     onSuccess: async () => {
-      toast.success("Freight quoted. The client can pay now.");
+      toast.success("Freight and import quoted. The client can pay now.");
       setCost("");
+      setImportCost("");
       onClose();
       await queryClient.invalidateQueries({ queryKey: ["admin-stock-purchases"] });
     },
@@ -333,22 +369,37 @@ function FreightDialog({
     <Dialog open={!!purchase} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle>Quote freight</DialogTitle>
+          <DialogTitle>Quote freight and import</DialogTitle>
           <DialogDescription>
-            {purchase?.ref} — goods {formatUSD(purchase?.goods ?? 0)}. The client pays goods plus
-            freight in one go.
+            {purchase?.ref} — goods {formatUSD(purchase?.goods ?? 0)} Ex Works. Both lines pass
+            through at exact cost and are never marked up.
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-1.5">
-          <Label>Freight cost (USD)</Label>
-          <Input inputMode="decimal" value={cost} onChange={(e) => setCost(e.target.value)} />
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <Label>Freight cost (USD)</Label>
+            <Input inputMode="decimal" value={cost} onChange={(e) => setCost(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Import / duties cost (USD)</Label>
+            <Input
+              inputMode="decimal"
+              value={importCost}
+              onChange={(e) => setImportCost(e.target.value)}
+              placeholder="0.00"
+            />
+          </div>
+          <div className="flex items-center justify-between rounded-md border border-border bg-muted/30 px-3 py-2 text-sm">
+            <span className="text-muted-foreground">Client pays</span>
+            <span className="tnum font-semibold">{formatUSD(previewTotal)}</span>
+          </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
           <Button disabled={quote.isPending} onClick={() => quote.mutate()}>
-            {quote.isPending ? "Saving…" : "Save freight"}
+            {quote.isPending ? "Saving…" : "Save quote"}
           </Button>
         </DialogFooter>
       </DialogContent>

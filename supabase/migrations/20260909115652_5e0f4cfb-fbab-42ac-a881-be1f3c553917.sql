@@ -1,0 +1,1 @@
+ALTER TABLE public.stock_purchases ADD COLUMN IF NOT EXISTS import_cost numeric(12,2);

@@ -66,9 +66,9 @@ function num(value: string): number {
 type GridField = "supplier_cogs" | "supplier_shipping" | "supplier_tax" | "margin_pct";
 
 const GRID_FIELDS: { key: GridField; label: string; short?: string }[] = [
-  { key: "supplier_cogs", label: "COGS" },
+  { key: "supplier_cogs", label: "COGS (EXW)", short: "COGS" },
   { key: "supplier_shipping", label: "Ship" },
-  { key: "supplier_tax", label: "IOSS / import tax", short: "IOSS" },
+  { key: "supplier_tax", label: "IOSS / import per unit", short: "IOSS" },
   { key: "margin_pct", label: "Margin %", short: "Margin" },
 ];
 
@@ -345,17 +345,20 @@ function AdminQuoteDetailPage() {
       // Second step: the margin. Publishing writes the client price from the
       // saved sourcing cost, so it always uses the numbers the server stored.
       const marginByKey = new Map<string, number>();
+      const feeByKey = new Map<string, number>();
       for (const row of rows) {
         for (const country of countries) {
           const cell = row.cells[country];
           if (cell && !cellLocked(cell)) {
             marginByKey.set(`${row.label.trim()}::${country}`, num(cell.margin_pct));
+            feeByKey.set(`${row.label.trim()}::${country}`, cell.fee_rate * 100);
           }
         }
       }
       const publishLines = saved.lines.map((l) => ({
         id: l.id,
         margin_pct: marginByKey.get(`${l.variant_label}::${l.country_code}`) ?? 0,
+        fee_rate_pct: feeByKey.get(`${l.variant_label}::${l.country_code}`) ?? 0,
       }));
       await callPublish({
         data: {
@@ -686,9 +689,12 @@ function AdminQuoteDetailPage() {
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="aq-valid">Valid until</Label>
+                  <p className="text-[11px] text-muted-foreground">default: 7 days</p>
                   <Input
                     id="aq-valid"
                     type="date"
+                    placeholder="default: 7 days"
+                    title="Leave empty and the quote stays valid for 7 days from publish."
                     value={validUntil}
                     onChange={(e) => setValidUntil(e.target.value)}
                     disabled={!requestEditable}
@@ -823,6 +829,11 @@ function AdminQuoteDetailPage() {
                                         className="h-7 tnum text-xs"
                                       />
                                     </div>
+                                    {f.key === "supplier_cogs" && (
+                                      <p className="mt-0.5 pl-[4.25rem] text-[9px] leading-tight text-muted-foreground/80">
+                                        Supplier unit price Ex Works — excludes all freight.
+                                      </p>
+                                    )}
                                     {f.key === "supplier_tax" && (
                                       <p className="mt-0.5 pl-[4.25rem] text-[9px] leading-tight text-muted-foreground/80">
                                         {isEuCountry(country)
@@ -837,15 +848,36 @@ function AdminQuoteDetailPage() {
                                     <span>COGS + ship</span>
                                     <span className="tnum">{formatUSD(cellBase(cell))}</span>
                                   </div>
-                                  <div className="flex items-center justify-between">
-                                    <span>
-                                      Sourcing fee{" "}
-                                      {cell.fee_included
-                                        ? "(included)"
-                                        : `(${(cell.fee_rate * 100).toFixed(0)}%)`}
-                                    </span>
-                                    <span className="tnum">{formatUSD(cellFee(cell))}</span>
+                                  <div className="flex items-center justify-between gap-1">
+                                    <span className="shrink-0">Sourcing fee %</span>
+                                    <div className="flex items-center gap-1">
+                                      <Input
+                                        type="number"
+                                        step="0.5"
+                                        min="0"
+                                        max="100"
+                                        value={
+                                          cell.fee_included
+                                            ? 0
+                                            : Math.round(cell.fee_rate * 1000) / 10
+                                        }
+                                        onChange={(e) =>
+                                          updateCell(row.key, country, {
+                                            fee_rate: (Number(e.target.value) || 0) / 100,
+                                          })
+                                        }
+                                        disabled={!cellEditable}
+                                        aria-label={`Sourcing fee % (${country})`}
+                                        className="h-6 w-14 tnum text-[10px]"
+                                      />
+                                      <span className="tnum">{formatUSD(cellFee(cell))}</span>
+                                    </div>
                                   </div>
+                                  {cell.fee_included && (
+                                    <p className="text-[9px] leading-tight text-muted-foreground/80">
+                                      Fee included in cost — never applied twice.
+                                    </p>
+                                  )}
                                   <div className="flex items-center justify-between font-medium text-foreground">
                                     <span>Sourcing cost</span>
                                     <span className="tnum">

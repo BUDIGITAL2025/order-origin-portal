@@ -52,6 +52,8 @@
   --color-warning-foreground: #ffffff;
   --color-info: var(--info);
   --color-info-foreground: #ffffff;
+  --color-purple: var(--purple);
+  --color-purple-foreground: #ffffff;
   --color-chart-1: var(--accent);
   --color-chart-2: var(--text-muted);
   --color-chart-3: var(--warning);
@@ -103,6 +105,7 @@
   --warning: #d97706;
   --danger: #dc2626;
   --info: #2563eb;
+  --purple: #7c3aed;
 
   /* Entry-page palette is theme-independent. */
   --entry-bg: #0a0b0d;
@@ -141,6 +144,7 @@
   --warning: #fbbf24;
   --danger: #f87171;
   --info: #60a5fa;
+  --purple: #a78bfa;
 }
 
 /* Numbers in tables and metrics align in columns. */
