@@ -8,7 +8,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import { sendClientEmail } from "./email.server";
-import { quoteMessageEmail } from "./email-templates.server";
+import { quoteMessageEmail, sourcingThreadEmail } from "./email-templates.server";
 
 type Admin = SupabaseClient<Database>;
 
@@ -63,6 +63,52 @@ export async function notifyClientOfReply(
   });
   await sendClientEmail(admin, {
     clientId: accountId,
+    subject: email.subject,
+    text: email.text,
+    html: email.html,
+  });
+}
+
+/**
+ * How a collaborator is allowed to refer to the client: a stable short id
+ * derived from the workspace, never a name, a company or a country.
+ */
+export function clientShortLabel(storeId: string | null): string {
+  return `Client #${(storeId ?? "unknown").slice(0, 8).toUpperCase()}`;
+}
+
+/** The active collaborator assigned to a quote, if any. */
+export async function assignedSourcer(admin: Admin, quoteId: string): Promise<string | null> {
+  const { data } = await admin
+    .from("quote_requests")
+    .select("assigned_sourcer")
+    .eq("id", quoteId)
+    .maybeSingle();
+  return data?.assigned_sourcer ?? null;
+}
+
+/**
+ * Notify the assigned collaborator that the client posted — with the client
+ * masked, exactly as their desk renders it.
+ */
+export async function notifySourcerOfClientMessage(
+  admin: Admin,
+  quoteId: string,
+  headline: string,
+  body: string,
+): Promise<void> {
+  const sourcerId = await assignedSourcer(admin, quoteId);
+  if (!sourcerId) return;
+  const { productName, storeId } = await quoteOwner(admin, quoteId);
+  const email = sourcingThreadEmail({
+    quoteId,
+    productName: productName ?? "a quote request",
+    clientLabel: clientShortLabel(storeId),
+    headline,
+    excerpt: body.slice(0, 240),
+  });
+  await sendClientEmail(admin, {
+    clientId: sourcerId,
     subject: email.subject,
     text: email.text,
     html: email.html,
