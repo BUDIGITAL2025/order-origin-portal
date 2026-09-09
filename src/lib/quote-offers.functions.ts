@@ -41,13 +41,22 @@ export const listQuoteOffers = createServerFn({ method: "POST" })
     const offers: ClientOffer[] = [];
     for (const o of options ?? []) {
       const own = (lines ?? []).filter((l) => l.option_id === o.id);
+      // MOQ and production lead are entered per line on the grid; the option
+      // headline shows the binding figure across its lines.
+      const lineMoqs = own.map((l) => l.moq).filter((v): v is number => v != null);
+      const lineLeads = own.map((l) => l.lead_time_days).filter((v): v is number => v != null);
       offers.push({
         id: o.id,
         letter: o.letter,
         quality: o.quality,
         recommended: o.recommended,
-        moq: o.moq,
-        production_lead_days: o.production_lead_days == null ? null : Number(o.production_lead_days),
+        moq: o.moq ?? (lineMoqs.length ? Math.max(...lineMoqs) : null),
+        production_lead_days:
+          o.production_lead_days != null
+            ? Number(o.production_lead_days)
+            : lineLeads.length
+              ? Math.max(...lineLeads)
+              : null,
         shipping_lead_days: o.shipping_lead_days == null ? null : Number(o.shipping_lead_days),
         accepted_at: o.accepted_at,
         dispute_rate: await supplierDisputeRate(admin, o.supplier_id),
