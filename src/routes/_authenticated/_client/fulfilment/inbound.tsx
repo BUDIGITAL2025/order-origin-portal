@@ -302,6 +302,8 @@ function DeclareDialog({
   onDone: () => void;
 }) {
   const [qc, setQc] = useState(false);
+  const [cartons, setCartons] = useState("");
+  const [expected, setExpected] = useState("");
   const [lines, setLines] = useState<Array<{ product_id: string; quantity: string }>>([
     { product_id: "", quantity: "" },
   ]);
@@ -323,6 +325,8 @@ function DeclareDialog({
           lines: lines
             .filter((l) => l.product_id && l.quantity)
             .map((l) => ({ product_id: l.product_id, quantity: Number(l.quantity) })),
+          ...(Number(cartons) > 0 ? { cartons: Number(cartons) } : {}),
+          ...(expected ? { expected_arrival: expected } : {}),
         },
       }),
     onSuccess: () => {
@@ -331,6 +335,8 @@ function DeclareDialog({
       onOpenChange(false);
       setLines([{ product_id: "", quantity: "" }]);
       setQc(false);
+      setCartons("");
+      setExpected("");
     },
     onError: (e) => toast.error(friendlyError(e)),
   });
@@ -418,6 +424,34 @@ function DeclareDialog({
             <Plus className="mr-1 h-3.5 w-3.5" />
             Add variation
           </Button>
+
+          <div className="mt-2 grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs">Total cartons</Label>
+              <Input
+                type="number"
+                min={1}
+                inputMode="numeric"
+                value={cartons}
+                onChange={(e) => setCartons(e.target.value)}
+                placeholder="e.g. 12"
+                className="mt-1"
+              />
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                We count cartons first, then pieces.
+              </p>
+            </div>
+            <div>
+              <Label className="text-xs">Expected arrival</Label>
+              <Input
+                type="date"
+                value={expected}
+                onChange={(e) => setExpected(e.target.value)}
+                className="mt-1"
+              />
+              <p className="mt-1 text-[11px] text-muted-foreground">You can change this later.</p>
+            </div>
+          </div>
 
           <label className="mt-2 flex items-start gap-2 rounded-xl border border-border p-3">
             <Checkbox checked={qc} onCheckedChange={(v) => setQc(v === true)} className="mt-0.5" />
