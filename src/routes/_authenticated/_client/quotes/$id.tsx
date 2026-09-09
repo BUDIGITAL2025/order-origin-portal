@@ -100,8 +100,10 @@ function MyQuoteDetailPage() {
         <QuoteSlaCountdown dueAt={quote.quote_due_at} status={quote.status} className="mb-6" />
       )}
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="space-y-6 lg:col-span-2">
+      {/* Two fixed columns: offers ~60%, conversation ~40%, each scrolling on
+          its own so the comparison and the thread stay side by side. */}
+      <div className="grid gap-6 lg:h-[calc(100vh-20rem)] lg:min-h-[34rem] lg:grid-cols-5">
+        <div className="flex min-h-0 flex-col gap-6 overflow-y-auto pr-1 lg:col-span-3">
           {lines.length === 0 ? (
             <Card>
               <CardHeader className="pb-3">
