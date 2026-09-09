@@ -177,6 +177,7 @@ export async function computeWorkspaceInventory(
   admin: Admin,
   store: { id: string; store_name?: string | null },
   now = new Date(),
+  opts?: { growth_percent?: number },
 ): Promise<WorkspaceInventory> {
   const [
     { data: snapshots },
@@ -334,6 +335,7 @@ export async function computeWorkspaceInventory(
       transit_lead: transit,
       safety_margin: safety,
       now,
+      growth_percent: opts?.growth_percent,
     });
 
     rows.push({
