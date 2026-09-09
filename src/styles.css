@@ -52,6 +52,8 @@
   --color-warning-foreground: #ffffff;
   --color-info: var(--info);
   --color-info-foreground: #ffffff;
+  --color-purple: var(--purple);
+  --color-purple-foreground: #ffffff;
   --color-chart-1: var(--accent);
   --color-chart-2: var(--text-muted);
   --color-chart-3: var(--warning);
