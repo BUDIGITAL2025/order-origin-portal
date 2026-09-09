@@ -40,11 +40,20 @@ const TABS = [
   { id: "idle", label: "No sales" },
 ] as const;
 
+const SCENARIOS = [
+  { value: 0, label: "Normal" },
+  { value: 10, label: "+10%" },
+  { value: 20, label: "+20%" },
+  { value: 30, label: "+30%" },
+  { value: 50, label: "+50%" },
+] as const;
+
 function InventoryPage() {
   const { data: ctx } = useMyContext();
   const navigate = useNavigate();
   const [storeId, setStoreId] = useState<string | null>(null);
   const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("all");
+  const [growthPercent, setGrowthPercent] = useState(0);
   const [addOpen, setAddOpen] = useState(false);
   const [editing, setEditing] = useState<InventoryRow | null>(null);
   const queryClient = useQueryClient();
