@@ -60,16 +60,14 @@ export const listQuoteOffers = createServerFn({ method: "POST" })
         shipping_lead_days: o.shipping_lead_days == null ? null : Number(o.shipping_lead_days),
         accepted_at: o.accepted_at,
         dispute_rate: await supplierDisputeRate(admin, o.supplier_id),
-        lines: own.map(
-          (l): ClientOfferLine => ({
-            variant_label: l.variant_label,
-            country_code: l.country_code,
-            unit_price: l.unit_price == null ? null : Number(l.unit_price),
-            moq: l.moq,
-            lead_time_days: l.lead_time_days,
-            status: l.status,
-          }),
-        ),
+        lines: own.map((l): ClientOfferLine => ({
+          variant_label: l.variant_label,
+          country_code: l.country_code,
+          unit_price: l.unit_price == null ? null : Number(l.unit_price),
+          moq: l.moq,
+          lead_time_days: l.lead_time_days,
+          status: l.status,
+        })),
       });
     }
 
@@ -202,7 +200,11 @@ export const adminDeleteQuoteOption = createServerFn({ method: "POST" })
       .eq("id", data.option_id)
       .maybeSingle();
     if (option?.accepted_at) throw new Error("An accepted option cannot be deleted");
-    await admin.from("quote_lines").delete().eq("option_id", data.option_id).eq("status", "pending");
+    await admin
+      .from("quote_lines")
+      .delete()
+      .eq("option_id", data.option_id)
+      .eq("status", "pending");
     const { error } = await admin.from("quote_options").delete().eq("id", data.option_id);
     if (error) throw new Error(error.message);
     return { ok: true };
