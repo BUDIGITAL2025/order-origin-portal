@@ -94,6 +94,7 @@ export function FulfilmentCatalog({
               <TableHead className="h-9">Model</TableHead>
               <TableHead className="h-9 text-right">Stock</TableHead>
               <TableHead className="h-9 text-right">Days of cover</TableHead>
+              <TableHead className="h-9 text-right">Weight</TableHead>
               <TableHead className="h-9">Status</TableHead>
             </TableRow>
           </TableHeader>
@@ -137,6 +138,9 @@ export function FulfilmentCatalog({
                   ) : (
                     <EmptyCell />
                   )}
+                </TableCell>
+                <TableCell className="tnum py-2 text-right">
+                  {r.weight_grams != null ? `${r.weight_grams} g` : <EmptyCell />}
                 </TableCell>
                 <TableCell className="py-2">
                   <Chip
@@ -298,6 +302,22 @@ export function SkuDetailDialog({
                 )}
               </Section>
 
+              <Section title="Weight">
+                {isAdmin ? (
+                  <WeightEditor
+                    productId={data.product.id as string}
+                    initial={(data.product as { weight_grams?: number | null }).weight_grams ?? null}
+                    invalidateKeys={invalidateKeys}
+                  />
+                ) : (
+                  <p className="text-sm">
+                    {(data.product as { weight_grams?: number | null }).weight_grams != null
+                      ? `${(data.product as { weight_grams?: number | null }).weight_grams} g per unit`
+                      : "Not recorded yet."}
+                  </p>
+                )}
+              </Section>
+
               {isAdmin && (
                 <Section title="Supplier">
                   <p className="text-sm">
@@ -380,5 +400,51 @@ export function SkuDetailDialog({
         />
       )}
     </>
+  );
+}
+
+/** Admin-only per-variation weight, in grams. */
+function WeightEditor({
+  productId,
+  initial,
+  invalidateKeys,
+}: {
+  productId: string;
+  initial: number | null;
+  invalidateKeys?: string[][];
+}) {
+  const queryClient = useQueryClient();
+  const [value, setValue] = useState(initial != null ? String(initial) : "");
+  const call = useServerFn(adminSetProductWeight);
+  const save = useMutation({
+    mutationFn: () =>
+      call({
+        data: { productId, weight_grams: value.trim() === "" ? null : Number(value) },
+      }),
+    onSuccess: () => {
+      toast.success("Weight saved");
+      for (const key of invalidateKeys ?? []) void queryClient.invalidateQueries({ queryKey: key });
+      void queryClient.invalidateQueries({ queryKey: ["fulfilment-sku"] });
+    },
+    onError: (e) => toast.error(friendlyError(e)),
+  });
+
+  return (
+    <div className="flex items-end gap-2">
+      <div className="w-40">
+        <Label className="text-xs">Grams per unit</Label>
+        <Input
+          className="mt-1"
+          type="number"
+          min={0}
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          placeholder="e.g. 450"
+        />
+      </div>
+      <Button size="sm" disabled={save.isPending} onClick={() => save.mutate()}>
+        {save.isPending ? "Saving…" : "Save"}
+      </Button>
+    </div>
   );
 }
