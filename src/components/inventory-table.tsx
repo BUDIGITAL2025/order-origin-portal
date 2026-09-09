@@ -24,6 +24,8 @@ export interface InventoryRow {
   incoming?: number;
   sellable?: number;
   image_urls?: string[];
+  image_url?: string | null;
+  image_path?: string | null;
   weight?: number | null;
   weight_unit?: string | null;
   weight_grams?: number | null;
@@ -203,7 +205,9 @@ export function InventoryTable({
                   <td className="px-2 py-2">
                     <div className="flex min-w-0 items-center gap-2">
                       <ProductThumb
-                        imageUrls={row.image_urls ?? []}
+                        imageUrls={[row.image_url, ...(row.image_urls ?? [])].filter(
+                          (u): u is string => Boolean(u),
+                        )}
                         name={row.product_name}
                         size={32}
                       />

@@ -155,7 +155,6 @@ function DeskQuotePage() {
     ...new Set([...(data.quote.image_urls ?? []), ...(data.preview?.image_urls ?? [])]),
   ];
 
-
   const totalFee = lines.reduce(
     (sum, l) =>
       sum +
@@ -375,7 +374,6 @@ function DeskQuotePage() {
               ) : null}
             </CardContent>
           </Card>
-
 
           <Card>
             <CardContent className="space-y-2 pt-5">

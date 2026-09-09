@@ -1267,6 +1267,7 @@ export type Database = {
           locations: Json
           reserved: number
           sku: string
+          stock_set_at: string
           store_id: string
           updated_at: string
         }
@@ -1278,6 +1279,7 @@ export type Database = {
           locations?: Json
           reserved?: number
           sku: string
+          stock_set_at?: string
           store_id: string
           updated_at?: string
         }
@@ -1289,6 +1291,7 @@ export type Database = {
           locations?: Json
           reserved?: number
           sku?: string
+          stock_set_at?: string
           store_id?: string
           updated_at?: string
         }
@@ -1744,6 +1747,7 @@ export type Database = {
           created_at: string
           fulfilment_model: Database["public"]["Enums"]["fulfilment_model"]
           id: string
+          image_url: string | null
           image_urls: string[]
           middleware_product_id: string | null
           moq: number | null
@@ -1772,6 +1776,7 @@ export type Database = {
           created_at?: string
           fulfilment_model?: Database["public"]["Enums"]["fulfilment_model"]
           id?: string
+          image_url?: string | null
           image_urls?: string[]
           middleware_product_id?: string | null
           moq?: number | null
@@ -1800,6 +1805,7 @@ export type Database = {
           created_at?: string
           fulfilment_model?: Database["public"]["Enums"]["fulfilment_model"]
           id?: string
+          image_url?: string | null
           image_urls?: string[]
           middleware_product_id?: string | null
           moq?: number | null
@@ -3593,6 +3599,7 @@ export type Database = {
           created_at: string
           fulfilment_model: Database["public"]["Enums"]["fulfilment_model"]
           id: string
+          image_url: string | null
           image_urls: string[]
           middleware_product_id: string | null
           moq: number | null
@@ -3635,6 +3642,7 @@ export type Database = {
           created_at: string
           fulfilment_model: Database["public"]["Enums"]["fulfilment_model"]
           id: string
+          image_url: string | null
           image_urls: string[]
           middleware_product_id: string | null
           moq: number | null
@@ -3954,6 +3962,13 @@ export type Database = {
       }
       is_assigned_sourcer: { Args: { p_quote: string }; Returns: boolean }
       is_sourcing: { Args: { _user_id: string }; Returns: boolean }
+      manual_stock_units_sold_since: {
+        Args: { p_store_id: string }
+        Returns: {
+          sku: string
+          units_sold: number
+        }[]
+      }
       open_dispute: {
         Args: {
           p_description: string
@@ -4208,6 +4223,7 @@ export type Database = {
           created_at: string
           fulfilment_model: Database["public"]["Enums"]["fulfilment_model"]
           id: string
+          image_url: string | null
           image_urls: string[]
           middleware_product_id: string | null
           moq: number | null
@@ -4239,6 +4255,7 @@ export type Database = {
       }
       upsert_manual_inventory_item: {
         Args: {
+          p_image_url?: string
           p_incoming: number
           p_lead_time_days: number
           p_product_name: string
@@ -4257,6 +4274,7 @@ export type Database = {
           created_at: string
           fulfilment_model: Database["public"]["Enums"]["fulfilment_model"]
           id: string
+          image_url: string | null
           image_urls: string[]
           middleware_product_id: string | null
           moq: number | null

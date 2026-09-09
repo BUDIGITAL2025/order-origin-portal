@@ -1,0 +1,2 @@
+REVOKE ALL ON FUNCTION public.upsert_manual_inventory_item(uuid, text, text, text[], jsonb, integer, integer, numeric, text, integer, jsonb, text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.upsert_manual_inventory_item(uuid, text, text, text[], jsonb, integer, integer, numeric, text, integer, jsonb, text) TO authenticated, service_role;

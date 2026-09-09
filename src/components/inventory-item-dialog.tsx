@@ -28,6 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { InventoryRow } from "@/components/inventory-table";
+import { supabase } from "@/integrations/supabase/client";
 import { createInventoryItem } from "@/lib/inventory.functions";
 import { friendlyError } from "@/lib/errors";
 
@@ -51,7 +52,6 @@ function intOr(value: string, fallback: number): number {
   const n = Number(value);
   return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : fallback;
 }
-
 
 export function InventoryItemDialog({
   open,
@@ -84,6 +84,11 @@ export function InventoryItemDialog({
   const [leadTimeDays, setLeadTimeDays] = useState("");
   const [routes, setRoutes] = useState<RouteDraft[]>([emptyRoute()]);
   const [error, setError] = useState<string | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  /** What is already stored for this product (object path or URL). */
+  const [imagePath, setImagePath] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   // Prefill whenever the dialog opens on an existing row.
   useEffect(() => {
@@ -111,9 +116,11 @@ export function InventoryItemDialog({
           }))
         : [emptyRoute()],
     );
+    setImagePreview(item.image_url ?? null);
+    setImagePath(item.image_path ?? null);
+    setImageFile(null);
     setError(null);
   }, [open, item]);
-
 
   const reset = () => {
     setSku("");
@@ -126,6 +133,9 @@ export function InventoryItemDialog({
     setWeightUnit("g");
     setLeadTimeDays("");
     setRoutes([emptyRoute()]);
+    setImageFile(null);
+    setImagePreview(null);
+    setImagePath(null);
     setError(null);
   };
 
@@ -139,9 +149,7 @@ export function InventoryItemDialog({
     [warehouses],
   );
   const duplicateWarehouse = useMemo(() => {
-    const names = warehouses
-      .map((w) => w.location.trim().toLowerCase())
-      .filter(Boolean);
+    const names = warehouses.map((w) => w.location.trim().toLowerCase()).filter(Boolean);
     return new Set(names).size !== names.length;
   }, [warehouses]);
 
@@ -155,13 +163,32 @@ export function InventoryItemDialog({
     setRoutes((prev) => prev.map((r, i) => ({ ...r, isDefault: i === index })));
 
   const create = useMutation({
-    mutationFn: () =>
-      callCreate({
+    mutationFn: async () => {
+      let image = imagePath;
+      if (imageFile) {
+        setUploading(true);
+        try {
+          const ext = imageFile.name.split(".").pop()?.toLowerCase() || "jpg";
+          const path = `${storeId}/${sku.trim()}-${Date.now()}.${ext}`;
+          const { error: upErr } = await supabase.storage
+            .from("product-images")
+            .upload(path, imageFile, { upsert: true, contentType: imageFile.type });
+          if (upErr) throw new Error(upErr.message);
+          image = path;
+        } finally {
+          setUploading(false);
+        }
+      }
+      return callCreate({
         data: {
+          image_url: image,
           storeId: storeId!,
           sku: sku.trim(),
           product_name: productName.trim(),
-          tags: tagsInput.split(",").map((t) => t.trim()).filter(Boolean),
+          tags: tagsInput
+            .split(",")
+            .map((t) => t.trim())
+            .filter(Boolean),
           warehouses: warehouses
             .filter((w) => w.location.trim() !== "")
             .map((w) => ({ location: w.location.trim(), quantity: intOr(w.quantity, 0) })),
@@ -176,7 +203,8 @@ export function InventoryItemDialog({
             is_default: r.isDefault || (!routes.some((x) => x.isDefault) && i === 0),
           })),
         },
-      }),
+      });
+    },
     onSuccess: () => {
       toast.success(editing ? "Product updated" : "Product added to your inventory");
       void queryClient.invalidateQueries({ queryKey: ["inventory"] });
@@ -208,7 +236,6 @@ export function InventoryItemDialog({
     create.mutate();
   };
 
-
   return (
     <Dialog
       open={open}
@@ -228,6 +255,33 @@ export function InventoryItemDialog({
         </DialogHeader>
 
         <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            {imagePreview ? (
+              <img
+                src={imagePreview}
+                alt={productName || "Product photo"}
+                className="h-20 w-20 rounded object-cover"
+              />
+            ) : (
+              <div className="h-20 w-20 rounded bg-muted" />
+            )}
+            <div className="min-w-0">
+              <Label htmlFor="i-photo">Photo</Label>
+              <Input
+                id="i-photo"
+                type="file"
+                accept="image/*"
+                className="mt-1"
+                onChange={(e) => {
+                  const file = e.target.files?.[0] ?? null;
+                  setImageFile(file);
+                  setImagePreview(file ? URL.createObjectURL(file) : null);
+                }}
+              />
+              <p className="mt-1 text-[12px] text-muted-foreground">Optional. Up to 10 MB.</p>
+            </div>
+          </div>
+
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <Label htmlFor="i-sku">SKU</Label>
@@ -239,7 +293,9 @@ export function InventoryItemDialog({
                 onChange={(e) => setSku(e.target.value)}
                 placeholder="FS-0001"
               />
-              {synced && <p className="mt-1 text-[12px] text-muted-foreground">Synced from Shopify</p>}
+              {synced && (
+                <p className="mt-1 text-[12px] text-muted-foreground">Synced from Shopify</p>
+              )}
               {!editing && duplicate && sku.trim() !== "" && (
                 <p className="mt-1 text-[12px] text-warning">
                   This SKU already exists in this workspace — saving updates it.
@@ -256,7 +312,9 @@ export function InventoryItemDialog({
                 onChange={(e) => setProductName(e.target.value)}
                 placeholder="Sleep mask"
               />
-              {synced && <p className="mt-1 text-[12px] text-muted-foreground">Synced from Shopify</p>}
+              {synced && (
+                <p className="mt-1 text-[12px] text-muted-foreground">Synced from Shopify</p>
+              )}
             </div>
           </div>
 
@@ -268,7 +326,9 @@ export function InventoryItemDialog({
               onChange={(e) => setTagsInput(e.target.value)}
               placeholder="winter, bestseller"
             />
-            <p className="mt-1 text-[12px] text-muted-foreground">Separate with commas. Optional.</p>
+            <p className="mt-1 text-[12px] text-muted-foreground">
+              Separate with commas. Optional.
+            </p>
           </div>
 
           <div className="rounded-xl border border-border p-3">
@@ -325,14 +385,11 @@ export function InventoryItemDialog({
             </div>
 
             {duplicateWarehouse && (
-              <p className="mt-2 text-[12px] text-warning">
-                Each warehouse can only appear once.
-              </p>
+              <p className="mt-2 text-[12px] text-warning">Each warehouse can only appear once.</p>
             )}
 
             <p className="mt-3 text-[13px] text-muted-foreground">
-              Total stock:{" "}
-              <span className="font-medium text-foreground">{totalStock} units</span>
+              Total stock: <span className="font-medium text-foreground">{totalStock} units</span>
             </p>
           </div>
 
@@ -358,7 +415,6 @@ export function InventoryItemDialog({
               />
             </div>
           </div>
-
 
           <div className="grid gap-3 sm:grid-cols-3">
             <div className="sm:col-span-2">
@@ -459,8 +515,8 @@ export function InventoryItemDialog({
             <p className="mt-3 text-[13px] text-muted-foreground">
               Total lead time:{" "}
               <span className="font-medium text-foreground">{production + handling} days</span>{" "}
-              (production: {production}d + shipping to {mainRoute?.destination.trim() || "your main destination"}:{" "}
-              {handling}d)
+              (production: {production}d + shipping to{" "}
+              {mainRoute?.destination.trim() || "your main destination"}: {handling}d)
             </p>
           </div>
 
@@ -471,8 +527,18 @@ export function InventoryItemDialog({
           <Button variant="outline" className="rounded-full" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button className="rounded-full" disabled={create.isPending || !storeId} onClick={submit}>
-            {create.isPending ? "Saving…" : editing ? "Save changes" : "Add product"}
+          <Button
+            className="rounded-full"
+            disabled={create.isPending || uploading || !storeId}
+            onClick={submit}
+          >
+            {uploading
+              ? "Uploading photo…"
+              : create.isPending
+                ? "Saving…"
+                : editing
+                  ? "Save changes"
+                  : "Add product"}
           </Button>
         </DialogFooter>
       </DialogContent>

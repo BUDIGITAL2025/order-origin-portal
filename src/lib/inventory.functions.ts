@@ -95,6 +95,8 @@ export const createInventoryItem = createServerFn({ method: "POST" })
           )
           .min(1)
           .max(20),
+        // Either a stored object path or an absolute URL.
+        image_url: z.string().trim().min(1).max(2000).nullable().default(null),
       })
       .parse(input),
   )
@@ -113,6 +115,7 @@ export const createInventoryItem = createServerFn({ method: "POST" })
 
       p_lead_time_days: data.lead_time_days,
       p_routes: data.shipping_routes,
+      p_image_url: data.image_url as unknown as string,
     });
     if (error) throw new Error(error.message);
     return { ok: true as const, product };

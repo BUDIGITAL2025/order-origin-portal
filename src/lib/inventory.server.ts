@@ -38,6 +38,10 @@ export interface SkuRow {
   /** total_stock − reserved, floored at 0. Drives cover and the stock bar. */
   sellable: number;
   image_urls: string[];
+  /** Main product photo, ready to display (signed link for stored uploads). */
+  image_url: string | null;
+  /** What is stored on the product: an object path or an absolute URL. */
+  image_path: string | null;
   weight: number | null;
   weight_unit: string | null;
   /** Per-variation weight in grams (fulfilment data foundation). */
@@ -190,6 +194,7 @@ export async function computeWorkspaceInventory(
     { data: incomingLines },
     { data: purchaseCosts },
     { data: clientPrices },
+    { data: soldSinceRows },
   ] = await Promise.all([
     admin
       .from("inventory_snapshots")
@@ -206,7 +211,7 @@ export async function computeWorkspaceInventory(
     admin
       .from("products")
       .select(
-        "id, sku, tags, weight, weight_unit, weight_grams, image_urls, product_shipping_routes(destination, handling_time_days, is_default)",
+        "id, sku, tags, weight, weight_unit, weight_grams, image_urls, image_url, product_shipping_routes(destination, handling_time_days, is_default)",
       )
       .eq("store_id", store.id)
       .limit(2000),
@@ -235,7 +240,16 @@ export async function computeWorkspaceInventory(
       .select("unit_price, products!inner(sku, store_id)")
       .eq("products.store_id", store.id)
       .limit(5000),
+    // Units already sold since stock was last counted by hand.
+    admin.rpc("manual_stock_units_sold_since", { p_store_id: store.id }),
   ]);
+
+  const soldSinceBySku = new Map(
+    ((soldSinceRows ?? []) as { sku: string; units_sold: number }[]).map((r) => [
+      r.sku,
+      r.units_sold,
+    ]),
+  );
 
   const reservedBySku = new Map<string, number>();
   for (const item of openOrderItems ?? []) {
@@ -311,7 +325,11 @@ export async function computeWorkspaceInventory(
         : [{ location: "Warehouse", quantity: manualRow.in_warehouse }]
       : (bySku.get(sku) ?? []).sort((a, b) => a.location.localeCompare(b.location));
 
-    const totalStock = locations.reduce((sum, l) => sum + l.quantity, 0);
+    const rawTotal = locations.reduce((sum, l) => sum + l.quantity, 0);
+    // Hand-counted stock is reduced by whatever sold after the count.
+    const totalStock = manualRow
+      ? Math.max(0, rawTotal - (soldSinceBySku.get(sku) ?? 0))
+      : rawTotal;
     const reserved = (manualRow?.reserved ?? 0) + (reservedBySku.get(sku) ?? 0);
     const incoming = (manualRow?.incoming ?? 0) + (incomingBySku.get(sku) ?? 0);
     const sellable = Math.max(0, totalStock - reserved);
@@ -348,6 +366,8 @@ export async function computeWorkspaceInventory(
       incoming,
       sellable,
       image_urls: product?.image_urls ?? [],
+      image_url: product?.image_url ?? null,
+      image_path: product?.image_url ?? null,
       weight: product?.weight ?? null,
       weight_unit: product?.weight_unit ?? null,
       weight_grams: product?.weight_grams ?? null,
@@ -371,6 +391,28 @@ export async function computeWorkspaceInventory(
       safety_origin: lead?.safety_origin ?? "W",
       ...math,
     });
+  }
+
+  // Photos live in a private area: turn stored paths into temporary links.
+  const storedPaths = [
+    ...new Set(
+      rows.map((r) => r.image_url).filter((u): u is string => Boolean(u) && !u!.startsWith("http")),
+    ),
+  ];
+  if (storedPaths.length > 0) {
+    const { data: signed } = await admin.storage
+      .from("product-images")
+      .createSignedUrls(storedPaths, 60 * 60);
+    const signedByPath = new Map(
+      (signed ?? [])
+        .filter((s) => s.signedUrl)
+        .map((s) => [s.path ?? "", s.signedUrl as string] as const),
+    );
+    for (const row of rows) {
+      if (row.image_url && signedByPath.has(row.image_url)) {
+        row.image_url = signedByPath.get(row.image_url)!;
+      }
+    }
   }
 
   const order: Record<InventoryState, number> = { red: 0, amber: 1, green: 2, idle: 3 };
