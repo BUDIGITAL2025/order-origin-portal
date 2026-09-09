@@ -284,6 +284,55 @@ export const sourcingMyEarnings = createServerFn({ method: "GET" })
     return { rows, pending: total(false), settled: total(true) };
   });
 
+/**
+ * When the withheld listing leaves too little to source from, the collaborator
+ * asks US — never the client. Admin decides what may be passed along.
+ */
+export const sourcingRequestProductDetails = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({ quote_id: uuid, note: z.string().trim().max(1000).optional() }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { getAdminClient } = await import("./admin.server");
+    const { requireCollaborator } = await import("./sourcing.server");
+    const { sendAdminEmail } = await import("./email.server");
+    const admin = await getAdminClient();
+    const me = await requireCollaborator(admin, context.userId);
+
+    const { data: quote } = await admin
+      .from("quote_requests")
+      .select("id, store_id, product_name, assigned_sourcer")
+      .eq("id", data.quote_id)
+      .maybeSingle();
+    if (!quote) throw new Error("Quote request not found");
+    if (quote.assigned_sourcer !== context.userId) {
+      throw new Error("This request is not assigned to you");
+    }
+
+    const { error } = await admin.from("quote_intents").insert({
+      quote_request_id: quote.id,
+      store_id: quote.store_id,
+      type: "need_product_details",
+      payload: { note: data.note ?? "", from: "sourcing" },
+      created_by: context.userId,
+    });
+    if (error) throw new Error(error.message);
+
+    await sendAdminEmail({
+      subject: `Sourcing needs more product details: ${quote.product_name ?? quote.id}`,
+      text: [
+        `${me.display_name || me.email} needs more details to source this request.`,
+        data.note ? `Note: ${data.note}` : "",
+        `Quote: ${quote.id}`,
+      ]
+        .filter(Boolean)
+        .join("\n"),
+    });
+    return { ok: true };
+  });
+
+
 // ===================== Admin: collaborators =====================
 
 export const adminListCollaborators = createServerFn({ method: "GET" })
