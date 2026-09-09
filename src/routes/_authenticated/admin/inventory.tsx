@@ -195,6 +195,23 @@ function AdminInventoryPage() {
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <FilterTabs tabs={TABS} value={tab} onChange={setTab} />
+        <div className="flex flex-wrap items-center gap-1 rounded-full border border-border bg-card p-1">
+          {SCENARIOS.map((s) => (
+            <button
+              key={s.value}
+              type="button"
+              onClick={() => setGrowthPercent(s.value)}
+              className={cn(
+                "rounded-full px-3 py-1 text-[13px] font-medium transition-colors",
+                growthPercent === s.value
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
         <AdminSearch value={search} onChange={setSearch} placeholder="Search SKU or product" />
       </div>
 
