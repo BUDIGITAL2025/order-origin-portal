@@ -257,6 +257,33 @@ export function InventoryItemDialog({
         </DialogHeader>
 
         <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            {imagePreview ? (
+              <img
+                src={imagePreview}
+                alt={productName || "Product photo"}
+                className="h-20 w-20 rounded object-cover"
+              />
+            ) : (
+              <div className="h-20 w-20 rounded bg-muted" />
+            )}
+            <div className="min-w-0">
+              <Label htmlFor="i-photo">Photo</Label>
+              <Input
+                id="i-photo"
+                type="file"
+                accept="image/*"
+                className="mt-1"
+                onChange={(e) => {
+                  const file = e.target.files?.[0] ?? null;
+                  setImageFile(file);
+                  setImagePreview(file ? URL.createObjectURL(file) : null);
+                }}
+              />
+              <p className="mt-1 text-[12px] text-muted-foreground">Optional. Up to 10 MB.</p>
+            </div>
+          </div>
+
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <Label htmlFor="i-sku">SKU</Label>
