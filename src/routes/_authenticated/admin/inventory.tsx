@@ -29,6 +29,7 @@ import {
 import { PlanningDialog } from "@/components/planning-dialog";
 import { friendlyError } from "@/lib/errors";
 import { formatUSD } from "@/lib/format";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/admin/inventory")({
   validateSearch: (search: Record<string, unknown>): { state?: string } =>
@@ -51,6 +52,14 @@ const TABS = [
   { id: "idle", label: "No sales" },
 ] as const;
 
+const SCENARIOS = [
+  { value: 0, label: "Normal" },
+  { value: 10, label: "+10%" },
+  { value: 20, label: "+20%" },
+  { value: 30, label: "+30%" },
+  { value: 50, label: "+50%" },
+] as const;
+
 function AdminInventoryPage() {
   const queryClient = useQueryClient();
   const navigate = Route.useNavigate();
@@ -60,6 +69,7 @@ function AdminInventoryPage() {
     void navigate({ search: next === "all" ? {} : { state: next }, replace: true } as never);
   };
   const [search, setSearch] = useState("");
+  const [growthPercent, setGrowthPercent] = useState(0);
   const [planningProductId, setPlanningProductId] = useState<string | null>(null);
   const [defaultsFor, setDefaultsFor] = useState<{
     storeId: string;
@@ -89,9 +99,9 @@ function AdminInventoryPage() {
 
   const fetchInventory = useServerFn(getAdminInventory);
   const { data, isLoading, error } = useQuery({
-    queryKey: ["admin-inventory"],
+    queryKey: ["admin-inventory", growthPercent],
     staleTime: 60_000,
-    queryFn: () => fetchInventory(),
+    queryFn: () => fetchInventory({ data: { growthPercent } }),
   });
 
   const callSync = useServerFn(syncInventoryNow);
@@ -159,6 +169,14 @@ function AdminInventoryPage() {
         </Card>
       )}
 
+      {growthPercent > 0 && (
+        <div className="mb-4 flex items-center gap-2 rounded-xl border border-warning/30 bg-warning/10 px-4 py-2.5 text-sm text-warning">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          A mostrar projeção com +{growthPercent}% de vendas em todas as workspaces — reflete um
+          cenário, não apenas o histórico real.
+        </div>
+      )}
+
       <SummaryBar
         items={[
           { key: "ws", label: "Workspaces", value: workspaces.length },
@@ -177,6 +195,23 @@ function AdminInventoryPage() {
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <FilterTabs tabs={TABS} value={tab} onChange={setTab} />
+        <div className="flex flex-wrap items-center gap-1 rounded-full border border-border bg-card p-1">
+          {SCENARIOS.map((s) => (
+            <button
+              key={s.value}
+              type="button"
+              onClick={() => setGrowthPercent(s.value)}
+              className={cn(
+                "rounded-full px-3 py-1 text-[13px] font-medium transition-colors",
+                growthPercent === s.value
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
         <AdminSearch value={search} onChange={setSearch} placeholder="Search SKU or product" />
       </div>
 

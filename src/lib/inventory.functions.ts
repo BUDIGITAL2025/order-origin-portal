@@ -119,9 +119,16 @@ export const createInventoryItem = createServerFn({ method: "POST" })
   });
 
 /** Admin: every connected workspace, with lead-time origin indicators. */
-export const getAdminInventory = createServerFn({ method: "GET" })
+export const getAdminInventory = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        growthPercent: z.number().min(0).max(200).optional().default(0),
+      })
+      .parse(input ?? {}),
+  )
+  .handler(async ({ context, data }) => {
     const { requireAdmin } = await import("./admin.server");
     await requireAdmin(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -138,7 +145,9 @@ export const getAdminInventory = createServerFn({ method: "GET" })
 
     const workspaces = [];
     for (const store of stores ?? []) {
-      const view = await computeWorkspaceInventory(supabaseAdmin, store);
+      const view = await computeWorkspaceInventory(supabaseAdmin, store, undefined, {
+        growth_percent: data.growthPercent,
+      });
       if (view.rows.length === 0) continue;
       workspaces.push({
         ...view,
