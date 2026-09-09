@@ -106,7 +106,16 @@ export function QuoteOfferCards({
 
   if (isPending) return <p className="text-sm text-muted-foreground">Loading offers…</p>;
   const offers = data?.offers ?? [];
-  if (offers.length === 0) return null;
+  if (offers.length === 0)
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <p className="text-sm text-muted-foreground">
+            We&apos;re sourcing this product — your pricing options will appear here.
+          </p>
+        </CardContent>
+      </Card>
+    );
 
   const allVariants = data?.all_variants ?? [];
   const acceptedOption = offers.find((o) => o.accepted_at != null);
