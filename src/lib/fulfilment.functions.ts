@@ -26,6 +26,8 @@ type CatalogRow = {
   store_name: string | null;
   sellable: number | null;
   days_of_cover: number | null;
+  /** Per-variation weight in grams. Data foundation for shipping. */
+  weight_grams: number | null;
 };
 
 type ResolvedLead = {
@@ -63,7 +65,7 @@ async function buildCatalog(
   const { data: products, error } = await admin
     .from("products")
     .select(
-      "id, sku, product_name, variant_label, fulfilment_model, status, archived_at, image_urls, client_owned, store_id, quote_line_id",
+      "id, sku, product_name, variant_label, fulfilment_model, status, archived_at, image_urls, client_owned, store_id, quote_line_id, weight_grams",
     )
     .in("store_id", storeIds)
     .eq("product_type", "simple")
@@ -128,6 +130,7 @@ async function buildCatalog(
       store_name: nameById.get(p.store_id) ?? null,
       sellable: stock?.sellable ?? null,
       days_of_cover: stock?.days_of_cover ?? null,
+      weight_grams: p.weight_grams ?? null,
     };
   });
 }
@@ -137,7 +140,7 @@ async function buildSkuDetail(admin: AdminClient, productId: string, full: boole
   const { data: product, error } = await admin
     .from("products")
     .select(
-      "id, sku, product_name, variant_label, fulfilment_model, status, archived_at, image_urls, moq, client_owned, store_id, supplier_id, quote_line_id, created_at",
+      "id, sku, product_name, variant_label, fulfilment_model, status, archived_at, image_urls, moq, client_owned, store_id, supplier_id, quote_line_id, weight_grams, created_at",
     )
     .eq("id", productId)
     .maybeSingle();
@@ -314,6 +317,26 @@ export const adminGetFulfilmentSku = createServerFn({ method: "POST" })
     await requireAdmin(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     return buildSkuDetail(supabaseAdmin, data.productId, true);
+  });
+
+/** Admin: set the per-variation weight in grams (blank clears it). */
+export const adminSetProductWeight = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({ productId: uuid, weight_grams: z.number().int().min(0).max(5_000_000).nullable() })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { requireAdmin } = await import("./admin.server");
+    await requireAdmin(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin
+      .from("products")
+      .update({ weight_grams: data.weight_grams })
+      .eq("id", data.productId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
   });
 
 export type { CatalogRow, PricingChain };
