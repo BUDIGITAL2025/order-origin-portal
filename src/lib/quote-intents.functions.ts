@@ -55,10 +55,22 @@ export const createQuoteIntent = createServerFn({ method: "POST" })
       detail ? `${label} — ${detail}` : label,
     );
 
-    await sendAdminEmail({
-      subject: `Quote request: ${label}`,
-      text: `${label}\n${detail}\nQuote: ${data.quote_id}`,
-    });
+    // Routing: everything actionable by sourcing goes to the assigned
+    // collaborator; price decisions are ours, so those also reach the admin.
+    const { assignedSourcer, notifySourcerOfClientMessage } = await import(
+      "./quote-thread.server"
+    );
+    const priceRelated = data.type === "price_too_high" || data.type === "stop_quoting";
+    const sourcerId = await assignedSourcer(admin, data.quote_id);
+    if (sourcerId) {
+      await notifySourcerOfClientMessage(admin, data.quote_id, `Client request: ${label}`, detail);
+    }
+    if (priceRelated || !sourcerId) {
+      await sendAdminEmail({
+        subject: `Quote request: ${label}`,
+        text: `${label}\n${detail}\nQuote: ${data.quote_id}`,
+      });
+    }
     if (owner.accountId) {
       const email = quoteRequestReceivedEmail({
         quoteId: data.quote_id,

@@ -242,7 +242,8 @@ export const getThreadAttachmentUrls = createServerFn({ method: "POST" })
     const admin = await getAdminClient();
     const allowed =
       (await callerIsAdmin(context.supabase, context.userId)) ||
-      (await context.supabase.rpc("owns_quote", { p_quote: data.quote_id })).data === true;
+      (await context.supabase.rpc("owns_quote", { p_quote: data.quote_id })).data === true ||
+      (await context.supabase.rpc("is_assigned_sourcer", { p_quote: data.quote_id })).data === true;
     if (!allowed) throw new Error("Forbidden");
 
     if (data.paths.length === 0) return { urls: [] };
