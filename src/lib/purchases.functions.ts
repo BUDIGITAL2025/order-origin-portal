@@ -2,7 +2,7 @@
  * Stock purchases — server functions.
  *
  * Clients buy stock against an accepted quote line and pay from the wallet
- * (cover-the-difference applies). Admins quote freight on direct shipments
+ * (cover-the-difference applies). Admins quote freight and import on both paths
  * and advance the timeline. The card always funds the wallet; the wallet
  * always pays the purchase.
  */
