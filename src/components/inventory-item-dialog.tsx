@@ -84,6 +84,11 @@ export function InventoryItemDialog({
   const [leadTimeDays, setLeadTimeDays] = useState("");
   const [routes, setRoutes] = useState<RouteDraft[]>([emptyRoute()]);
   const [error, setError] = useState<string | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  /** What is already stored for this product (object path or URL). */
+  const [imagePath, setImagePath] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   // Prefill whenever the dialog opens on an existing row.
   useEffect(() => {
@@ -111,6 +116,9 @@ export function InventoryItemDialog({
           }))
         : [emptyRoute()],
     );
+    setImagePreview(item.image_url ?? null);
+    setImagePath(item.image_path ?? null);
+    setImageFile(null);
     setError(null);
   }, [open, item]);
 
@@ -126,6 +134,9 @@ export function InventoryItemDialog({
     setWeightUnit("g");
     setLeadTimeDays("");
     setRoutes([emptyRoute()]);
+    setImageFile(null);
+    setImagePreview(null);
+    setImagePath(null);
     setError(null);
   };
 
