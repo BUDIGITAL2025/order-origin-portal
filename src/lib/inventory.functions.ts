@@ -15,7 +15,14 @@ const days = z.number().int().min(0).max(365);
 /** The client view: one workspace the caller owns. */
 export const getWorkspaceInventory = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ storeId: uuid }).parse(input))
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        storeId: uuid,
+        growthPercent: z.number().min(0).max(200).optional().default(0),
+      })
+      .parse(input),
+  )
   .handler(async ({ data, context }) => {
     // Ownership through RLS on the caller's own client — no admin shortcut.
     const { data: store, error } = await context.supabase
@@ -28,7 +35,9 @@ export const getWorkspaceInventory = createServerFn({ method: "POST" })
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { computeWorkspaceInventory } = await import("./inventory.server");
-    const view = await computeWorkspaceInventory(supabaseAdmin, store);
+    const view = await computeWorkspaceInventory(supabaseAdmin, store, undefined, {
+      growth_percent: data.growthPercent,
+    });
 
     // Clients never see supplier attribution — strip the origin markers.
     return {
