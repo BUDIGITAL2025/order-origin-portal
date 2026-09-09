@@ -1267,6 +1267,7 @@ export type Database = {
           locations: Json
           reserved: number
           sku: string
+          stock_set_at: string
           store_id: string
           updated_at: string
         }
@@ -1278,6 +1279,7 @@ export type Database = {
           locations?: Json
           reserved?: number
           sku: string
+          stock_set_at?: string
           store_id: string
           updated_at?: string
         }
@@ -1289,6 +1291,7 @@ export type Database = {
           locations?: Json
           reserved?: number
           sku?: string
+          stock_set_at?: string
           store_id?: string
           updated_at?: string
         }
@@ -1744,6 +1747,7 @@ export type Database = {
           created_at: string
           fulfilment_model: Database["public"]["Enums"]["fulfilment_model"]
           id: string
+          image_url: string | null
           image_urls: string[]
           middleware_product_id: string | null
           moq: number | null
@@ -1772,6 +1776,7 @@ export type Database = {
           created_at?: string
           fulfilment_model?: Database["public"]["Enums"]["fulfilment_model"]
           id?: string
+          image_url?: string | null
           image_urls?: string[]
           middleware_product_id?: string | null
           moq?: number | null
@@ -1800,6 +1805,7 @@ export type Database = {
           created_at?: string
           fulfilment_model?: Database["public"]["Enums"]["fulfilment_model"]
           id?: string
+          image_url?: string | null
           image_urls?: string[]
           middleware_product_id?: string | null
           moq?: number | null
@@ -3593,6 +3599,7 @@ export type Database = {
           created_at: string
           fulfilment_model: Database["public"]["Enums"]["fulfilment_model"]
           id: string
+          image_url: string | null
           image_urls: string[]
           middleware_product_id: string | null
           moq: number | null
@@ -3635,6 +3642,7 @@ export type Database = {
           created_at: string
           fulfilment_model: Database["public"]["Enums"]["fulfilment_model"]
           id: string
+          image_url: string | null
           image_urls: string[]
           middleware_product_id: string | null
           moq: number | null
@@ -3954,6 +3962,13 @@ export type Database = {
       }
       is_assigned_sourcer: { Args: { p_quote: string }; Returns: boolean }
       is_sourcing: { Args: { _user_id: string }; Returns: boolean }
+      manual_stock_units_sold_since: {
+        Args: { p_store_id: string }
+        Returns: {
+          sku: string
+          units_sold: number
+        }[]
+      }
       open_dispute: {
         Args: {
           p_description: string
@@ -4208,6 +4223,7 @@ export type Database = {
           created_at: string
           fulfilment_model: Database["public"]["Enums"]["fulfilment_model"]
           id: string
+          image_url: string | null
           image_urls: string[]
           middleware_product_id: string | null
           moq: number | null
@@ -4237,55 +4253,108 @@ export type Database = {
           isSetofReturn: false
         }
       }
-      upsert_manual_inventory_item: {
-        Args: {
-          p_incoming: number
-          p_lead_time_days: number
-          p_product_name: string
-          p_reserved: number
-          p_routes: Json
-          p_sku: string
-          p_store_id: string
-          p_tags: string[]
-          p_warehouses: Json
-          p_weight: number
-          p_weight_unit: string
-        }
-        Returns: {
-          archived_at: string | null
-          client_owned: boolean
-          created_at: string
-          fulfilment_model: Database["public"]["Enums"]["fulfilment_model"]
-          id: string
-          image_urls: string[]
-          middleware_product_id: string | null
-          moq: number | null
-          price_override: number | null
-          product_name: string
-          product_type: Database["public"]["Enums"]["product_type"]
-          production_lead_days: number | null
-          push_error: string | null
-          push_status: Database["public"]["Enums"]["push_status"]
-          quote_line_id: string | null
-          safety_margin_days: number | null
-          sku: string
-          status: Database["public"]["Enums"]["product_status"]
-          store_id: string
-          supplier_id: string | null
-          tags: string[]
-          transit_lead_days: number | null
-          variant_label: string | null
-          weight: number | null
-          weight_grams: number | null
-          weight_unit: string | null
-        }
-        SetofOptions: {
-          from: "*"
-          to: "products"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
+      upsert_manual_inventory_item:
+        | {
+            Args: {
+              p_incoming: number
+              p_lead_time_days: number
+              p_product_name: string
+              p_reserved: number
+              p_routes: Json
+              p_sku: string
+              p_store_id: string
+              p_tags: string[]
+              p_warehouses: Json
+              p_weight: number
+              p_weight_unit: string
+            }
+            Returns: {
+              archived_at: string | null
+              client_owned: boolean
+              created_at: string
+              fulfilment_model: Database["public"]["Enums"]["fulfilment_model"]
+              id: string
+              image_url: string | null
+              image_urls: string[]
+              middleware_product_id: string | null
+              moq: number | null
+              price_override: number | null
+              product_name: string
+              product_type: Database["public"]["Enums"]["product_type"]
+              production_lead_days: number | null
+              push_error: string | null
+              push_status: Database["public"]["Enums"]["push_status"]
+              quote_line_id: string | null
+              safety_margin_days: number | null
+              sku: string
+              status: Database["public"]["Enums"]["product_status"]
+              store_id: string
+              supplier_id: string | null
+              tags: string[]
+              transit_lead_days: number | null
+              variant_label: string | null
+              weight: number | null
+              weight_grams: number | null
+              weight_unit: string | null
+            }
+            SetofOptions: {
+              from: "*"
+              to: "products"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
+        | {
+            Args: {
+              p_image_url?: string
+              p_incoming: number
+              p_lead_time_days: number
+              p_product_name: string
+              p_reserved: number
+              p_routes: Json
+              p_sku: string
+              p_store_id: string
+              p_tags: string[]
+              p_warehouses: Json
+              p_weight: number
+              p_weight_unit: string
+            }
+            Returns: {
+              archived_at: string | null
+              client_owned: boolean
+              created_at: string
+              fulfilment_model: Database["public"]["Enums"]["fulfilment_model"]
+              id: string
+              image_url: string | null
+              image_urls: string[]
+              middleware_product_id: string | null
+              moq: number | null
+              price_override: number | null
+              product_name: string
+              product_type: Database["public"]["Enums"]["product_type"]
+              production_lead_days: number | null
+              push_error: string | null
+              push_status: Database["public"]["Enums"]["push_status"]
+              quote_line_id: string | null
+              safety_margin_days: number | null
+              sku: string
+              status: Database["public"]["Enums"]["product_status"]
+              store_id: string
+              supplier_id: string | null
+              tags: string[]
+              transit_lead_days: number | null
+              variant_label: string | null
+              weight: number | null
+              weight_grams: number | null
+              weight_unit: string | null
+            }
+            SetofOptions: {
+              from: "*"
+              to: "products"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
       url_host: { Args: { p_url: string }; Returns: string }
     }
     Enums: {
