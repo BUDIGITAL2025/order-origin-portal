@@ -401,6 +401,7 @@ export function AppShell({
     if (to === "/admin/orders")
       return (
         pathname.startsWith("/admin/orders") ||
+        pathname.startsWith("/admin/fulfilment") ||
         pathname.startsWith("/admin/inventory") ||
         pathname.startsWith("/admin/inbound")
       );

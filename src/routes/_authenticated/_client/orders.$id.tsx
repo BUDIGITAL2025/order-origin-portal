@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { ProductCell } from "@/components/product-thumb";
+import { SkuText } from "@/components/sku-text";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -107,7 +108,7 @@ function OrderDetailPage() {
                         (item as { products?: { image_urls?: string[] } | null }).products
                           ?.image_urls ?? []
                       }
-                      name={item.sku ?? "—"}
+                      name={<SkuText sku={item.sku} />}
                       size={32}
                     />
                   </TableCell>

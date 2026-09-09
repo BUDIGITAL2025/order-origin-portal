@@ -8,6 +8,7 @@ import * as React from "react";
 import { ChevronDown, ChevronRight, PackagePlus } from "lucide-react";
 import { Chip, EmptyCell, TableShell } from "@/components/admin-ui";
 import { ProductThumb } from "@/components/product-thumb";
+import { SkuText } from "@/components/sku-text";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -203,7 +204,7 @@ export function InventoryTable({
                           {row.product_name}
                         </div>
                         <div className="truncate text-[11px] text-muted-foreground" title={row.sku}>
-                          {row.sku}
+                          <SkuText sku={row.sku} />
                         </div>
                       </div>
                     </div>
