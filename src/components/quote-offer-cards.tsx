@@ -24,6 +24,7 @@ import { Label } from "@/components/ui/label";
 import { countryName } from "@/lib/countries";
 import { formatUSD } from "@/lib/format";
 import { friendlyError } from "@/lib/errors";
+import { createQuoteIntent } from "@/lib/quote-intents.functions";
 import { acceptQuoteOption, listQuoteOffers } from "@/lib/quote-offers.functions";
 import { cn } from "@/lib/utils";
 
@@ -75,7 +76,21 @@ export function QuoteOfferCards({
   const [selected, setSelected] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
   const [name, setName] = useState(productName);
+
+  // "Cancel request" is the client asking us to stop quoting — it goes through
+  // the same typed-request queue as every other structured ask.
+  const callIntent = useServerFn(createQuoteIntent);
+  const cancel = useMutation({
+    mutationFn: () => callIntent({ data: { quote_id: quoteId, type: "stop_quoting" } }),
+    onSuccess: () => {
+      setCancelling(false);
+      toast.success("We'll stop quoting this product.");
+      void queryClient.invalidateQueries({ queryKey: ["quote-thread", quoteId] });
+    },
+    onError: (err) => toast.error(friendlyError(err)),
+  });
 
   const accept = useMutation({
     mutationFn: () =>
