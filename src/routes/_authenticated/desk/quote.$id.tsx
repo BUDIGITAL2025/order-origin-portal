@@ -15,7 +15,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { friendlyError } from "@/lib/errors";
 import { formatUSD } from "@/lib/format";
-import { sourcingGetQuote, sourcingSaveLines } from "@/lib/sourcing.functions";
+import {
+  sourcingGetQuote,
+  sourcingRequestProductDetails,
+  sourcingSaveLines,
+} from "@/lib/sourcing.functions";
 import { sourcingSaveLinesSchema } from "@/lib/schemas";
 
 export const Route = createFileRoute("/_authenticated/desk/quote/$id")({
@@ -61,6 +65,7 @@ function DeskQuotePage() {
   const { id } = useParams({ from: "/_authenticated/desk/quote/$id" });
   const fetchQuote = useServerFn(sourcingGetQuote);
   const callSave = useServerFn(sourcingSaveLines);
+  const callAskDetails = useServerFn(sourcingRequestProductDetails);
   const queryClient = useQueryClient();
 
   const { data, isPending } = useQuery({
@@ -136,8 +141,20 @@ function DeskQuotePage() {
     onError: (e) => toast.error(friendlyError(e, "Your sourcing was not saved.")),
   });
 
+  const askDetails = useMutation({
+    mutationFn: () => callAskDetails({ data: { quote_id: id } }),
+    onSuccess: () => toast.success("The FlySales team will send you more details."),
+    onError: (e) => toast.error(friendlyError(e, "Your request was not sent.")),
+  });
+
   if (isPending) return <p className="text-sm text-muted-foreground">Loading…</p>;
   if (!data) return <p className="text-sm text-muted-foreground">Request not found.</p>;
+
+  // The client's own request images plus anything we scraped and stored.
+  const photos = [
+    ...new Set([...(data.quote.image_urls ?? []), ...(data.preview?.image_urls ?? [])]),
+  ];
+
 
   const totalFee = lines.reduce(
     (sum, l) =>
@@ -299,9 +316,19 @@ function DeskQuotePage() {
           <Card>
             <CardContent className="space-y-2 pt-5 text-sm">
               <PanelHeader title="The request" />
-              <p className="break-all text-xs text-muted-foreground">{data.quote.product_url}</p>
+              <p className="text-sm font-medium">{data.quote.product_name || "Product request"}</p>
+              {data.quote.product_url ? (
+                <p className="break-all text-xs text-muted-foreground">{data.quote.product_url}</p>
+              ) : null}
               {data.quote.notes ? (
                 <p className="text-muted-foreground">{data.quote.notes}</p>
+              ) : null}
+              {(data.preview?.variants ?? []).length ? (
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {(data.preview?.variants ?? []).slice(0, 12).map((v) => (
+                    <Chip key={v}>{v}</Chip>
+                  ))}
+                </div>
               ) : null}
               <div className="flex flex-wrap gap-1.5 pt-1">
                 {(data.quote.target_countries ?? []).map((c) => (
@@ -313,9 +340,9 @@ function DeskQuotePage() {
                   Target volume: {data.quote.target_monthly_volume} units / month
                 </p>
               ) : null}
-              {data.preview?.image_urls?.length ? (
+              {photos.length ? (
                 <div className="grid grid-cols-3 gap-1.5 pt-2">
-                  {data.preview.image_urls.slice(0, 6).map((url) => (
+                  {photos.slice(0, 9).map((url) => (
                     <img
                       key={url}
                       src={url}
@@ -326,8 +353,29 @@ function DeskQuotePage() {
                   ))}
                 </div>
               ) : null}
+              {data.essentialsOnly ? (
+                <div className="space-y-2 rounded-md border border-border bg-muted/40 p-3">
+                  <p className="text-xs text-muted-foreground">
+                    Source from the photos and specs — original listing withheld for privacy.
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    disabled={!data.quote.assigned_sourcer || askDetails.isPending}
+                    onClick={() => askDetails.mutate()}
+                  >
+                    {askDetails.isPending ? "Sending…" : "Need more product details"}
+                  </Button>
+                  <p className="text-[11px] text-muted-foreground">
+                    This goes to the FlySales team, not the client.
+                  </p>
+                </div>
+              ) : null}
             </CardContent>
           </Card>
+
 
           <Card>
             <CardContent className="space-y-2 pt-5">

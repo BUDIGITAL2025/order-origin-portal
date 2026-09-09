@@ -2212,6 +2212,7 @@ export type Database = {
         Row: {
           archived_at: string | null
           assigned_sourcer: string | null
+          client_site: boolean
           created_at: string
           id: string
           image_urls: string[] | null
@@ -2235,6 +2236,7 @@ export type Database = {
         Insert: {
           archived_at?: string | null
           assigned_sourcer?: string | null
+          client_site?: boolean
           created_at?: string
           id?: string
           image_urls?: string[] | null
@@ -2258,6 +2260,7 @@ export type Database = {
         Update: {
           archived_at?: string | null
           assigned_sourcer?: string | null
+          client_site?: boolean
           created_at?: string
           id?: string
           image_urls?: string[] | null
@@ -3802,6 +3805,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      detect_client_site: {
+        Args: { p_store_id: string; p_url: string }
+        Returns: boolean
+      }
       explode_product: {
         Args: { p_product_id: string; p_quantity: number }
         Returns: {
@@ -4165,6 +4172,7 @@ export type Database = {
         Returns: {
           archived_at: string | null
           assigned_sourcer: string | null
+          client_site: boolean
           created_at: string
           id: string
           image_urls: string[] | null
@@ -4278,6 +4286,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      url_host: { Args: { p_url: string }; Returns: string }
     }
     Enums: {
       app_role: "admin" | "client"
@@ -4328,6 +4337,7 @@ export type Database = {
         | "materials_list"
         | "new_variant"
         | "stop_quoting"
+        | "need_product_details"
       quote_line_status: "pending" | "accepted" | "rejected"
       quote_status: "submitted" | "sourcing" | "quoted" | "closed" | "expired"
       spymarket_plan: "starter" | "plus" | "max"
@@ -4524,6 +4534,7 @@ export const Constants = {
         "materials_list",
         "new_variant",
         "stop_quoting",
+        "need_product_details",
       ],
       quote_line_status: ["pending", "accepted", "rejected"],
       quote_status: ["submitted", "sourcing", "quoted", "closed", "expired"],

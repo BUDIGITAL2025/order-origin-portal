@@ -12,6 +12,8 @@ export const INTENT_LABELS: Record<string, string> = {
   materials_list: "Send the materials list",
   new_variant: "Quote a new variant",
   stop_quoting: "Stop quoting this product",
+  // Raised by a sourcing collaborator, never by the client.
+  need_product_details: "Sourcing needs more product details",
 };
 
 /** Client: raise a typed request on a quote. Posts to the thread and the admin queue. */

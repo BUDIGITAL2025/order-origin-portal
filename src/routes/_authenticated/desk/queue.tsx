@@ -75,7 +75,9 @@ function QueuePage() {
                   {formatDate(q.created_at)}
                 </TableCell>
                 <TableCell className="max-w-72">
-                  <div className="truncate text-sm">{q.product_name || q.product_url}</div>
+                  <div className="truncate text-sm">
+                    {q.product_name || q.product_url || "Product request"}
+                  </div>
                   {q.mine ? <Chip tone="primary">Mine</Chip> : null}
                 </TableCell>
                 <TableCell className="text-xs uppercase text-muted-foreground">

@@ -23,7 +23,18 @@ const uuid = z.string().uuid();
 
 /** Columns of a quote request a collaborator may see — no store, no client. */
 const DESK_QUOTE_COLUMNS =
-  "id, product_url, product_name, notes, target_monthly_volume, target_countries, image_urls, status, created_at, quote_due_at, sourcing_submitted_at, assigned_sourcer";
+  "id, product_url, product_name, notes, target_monthly_volume, target_countries, image_urls, status, created_at, quote_due_at, sourcing_submitted_at, assigned_sourcer, client_site";
+
+/**
+ * A product URL that points at the client's own site identifies the client, so
+ * the sourcing layer never receives it — they source from the essentials
+ * (name, photos, specs, variants, countries) instead.
+ */
+function maskClientSiteUrl<T extends { product_url: string | null; client_site?: boolean | null }>(
+  quote: T,
+): T {
+  return quote.client_site ? { ...quote, product_url: null } : quote;
+}
 
 /** Columns of a quote line a collaborator may see — no unit_price, no margin. */
 const DESK_LINE_COLUMNS =
@@ -80,7 +91,7 @@ export const sourcingListQueue = createServerFn({ method: "GET" })
     return {
       feeRate: Number(me.fee_rate),
       quotes: (quotes ?? []).map((q) => ({
-        ...q,
+        ...maskClientSiteUrl(q),
         mine: q.assigned_sourcer === context.userId,
         priced_lines: pricedByQuote.get(q.id) ?? 0,
       })),
@@ -138,10 +149,16 @@ export const sourcingGetQuote = createServerFn({ method: "POST" })
         .maybeSingle();
       if (p) preview = { ...p, variants: p.variants ?? [] };
     }
+    // On a client-site listing the scraped title/description carry the brand,
+    // so only the neutral essentials (photos, variants) survive.
+    if (quote.client_site && preview) {
+      preview = { ...preview, title: null, description: null, price_hint: null };
+    }
 
     return {
       feeRate: Number(me.fee_rate),
-      quote,
+      quote: maskClientSiteUrl(quote),
+      essentialsOnly: quote.client_site === true,
       preview,
       lines: (lines ?? []).map((l) => ({
         ...l,
@@ -266,6 +283,55 @@ export const sourcingMyEarnings = createServerFn({ method: "GET" })
       ) / 100;
     return { rows, pending: total(false), settled: total(true) };
   });
+
+/**
+ * When the withheld listing leaves too little to source from, the collaborator
+ * asks US — never the client. Admin decides what may be passed along.
+ */
+export const sourcingRequestProductDetails = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({ quote_id: uuid, note: z.string().trim().max(1000).optional() }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { getAdminClient } = await import("./admin.server");
+    const { requireCollaborator } = await import("./sourcing.server");
+    const { sendAdminEmail } = await import("./email.server");
+    const admin = await getAdminClient();
+    const me = await requireCollaborator(admin, context.userId);
+
+    const { data: quote } = await admin
+      .from("quote_requests")
+      .select("id, store_id, product_name, assigned_sourcer")
+      .eq("id", data.quote_id)
+      .maybeSingle();
+    if (!quote) throw new Error("Quote request not found");
+    if (quote.assigned_sourcer !== context.userId) {
+      throw new Error("This request is not assigned to you");
+    }
+
+    const { error } = await admin.from("quote_intents").insert({
+      quote_request_id: quote.id,
+      store_id: quote.store_id,
+      type: "need_product_details",
+      payload: { note: data.note ?? "", from: "sourcing" },
+      created_by: context.userId,
+    });
+    if (error) throw new Error(error.message);
+
+    await sendAdminEmail({
+      subject: `Sourcing needs more product details: ${quote.product_name ?? quote.id}`,
+      text: [
+        `${me.display_name || me.email} needs more details to source this request.`,
+        data.note ? `Note: ${data.note}` : "",
+        `Quote: ${quote.id}`,
+      ]
+        .filter(Boolean)
+        .join("\n"),
+    });
+    return { ok: true };
+  });
+
 
 // ===================== Admin: collaborators =====================
 
