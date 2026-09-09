@@ -123,7 +123,7 @@ function InboundPage() {
       callArrival({ data: { shipment_id: v.id, expected_arrival: v.date } }),
     onSuccess: () => {
       toast.success("Expected arrival updated");
-      void refetch();
+      void queryClient.invalidateQueries({ queryKey: ["inbound"] });
     },
     onError: (e) => toast.error(friendlyError(e)),
   });
