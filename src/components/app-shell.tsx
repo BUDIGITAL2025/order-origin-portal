@@ -105,6 +105,7 @@ function PastDueBanner() {
 
 const ADMIN_NAV: NavItem[] = [
   { to: "/admin/quotes", label: "Quote queue", icon: ClipboardList },
+  { to: "/admin/catalog-import", label: "Catalog import", icon: FileUp, badge: "New" },
   { to: "/admin/sourcing", label: "Sourcing team", icon: Handshake },
   { to: "/admin/stock-purchases", label: "Stock purchases", icon: PackageCheck },
   { to: "/admin/products", label: "Products", icon: Package },
