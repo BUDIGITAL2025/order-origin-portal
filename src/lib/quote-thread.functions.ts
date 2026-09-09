@@ -51,9 +51,7 @@ export const postQuoteMessage = createServerFn({ method: "POST" })
 
     const { getAdminClient } = await import("./admin.server");
     const { sendAdminEmail } = await import("./email.server");
-    const { assignedSourcer, notifySourcerOfClientMessage } = await import(
-      "./quote-thread.server"
-    );
+    const { assignedSourcer, notifySourcerOfClientMessage } = await import("./quote-thread.server");
     const admin = await getAdminClient();
     const { data: quote } = await admin
       .from("quote_requests")

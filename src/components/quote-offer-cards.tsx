@@ -93,8 +93,7 @@ export function QuoteOfferCards({
   });
 
   const accept = useMutation({
-    mutationFn: () =>
-      callAccept({ data: { option_id: selected!, product_name: name.trim() } }),
+    mutationFn: () => callAccept({ data: { option_id: selected!, product_name: name.trim() } }),
     onSuccess: () => {
       setConfirming(false);
       toast.success("Offer accepted — the product and its SKUs are in your catalogue.");
@@ -214,7 +213,10 @@ export function QuoteOfferCards({
                 onClick={() => setExpanded(expanded === offer.id ? null : offer.id)}
               >
                 <ChevronDown
-                  className={cn("h-3.5 w-3.5 transition-transform", expanded === offer.id && "rotate-180")}
+                  className={cn(
+                    "h-3.5 w-3.5 transition-transform",
+                    expanded === offer.id && "rotate-180",
+                  )}
                 />
                 Variant pricing by country
               </button>

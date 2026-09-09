@@ -18,10 +18,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated/_client/quotes/$id")({
   head: () => ({
-    meta: [
-      { title: "Quote — FlySales" },
-      { name: "robots", content: "noindex" },
-    ],
+    meta: [{ title: "Quote — FlySales" }, { name: "robots", content: "noindex" }],
   }),
   component: MyQuoteDetailPage,
 });
@@ -139,71 +136,72 @@ function MyQuoteDetailPage() {
               .
             </p>
           )}
-
         </div>
 
         <div className="flex min-h-0 flex-col gap-4 lg:col-span-2">
           <Card className="max-h-[40%] shrink-0 overflow-y-auto">
-          <CardHeader className="pb-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <CardTitle className="text-base">Request</CardTitle>
-              <div className="flex items-center gap-2">
-                <QuoteStatusBadge status={quote.status} validUntil={quote.quote_valid_until} />
-                {quote.status === "quoted" && (
-                  <QuoteValidityChip validUntil={quote.quote_valid_until} />
-                )}
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm">
-            <div>
-              <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                Product URL
-              </div>
-              <a
-                href={quote.product_url ?? "#"}
-                target="_blank"
-                rel="noreferrer"
-                className="break-all underline-offset-2 hover:underline"
-              >
-                {quote.product_url}
-              </a>
-            </div>
-            <div>
-              <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                Your notes
-              </div>
-              <p className="whitespace-pre-wrap">{quote.notes || "—"}</p>
-            </div>
-            <div>
-              <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                Volume / month
-              </div>
-              <div className="tnum">{quote.target_monthly_volume ?? "—"}</div>
-            </div>
-            <div>
-              <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                Target countries
-              </div>
-              <p>{quote.target_countries.map((c) => countryName(c)).join(", ") || "—"}</p>
-            </div>
-            {imageUrls.length > 0 && (
-              <div>
-                <div className="text-xs uppercase tracking-wide text-muted-foreground">Images</div>
-                <div className="mt-1 flex flex-wrap gap-2">
-                  {imageUrls.map((u, i) => (
-                    <a key={i} href={u} target="_blank" rel="noreferrer">
-                      <img
-                        src={u}
-                        alt={`Reference ${i + 1}`}
-                        className="h-16 w-16 rounded-lg border border-border object-cover"
-                      />
-                    </a>
-                  ))}
+            <CardHeader className="pb-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <CardTitle className="text-base">Request</CardTitle>
+                <div className="flex items-center gap-2">
+                  <QuoteStatusBadge status={quote.status} validUntil={quote.quote_valid_until} />
+                  {quote.status === "quoted" && (
+                    <QuoteValidityChip validUntil={quote.quote_valid_until} />
+                  )}
                 </div>
               </div>
-            )}
-          </CardContent>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <div>
+                <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Product URL
+                </div>
+                <a
+                  href={quote.product_url ?? "#"}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="break-all underline-offset-2 hover:underline"
+                >
+                  {quote.product_url}
+                </a>
+              </div>
+              <div>
+                <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Your notes
+                </div>
+                <p className="whitespace-pre-wrap">{quote.notes || "—"}</p>
+              </div>
+              <div>
+                <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Volume / month
+                </div>
+                <div className="tnum">{quote.target_monthly_volume ?? "—"}</div>
+              </div>
+              <div>
+                <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Target countries
+                </div>
+                <p>{quote.target_countries.map((c) => countryName(c)).join(", ") || "—"}</p>
+              </div>
+              {imageUrls.length > 0 && (
+                <div>
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Images
+                  </div>
+                  <div className="mt-1 flex flex-wrap gap-2">
+                    {imageUrls.map((u, i) => (
+                      <a key={i} href={u} target="_blank" rel="noreferrer">
+                        <img
+                          src={u}
+                          alt={`Reference ${i + 1}`}
+                          className="h-16 w-16 rounded-lg border border-border object-cover"
+                        />
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </CardContent>
           </Card>
 
           <QuoteThread quoteId={id} mode="client" className="min-h-0 flex-1" />

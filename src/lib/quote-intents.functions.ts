@@ -57,9 +57,7 @@ export const createQuoteIntent = createServerFn({ method: "POST" })
 
     // Routing: everything actionable by sourcing goes to the assigned
     // collaborator; price decisions are ours, so those also reach the admin.
-    const { assignedSourcer, notifySourcerOfClientMessage } = await import(
-      "./quote-thread.server"
-    );
+    const { assignedSourcer, notifySourcerOfClientMessage } = await import("./quote-thread.server");
     const priceRelated = data.type === "price_too_high" || data.type === "stop_quoting";
     const sourcerId = await assignedSourcer(admin, data.quote_id);
     if (sourcerId) {
@@ -140,7 +138,11 @@ export const adminResolveQuoteIntent = createServerFn({ method: "POST" })
     const admin = await getAdminClient();
     const { error } = await admin
       .from("quote_intents")
-      .update({ status: "handled", handled_at: new Date().toISOString(), handled_by: context.userId })
+      .update({
+        status: "handled",
+        handled_at: new Date().toISOString(),
+        handled_by: context.userId,
+      })
       .eq("id", data.intent_id);
     if (error) throw new Error(error.message);
     return { ok: true };

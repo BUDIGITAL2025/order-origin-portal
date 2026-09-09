@@ -216,9 +216,7 @@ export function spymarketActiveEmail(args: { planLabel: string }): BuiltEmail {
 }
 
 /** Subscription cancellation confirmed. */
-export function subscriptionCancelledEmail(args: {
-  periodEndDate: string | null;
-}): BuiltEmail {
+export function subscriptionCancelledEmail(args: { periodEndDate: string | null }): BuiltEmail {
   return build("Your subscription cancellation is confirmed", {
     heading: "Your cancellation is confirmed",
     preheader: args.periodEndDate
@@ -380,10 +378,7 @@ export function inboundReceivedEmail(args: {
 }
 
 /** Inbound shipment refused at the warehouse (no tracking, no labels). */
-export function inboundRefusedEmail(args: {
-  shipmentRef: string;
-  reason: string;
-}): BuiltEmail {
+export function inboundRefusedEmail(args: { shipmentRef: string; reason: string }): BuiltEmail {
   return build(`Shipment ${args.shipmentRef} was refused`, {
     heading: "Your shipment was refused at the warehouse",
     preheader: args.reason,
@@ -488,7 +483,6 @@ export function quoteRequestReceivedEmail(args: {
     button: { label: "Open the quote", url: portalUrl(`/quotes/${args.quoteId}`) },
   });
 }
-
 
 /** A collaborator has news on one of their assigned quotes (client stays masked). */
 export function sourcingThreadEmail(args: {

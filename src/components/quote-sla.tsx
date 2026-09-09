@@ -53,12 +53,7 @@ export function QuoteSlaCountdown({
 
   if (remaining <= 0) {
     return (
-      <div
-        className={cn(
-          "rounded-2xl border border-border bg-card p-6 text-center",
-          className,
-        )}
-      >
+      <div className={cn("rounded-2xl border border-border bg-card p-6 text-center", className)}>
         <p className="text-sm font-semibold">Taking longer than usual</p>
         <p className="mt-1 text-sm text-muted-foreground">
           Our sourcing team is on it — you'll be notified as soon as your quote arrives.
@@ -68,12 +63,7 @@ export function QuoteSlaCountdown({
   }
 
   return (
-    <div
-      className={cn(
-        "rounded-2xl border border-border bg-card p-6 text-center",
-        className,
-      )}
-    >
+    <div className={cn("rounded-2xl border border-border bg-card p-6 text-center", className)}>
       <p className="flex items-center justify-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
         <AlarmClock className="h-3.5 w-3.5" />
         Expected quote within
@@ -86,13 +76,7 @@ export function QuoteSlaCountdown({
 }
 
 /** Admin queue: compact time-against-target badge. Red once overdue. */
-export function QuoteSlaBadge({
-  dueAt,
-  status,
-}: {
-  dueAt: string | null;
-  status: string;
-}) {
+export function QuoteSlaBadge({ dueAt, status }: { dueAt: string | null; status: string }) {
   const now = useNow(30_000);
   if (!dueAt || !isQuoteOpenForSla(status)) {
     return <span className="text-xs text-muted-foreground">—</span>;
