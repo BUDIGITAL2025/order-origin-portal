@@ -185,6 +185,23 @@ function InventoryPage() {
 
           <div className="mb-3 flex flex-wrap items-center gap-2">
             <FilterTabs tabs={TABS} value={tab} onChange={setTab} />
+            <div className="flex flex-wrap items-center gap-1 rounded-full border border-border bg-card p-1">
+              {SCENARIOS.map((s) => (
+                <button
+                  key={s.value}
+                  type="button"
+                  onClick={() => setGrowthPercent(s.value)}
+                  className={cn(
+                    "rounded-full px-3 py-1 text-[13px] font-medium transition-colors",
+                    growthPercent === s.value
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
             <div className="ml-auto flex items-center gap-2">
               <button
                 type="button"
@@ -217,6 +234,14 @@ function InventoryPage() {
               </Button>
             </div>
           </div>
+
+          {growthPercent > 0 && (
+            <div className="mb-4 flex items-center gap-2 rounded-xl border border-info/30 bg-info/10 px-4 py-2.5 text-sm text-info">
+              <Info className="h-4 w-4 shrink-0" />
+              A mostrar projeção com +{growthPercent}% de vendas — os números de cobertura e reorder
+              refletem este cenário, não apenas o histórico real.
+            </div>
+          )}
 
           <InventoryTable
             rows={visible}
