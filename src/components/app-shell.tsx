@@ -7,6 +7,7 @@ import {
   ChevronDown,
   LifeBuoy,
   ClipboardList,
+  FileUp,
   Factory,
   Download,
   ExternalLink,
