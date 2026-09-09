@@ -136,8 +136,20 @@ function DeskQuotePage() {
     onError: (e) => toast.error(friendlyError(e, "Your sourcing was not saved.")),
   });
 
+  const askDetails = useMutation({
+    mutationFn: () => callAskDetails({ data: { quote_id: id } }),
+    onSuccess: () => toast.success("The FlySales team will send you more details."),
+    onError: (e) => toast.error(friendlyError(e, "Your request was not sent.")),
+  });
+
   if (isPending) return <p className="text-sm text-muted-foreground">Loading…</p>;
   if (!data) return <p className="text-sm text-muted-foreground">Request not found.</p>;
+
+  // The client's own request images plus anything we scraped and stored.
+  const photos = [
+    ...new Set([...(data.quote.image_urls ?? []), ...(data.preview?.image_urls ?? [])]),
+  ];
+
 
   const totalFee = lines.reduce(
     (sum, l) =>
