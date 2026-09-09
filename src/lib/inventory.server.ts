@@ -73,7 +73,6 @@ export interface SkuRow {
   suggested_qty: number;
 }
 
-
 export interface WorkspaceInventory {
   store_id: string;
   store_name: string | null;
@@ -110,17 +109,19 @@ export function evaluateSku(input: {
   growth_percent?: number | undefined;
 }): Pick<
   SkuRow,
-  "daily_velocity" | "days_of_cover" | "total_lead" | "reorder_by" | "state" | "gap_days" | "suggested_qty"
+  | "daily_velocity"
+  | "days_of_cover"
+  | "total_lead"
+  | "reorder_by"
+  | "state"
+  | "gap_days"
+  | "suggested_qty"
 > {
   const now = input.now ?? new Date();
   const totalLead = input.production_lead + input.transit_lead + input.safety_margin;
 
   const daily =
-    input.units_30d > 0
-      ? input.units_30d / 30
-      : input.units_7d > 0
-        ? input.units_7d / 7
-        : 0;
+    input.units_30d > 0 ? input.units_30d / 30 : input.units_7d > 0 ? input.units_7d / 7 : 0;
 
   if (daily <= 0) {
     return {
@@ -190,51 +191,51 @@ export async function computeWorkspaceInventory(
     { data: purchaseCosts },
     { data: clientPrices },
   ] = await Promise.all([
-      admin
-        .from("inventory_snapshots")
-        .select("sku, location, quantity, captured_at")
-        .eq("store_id", store.id)
-        .order("captured_at", { ascending: false })
-        .limit(2000),
-      admin.from("sku_velocity").select("sku, units_7d, units_30d").eq("store_id", store.id),
-      admin.rpc("resolved_lead_times", { p_store_id: store.id }),
-      admin
-        .from("manual_stock_levels")
-        .select("sku, in_warehouse, reserved, incoming, locations, updated_at")
-        .eq("store_id", store.id),
-      admin
-        .from("products")
-        .select(
-          "id, sku, tags, weight, weight_unit, weight_grams, image_urls, product_shipping_routes(destination, handling_time_days, is_default)",
-        )
-        .eq("store_id", store.id)
-        .limit(2000),
-      // RESERVED: units on paid orders that have not shipped yet.
-      admin
-        .from("order_items")
-        .select("sku, quantity, orders!inner(store_id, status)")
-        .eq("orders.store_id", store.id)
-        .in("orders.status", ["paid", "processing"])
-        .limit(5000),
-      // INCOMING: units on inbound shipments not yet received.
-      admin
-        .from("inbound_shipment_lines")
-        .select("sku, declared_qty, inbound_shipments!inner(store_id, status)")
-        .eq("inbound_shipments.store_id", store.id)
-        .in("inbound_shipments.status", ["declared", "in_transit"])
-        .limit(5000),
-      admin
-        .from("stock_purchases")
-        .select("sku, unit_price, created_at")
-        .eq("store_id", store.id)
-        .order("created_at", { ascending: false })
-        .limit(2000),
-      admin
-        .from("product_country_prices")
-        .select("unit_price, products!inner(sku, store_id)")
-        .eq("products.store_id", store.id)
-        .limit(5000),
-    ]);
+    admin
+      .from("inventory_snapshots")
+      .select("sku, location, quantity, captured_at")
+      .eq("store_id", store.id)
+      .order("captured_at", { ascending: false })
+      .limit(2000),
+    admin.from("sku_velocity").select("sku, units_7d, units_30d").eq("store_id", store.id),
+    admin.rpc("resolved_lead_times", { p_store_id: store.id }),
+    admin
+      .from("manual_stock_levels")
+      .select("sku, in_warehouse, reserved, incoming, locations, updated_at")
+      .eq("store_id", store.id),
+    admin
+      .from("products")
+      .select(
+        "id, sku, tags, weight, weight_unit, weight_grams, image_urls, product_shipping_routes(destination, handling_time_days, is_default)",
+      )
+      .eq("store_id", store.id)
+      .limit(2000),
+    // RESERVED: units on paid orders that have not shipped yet.
+    admin
+      .from("order_items")
+      .select("sku, quantity, orders!inner(store_id, status)")
+      .eq("orders.store_id", store.id)
+      .in("orders.status", ["paid", "processing"])
+      .limit(5000),
+    // INCOMING: units on inbound shipments not yet received.
+    admin
+      .from("inbound_shipment_lines")
+      .select("sku, declared_qty, inbound_shipments!inner(store_id, status)")
+      .eq("inbound_shipments.store_id", store.id)
+      .in("inbound_shipments.status", ["declared", "in_transit"])
+      .limit(5000),
+    admin
+      .from("stock_purchases")
+      .select("sku, unit_price, created_at")
+      .eq("store_id", store.id)
+      .order("created_at", { ascending: false })
+      .limit(2000),
+    admin
+      .from("product_country_prices")
+      .select("unit_price, products!inner(sku, store_id)")
+      .eq("products.store_id", store.id)
+      .limit(5000),
+  ]);
 
   const reservedBySku = new Map<string, number>();
   for (const item of openOrderItems ?? []) {
@@ -277,19 +278,18 @@ export async function computeWorkspaceInventory(
   // Manually entered stock wins for its SKU: a sync must never silently
   // overwrite what somebody typed in by hand.
   const manualBySku = new Map((manual ?? []).map((m) => [m.sku, m]));
-  const manualUpdatedAt = (manual ?? [])
-    .map((m) => m.updated_at)
-    .sort()
-    .at(-1) ?? null;
+  const manualUpdatedAt =
+    (manual ?? [])
+      .map((m) => m.updated_at)
+      .sort()
+      .at(-1) ?? null;
 
   const catalogueBySku = new Map((catalogue ?? []).map((p) => [p.sku, p]));
 
   const velocityBySku = new Map(
     (velocity ?? []).map((v) => [v.sku, { units_7d: v.units_7d, units_30d: v.units_30d }]),
   );
-  const leadBySku = new Map(
-    ((leads ?? []) as ResolvedLead[]).map((l) => [l.sku, l]),
-  );
+  const leadBySku = new Map(((leads ?? []) as ResolvedLead[]).map((l) => [l.sku, l]));
 
   // Every SKU we know about: stocked SKUs, manual entries, plus catalogue SKUs with velocity.
   const skus = new Set<string>([...bySku.keys(), ...manualBySku.keys()]);
@@ -373,7 +373,6 @@ export async function computeWorkspaceInventory(
     });
   }
 
-
   const order: Record<InventoryState, number> = { red: 0, amber: 1, green: 2, idle: 3 };
   rows.sort(
     (a, b) =>
@@ -399,7 +398,6 @@ export async function computeWorkspaceInventory(
     last_captured_at: freshest,
     stale: freshest ? Date.now() - new Date(freshest).getTime() > STALE_AFTER_MS : true,
   };
-
 }
 
 // ============= Pulling stock from the middleware =============
@@ -459,8 +457,14 @@ export function mapInventoryRow(input: unknown): MappedStock | null {
   const sku = pickString(record, ["sku", "SKU", "product_sku", "code"]);
   if (!sku) return null;
   const quantity =
-    pickNumber(record, ["quantity", "qty", "available", "on_hand", "stock", "quantity_available"]) ??
-    0;
+    pickNumber(record, [
+      "quantity",
+      "qty",
+      "available",
+      "on_hand",
+      "stock",
+      "quantity_available",
+    ]) ?? 0;
   const location =
     pickString(record, ["location", "warehouse", "location_code", "site"]) ?? "default";
   return { sku, location, quantity: Math.max(0, Math.round(quantity)) };
@@ -498,7 +502,10 @@ export async function syncInventoryForStore(
       .order("captured_at", { ascending: false })
       .limit(1)
       .maybeSingle();
-    if (last?.captured_at && Date.now() - new Date(last.captured_at).getTime() < INVENTORY_INTERVAL_MS) {
+    if (
+      last?.captured_at &&
+      Date.now() - new Date(last.captured_at).getTime() < INVENTORY_INTERVAL_MS
+    ) {
       return { ...base, ok: true, skipped: "throttled" };
     }
   }
@@ -576,8 +583,7 @@ export async function evaluateInventoryAlerts(
     .select("store_name, entities(account_id)")
     .eq("id", store.id)
     .maybeSingle();
-  const accountId =
-    (owner?.entities as { account_id?: string | null } | null)?.account_id ?? null;
+  const accountId = (owner?.entities as { account_id?: string | null } | null)?.account_id ?? null;
 
   let sent = 0;
   for (const row of view.rows) {

@@ -237,9 +237,9 @@ function InventoryPage() {
 
           {growthPercent > 0 && (
             <div className="mb-4 flex items-center gap-2 rounded-xl border border-info/30 bg-info/10 px-4 py-2.5 text-sm text-info">
-              <Info className="h-4 w-4 shrink-0" />
-              A mostrar projeção com +{growthPercent}% de vendas — os números de cobertura e reorder
-              refletem este cenário, não apenas o histórico real.
+              <Info className="h-4 w-4 shrink-0" />A mostrar projeção com +{growthPercent}% de
+              vendas — os números de cobertura e reorder refletem este cenário, não apenas o
+              histórico real.
             </div>
           )}
 

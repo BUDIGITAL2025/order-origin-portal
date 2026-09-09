@@ -76,8 +76,7 @@ export const createInventoryItem = createServerFn({ method: "POST" })
           .min(1)
           .max(20)
           .refine(
-            (list) =>
-              new Set(list.map((w) => w.location.toLowerCase())).size === list.length,
+            (list) => new Set(list.map((w) => w.location.toLowerCase())).size === list.length,
             { message: "Each warehouse can only appear once." },
           ),
 
@@ -119,8 +118,6 @@ export const createInventoryItem = createServerFn({ method: "POST" })
     return { ok: true as const, product };
   });
 
-
-
 /** Admin: every connected workspace, with lead-time origin indicators. */
 export const getAdminInventory = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -132,7 +129,9 @@ export const getAdminInventory = createServerFn({ method: "GET" })
 
     const { data: stores, error } = await supabaseAdmin
       .from("stores")
-      .select("id, store_name, middleware_tenant_id, default_production_lead_days, default_transit_lead_days, default_safety_margin_days")
+      .select(
+        "id, store_name, middleware_tenant_id, default_production_lead_days, default_transit_lead_days, default_safety_margin_days",
+      )
       .order("store_name")
       .limit(100);
     if (error) throw new Error(error.message);
@@ -157,9 +156,7 @@ export const getAdminInventory = createServerFn({ method: "GET" })
 /** Admin: force a stock pull now (also recomputes velocity and alerts). */
 export const syncInventoryNow = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) =>
-    z.object({ storeId: uuid.optional() }).parse(input ?? {}),
-  )
+  .inputValidator((input: unknown) => z.object({ storeId: uuid.optional() }).parse(input ?? {}))
   .handler(async ({ data, context }) => {
     const { requireAdmin } = await import("./admin.server");
     await requireAdmin(context.supabase, context.userId);
