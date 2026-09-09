@@ -5,7 +5,7 @@ import { ArrowLeft } from "lucide-react";
 import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { QuoteOfferCards } from "@/components/quote-offer-cards";
-import { QuoteSlaCountdown, QuoteTimeline } from "@/components/quote-sla";
+import { QuoteSlaCountdown, QuoteTimeline, QuoteValidityChip } from "@/components/quote-sla";
 import { QuoteThread } from "@/components/quote-thread";
 import { SpecialRequestMenu } from "@/components/special-request-menu";
 import { QuoteStatusBadge } from "@/components/status-badges";
@@ -204,7 +204,10 @@ function MyQuoteDetailPage() {
               </div>
             )}
           </CardContent>
-        </Card>
+          </Card>
+
+          <QuoteThread quoteId={id} mode="client" className="min-h-0 flex-1" />
+        </div>
       </div>
     </div>
   );
