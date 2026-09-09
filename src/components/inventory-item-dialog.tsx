@@ -166,9 +166,25 @@ export function InventoryItemDialog({
     setRoutes((prev) => prev.map((r, i) => ({ ...r, isDefault: i === index })));
 
   const create = useMutation({
-    mutationFn: () =>
-      callCreate({
+    mutationFn: async () => {
+      let image = imagePath;
+      if (imageFile) {
+        setUploading(true);
+        try {
+          const ext = imageFile.name.split(".").pop()?.toLowerCase() || "jpg";
+          const path = `${storeId}/${sku.trim()}-${Date.now()}.${ext}`;
+          const { error: upErr } = await supabase.storage
+            .from("product-images")
+            .upload(path, imageFile, { upsert: true, contentType: imageFile.type });
+          if (upErr) throw new Error(upErr.message);
+          image = path;
+        } finally {
+          setUploading(false);
+        }
+      }
+      return callCreate({
         data: {
+          image_url: image,
           storeId: storeId!,
           sku: sku.trim(),
           product_name: productName.trim(),
