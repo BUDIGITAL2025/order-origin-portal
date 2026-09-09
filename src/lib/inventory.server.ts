@@ -107,7 +107,7 @@ export function evaluateSku(input: {
   transit_lead: number;
   safety_margin: number;
   now?: Date;
-  growth_percent?: number;
+  growth_percent?: number | undefined;
 }): Pick<
   SkuRow,
   "daily_velocity" | "days_of_cover" | "total_lead" | "reorder_by" | "state" | "gap_days" | "suggested_qty"
