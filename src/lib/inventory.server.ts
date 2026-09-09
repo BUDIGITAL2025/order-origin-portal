@@ -323,7 +323,9 @@ export async function computeWorkspaceInventory(
         : [{ location: "Warehouse", quantity: manualRow.in_warehouse }]
       : (bySku.get(sku) ?? []).sort((a, b) => a.location.localeCompare(b.location));
 
-    const totalStock = locations.reduce((sum, l) => sum + l.quantity, 0);
+    const rawTotal = locations.reduce((sum, l) => sum + l.quantity, 0);
+    // Hand-counted stock is reduced by whatever sold after the count.
+    const totalStock = manualRow ? Math.max(0, rawTotal - (soldSinceBySku.get(sku) ?? 0)) : rawTotal;
     const reserved = (manualRow?.reserved ?? 0) + (reservedBySku.get(sku) ?? 0);
     const incoming = (manualRow?.incoming ?? 0) + (incomingBySku.get(sku) ?? 0);
     const sellable = Math.max(0, totalStock - reserved);
@@ -360,6 +362,7 @@ export async function computeWorkspaceInventory(
       incoming,
       sellable,
       image_urls: product?.image_urls ?? [],
+      image_url: product?.image_url ?? null,
       weight: product?.weight ?? null,
       weight_unit: product?.weight_unit ?? null,
       weight_grams: product?.weight_grams ?? null,
