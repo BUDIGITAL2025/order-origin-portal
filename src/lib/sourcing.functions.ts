@@ -23,7 +23,18 @@ const uuid = z.string().uuid();
 
 /** Columns of a quote request a collaborator may see — no store, no client. */
 const DESK_QUOTE_COLUMNS =
-  "id, product_url, product_name, notes, target_monthly_volume, target_countries, image_urls, status, created_at, quote_due_at, sourcing_submitted_at, assigned_sourcer";
+  "id, product_url, product_name, notes, target_monthly_volume, target_countries, image_urls, status, created_at, quote_due_at, sourcing_submitted_at, assigned_sourcer, client_site";
+
+/**
+ * A product URL that points at the client's own site identifies the client, so
+ * the sourcing layer never receives it — they source from the essentials
+ * (name, photos, specs, variants, countries) instead.
+ */
+function maskClientSiteUrl<T extends { product_url: string | null; client_site?: boolean | null }>(
+  quote: T,
+): T {
+  return quote.client_site ? { ...quote, product_url: null } : quote;
+}
 
 /** Columns of a quote line a collaborator may see — no unit_price, no margin. */
 const DESK_LINE_COLUMNS =
