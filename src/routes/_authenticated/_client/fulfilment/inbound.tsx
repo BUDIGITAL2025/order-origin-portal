@@ -32,6 +32,7 @@ import {
   createClientProduct,
   declareInboundShipment,
   getInboundLabels,
+  setInboundExpectedArrival,
   listMyInboundShipments,
   listStockInProducts,
   setInboundTracking,
@@ -114,6 +115,17 @@ function InboundPage() {
     queryKey: ["inbound", storeId],
     enabled: storeId != null,
     queryFn: () => fetchShipments({ data: { storeId: storeId! } }),
+  });
+
+  const callArrival = useServerFn(setInboundExpectedArrival);
+  const saveArrival = useMutation({
+    mutationFn: (v: { id: string; date: string }) =>
+      callArrival({ data: { shipment_id: v.id, expected_arrival: v.date } }),
+    onSuccess: () => {
+      toast.success("Expected arrival updated");
+      void refetch();
+    },
+    onError: (e) => toast.error(friendlyError(e)),
   });
 
   const fetchLabels = useServerFn(getInboundLabels);
@@ -201,6 +213,8 @@ function InboundPage() {
                 <th className="px-3 py-2 font-medium">Variations</th>
                 <th className="px-3 py-2 text-right font-medium">Declared</th>
                 <th className="px-3 py-2 text-right font-medium">Counted</th>
+                <th className="px-3 py-2 text-right font-medium">Cartons</th>
+                <th className="px-3 py-2 font-medium">Expected arrival</th>
                 <th className="px-3 py-2 font-medium">QC</th>
                 <th className="px-3 py-2 text-right font-medium">Fee</th>
                 <th className="px-3 py-2 font-medium">Tracking</th>
@@ -229,6 +243,35 @@ function InboundPage() {
                     {s.counted_pieces ?? "—"}
                     {s.has_discrepancy && (
                       <span className="ml-1 text-xs text-warning">≠</span>
+                    )}
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums text-xs">
+                    {s.declared_cartons ?? "—"}
+                    {s.counted_cartons != null && (
+                      <span
+                        className={
+                          s.counted_cartons !== s.declared_cartons
+                            ? "ml-1 text-warning"
+                            : "ml-1 text-muted-foreground"
+                        }
+                      >
+                        → {s.counted_cartons}
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-3 py-2 text-xs">
+                    {s.status === "declared" || s.status === "in_transit" ? (
+                      <input
+                        type="date"
+                        value={s.expected_arrival_date ?? ""}
+                        onChange={(e) =>
+                          e.target.value &&
+                          saveArrival.mutate({ id: s.id, date: e.target.value })
+                        }
+                        className="rounded-md border border-border bg-background px-2 py-1 text-xs"
+                      />
+                    ) : (
+                      (s.expected_arrival_date ?? "—")
                     )}
                   </td>
                   <td className="px-3 py-2 text-xs">{s.qc ? "Yes" : "No"}</td>
