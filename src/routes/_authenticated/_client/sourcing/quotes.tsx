@@ -30,8 +30,6 @@ const VIEWS: { key: SavedView; label: string }[] = [
   { key: "expiring", label: "Expiring soon" },
 ];
 
-const DAY = 24 * 60 * 60 * 1000;
-
 /** Hours left on a quote, so anything under a day reads as urgent. */
 function hoursLeft(validUntil: string | null): number | null {
   if (!validUntil) return null;

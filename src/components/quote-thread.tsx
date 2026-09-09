@@ -6,7 +6,7 @@
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ImagePlus, Pin, Send } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,7 @@ import {
   adminPostQuoteMessage,
   getThreadAttachmentUrls,
   listQuoteMessages,
+  markQuoteThreadRead,
   postQuoteMessage,
 } from "@/lib/quote-thread.functions";
 import { cn } from "@/lib/utils";
@@ -43,6 +44,15 @@ export function QuoteThread({ quoteId, mode }: { quoteId: string; mode: "client"
     queryFn: () => fetchMessages({ data: { quote_id: quoteId } }),
   });
   const messages = data?.messages ?? [];
+
+  // Opening the thread clears the client's unread badge.
+  const callMarkRead = useServerFn(markQuoteThreadRead);
+  useEffect(() => {
+    if (isAdmin) return;
+    void callMarkRead({ data: { quote_id: quoteId } }).then(() => {
+      void queryClient.invalidateQueries({ queryKey: ["my-quote-signals"] });
+    });
+  }, [isAdmin, quoteId, callMarkRead, queryClient]);
 
   const attachmentPaths = [...new Set(messages.flatMap((m) => m.attachments ?? []))];
   const { data: urlData } = useQuery({
