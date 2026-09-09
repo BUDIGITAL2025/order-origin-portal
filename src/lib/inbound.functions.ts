@@ -13,6 +13,7 @@ import {
   declareInboundSchema,
   inboundIdSchema,
   inboundTrackingSchema,
+  inboundExpectedArrivalSchema,
   confirmInboundSchema,
   refuseInboundSchema,
   stockInPriceSchema,
@@ -21,9 +22,10 @@ import {
 const uuid = z.string().uuid();
 
 const SHIPMENT_COLUMNS =
-  "id, store_id, entity_id, status, qc, tracking_number, tracking_carrier, warehouse_reference, declared_pieces, counted_pieces, has_discrepancy, fee_charged, archived_at, wallet_reference, refusal_reason, in_transit_at, received_at, completed_at, created_at";
+  "id, store_id, entity_id, status, qc, tracking_number, tracking_carrier, warehouse_reference, declared_pieces, counted_pieces, declared_cartons, counted_cartons, expected_arrival_date, has_discrepancy, fee_charged, archived_at, wallet_reference, refusal_reason, in_transit_at, received_at, completed_at, created_at";
 
-const LINE_COLUMNS = "id, shipment_id, product_id, sku, product_name, declared_qty, counted_qty, products(image_urls)";
+const LINE_COLUMNS =
+  "id, shipment_id, product_id, sku, product_name, declared_qty, counted_qty, products(image_urls)";
 
 /** Short human reference used in labels, emails and the UI. */
 export function shipmentRef(id: string): string {
@@ -99,6 +101,8 @@ export const declareInboundShipment = createServerFn({ method: "POST" })
       p_store_id: data.storeId,
       p_qc: data.qc,
       p_lines: data.lines.map((l) => ({ product_id: l.product_id, quantity: l.quantity })),
+      ...(data.cartons != null ? { p_cartons: data.cartons } : {}),
+      ...(data.expected_arrival ? { p_expected_arrival: data.expected_arrival } : {}),
     });
     if (error) {
       if (error.message.includes("MIN_10_UNITS")) {
@@ -123,6 +127,20 @@ export const setInboundTracking = createServerFn({ method: "POST" })
     return row;
   });
 
+/** Client: set or correct the expected arrival date (and carton count). */
+export const setInboundExpectedArrival = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => inboundExpectedArrivalSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const { data: row, error } = await context.supabase.rpc("set_inbound_expected_arrival", {
+      p_shipment_id: data.shipment_id,
+      p_expected_arrival: data.expected_arrival,
+      ...(data.cartons != null ? { p_cartons: data.cartons } : {}),
+    });
+    if (error) throw new Error(error.message);
+    return row;
+  });
+
 /** Printable SKU labels (PDF, base64) plus the matching SKU list CSV. */
 export const getInboundLabels = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -130,7 +148,7 @@ export const getInboundLabels = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { data: shipment, error } = await context.supabase
       .from("inbound_shipments")
-      .select("id, store_id, warehouse_reference")
+      .select("id, store_id, warehouse_reference, declared_cartons, expected_arrival_date")
       .eq("id", data.shipment_id)
       .maybeSingle();
     if (error) throw new Error(error.message);
@@ -158,6 +176,8 @@ export const getInboundLabels = createServerFn({ method: "POST" })
       shipmentRef: shipmentRef(shipment.id),
       warehouseReference: shipment.warehouse_reference,
       workspaceName: store?.store_name ?? "Workspace",
+      cartons: shipment.declared_cartons,
+      expectedArrival: shipment.expected_arrival_date,
       lines: labelLines,
     });
     return {
@@ -216,12 +236,12 @@ export const adminConfirmInboundReceipt = createServerFn({ method: "POST" })
     const { data: shipment, error } = await admin.rpc("admin_confirm_inbound_receipt", {
       p_shipment_id: data.shipment_id,
       p_counts: data.counts.map((c) => ({ line_id: c.line_id, counted_qty: c.counted_qty })),
+      ...(data.counted_cartons != null ? { p_counted_cartons: data.counted_cartons } : {}),
     });
 
     const { sendClientEmail } = await import("./email.server");
-    const { inboundReceivedEmail, inboundPaymentNeededEmail } = await import(
-      "./email-templates.server"
-    );
+    const { inboundReceivedEmail, inboundPaymentNeededEmail } =
+      await import("./email-templates.server");
 
     if (error) {
       if (error.message.includes("Insufficient funds")) {

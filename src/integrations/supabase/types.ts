@@ -723,11 +723,14 @@ export type Database = {
         Row: {
           archived_at: string | null
           completed_at: string | null
+          counted_cartons: number | null
           counted_pieces: number | null
           created_at: string
           created_by: string | null
+          declared_cartons: number | null
           declared_pieces: number
           entity_id: string
+          expected_arrival_date: string | null
           fee_charged: number | null
           has_discrepancy: boolean
           id: string
@@ -750,11 +753,14 @@ export type Database = {
         Insert: {
           archived_at?: string | null
           completed_at?: string | null
+          counted_cartons?: number | null
           counted_pieces?: number | null
           created_at?: string
           created_by?: string | null
+          declared_cartons?: number | null
           declared_pieces?: number
           entity_id: string
+          expected_arrival_date?: string | null
           fee_charged?: number | null
           has_discrepancy?: boolean
           id?: string
@@ -777,11 +783,14 @@ export type Database = {
         Update: {
           archived_at?: string | null
           completed_at?: string | null
+          counted_cartons?: number | null
           counted_pieces?: number | null
           created_at?: string
           created_by?: string | null
+          declared_cartons?: number | null
           declared_pieces?: number
           entity_id?: string
+          expected_arrival_date?: string | null
           fee_charged?: number | null
           has_discrepancy?: boolean
           id?: string
@@ -1549,6 +1558,7 @@ export type Database = {
           transit_lead_days: number | null
           variant_label: string | null
           weight: number | null
+          weight_grams: number | null
           weight_unit: string | null
         }
         Insert: {
@@ -1576,6 +1586,7 @@ export type Database = {
           transit_lead_days?: number | null
           variant_label?: string | null
           weight?: number | null
+          weight_grams?: number | null
           weight_unit?: string | null
         }
         Update: {
@@ -1603,6 +1614,7 @@ export type Database = {
           transit_lead_days?: number | null
           variant_label?: string | null
           weight?: number | null
+          weight_grams?: number | null
           weight_unit?: string | null
         }
         Relationships: [
@@ -2972,15 +2984,22 @@ export type Database = {
     }
     Functions: {
       admin_confirm_inbound_receipt: {
-        Args: { p_counts: Json; p_shipment_id: string }
+        Args: {
+          p_counted_cartons?: number
+          p_counts: Json
+          p_shipment_id: string
+        }
         Returns: {
           archived_at: string | null
           completed_at: string | null
+          counted_cartons: number | null
           counted_pieces: number | null
           created_at: string
           created_by: string | null
+          declared_cartons: number | null
           declared_pieces: number
           entity_id: string
+          expected_arrival_date: string | null
           fee_charged: number | null
           has_discrepancy: boolean
           id: string
@@ -3012,11 +3031,14 @@ export type Database = {
         Returns: {
           archived_at: string | null
           completed_at: string | null
+          counted_cartons: number | null
           counted_pieces: number | null
           created_at: string
           created_by: string | null
+          declared_cartons: number | null
           declared_pieces: number
           entity_id: string
+          expected_arrival_date: string | null
           fee_charged: number | null
           has_discrepancy: boolean
           id: string
@@ -3180,6 +3202,7 @@ export type Database = {
           transit_lead_days: number | null
           variant_label: string | null
           weight: number | null
+          weight_grams: number | null
           weight_unit: string | null
         }
         SetofOptions: {
@@ -3221,6 +3244,7 @@ export type Database = {
           transit_lead_days: number | null
           variant_label: string | null
           weight: number | null
+          weight_grams: number | null
           weight_unit: string | null
         }[]
         SetofOptions: {
@@ -3327,15 +3351,24 @@ export type Database = {
         }
       }
       declare_inbound_shipment: {
-        Args: { p_lines: Json; p_qc: boolean; p_store_id: string }
+        Args: {
+          p_cartons?: number
+          p_expected_arrival?: string
+          p_lines: Json
+          p_qc: boolean
+          p_store_id: string
+        }
         Returns: {
           archived_at: string | null
           completed_at: string | null
+          counted_cartons: number | null
           counted_pieces: number | null
           created_at: string
           created_by: string | null
+          declared_cartons: number | null
           declared_pieces: number
           entity_id: string
+          expected_arrival_date: string | null
           fee_charged: number | null
           has_discrepancy: boolean
           id: string
@@ -3617,6 +3650,49 @@ export type Database = {
         Args: { p_decisions: Json; p_product_name: string; p_quote_id: string }
         Returns: number
       }
+      set_inbound_expected_arrival: {
+        Args: {
+          p_cartons?: number
+          p_expected_arrival: string
+          p_shipment_id: string
+        }
+        Returns: {
+          archived_at: string | null
+          completed_at: string | null
+          counted_cartons: number | null
+          counted_pieces: number | null
+          created_at: string
+          created_by: string | null
+          declared_cartons: number | null
+          declared_pieces: number
+          entity_id: string
+          expected_arrival_date: string | null
+          fee_charged: number | null
+          has_discrepancy: boolean
+          id: string
+          in_transit_at: string | null
+          qc: boolean
+          qc_fee_per_piece: number
+          received_at: string | null
+          refusal_reason: string | null
+          service_fee_per_piece: number
+          source: string
+          status: Database["public"]["Enums"]["inbound_status"]
+          stock_purchase_id: string | null
+          store_id: string
+          tracking_carrier: string | null
+          tracking_number: string | null
+          updated_at: string
+          wallet_reference: string | null
+          warehouse_reference: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "inbound_shipments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       set_inbound_tracking: {
         Args: {
           p_shipment_id: string
@@ -3626,11 +3702,14 @@ export type Database = {
         Returns: {
           archived_at: string | null
           completed_at: string | null
+          counted_cartons: number | null
           counted_pieces: number | null
           created_at: string
           created_by: string | null
+          declared_cartons: number | null
           declared_pieces: number
           entity_id: string
+          expected_arrival_date: string | null
           fee_charged: number | null
           has_discrepancy: boolean
           id: string
@@ -3731,6 +3810,7 @@ export type Database = {
           transit_lead_days: number | null
           variant_label: string | null
           weight: number | null
+          weight_grams: number | null
           weight_unit: string | null
         }
         SetofOptions: {
@@ -3779,6 +3859,7 @@ export type Database = {
           transit_lead_days: number | null
           variant_label: string | null
           weight: number | null
+          weight_grams: number | null
           weight_unit: string | null
         }
         SetofOptions: {

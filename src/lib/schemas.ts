@@ -72,7 +72,10 @@ export const connectDraftStoreSchema = z.object({
     .string()
     .trim()
     .toLowerCase()
-    .regex(SHOPIFY_DOMAIN_RE, "Must be a valid *.myshopify.com domain (e.g. your-store.myshopify.com)"),
+    .regex(
+      SHOPIFY_DOMAIN_RE,
+      "Must be a valid *.myshopify.com domain (e.g. your-store.myshopify.com)",
+    ),
   store_name: z.string().trim().max(120).optional().or(z.literal("")),
 });
 
@@ -168,7 +171,6 @@ export const adminQuoteLinesSchema = z.object({
   admin_notes: z.string().trim().max(2000).optional().or(z.literal("")),
 });
 
-
 export const respondLinesSchema = z.object({
   quote_id: z.string().uuid(),
   product_name: z.string().trim().max(200).optional().or(z.literal("")),
@@ -199,10 +201,7 @@ export const bundleComponentSchema = z.object({
 
 export const createBundleSchema = z.object({
   name: z.string().trim().min(2, "Bundle name is required").max(200),
-  components: z
-    .array(bundleComponentSchema)
-    .min(1, "Add at least one component")
-    .max(50),
+  components: z.array(bundleComponentSchema).min(1, "Add at least one component").max(50),
 });
 
 export const updateBundleSchema = createBundleSchema.extend({
@@ -308,7 +307,6 @@ export const documentTypeSchema = z.enum([
   "inbound_fee",
   "stock_purchase",
 ]);
-
 
 export const documentIdSchema = z.object({
   id: z.string().uuid(),
@@ -435,15 +433,24 @@ export const declareInboundSchema = z.object({
     .array(
       z.object({
         product_id: z.string().uuid(),
-        quantity: z
-          .number()
-          .int()
-          .min(10, "Minimum 10 units per variation")
-          .max(1_000_000),
+        quantity: z.number().int().min(10, "Minimum 10 units per variation").max(1_000_000),
       }),
     )
     .min(1, "Add at least one variation")
     .max(100),
+  /** Cartons the client declares — warehouses receive cartons first. */
+  cartons: z.number().int().min(1).max(100_000).optional(),
+  /** Client-declared expected arrival date (YYYY-MM-DD). */
+  expected_arrival: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
+});
+
+export const inboundExpectedArrivalSchema = z.object({
+  shipment_id: z.string().uuid(),
+  expected_arrival: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  cartons: z.number().int().min(1).max(100_000).optional(),
 });
 
 export const inboundIdSchema = z.object({
@@ -465,6 +472,8 @@ export const confirmInboundSchema = inboundIdSchema.extend({
     )
     .min(1)
     .max(100),
+  /** Cartons physically counted at the dock. */
+  counted_cartons: z.number().int().min(0).max(100_000).optional(),
 });
 
 export const refuseInboundSchema = inboundIdSchema.extend({
@@ -538,7 +547,6 @@ export const publishQuoteSchema = z.object({
     .optional(),
   admin_notes: z.string().trim().max(2000).optional().or(z.literal("")),
 });
-
 
 export const settleEarningsSchema = z.object({
   ids: z.array(z.string().uuid()).min(1).max(500),

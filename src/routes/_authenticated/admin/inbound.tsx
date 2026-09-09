@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/app-shell";
 import { SectionTabs, ADMIN_FULFILMENT_TABS } from "@/components/section-tabs";
+import { OperationsToday } from "@/components/operations-today";
 import { SummaryBar, FilterTabs, TableShell, Chip } from "@/components/admin-ui";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -32,6 +33,8 @@ const FEE_PER_PIECE = 0.5;
 const QC_PER_PIECE = 0.2;
 
 export const Route = createFileRoute("/_authenticated/admin/inbound")({
+  validateSearch: (search: Record<string, unknown>): { tab?: string } =>
+    typeof search["tab"] === "string" ? { tab: search["tab"] as string } : {},
   head: () => ({
     meta: [{ title: "Inbound — FlySales admin" }, { name: "robots", content: "noindex" }],
   }),
@@ -44,6 +47,7 @@ const TABS = [
   { id: "in_transit", label: "In transit" },
   { id: "completed", label: "Stocked" },
   { id: "refused", label: "Refused" },
+  { id: "discrepancies", label: "Discrepancies" },
   { id: "all", label: "All" },
 ] as const;
 
@@ -65,7 +69,12 @@ const STATUS_TONE: Record<string, "neutral" | "info" | "warning" | "success" | "
 };
 
 function AdminInboundPage() {
-  const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("queue");
+  const navigate = Route.useNavigate();
+  const { tab: tabParam } = Route.useSearch();
+  const tab = (tabParam ?? "queue") as (typeof TABS)[number]["id"];
+  const setTab = (next: (typeof TABS)[number]["id"]) => {
+    void navigate({ search: { tab: next }, replace: true } as never);
+  };
   const [counting, setCounting] = useState<Shipment | null>(null);
   const [refusing, setRefusing] = useState<Shipment | null>(null);
   const [showArchived, setShowArchived] = useState(false);
@@ -84,12 +93,21 @@ function AdminInboundPage() {
       ? rows
       : tab === "queue"
         ? rows.filter((s) => s.status === "in_transit" || s.status === "received")
-        : rows.filter((s) => s.status === tab);
+        : tab === "discrepancies"
+          ? rows.filter(
+              (s) =>
+                s.has_discrepancy ||
+                (s.counted_cartons != null &&
+                  s.declared_cartons != null &&
+                  s.counted_cartons !== s.declared_cartons),
+            )
+          : rows.filter((s) => s.status === tab);
 
   return (
     <div>
       <PageHeader title="Inbound" description="Shipments arriving at the fulfilment centre." />
       <SectionTabs tabs={ADMIN_FULFILMENT_TABS} />
+      <OperationsToday />
 
       <SummaryBar
         items={[
@@ -147,6 +165,8 @@ function AdminInboundPage() {
                 <th className="px-3 py-2 font-medium">Tracking</th>
                 <th className="px-3 py-2 text-right font-medium">Declared</th>
                 <th className="px-3 py-2 text-right font-medium">Counted</th>
+                <th className="px-3 py-2 text-right font-medium">Cartons</th>
+                <th className="px-3 py-2 font-medium">Expected</th>
                 <th className="px-3 py-2 font-medium">QC</th>
                 <th className="px-3 py-2 text-right font-medium">Fee</th>
                 <th className="px-3 py-2 font-medium">Declared on</th>
@@ -156,7 +176,22 @@ function AdminInboundPage() {
             <tbody>
               {visible.map((s) => (
                 <tr key={s.id} className="border-b border-border/60 last:border-0">
-                  <td className="px-3 py-2 font-medium">{s.ref}</td>
+                  <td className="px-3 py-2 font-medium">
+                    {s.ref}
+                    {tab === "discrepancies" && (
+                      <ul className="mt-1 space-y-0.5 text-[11px] font-normal text-warning">
+                        {s.lines
+                          .filter((l) => l.counted_qty != null && l.counted_qty !== l.declared_qty)
+                          .map((l) => (
+                            <li key={l.id}>
+                              {l.sku}: declared {l.declared_qty} · counted {l.counted_qty} (
+                              {(l.counted_qty ?? 0) > l.declared_qty ? "+" : ""}
+                              {(l.counted_qty ?? 0) - l.declared_qty})
+                            </li>
+                          ))}
+                      </ul>
+                    )}
+                  </td>
                   <td className="px-3 py-2 text-xs">{s.workspace_name}</td>
                   <td className="px-3 py-2">
                     <Chip tone={STATUS_TONE[s.status] ?? "neutral"}>
@@ -168,6 +203,23 @@ function AdminInboundPage() {
                   </td>
                   <td className="px-3 py-2 text-right tabular-nums">{s.declared_pieces}</td>
                   <td className="px-3 py-2 text-right tabular-nums">{s.counted_pieces ?? "—"}</td>
+                  <td className="px-3 py-2 text-right tabular-nums text-xs">
+                    {s.declared_cartons ?? "—"}
+                    {s.counted_cartons != null && (
+                      <span
+                        className={
+                          s.counted_cartons !== s.declared_cartons
+                            ? "ml-1 text-warning"
+                            : "ml-1 text-muted-foreground"
+                        }
+                      >
+                        → {s.counted_cartons}
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-3 py-2 text-xs text-muted-foreground">
+                    {s.expected_arrival_date ?? "—"}
+                  </td>
                   <td className="px-3 py-2 text-xs">{s.qc ? "Yes" : "No"}</td>
                   <td className="px-3 py-2 text-right tabular-nums">
                     {s.fee_charged ? formatUSD(Number(s.fee_charged)) : "—"}
@@ -223,6 +275,7 @@ function AdminInboundPage() {
 function CountDialog({ shipment, onClose }: { shipment: Shipment | null; onClose: () => void }) {
   const queryClient = useQueryClient();
   const [counts, setCounts] = useState<Record<string, string>>({});
+  const [cartons, setCartons] = useState("");
 
   useEffect(() => {
     if (shipment) {
@@ -240,6 +293,7 @@ function CountDialog({ shipment, onClose }: { shipment: Shipment | null; onClose
             line_id: l.id,
             counted_qty: Number(counts[l.id] ?? 0),
           })),
+          ...(Number(cartons) >= 0 && cartons !== "" ? { counted_cartons: Number(cartons) } : {}),
         },
       }),
     onSuccess: () => {
@@ -266,6 +320,41 @@ function CountDialog({ shipment, onClose }: { shipment: Shipment | null; onClose
         </DialogHeader>
 
         <div className="space-y-2">
+          {/* Cartons before pieces — the order the dock actually works in. */}
+          <div className="flex items-end gap-3 rounded-xl border border-border p-3">
+            <div className="flex-1">
+              <p className="text-sm font-medium">Cartons received</p>
+              <p className="text-xs text-muted-foreground">
+                Declared {shipment?.declared_cartons ?? "—"}
+              </p>
+            </div>
+            <div className="w-28">
+              <Label className="text-xs">Counted</Label>
+              <Input
+                className="mt-1"
+                type="number"
+                min={0}
+                value={cartons}
+                onChange={(e) => setCartons(e.target.value)}
+              />
+            </div>
+            <span
+              className={`mb-2 w-16 text-xs ${
+                cartons !== "" &&
+                shipment?.declared_cartons != null &&
+                Number(cartons) !== shipment.declared_cartons
+                  ? "text-warning"
+                  : "text-muted-foreground"
+              }`}
+            >
+              {cartons !== "" && shipment?.declared_cartons != null
+                ? Number(cartons) === shipment.declared_cartons
+                  ? "match"
+                  : `${Number(cartons) > shipment.declared_cartons ? "+" : ""}${Number(cartons) - shipment.declared_cartons}`
+                : ""}
+            </span>
+          </div>
+
           {(shipment?.lines ?? []).map((l) => {
             const counted = Number(counts[l.id] ?? 0);
             const gap = counted !== l.declared_qty;

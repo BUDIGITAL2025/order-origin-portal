@@ -15,7 +15,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { getWorkspaceInventory, syncWorkspaceInventory } from "@/lib/inventory.functions";
 import { useMyContext } from "../../_client";
 import { friendlyError } from "@/lib/errors";
-
+import { formatUSD } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/_client/fulfilment/inventory")({
   head: () => ({
@@ -47,7 +47,6 @@ function InventoryPage() {
   const [addOpen, setAddOpen] = useState(false);
   const [editing, setEditing] = useState<InventoryRow | null>(null);
   const queryClient = useQueryClient();
-
 
   useEffect(() => {
     const read = () => setStoreId(getCurrentStoreId());
@@ -105,9 +104,7 @@ function InventoryPage() {
 
       {error && (
         <Card className="mb-4 border-destructive/30">
-          <CardContent className="p-4 text-sm text-destructive">
-            {friendlyError(error)}
-          </CardContent>
+          <CardContent className="p-4 text-sm text-destructive">{friendlyError(error)}</CardContent>
         </Card>
       )}
 
@@ -164,6 +161,15 @@ function InventoryPage() {
               { key: "amber", label: "Reorder soon", value: counts.amber, tone: "warning" },
               { key: "green", label: "Healthy", value: counts.green, tone: "success" },
               { key: "units", label: "Units in stock", value: units.toLocaleString("en-US") },
+              {
+                key: "value",
+                label: "Total inventory value",
+                value: formatUSD(Number(data?.inventory_value ?? 0)),
+                hint:
+                  (data?.inventory_value_unpriced ?? 0) > 0
+                    ? `Sellable units × unit cost (client price where no cost is known) · ${data?.inventory_value_unpriced} SKU(s) unpriced`
+                    : "Sellable units × unit cost (client price where no cost is known)",
+              },
             ]}
           />
 
@@ -225,5 +231,4 @@ function InventoryPage() {
       />
     </div>
   );
-
 }

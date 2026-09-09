@@ -36,6 +36,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
+import {
+  OrdersFunnel,
+  countStages,
+  matchesStage,
+  type FunnelStage,
+} from "@/components/orders-funnel";
 import { formatDateTime, formatUSD } from "@/lib/format";
 import { listMyOrders } from "@/lib/orders.functions";
 import { listMyDisputes } from "@/lib/disputes.functions";
@@ -62,6 +68,8 @@ import {
 } from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/_authenticated/_client/fulfilment/orders")({
+  validateSearch: (search: Record<string, unknown>): { stage?: string } =>
+    typeof search["stage"] === "string" ? { stage: search["stage"] as string } : {},
   head: () => ({
     meta: [
       { title: "Orders — FlySales" },
@@ -187,8 +195,13 @@ function OrdersPage() {
     queryFn: () => fetchCard({ data: {} }),
   });
   const savedCard = paymentMethod?.card ?? null;
-  const [tab, setTab] = useState<TabId>("all");
-  const [statusFilter, setStatusFilter] = useState<StatusKey | null>(null);
+  const navigate = Route.useNavigate();
+  const { stage: stageParam } = Route.useSearch();
+  const stage = (stageParam ?? null) as FunnelStage | null;
+  const setStage = (next: FunnelStage | null) => {
+    setPage(0);
+    void navigate({ search: next ? { stage: next } : {}, replace: true } as never);
+  };
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState("date_desc");
   const [page, setPage] = useState(0);
@@ -215,28 +228,18 @@ function OrdersPage() {
 
   const rows = useMemo(() => orders ?? [], [orders]);
 
-  const counts = useMemo(() => {
-    const base = Object.fromEntries(STATUS_KEYS.map((k) => [k, 0])) as Record<StatusKey, number>;
-    for (const o of rows) {
-      if ((STATUS_KEYS as readonly string[]).includes(o.status)) {
-        base[o.status as StatusKey] += 1;
-      }
-    }
-    return { ...base, disputed: rows.filter((o) => anyDisputeOrders.has(o.id)).length };
-  }, [rows, anyDisputeOrders]);
+  const counts = useMemo(() => countStages(rows.map((o) => o.status)), [rows]);
+  const disputedCount = useMemo(
+    () => rows.filter((o) => anyDisputeOrders.has(o.id)).length,
+    [rows, anyDisputeOrders],
+  );
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
     let list = rows;
 
-    if (tab === "awaiting_payment") list = list.filter((o) => o.status === "awaiting_payment");
-    else if (tab === "in_transit")
-      list = list.filter((o) => o.status === "processing" || o.status === "shipped");
-    else if (tab === "delivered") list = list.filter((o) => o.status === "delivered");
-    else if (tab === "needs_review") list = list.filter((o) => o.status === "needs_review");
-    else if (tab === "disputed") list = list.filter((o) => anyDisputeOrders.has(o.id));
-
-    if (statusFilter) list = list.filter((o) => o.status === statusFilter);
+    if (stage === "disputed") list = list.filter((o) => anyDisputeOrders.has(o.id));
+    else if (stage) list = list.filter((o) => matchesStage(o.status, stage));
 
     if (term) {
       list = list.filter((o) =>
@@ -268,7 +271,7 @@ function OrdersPage() {
       }
     });
     return sorted;
-  }, [rows, tab, statusFilter, search, sort, anyDisputeOrders]);
+  }, [rows, stage, search, sort, anyDisputeOrders]);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / perPage));
   const currentPage = Math.min(page, pageCount - 1);
@@ -449,66 +452,16 @@ function OrdersPage() {
         />
       ) : (
         <>
-          {/* 1. Status summary bar */}
-          <div className="mb-4 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-border bg-border sm:grid-cols-4 xl:grid-cols-8">
-            {([...STATUS_KEYS, "disputed"] as const).map((key) => {
-              const active = key === "disputed" ? tab === "disputed" : statusFilter === key;
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => {
-                    setPage(0);
-                    if (key === "disputed") {
-                      setStatusFilter(null);
-                      setTab((t) => (t === "disputed" ? "all" : "disputed"));
-                      return;
-                    }
-                    setTab("all");
-                    setStatusFilter((s) => (s === key ? null : key));
-                  }}
-                  className={cn(
-                    "bg-card px-3 py-2.5 text-left transition-colors hover:bg-accent",
-                    active && "bg-accent ring-1 ring-inset ring-primary/40",
-                  )}
-                >
-                  <span className="metric-label block truncate">{STATUS_LABELS[key]}</span>
-                  <span
-                    className={cn(
-                      "tnum mt-0.5 block text-lg font-semibold leading-none",
-                      STATUS_ACCENT[key],
-                    )}
-                  >
-                    {counts[key]}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+          <OrdersFunnel
+            counts={counts}
+            value={stage}
+            onChange={setStage}
+            showDisputed
+            disputedCount={disputedCount}
+          />
 
-          {/* 4. Tabs + search + sort */}
+          {/* Search + sort */}
           <div className="mb-3 flex flex-wrap items-center gap-2">
-            <div className="flex flex-wrap items-center gap-1 rounded-full border border-border bg-card p-1">
-              {TABS.map((t) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => {
-                    setTab(t.id);
-                    setStatusFilter(null);
-                    setPage(0);
-                  }}
-                  className={cn(
-                    "rounded-full px-3 py-1 text-[13px] font-medium transition-colors",
-                    tab === t.id && !statusFilter
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  {t.label}
-                </button>
-              ))}
-            </div>
             <div className="relative min-w-[200px] flex-1">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input

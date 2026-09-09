@@ -32,6 +32,7 @@ import {
   createClientProduct,
   declareInboundShipment,
   getInboundLabels,
+  setInboundExpectedArrival,
   listMyInboundShipments,
   listStockInProducts,
   setInboundTracking,
@@ -116,6 +117,17 @@ function InboundPage() {
     queryFn: () => fetchShipments({ data: { storeId: storeId! } }),
   });
 
+  const callArrival = useServerFn(setInboundExpectedArrival);
+  const saveArrival = useMutation({
+    mutationFn: (v: { id: string; date: string }) =>
+      callArrival({ data: { shipment_id: v.id, expected_arrival: v.date } }),
+    onSuccess: () => {
+      toast.success("Expected arrival updated");
+      void queryClient.invalidateQueries({ queryKey: ["inbound"] });
+    },
+    onError: (e) => toast.error(friendlyError(e)),
+  });
+
   const fetchLabels = useServerFn(getInboundLabels);
   const labels = useMutation({
     mutationFn: (id: string) => fetchLabels({ data: { shipment_id: id } }),
@@ -181,12 +193,16 @@ function InboundPage() {
             <Truck className="h-8 w-8 text-muted-foreground" />
             <h2 className="text-base font-semibold">No inbound shipments yet</h2>
             <p className="max-w-xl text-sm text-muted-foreground">
-              Declare what you are sending, print our SKU labels and add supplier tracking. We
-              count every piece on arrival and charge {formatUSD(FEE_PER_PIECE)} per piece (
+              Declare what you are sending, print our SKU labels and add supplier tracking. We count
+              every piece on arrival and charge {formatUSD(FEE_PER_PIECE)} per piece (
               {formatUSD(FEE_PER_PIECE + QC_PER_PIECE)} with quality control) on the quantity we
               count.
             </p>
-            <Button className="rounded-full" disabled={!storeId} onClick={() => setDeclareOpen(true)}>
+            <Button
+              className="rounded-full"
+              disabled={!storeId}
+              onClick={() => setDeclareOpen(true)}
+            >
               Declare a shipment
             </Button>
           </CardContent>
@@ -201,6 +217,8 @@ function InboundPage() {
                 <th className="px-3 py-2 font-medium">Variations</th>
                 <th className="px-3 py-2 text-right font-medium">Declared</th>
                 <th className="px-3 py-2 text-right font-medium">Counted</th>
+                <th className="px-3 py-2 text-right font-medium">Cartons</th>
+                <th className="px-3 py-2 font-medium">Expected arrival</th>
                 <th className="px-3 py-2 font-medium">QC</th>
                 <th className="px-3 py-2 text-right font-medium">Fee</th>
                 <th className="px-3 py-2 font-medium">Tracking</th>
@@ -227,8 +245,34 @@ function InboundPage() {
                   <td className="px-3 py-2 text-right tabular-nums">{s.declared_pieces}</td>
                   <td className="px-3 py-2 text-right tabular-nums">
                     {s.counted_pieces ?? "—"}
-                    {s.has_discrepancy && (
-                      <span className="ml-1 text-xs text-warning">≠</span>
+                    {s.has_discrepancy && <span className="ml-1 text-xs text-warning">≠</span>}
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums text-xs">
+                    {s.declared_cartons ?? "—"}
+                    {s.counted_cartons != null && (
+                      <span
+                        className={
+                          s.counted_cartons !== s.declared_cartons
+                            ? "ml-1 text-warning"
+                            : "ml-1 text-muted-foreground"
+                        }
+                      >
+                        → {s.counted_cartons}
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-3 py-2 text-xs">
+                    {s.status === "declared" || s.status === "in_transit" ? (
+                      <input
+                        type="date"
+                        value={s.expected_arrival_date ?? ""}
+                        onChange={(e) =>
+                          e.target.value && saveArrival.mutate({ id: s.id, date: e.target.value })
+                        }
+                        className="rounded-md border border-border bg-background px-2 py-1 text-xs"
+                      />
+                    ) : (
+                      (s.expected_arrival_date ?? "—")
                     )}
                   </td>
                   <td className="px-3 py-2 text-xs">{s.qc ? "Yes" : "No"}</td>
@@ -302,6 +346,8 @@ function DeclareDialog({
   onDone: () => void;
 }) {
   const [qc, setQc] = useState(false);
+  const [cartons, setCartons] = useState("");
+  const [expected, setExpected] = useState("");
   const [lines, setLines] = useState<Array<{ product_id: string; quantity: string }>>([
     { product_id: "", quantity: "" },
   ]);
@@ -323,6 +369,8 @@ function DeclareDialog({
           lines: lines
             .filter((l) => l.product_id && l.quantity)
             .map((l) => ({ product_id: l.product_id, quantity: Number(l.quantity) })),
+          ...(Number(cartons) > 0 ? { cartons: Number(cartons) } : {}),
+          ...(expected ? { expected_arrival: expected } : {}),
         },
       }),
     onSuccess: () => {
@@ -331,6 +379,8 @@ function DeclareDialog({
       onOpenChange(false);
       setLines([{ product_id: "", quantity: "" }]);
       setQc(false);
+      setCartons("");
+      setExpected("");
     },
     onError: (e) => toast.error(friendlyError(e)),
   });
@@ -341,8 +391,7 @@ function DeclareDialog({
   );
   const fee = pieces * (FEE_PER_PIECE + (qc ? QC_PER_PIECE : 0));
   const belowMin = lines.some((l) => l.quantity !== "" && Number(l.quantity) < MIN_UNITS);
-  const ready =
-    lines.some((l) => l.product_id && Number(l.quantity) >= MIN_UNITS) && !belowMin;
+  const ready = lines.some((l) => l.product_id && Number(l.quantity) >= MIN_UNITS) && !belowMin;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -389,9 +438,7 @@ function DeclareDialog({
                   value={line.quantity}
                   onChange={(e) =>
                     setLines((prev) =>
-                      prev.map((l, idx) =>
-                        idx === i ? { ...l, quantity: e.target.value } : l,
-                      ),
+                      prev.map((l, idx) => (idx === i ? { ...l, quantity: e.target.value } : l)),
                     )
                   }
                 />
@@ -419,6 +466,34 @@ function DeclareDialog({
             Add variation
           </Button>
 
+          <div className="mt-2 grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs">Total cartons</Label>
+              <Input
+                type="number"
+                min={1}
+                inputMode="numeric"
+                value={cartons}
+                onChange={(e) => setCartons(e.target.value)}
+                placeholder="e.g. 12"
+                className="mt-1"
+              />
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                We count cartons first, then pieces.
+              </p>
+            </div>
+            <div>
+              <Label className="text-xs">Expected arrival</Label>
+              <Input
+                type="date"
+                value={expected}
+                onChange={(e) => setExpected(e.target.value)}
+                className="mt-1"
+              />
+              <p className="mt-1 text-[11px] text-muted-foreground">You can change this later.</p>
+            </div>
+          </div>
+
           <label className="mt-2 flex items-start gap-2 rounded-xl border border-border p-3">
             <Checkbox checked={qc} onCheckedChange={(v) => setQc(v === true)} className="mt-0.5" />
             <span className="text-sm">
@@ -444,7 +519,9 @@ function DeclareDialog({
             </p>
           </div>
           {belowMin && (
-            <p className="text-xs text-destructive">Every variation needs at least {MIN_UNITS} units.</p>
+            <p className="text-xs text-destructive">
+              Every variation needs at least {MIN_UNITS} units.
+            </p>
           )}
         </div>
 
@@ -556,9 +633,7 @@ function AddProductDialog({
             Cancel
           </Button>
           <Button
-            disabled={
-              submit.isPending || name.trim().length < 2 || !variants.some((v) => v.trim())
-            }
+            disabled={submit.isPending || name.trim().length < 2 || !variants.some((v) => v.trim())}
             onClick={() => submit.mutate()}
           >
             {submit.isPending ? "Adding…" : "Add product"}
