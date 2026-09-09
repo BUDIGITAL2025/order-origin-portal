@@ -28,9 +28,16 @@ type CatalogRow = {
   days_of_cover: number | null;
 };
 
-type Admin = Awaited<
-  ReturnType<typeof import("@/integrations/supabase/client.server")["getAdmin"]>
->;
+type PricingChain = {
+  supplier_cogs: number | null;
+  supplier_shipping: number | null;
+  supplier_tax: number | null;
+  sourcing_cost: number | null;
+  sourcing_fee_rate: number | null;
+  margin_pct: number | null;
+  fee_included: boolean | null;
+  client_price: number | null;
+};
 
 /** Photos: the variation's own set, falling back to the originating quote request. */
 async function buildCatalog(
@@ -150,7 +157,7 @@ async function buildSkuDetail(admin: any, productId: string, full: boolean) {
     ((leads ?? []) as any[]).find((l) => l.sku === product.sku) ?? null;
 
   let images = (product.image_urls ?? []) as string[];
-  let chain: Record<string, unknown> | null = null;
+  let chain: PricingChain | null = null;
   if (product.quote_line_id) {
     const { data: line } = await admin
       .from("quote_lines")
@@ -296,4 +303,4 @@ export const adminGetFulfilmentSku = createServerFn({ method: "POST" })
     return buildSkuDetail(supabaseAdmin, data.productId, true);
   });
 
-export type { CatalogRow, Admin };
+export type { CatalogRow, PricingChain };
