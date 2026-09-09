@@ -236,14 +236,12 @@ export const updateCatalogRow = createServerFn({ method: "POST" })
     const { requireAdmin, getAdminClient } = await import("./admin.server");
     await requireAdmin(context.supabase, context.userId);
     const admin = await getAdminClient();
-    type RowUpdate = import("@/integrations/supabase/types").Database["public"]["Tables"]["catalog_import_rows"]["Update"];
+    type RowUpdate =
+      import("@/integrations/supabase/types").Database["public"]["Tables"]["catalog_import_rows"]["Update"];
     const patch = Object.fromEntries(
       Object.entries(data.patch).filter(([, v]) => v !== undefined),
     ) as RowUpdate;
-    const { error } = await admin
-      .from("catalog_import_rows")
-      .update(patch)
-      .eq("id", data.row_id);
+    const { error } = await admin.from("catalog_import_rows").update(patch).eq("id", data.row_id);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
@@ -305,8 +303,7 @@ export const convertRowsToQuote = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     if (!rows?.length) throw new Error("No rows selected");
 
-    const groups =
-      data.mode === "single_product" ? [rows] : rows.map((r) => [r] as typeof rows);
+    const groups = data.mode === "single_product" ? [rows] : rows.map((r) => [r] as typeof rows);
     const createdQuoteIds: string[] = [];
 
     for (const group of groups) {
@@ -329,7 +326,8 @@ export const convertRowsToQuote = createServerFn({ method: "POST" })
         })
         .select("id")
         .single();
-      if (quoteError || !quote) throw new Error(quoteError?.message ?? "Could not create the quote");
+      if (quoteError || !quote)
+        throw new Error(quoteError?.message ?? "Could not create the quote");
       createdQuoteIds.push(quote.id);
 
       for (const row of group) {
@@ -359,16 +357,14 @@ export const convertRowsToQuote = createServerFn({ method: "POST" })
         if (lineError) throw new Error(lineError.message);
       }
 
-      await admin
-        .from("quote_request_internal")
-        .upsert(
-          {
-            quote_request_id: quote.id,
-            internal_reference: (first.item_no || "").slice(0, 120) || null,
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: "quote_request_id" },
-        );
+      await admin.from("quote_request_internal").upsert(
+        {
+          quote_request_id: quote.id,
+          internal_reference: (first.item_no || "").slice(0, 120) || null,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "quote_request_id" },
+      );
 
       await admin
         .from("catalog_import_rows")

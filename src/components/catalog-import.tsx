@@ -20,7 +20,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { TableShell } from "@/components/admin-ui";
 import { supabase } from "@/integrations/supabase/client";
 import { friendlyError } from "@/lib/errors";
@@ -181,7 +188,14 @@ export function CatalogImportPanel({
 
   const rows = (detail.data?.rows ?? []) as unknown as Row[];
   const imp = detail.data?.import as
-    | { file_name: string; mime_type: string; page_count: number; status: string; error: string | null; raw_response: string | null }
+    | {
+        file_name: string;
+        mime_type: string;
+        page_count: number;
+        status: string;
+        error: string | null;
+        raw_response: string | null;
+      }
     | undefined;
   const fileUrl = detail.data?.file_url ?? null;
 
@@ -272,7 +286,10 @@ export function CatalogImportPanel({
     if (error) throw new Error(error.message);
     const row = rows.find((r) => r.id === rowId);
     await patchRow({
-      data: { row_id: rowId, patch: { image_urls: [...(row?.image_urls ?? []), path].slice(0, 5) } },
+      data: {
+        row_id: rowId,
+        patch: { image_urls: [...(row?.image_urls ?? []), path].slice(0, 5) },
+      },
     });
     void refresh();
   }

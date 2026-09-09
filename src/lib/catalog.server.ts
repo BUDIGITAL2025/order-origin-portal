@@ -218,7 +218,8 @@ export async function extractCatalog(args: {
 
   if (!res.ok) {
     const body = await res.text();
-    if (res.status === 429) throw new Error("The catalogue reader is busy — try again in a minute.");
+    if (res.status === 429)
+      throw new Error("The catalogue reader is busy — try again in a minute.");
     if (res.status === 402)
       throw new Error("AI credits are exhausted — top them up to keep reading catalogues.");
     throw new Error(`Extraction failed (${res.status}): ${body.slice(0, 400)}`);
