@@ -162,6 +162,9 @@ function AdminQuotesPage() {
           placeholder="Search by product, client or internal reference"
         />
         <ShowArchivedToggle value={showArchived} onChange={setShowArchived} />
+        <Button asChild size="sm" variant="outline">
+          <Link to="/admin/catalog-import">Import from catalog</Link>
+        </Button>
       </ToolBar>
 
       {isPending ? (
