@@ -123,9 +123,7 @@ function StockPurchasesPage() {
 
   const rows = purchases ?? [];
   const awaiting = rows.filter((p) => p.status === "requested" || p.status === "freight_quoted");
-  const inFlight = rows.filter((p) =>
-    ["paid", "in_production", "shipped"].includes(p.status),
-  );
+  const inFlight = rows.filter((p) => ["paid", "in_production", "shipped"].includes(p.status));
   const spend = rows
     .filter((p) => p.paid_at)
     .reduce((sum, p) => sum + Number(p.total_amount ?? 0), 0);
@@ -175,8 +173,18 @@ function StockPurchasesPage() {
 
       <SummaryBar
         items={[
-          { key: "awaiting", label: "Awaiting payment", value: String(awaiting.length), tone: "warning" },
-          { key: "inflight", label: "In progress", value: String(inFlight.length), tone: "primary" },
+          {
+            key: "awaiting",
+            label: "Awaiting payment",
+            value: String(awaiting.length),
+            tone: "warning",
+          },
+          {
+            key: "inflight",
+            label: "In progress",
+            value: String(inFlight.length),
+            tone: "primary",
+          },
           {
             key: "delivered",
             label: "Delivered",
@@ -221,7 +229,9 @@ function StockPurchasesPage() {
                     name={p.product_name}
                     {...(p.variant_label ? { secondary: p.variant_label } : {})}
                   />
-                  <div className="text-[11px] text-muted-foreground">{formatDate(p.created_at)}</div>
+                  <div className="text-[11px] text-muted-foreground">
+                    {formatDate(p.created_at)}
+                  </div>
                 </TableCell>
                 <TableCell className="text-right tnum text-sm">{p.quantity}</TableCell>
                 <TableCell className="text-right tnum text-sm">
@@ -245,11 +255,7 @@ function StockPurchasesPage() {
                 </TableCell>
                 <TableCell className="text-right">
                   {p.payable_total != null && !p.paid_at && p.status !== "cancelled" ? (
-                    <Button
-                      size="sm"
-                      disabled={pay.isPending}
-                      onClick={() => pay.mutate(p.id)}
-                    >
+                    <Button size="sm" disabled={pay.isPending} onClick={() => pay.mutate(p.id)}>
                       Pay {formatUSD(p.payable_total)}
                     </Button>
                   ) : p.status === "requested" ? (
@@ -375,22 +381,20 @@ function OrderStockDialog({
             </div>
 
             <div className="grid grid-cols-2 gap-2">
-              {(
-                [
-                  {
-                    value: "flysales" as const,
-                    icon: Warehouse,
-                    title: "FlySales warehouse",
-                    hint: "We store, pick and ship each order. Minimum 10 units. Freight quoted first.",
-                  },
-                  {
-                    value: "direct" as const,
-                    icon: Building2,
-                    title: "Direct to you",
-                    hint: "Straight to your address. Freight and import quoted first.",
-                  },
-                ]
-              ).map((option) => (
+              {[
+                {
+                  value: "flysales" as const,
+                  icon: Warehouse,
+                  title: "FlySales warehouse",
+                  hint: "We store, pick and ship each order. Minimum 10 units. Freight quoted first.",
+                },
+                {
+                  value: "direct" as const,
+                  icon: Building2,
+                  title: "Direct to you",
+                  hint: "Straight to your address. Freight and import quoted first.",
+                },
+              ].map((option) => (
                 <button
                   key={option.value}
                   type="button"

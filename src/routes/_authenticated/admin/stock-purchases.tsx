@@ -59,9 +59,7 @@ function AdminStockPurchasesPage() {
     goods: number;
     freight: string;
     importCost: string;
-  } | null>(
-    null,
-  );
+  } | null>(null);
   const [trackingFor, setTrackingFor] = useState<{ id: string; ref: string } | null>(null);
 
   const { data: rows } = useQuery({
