@@ -3,6 +3,7 @@ import { Link, useNavigate, useRouter, useRouterState } from "@tanstack/react-ro
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  MessageSquare,
   Building2,
   ChevronDown,
   LifeBuoy,
@@ -106,6 +107,7 @@ function PastDueBanner() {
 
 const ADMIN_NAV: NavItem[] = [
   { to: "/admin/quotes", label: "Quote queue", icon: ClipboardList },
+  { to: "/admin/requests", label: "Client requests", icon: MessageSquare },
   { to: "/admin/catalog-import", label: "Catalog import", icon: FileUp, badge: "New" },
   { to: "/admin/sourcing", label: "Sourcing team", icon: Handshake },
   { to: "/admin/stock-purchases", label: "Stock purchases", icon: PackageCheck },
