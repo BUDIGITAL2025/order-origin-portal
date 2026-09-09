@@ -527,8 +527,18 @@ export function InventoryItemDialog({
           <Button variant="outline" className="rounded-full" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button className="rounded-full" disabled={create.isPending || !storeId} onClick={submit}>
-            {create.isPending ? "Saving…" : editing ? "Save changes" : "Add product"}
+          <Button
+            className="rounded-full"
+            disabled={create.isPending || uploading || !storeId}
+            onClick={submit}
+          >
+            {uploading
+              ? "Uploading photo…"
+              : create.isPending
+                ? "Saving…"
+                : editing
+                  ? "Save changes"
+                  : "Add product"}
           </Button>
         </DialogFooter>
       </DialogContent>
