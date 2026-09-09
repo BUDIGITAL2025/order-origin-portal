@@ -28,6 +28,18 @@ type CatalogRow = {
   days_of_cover: number | null;
 };
 
+type ResolvedLead = {
+  sku: string;
+  production_lead: number;
+  transit_lead: number;
+  safety_margin: number;
+  production_origin: string;
+  transit_origin: string;
+  safety_origin: string;
+};
+
+type AdminClient = Awaited<typeof import("@/integrations/supabase/client.server")>["supabaseAdmin"];
+
 type PricingChain = {
   supplier_cogs: number | null;
   supplier_shipping: number | null;
@@ -41,7 +53,7 @@ type PricingChain = {
 
 /** Photos: the variation's own set, falling back to the originating quote request. */
 async function buildCatalog(
-  admin: any,
+  admin: AdminClient,
   stores: { id: string; store_name?: string | null }[],
 ): Promise<CatalogRow[]> {
   if (stores.length === 0) return [];
@@ -60,7 +72,7 @@ async function buildCatalog(
   if (error) throw new Error(error.message);
 
   // Photo fallback: variation photos → originating quote request photos.
-  const lineIds = (products ?? []).map((p: any) => p.quote_line_id).filter(Boolean);
+  const lineIds = (products ?? []).map((p) => p.quote_line_id).filter(Boolean);
   const fallback = new Map<string, string[]>();
   if (lineIds.length > 0) {
     const { data: lines } = await admin
@@ -79,8 +91,8 @@ async function buildCatalog(
   // Stock figures only matter for stock_in SKUs.
   const stockStores = new Set(
     (products ?? [])
-      .filter((p: any) => p.fulfilment_model === "stock_in")
-      .map((p: any) => p.store_id as string),
+      .filter((p) => p.fulfilment_model === "stock_in")
+      .map((p) => p.store_id as string),
   );
   const stockBySku = new Map<string, { sellable: number; days_of_cover: number | null }>();
   if (stockStores.size > 0) {
@@ -96,7 +108,7 @@ async function buildCatalog(
     }
   }
 
-  return (products ?? []).map((p: any) => {
+  return (products ?? []).map((p) => {
     const own = (p.image_urls ?? []) as string[];
     const stock =
       p.fulfilment_model === "stock_in" ? stockBySku.get(`${p.store_id}:${p.sku}`) : undefined;
@@ -119,7 +131,7 @@ async function buildCatalog(
 }
 
 /** Shared detail payload. `full` adds the admin-only chain, supplier and origins. */
-async function buildSkuDetail(admin: any, productId: string, full: boolean) {
+async function buildSkuDetail(admin: AdminClient, productId: string, full: boolean) {
   const { data: product, error } = await admin
     .from("products")
     .select(
@@ -153,8 +165,7 @@ async function buildSkuDetail(admin: any, productId: string, full: boolean) {
         .limit(100),
     ]);
 
-  const lead =
-    ((leads ?? []) as any[]).find((l) => l.sku === product.sku) ?? null;
+  const lead = ((leads ?? []) as ResolvedLead[]).find((l) => l.sku === product.sku) ?? null;
 
   let images = (product.image_urls ?? []) as string[];
   let chain: PricingChain | null = null;
@@ -219,8 +230,8 @@ async function buildSkuDetail(admin: any, productId: string, full: boolean) {
     chain,
     supplier,
     orders: (orderItems ?? [])
-      .filter((r: any) => r.orders)
-      .map((r: any) => ({
+      .filter((r) => r.orders)
+      .map((r) => ({
         id: r.orders.id,
         order_number: r.orders.order_number,
         status: r.orders.status,
@@ -230,8 +241,8 @@ async function buildSkuDetail(admin: any, productId: string, full: boolean) {
       }))
       .sort((a: any, b: any) => (a.created_at < b.created_at ? 1 : -1)),
     inbound: (inboundLines ?? [])
-      .filter((r: any) => r.inbound_shipments)
-      .map((r: any) => ({
+      .filter((r) => r.inbound_shipments)
+      .map((r) => ({
         id: r.inbound_shipments.id,
         status: r.inbound_shipments.status,
         created_at: r.inbound_shipments.created_at,

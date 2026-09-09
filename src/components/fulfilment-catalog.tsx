@@ -125,15 +125,23 @@ export function FulfilmentCatalog({
                   <ModelChip model={r.fulfilment_model} />
                 </TableCell>
                 <TableCell className="tnum py-2 text-right">
-                  {r.fulfilment_model === "stock_in" && r.sellable != null ? r.sellable : <EmptyCell />}
+                  {r.fulfilment_model === "stock_in" && r.sellable != null ? (
+                    r.sellable
+                  ) : (
+                    <EmptyCell />
+                  )}
                 </TableCell>
                 <TableCell className="tnum py-2 text-right">
-                  {r.fulfilment_model === "stock_in" && r.days_of_cover != null
-                    ? `${r.days_of_cover}d`
-                    : <EmptyCell />}
+                  {r.fulfilment_model === "stock_in" && r.days_of_cover != null ? (
+                    `${r.days_of_cover}d`
+                  ) : (
+                    <EmptyCell />
+                  )}
                 </TableCell>
                 <TableCell className="py-2">
-                  <Chip tone={r.archived_at ? "neutral" : r.status === "active" ? "success" : "warning"}>
+                  <Chip
+                    tone={r.archived_at ? "neutral" : r.status === "active" ? "success" : "warning"}
+                  >
                     {r.archived_at ? "archived" : r.status}
                   </Chip>
                 </TableCell>
@@ -191,9 +199,7 @@ export function SkuDetailDialog({
   const chain = (data as { chain?: Record<string, number | boolean | null> | null } | undefined)
     ?.chain;
   const lead = data?.leadTimes as
-    | (Record<string, number | string | null> & { production_lead: number })
-    | null
-    | undefined;
+    (Record<string, number | string | null> & { production_lead: number }) | null | undefined;
 
   return (
     <>
@@ -237,35 +243,41 @@ export function SkuDetailDialog({
                   {(data.prices ?? []).length === 0 ? (
                     <p className="text-sm text-muted-foreground">No accepted price yet.</p>
                   ) : (
-                    (data.prices as { country_code: string; unit_price: number; lead_time_days: number | null }[]).map(
-                      (p) => (
-                        <span
-                          key={p.country_code}
-                          className="tnum inline-flex items-center gap-1 rounded-md bg-muted/60 px-2 py-1 text-xs"
-                        >
-                          <span className="font-semibold">{p.country_code}</span>
-                          {formatUSD(p.unit_price)}
-                          {p.lead_time_days != null && (
-                            <span className="text-muted-foreground">· {p.lead_time_days}d</span>
-                          )}
-                        </span>
-                      ),
-                    )
+                    (
+                      data.prices as {
+                        country_code: string;
+                        unit_price: number;
+                        lead_time_days: number | null;
+                      }[]
+                    ).map((p) => (
+                      <span
+                        key={p.country_code}
+                        className="tnum inline-flex items-center gap-1 rounded-md bg-muted/60 px-2 py-1 text-xs"
+                      >
+                        <span className="font-semibold">{p.country_code}</span>
+                        {formatUSD(p.unit_price)}
+                        {p.lead_time_days != null && (
+                          <span className="text-muted-foreground">· {p.lead_time_days}d</span>
+                        )}
+                      </span>
+                    ))
                   )}
                 </div>
                 {isAdmin && chain && (
                   <div className="mt-2 grid grid-cols-2 gap-x-6 gap-y-1 rounded-md border border-border p-3 text-xs sm:grid-cols-3">
-                    <span>Supplier goods: {formatUSD(chain['supplier_cogs'] as number)}</span>
-                    <span>Supplier shipping: {formatUSD(chain['supplier_shipping'] as number)}</span>
-                    <span>Import tax: {formatUSD(chain['supplier_tax'] as number)}</span>
-                    <span>Sourcing cost: {formatUSD(chain['sourcing_cost'] as number)}</span>
+                    <span>Supplier goods: {formatUSD(chain["supplier_cogs"] as number)}</span>
                     <span>
-                      Sourcing fee: {((chain['sourcing_fee_rate'] as number) ?? 0) * 100}%
-                      {chain['fee_included'] ? " (included)" : ""}
+                      Supplier shipping: {formatUSD(chain["supplier_shipping"] as number)}
                     </span>
-                    <span>Margin: {chain['margin_pct'] as number}%</span>
+                    <span>Import tax: {formatUSD(chain["supplier_tax"] as number)}</span>
+                    <span>Sourcing cost: {formatUSD(chain["sourcing_cost"] as number)}</span>
+                    <span>
+                      Sourcing fee: {((chain["sourcing_fee_rate"] as number) ?? 0) * 100}%
+                      {chain["fee_included"] ? " (included)" : ""}
+                    </span>
+                    <span>Margin: {chain["margin_pct"] as number}%</span>
                     <span className="font-semibold">
-                      Client price: {formatUSD(chain['client_price'] as number)}
+                      Client price: {formatUSD(chain["client_price"] as number)}
                     </span>
                   </div>
                 )}
@@ -274,12 +286,12 @@ export function SkuDetailDialog({
               <Section title="Lead times">
                 {lead ? (
                   <p className="text-sm">
-                    Production {lead['production_lead']}d
-                    {isAdmin && lead['production_origin'] ? ` (${lead['production_origin']})` : ""} ·
-                    Transit {lead['transit_lead']}d
-                    {isAdmin && lead['transit_origin'] ? ` (${lead['transit_origin']})` : ""} · Safety{" "}
-                    {lead['safety_margin']}d
-                    {isAdmin && lead['safety_origin'] ? ` (${lead['safety_origin']})` : ""}
+                    Production {lead["production_lead"]}d
+                    {isAdmin && lead["production_origin"] ? ` (${lead["production_origin"]})` : ""}{" "}
+                    · Transit {lead["transit_lead"]}d
+                    {isAdmin && lead["transit_origin"] ? ` (${lead["transit_origin"]})` : ""} ·
+                    Safety {lead["safety_margin"]}d
+                    {isAdmin && lead["safety_origin"] ? ` (${lead["safety_origin"]})` : ""}
                   </p>
                 ) : (
                   <p className="text-sm text-muted-foreground">Not resolved yet.</p>
@@ -299,14 +311,16 @@ export function SkuDetailDialog({
                   <p className="text-sm text-muted-foreground">No orders yet.</p>
                 ) : (
                   <div className="space-y-1">
-                    {(data.orders as {
-                      id: string;
-                      order_number: string;
-                      status: string;
-                      created_at: string;
-                      quantity: number;
-                      line_total: number;
-                    }[]).map((o) => (
+                    {(
+                      data.orders as {
+                        id: string;
+                        order_number: string;
+                        status: string;
+                        created_at: string;
+                        quantity: number;
+                        line_total: number;
+                      }[]
+                    ).map((o) => (
                       <div key={o.id} className="flex items-center justify-between text-sm">
                         <span className="font-mono text-xs">{o.order_number}</span>
                         <span className="text-muted-foreground">{o.status}</span>
@@ -326,14 +340,16 @@ export function SkuDetailDialog({
                   <p className="text-sm text-muted-foreground">No inbound shipments yet.</p>
                 ) : (
                   <div className="space-y-1">
-                    {(data.inbound as {
-                      id: string;
-                      status: string;
-                      created_at: string;
-                      received_at: string | null;
-                      declared_qty: number;
-                      counted_qty: number | null;
-                    }[]).map((s) => (
+                    {(
+                      data.inbound as {
+                        id: string;
+                        status: string;
+                        created_at: string;
+                        received_at: string | null;
+                        declared_qty: number;
+                        counted_qty: number | null;
+                      }[]
+                    ).map((s) => (
                       <div key={s.id} className="flex items-center justify-between text-sm">
                         <span className="text-muted-foreground">{s.status}</span>
                         <span className="tnum">
