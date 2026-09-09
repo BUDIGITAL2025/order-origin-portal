@@ -188,7 +188,7 @@ export const sourcingSaveLines = createServerFn({ method: "POST" })
       lines: data.lines,
       feeRate,
       sourcedBy: context.userId,
-      optionId: data.option_id ?? null,
+      optionId: data.option_id ?? (await ensureDefaultOption(admin, data.quote_id)),
     });
 
     await admin
@@ -232,7 +232,7 @@ export const adminSaveSourcingLines = createServerFn({ method: "POST" })
       lines: data.lines,
       feeRate: DEFAULT_FEE_RATE,
       sourcedBy: null,
-      optionId: data.option_id ?? null,
+      optionId: data.option_id ?? (await ensureDefaultOption(admin, data.quote_id)),
     });
 
     if (quote.status === "submitted") {

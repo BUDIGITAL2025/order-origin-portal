@@ -87,3 +87,24 @@ export async function nextOptionLetter(
   const used = new Set((data ?? []).map((o) => o.letter));
   return (["A", "B", "C"] as const).find((l) => !used.has(l)) ?? null;
 }
+
+/**
+ * The option a save belongs to when the caller did not name one: Option A,
+ * created on demand. Keeps single-offer quotes working exactly as before.
+ */
+export async function ensureDefaultOption(admin: Admin, quoteId: string): Promise<string> {
+  const { data: existing } = await admin
+    .from("quote_options")
+    .select("id")
+    .eq("quote_request_id", quoteId)
+    .eq("letter", "A")
+    .maybeSingle();
+  if (existing) return existing.id;
+  const { data, error } = await admin
+    .from("quote_options")
+    .insert({ quote_request_id: quoteId, letter: "A", recommended: true })
+    .select("id")
+    .single();
+  if (error) throw new Error(error.message);
+  return data.id;
+}
