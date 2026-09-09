@@ -1,7 +1,12 @@
 /**
- * One conversation per quote, between the client and the FlySales team. We are
- * the counterparty, so there is never a per-supplier thread and sourcing
- * collaborators have no access to this at all.
+ * One conversation per quote. Three viewpoints share it, each anonymized:
+ *
+ *  - client    → sees "FlySales Team" / "FlySales Sourcing Team", never a person
+ *  - sourcing  → sees "Client #XXXXXXXX", never a name, company or workspace
+ *  - admin     → sees every role, and can reply in any thread as FlySales
+ *
+ * The real author id is always stored server-side, so the thread stays
+ * auditable even though it is displayed anonymized.
  */
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -23,14 +28,57 @@ import {
   listQuoteMessages,
   markQuoteThreadRead,
   postQuoteMessage,
+  sourcingListQuoteMessages,
+  sourcingPostQuoteMessage,
 } from "@/lib/quote-thread.functions";
 import { cn } from "@/lib/utils";
 
-export function QuoteThread({ quoteId, mode }: { quoteId: string; mode: "client" | "admin" }) {
+export type ThreadMode = "client" | "admin" | "sourcing";
+
+/** Our mark on every message the client receives from our side. */
+function BrandAvatar() {
+  return (
+    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground">
+      FS
+    </span>
+  );
+}
+
+/** Who a message is from, from the point of view of the person reading it. */
+function authorLabel(role: string, mode: ThreadMode, clientLabel: string): string {
+  if (mode === "client") {
+    if (role === "client") return "You";
+    if (role === "sourcing") return "FlySales Sourcing Team";
+    return "FlySales Team";
+  }
+  if (mode === "sourcing") {
+    if (role === "sourcing") return "You";
+    if (role === "admin") return "FlySales";
+    return clientLabel;
+  }
+  if (role === "admin") return "You";
+  if (role === "sourcing") return "Sourcing collaborator";
+  return "Client";
+}
+
+export function QuoteThread({
+  quoteId,
+  mode,
+  className,
+}: {
+  quoteId: string;
+  mode: ThreadMode;
+  className?: string;
+}) {
   const queryClient = useQueryClient();
   const isAdmin = mode === "admin";
-  const fetchMessages = useServerFn(isAdmin ? adminListQuoteMessages : listQuoteMessages);
-  const callPost = useServerFn(isAdmin ? adminPostQuoteMessage : postQuoteMessage);
+  const isSourcing = mode === "sourcing";
+  const fetchMessages = useServerFn(
+    isAdmin ? adminListQuoteMessages : isSourcing ? sourcingListQuoteMessages : listQuoteMessages,
+  );
+  const callPost = useServerFn(
+    isAdmin ? adminPostQuoteMessage : isSourcing ? sourcingPostQuoteMessage : postQuoteMessage,
+  );
   const callPin = useServerFn(adminPinQuoteMessage);
   const callUrls = useServerFn(getThreadAttachmentUrls);
 
@@ -44,15 +92,16 @@ export function QuoteThread({ quoteId, mode }: { quoteId: string; mode: "client"
     queryFn: () => fetchMessages({ data: { quote_id: quoteId } }),
   });
   const messages = data?.messages ?? [];
+  const clientLabel = (data as { client_label?: string } | undefined)?.client_label ?? "Client";
 
   // Opening the thread clears the client's unread badge.
   const callMarkRead = useServerFn(markQuoteThreadRead);
   useEffect(() => {
-    if (isAdmin) return;
+    if (mode !== "client") return;
     void callMarkRead({ data: { quote_id: quoteId } }).then(() => {
       void queryClient.invalidateQueries({ queryKey: ["my-quote-signals"] });
     });
-  }, [isAdmin, quoteId, callMarkRead, queryClient]);
+  }, [mode, quoteId, callMarkRead, queryClient]);
 
   const attachmentPaths = [...new Set(messages.flatMap((m) => m.attachments ?? []))];
   const { data: urlData } = useQuery({
@@ -104,38 +153,55 @@ export function QuoteThread({ quoteId, mode }: { quoteId: string; mode: "client"
 
   const pinned = messages.filter((m) => m.pinned);
   const ordered = [...pinned, ...messages.filter((m) => !m.pinned)];
+  const mineRole = mode === "client" ? "client" : mode === "admin" ? "admin" : "sourcing";
 
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base">Conversation</CardTitle>
+    <Card className={cn("flex flex-col", className)}>
+      <CardHeader className="shrink-0 pb-3">
+        <div className="flex items-center justify-between gap-2">
+          <CardTitle className="text-base">Conversation</CardTitle>
+          {isSourcing && (
+            <Badge variant="secondary" className="font-mono text-[11px]">
+              {clientLabel}
+            </Badge>
+          )}
+        </div>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="max-h-[28rem] space-y-3 overflow-y-auto pr-1">
+      <CardContent className="flex min-h-0 flex-1 flex-col gap-4">
+        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
           {ordered.length === 0 && (
             <p className="text-sm text-muted-foreground">
-              No messages yet. Ask us anything about this quote — pricing, samples, materials.
+              {isSourcing
+                ? "No messages yet. Answer here — the client never sees your name."
+                : "No messages yet. Ask us anything about this quote — pricing, samples, materials."}
             </p>
           )}
           {ordered.map((m) => {
             if (m.kind === "system") {
+              // System events read as centered separators, not as messages.
               return (
-                <div key={m.id} className="text-center text-xs text-muted-foreground">
-                  {m.body} · {formatDateTime(m.created_at)}
+                <div key={m.id} className="flex items-center gap-3 py-1">
+                  <span className="h-px flex-1 bg-border" />
+                  <span className="text-center text-[11px] uppercase tracking-wide text-muted-foreground">
+                    {m.body} · {formatDateTime(m.created_at)}
+                  </span>
+                  <span className="h-px flex-1 bg-border" />
                 </div>
               );
             }
-            const mine = isAdmin ? m.author_role === "admin" : m.author_role === "client";
+            const mine = m.author_role === mineRole;
+            const fromUs = m.author_role === "admin" || m.author_role === "sourcing";
             return (
               <div key={m.id} className={cn("flex", mine ? "justify-end" : "justify-start")}>
                 <div
                   className={cn(
                     "max-w-[85%] rounded-xl border border-border p-3",
-                    mine ? "bg-primary/10" : "bg-muted/40",
+                    mine ? "border-primary/40 bg-primary/10" : "bg-muted/40",
                   )}
                 >
                   <div className="mb-1 flex items-center gap-2 text-xs text-muted-foreground">
-                    <span>{m.author_role === "admin" ? "FlySales team" : "You"}</span>
+                    {mode === "client" && fromUs && <BrandAvatar />}
+                    <span>{authorLabel(m.author_role, mode, clientLabel)}</span>
                     <span>{formatDateTime(m.created_at)}</span>
                     {m.pinned && <Badge variant="secondary">Pinned</Badge>}
                     {isAdmin && (
@@ -171,7 +237,7 @@ export function QuoteThread({ quoteId, mode }: { quoteId: string; mode: "client"
           })}
         </div>
 
-        <div className="space-y-2 border-t border-border pt-3">
+        <div className="shrink-0 space-y-2 border-t border-border pt-3">
           <Textarea
             value={body}
             onChange={(e) => setBody(e.target.value)}
