@@ -70,10 +70,10 @@ function InventoryPage() {
 
   const fetchInventory = useServerFn(getWorkspaceInventory);
   const { data, isLoading, error, refetch, isFetching } = useQuery({
-    queryKey: ["inventory", currentStore?.id],
+    queryKey: ["inventory", currentStore?.id, growthPercent],
     enabled: currentStore != null,
     staleTime: 60_000,
-    queryFn: () => fetchInventory({ data: { storeId: currentStore!.id } }),
+    queryFn: () => fetchInventory({ data: { storeId: currentStore!.id, growthPercent } }),
   });
 
   const callSync = useServerFn(syncWorkspaceInventory);
