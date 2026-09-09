@@ -128,16 +128,21 @@ export async function writeSourcingLines(
     lines: SourcingLineInput[];
     feeRate: number;
     sourcedBy: string | null;
+    /** When set, only this option's lines are written and pruned. */
+    optionId?: string | null;
   },
 ): Promise<SavedSourcingLine[]> {
-  const { data: existing } = await admin
+  let existingQuery = admin
     .from("quote_lines")
     .select("id, status, fee_included")
     .eq("quote_request_id", args.quoteId);
+  if (args.optionId) existingQuery = existingQuery.eq("option_id", args.optionId);
+  const { data: existing } = await existingQuery;
   const existingIds = new Set((existing ?? []).map((l) => l.id));
   // A line whose entered cost already contains the sourcing fee keeps that
   // flag across re-saves, so the fee is never applied a second time.
   const feeIncludedById = new Map((existing ?? []).map((l) => [l.id, l.fee_included === true]));
+
 
   const now = new Date().toISOString();
   const saved: SavedSourcingLine[] = [];
@@ -169,8 +174,10 @@ export async function writeSourcingLines(
       sourced_at: now,
       variant_label: line.variant_label,
       country_code: line.country_code,
+      ...(args.optionId ? { option_id: args.optionId } : {}),
       ...(args.sourcedBy ? { sourced_by: args.sourcedBy } : {}),
     };
+
 
     if (line.id && existingIds.has(line.id)) {
       const { data: updated, error } = await admin

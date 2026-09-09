@@ -325,6 +325,7 @@ export const adminSaveQuoteLines = createServerFn({ method: "POST" })
       })),
       feeRate: DEFAULT_FEE_RATE,
       sourcedBy: null,
+      optionId: data.option_id ?? null,
     });
 
     if (data.quote_valid_until !== undefined) {
