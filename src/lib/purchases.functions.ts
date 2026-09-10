@@ -181,6 +181,13 @@ export const createStockPurchase = createServerFn({ method: "POST" })
       throw new Error("Quote request not found");
     }
 
+    // PATH A ships into our fulfilment center — that is the paid warehouse
+    // service. PATH B (direct to the client's own address) is always open.
+    if (data.path === "flysales") {
+      const { requireModule } = await import("./modules.server");
+      await requireModule(admin, chain.store_id, "fulfilment");
+    }
+
     const moq = line.moq ?? 1;
     const minimum = data.path === "flysales" ? Math.max(moq, WAREHOUSE_MIN_UNITS) : moq;
     if (data.quantity < minimum) {

@@ -55,6 +55,9 @@ export const createClientProduct = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => createClientProductSchema.parse(input))
   .handler(async ({ data, context }) => {
+    // Warehouse service — gated by the paid Fulfilment module.
+    const { requireModule } = await import("./modules.server");
+    await requireModule(context.supabase, data.storeId, "fulfilment");
     const { data: rows, error } = await context.supabase.rpc("create_client_product", {
       p_store_id: data.storeId,
       p_name: data.name,
@@ -97,6 +100,8 @@ export const declareInboundShipment = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => declareInboundSchema.parse(input))
   .handler(async ({ data, context }) => {
+    const { requireModule } = await import("./modules.server");
+    await requireModule(context.supabase, data.storeId, "fulfilment");
     const { data: row, error } = await context.supabase.rpc("declare_inbound_shipment", {
       p_store_id: data.storeId,
       p_qc: data.qc,

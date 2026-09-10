@@ -26,6 +26,8 @@ import {
 } from "@/components/ui/table";
 import { formatDate, formatDateTime, formatUSD } from "@/lib/format";
 import { PLANS, planLabel } from "@/lib/plans";
+import { MODULES } from "@/lib/modules";
+import { useWorkspaceModule } from "@/components/module-paywall";
 import { getStripeEnvironment } from "@/lib/stripe";
 import {
   cancelPendingPlanChange,
@@ -416,6 +418,9 @@ function BillingPage() {
           </Card>
         )}
 
+        {/* ============ Modules (billed separately from the plan) ============ */}
+        <ModulesCard storeId={storeId} />
+
         {/* ============ Wallet top-up ============ */}
         <Card>
           <CardHeader>
@@ -730,6 +735,43 @@ function EntityDetailsCard({
             </Button>
           </div>
         </form>
+      </CardContent>
+    </Card>
+  );
+}
+
+/**
+ * Paid add-ons on this workspace. Fulfilment is operational and standalone —
+ * it is never rolled into the Growth Bundle.
+ */
+function ModulesCard({ storeId }: { storeId: string | null }) {
+  const gate = useWorkspaceModule(storeId, "fulfilment");
+  if (!storeId || gate.isLoading || !gate.hasModule) return null;
+  const mod = MODULES.fulfilment;
+  const activation = gate.activation;
+  const granted = activation?.source === "admin_grant";
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Modules</CardTitle>
+        <CardDescription>Add-ons billed separately from your plan.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border p-3">
+          <div>
+            <div className="text-sm font-medium">{mod.name}</div>
+            <div className="text-xs text-muted-foreground">
+              {granted
+                ? "Included on your workspace at no charge."
+                : activation?.current_period_end
+                  ? `Renews ${activation.current_period_end}.`
+                  : "Active."}
+            </div>
+          </div>
+          <div className="tnum text-sm font-medium">
+            {granted ? "$0/month" : `$${mod.priceUsd}/month`}
+          </div>
+        </div>
       </CardContent>
     </Card>
   );

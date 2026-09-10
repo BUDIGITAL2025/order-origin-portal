@@ -450,6 +450,62 @@ async function syncSpyMarketSubscription(
 }
 
 /**
+ * Paid add-on modules (currently Fulfilment). Own Stripe subscription, own
+ * row in workspace_modules, no effect on the workspace plan or quota. Admin
+ * grants live in the same table and are never touched here.
+ */
+async function syncModuleSubscription(
+  admin: Admin,
+  sub: Record<string, unknown>,
+  env: StripeEnv,
+): Promise<boolean> {
+  const subId = String(sub["id"] ?? "");
+  const m = meta(sub);
+  const { data: existing } = await admin
+    .from("workspace_modules")
+    .select("id")
+    .eq("stripe_subscription_id", subId)
+    .maybeSingle();
+  if (!existing && m["kind"] !== "module_subscription") return false;
+
+  const storeId = m["flysales_store_id"] ?? null;
+  const moduleKey = m["module_key"] ?? null;
+  const item = (
+    sub["items"] as { data?: Array<{ current_period_end?: number }> } | undefined
+  )?.data?.[0];
+  const periodEndUnix =
+    item?.current_period_end ?? (sub["current_period_end"] as number | undefined) ?? null;
+  const status =
+    mapSubscriptionStatus(sub["status"] as string | undefined) === "none"
+      ? "canceled"
+      : mapSubscriptionStatus(sub["status"] as string | undefined);
+
+  const row = {
+    status,
+    source: "stripe",
+    environment: env,
+    stripe_customer_id: idOf(sub["customer"]),
+    stripe_subscription_id: subId,
+    cancel_at_period_end: Boolean(sub["cancel_at_period_end"]),
+    current_period_end: periodEndUnix
+      ? new Date(periodEndUnix * 1000).toISOString().slice(0, 10)
+      : null,
+  };
+
+  if (existing) {
+    const { error } = await admin.from("workspace_modules").update(row).eq("id", existing.id);
+    if (error) throw new Error(error.message);
+    return true;
+  }
+  if (!storeId || !moduleKey) throw new Error("module subscription without store or module key");
+  const { error } = await admin
+    .from("workspace_modules")
+    .upsert({ ...row, store_id: storeId, module_key: moduleKey }, { onConflict: "store_id,module_key,environment" });
+  if (error) throw new Error(error.message);
+  return true;
+}
+
+/**
  * Credit a wallet top-up exactly once per PaymentIntent. Called from BOTH
  * checkout.session.completed (payment mode) and payment_intent.succeeded —
  * the reference uniqueness rule makes the second call a no-op. Also stores
@@ -804,6 +860,12 @@ export async function processStripeEvent(event: StripeEvent, env: StripeEnv): Pr
             }),
           });
         }
+      } else if (kind === "module_subscription") {
+        const subscriptionId = idOf(session["subscription"]);
+        if (subscriptionId) {
+          const sub = await stripe.subscriptions.retrieve(subscriptionId);
+          await syncModuleSubscription(admin, sub as unknown as Record<string, unknown>, env);
+        }
       } else if (kind === "wallet_topup") {
         const piId = idOf(session["payment_intent"]);
         if (piId) await handleWalletTopup(stripe, admin, piId);
@@ -817,6 +879,7 @@ export async function processStripeEvent(event: StripeEvent, env: StripeEnv): Pr
     case "customer.subscription.created":
     case "customer.subscription.updated": {
       if (await syncSpyMarketSubscription(admin, event.data.object, env)) return;
+      if (await syncModuleSubscription(admin, event.data.object, env)) return;
       await syncSubscriptionFromStripe(admin, event.data.object);
       return;
     }
@@ -835,6 +898,22 @@ export async function processStripeEvent(event: StripeEvent, env: StripeEnv): Pr
             .from("spymarket_subscriptions")
             .update({ status: "canceled", cancel_at_period_end: false })
             .eq("id", spy.id);
+          if (error) throw new Error(error.message);
+          return;
+        }
+      }
+      {
+        const subId = String(sub["id"] ?? "");
+        const { data: mod } = await admin
+          .from("workspace_modules")
+          .select("id")
+          .eq("stripe_subscription_id", subId)
+          .maybeSingle();
+        if (mod) {
+          const { error } = await admin
+            .from("workspace_modules")
+            .update({ status: "canceled", cancel_at_period_end: false })
+            .eq("id", mod.id);
           if (error) throw new Error(error.message);
           return;
         }

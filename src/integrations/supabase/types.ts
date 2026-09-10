@@ -3548,6 +3548,65 @@ export type Database = {
           },
         ]
       }
+      workspace_modules: {
+        Row: {
+          cancel_at_period_end: boolean
+          created_at: string
+          current_period_end: string | null
+          environment: string
+          granted_by: string | null
+          id: string
+          module_key: string
+          notes: string | null
+          source: string
+          status: string
+          store_id: string
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          cancel_at_period_end?: boolean
+          created_at?: string
+          current_period_end?: string | null
+          environment?: string
+          granted_by?: string | null
+          id?: string
+          module_key: string
+          notes?: string | null
+          source?: string
+          status?: string
+          store_id: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cancel_at_period_end?: boolean
+          created_at?: string
+          current_period_end?: string | null
+          environment?: string
+          granted_by?: string | null
+          id?: string
+          module_key?: string
+          notes?: string | null
+          source?: string
+          status?: string
+          store_id?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workspace_modules_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       bundle_prices: {

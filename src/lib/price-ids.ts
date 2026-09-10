@@ -22,6 +22,10 @@ export const PRICE_CATALOGUE = {
   module_seo_monthly: { label: "FlySales SEO", usd: 49, interval: "month" },
   module_ads_monthly: { label: "FlySales Ads", usd: 39, interval: "month" },
   module_growth_bundle_monthly: { label: "Growth Bundle", usd: 99, interval: "month" },
+
+  // Operational module. Fulfilment is NOT part of the Growth Bundle (that is
+  // intelligence only) — it unlocks the warehouse service and is standalone.
+  module_fulfilment_monthly: { label: "FlySales Fulfilment", usd: 49, interval: "month" },
 } as const;
 
 export type PriceLookupKey = keyof typeof PRICE_CATALOGUE;
@@ -31,4 +35,5 @@ export const MODULE_PRICE_IDS = {
   seo: "module_seo_monthly",
   ads: "module_ads_monthly",
   bundle: "module_growth_bundle_monthly",
+  fulfilment: "module_fulfilment_monthly",
 } as const;
