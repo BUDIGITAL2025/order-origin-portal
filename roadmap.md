@@ -17,3 +17,4 @@
 - [ ] Blocked on user: flip STRIPE_FORCE_TEST_MODE to false (Flavio does this manually)
 - [ ] After the next publish: confirm the live account has the `flysales_basic` ($49) and `module_*` prices — they are created in test and copied to live on publish
 - [x] SpyMarket price resolved: legacy $99/$189/$349 tiers archived in Stripe (test + live); single module price `module_spymarket_monthly` $49/mo
+- [x] Purchase order module (agent PO + supplier invoice AI check + admin supplier payment; earnings now accrue at supplier payment) — verified end to end, test purchases removed

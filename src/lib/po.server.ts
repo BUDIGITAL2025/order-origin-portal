@@ -293,7 +293,13 @@ export async function renderPurchaseOrderPdf(data: PurchaseOrderData): Promise<U
   ];
   for (const [label, value] of meta) {
     page.drawText(s(label), { x: MARGIN, y, size: 8.5, font: regular, color: MUTED });
-    page.drawText(fit(value, bold, 9.5, 200), { x: MARGIN + 120, y, size: 9.5, font: bold, color: INK });
+    page.drawText(fit(value, bold, 9.5, 200), {
+      x: MARGIN + 120,
+      y,
+      size: 9.5,
+      font: bold,
+      color: INK,
+    });
     y -= 15;
   }
 
@@ -324,7 +330,13 @@ export async function renderPurchaseOrderPdf(data: PurchaseOrderData): Promise<U
   });
   y -= 14;
   for (const line of data.deliveryLines) {
-    page.drawText(fit(line, regular, 9.5, 300), { x: MARGIN, y, size: 9.5, font: regular, color: INK });
+    page.drawText(fit(line, regular, 9.5, 300), {
+      x: MARGIN,
+      y,
+      size: 9.5,
+      font: regular,
+      color: INK,
+    });
     y -= 12;
   }
   y -= 16;
