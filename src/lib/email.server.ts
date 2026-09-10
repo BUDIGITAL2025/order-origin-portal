@@ -44,10 +44,14 @@ export async function sendEmail(args: {
   text: string;
   /** Branded HTML part; falls back to the escaped text when omitted. */
   html?: string;
-  replyTo?: string;
+  /** Defaults to support@ — pass null only for internal ops mail. */
+  replyTo?: string | null;
+  /** Display name override; only the ops digest uses this. */
+  senderName?: string;
 }): Promise<{ sent: boolean; id?: string; error?: string }> {
   const apiKey = process.env["RESEND_API_KEY"]?.trim();
-  const { from, address } = sender();
+  const { from, address } = sender(args.senderName ?? SENDER_NAME);
+  const replyTo = args.replyTo === null ? null : (args.replyTo ?? REPLY_TO_ADDRESS);
 
   if (!apiKey || !address) {
     console.warn(
