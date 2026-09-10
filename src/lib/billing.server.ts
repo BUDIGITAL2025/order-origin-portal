@@ -404,15 +404,20 @@ async function syncSpyMarketSubscription(
       | undefined
   )?.data?.[0];
   const lookup = item?.price?.lookup_key ?? null;
+  // Legacy tiers (starter/plus/max) are archived in Stripe but still resolve
+  // here so existing subscriptions keep syncing. New sales are the single
+  // $49 module price.
   const planFromPrice =
-    lookup === "spymarket_max_monthly"
-      ? "max"
-      : lookup === "spymarket_plus_monthly"
-        ? "plus"
-        : lookup === "spymarket_starter_monthly"
-          ? "starter"
-          : null;
-  const plan = planFromPrice ?? (m["plan"] as string | undefined) ?? "starter";
+    lookup === "module_spymarket_monthly"
+      ? "module"
+      : lookup === "spymarket_max_monthly"
+        ? "max"
+        : lookup === "spymarket_plus_monthly"
+          ? "plus"
+          : lookup === "spymarket_starter_monthly"
+            ? "starter"
+            : null;
+  const plan = planFromPrice ?? (m["plan"] as string | undefined) ?? "module";
   const periodEndUnix =
     item?.current_period_end ?? (sub["current_period_end"] as number | undefined) ?? null;
 
