@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { assertNotSourcing } from "./profiles.functions";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
@@ -72,6 +73,7 @@ export const createMyManualOrder = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => createManualOrderSchema.parse(input))
   .handler(async ({ data, context }) => {
+    await assertNotSourcing(context.supabase, context.userId);
     const { data: order, error } = await context.supabase.rpc("create_manual_order", {
       p_store_id: data.store_id,
       p_customer: data.customer,

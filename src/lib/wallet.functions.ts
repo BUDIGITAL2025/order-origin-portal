@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { assertNotSourcing } from "./profiles.functions";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { clientIdSchema, walletAdjustmentSchema } from "./schemas";
 
@@ -6,6 +7,7 @@ import { clientIdSchema, walletAdjustmentSchema } from "./schemas";
 export const getMyWallet = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
+    await assertNotSourcing(context.supabase, context.userId);
     const { data, error } = await context.supabase
       .from("wallet_transactions")
       .select("id, type, amount, balance_after, description, reference, created_at")

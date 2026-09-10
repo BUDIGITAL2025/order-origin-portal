@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { assertNotSourcing } from "./profiles.functions";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import {
@@ -38,6 +39,7 @@ export const createQuoteRequest = createServerFn({ method: "POST" })
   .inputValidator((input) => quoteRequestSchema.parse(input))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
+    await assertNotSourcing(supabase, userId);
 
     const { data: profile } = await supabase
       .from("profiles")
