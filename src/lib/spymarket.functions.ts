@@ -82,8 +82,13 @@ export const adminListSpyMarketInterest = createServerFn({ method: "GET" })
       entity_name:
         (row.entities as { legal_name?: string } | null)?.legal_name ?? null,
     }));
-    const counts = { starter: 0, plus: 0, max: 0 };
-    for (const e of entries) counts[e.plan_interest as keyof typeof counts] += 1;
+    // Legacy tier names may still appear on historical rows; everything new
+    // is the single module plan.
+    const counts: Record<string, number> = {};
+    for (const e of entries) {
+      const key = String(e.plan_interest);
+      counts[key] = (counts[key] ?? 0) + 1;
+    }
     return { entries, counts, total: entries.length };
   });
 
