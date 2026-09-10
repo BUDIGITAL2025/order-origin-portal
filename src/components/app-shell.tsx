@@ -367,6 +367,49 @@ function AccountMenu({
   );
 }
 
+/**
+ * "Something new here" dots. Each role reuses the exact query the destination
+ * page already runs, so the count is shared from cache, never recomputed.
+ */
+function useNavAlerts(role: "client" | "admin" | "sourcing"): Record<string, boolean> {
+  const fetchAdminQuotes = useServerFn(adminListQuotes);
+  const fetchQueue = useServerFn(sourcingListQueue);
+  const fetchSignals = useServerFn(listMyQuoteSignals);
+
+  const { data: adminQuotes } = useQuery({
+    queryKey: ["admin-quotes", "all"],
+    queryFn: () => fetchAdminQuotes({ data: {} }),
+    enabled: role === "admin",
+    staleTime: 60_000,
+  });
+  const { data: queue } = useQuery({
+    queryKey: ["sourcing-queue"],
+    queryFn: fetchQueue,
+    enabled: role === "sourcing",
+    staleTime: 60_000,
+  });
+  const { data: signals } = useQuery({
+    queryKey: ["my-quote-signals"],
+    queryFn: fetchSignals,
+    enabled: role === "client",
+    staleTime: 60_000,
+  });
+
+  const alerts: Record<string, boolean> = {};
+  if (role === "admin") {
+    alerts["/admin/quotes"] = (adminQuotes?.quotes ?? []).some(
+      (q) => q.status === "submitted" || q.status === "sourcing",
+    );
+  }
+  if (role === "sourcing") {
+    alerts["/desk/queue"] = (queue?.quotes ?? []).some((q) => q.priced_lines === 0);
+  }
+  if (role === "client") {
+    alerts["/sourcing"] = Object.values(signals?.unread ?? {}).some((n) => Number(n) > 0);
+  }
+  return alerts;
+}
+
 export function AppShell({
   role,
   email,
