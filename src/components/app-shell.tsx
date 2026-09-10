@@ -127,6 +127,7 @@ const ADMIN_NAV: NavItem[] = [
 /** The collaborator desk is deliberately tiny: a queue and their earnings. */
 const SOURCING_NAV: NavItem[] = [
   { to: "/desk/queue", label: "Quote queue", icon: ClipboardList },
+  { to: "/admin/catalog-import", label: "Catalog import", icon: FileUp, badge: "New" },
   { to: "/desk/earnings", label: "My earnings", icon: Wallet },
 ];
 
