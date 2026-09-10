@@ -48,7 +48,7 @@ const VIEWS = [
 type ViewId = (typeof VIEWS)[number]["id"];
 
 export const Route = createFileRoute("/_authenticated/admin/inventory")({
-  validateSearch: (search: Record<string, unknown>): { state?: string; view?: ViewId } => ({
+  validateSearch: (search: Record<string, unknown>): { state?: string | undefined; view?: ViewId | undefined } => ({
     state: typeof search["state"] === "string" ? search["state"] : undefined,
     view: VIEWS.find((v) => v.id === search["view"])?.id ?? "workspaces",
   }),
