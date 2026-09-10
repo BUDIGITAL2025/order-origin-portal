@@ -136,14 +136,23 @@ function AdminSourcingPage() {
             <TableHead className="text-right">Owed</TableHead>
             <TableHead className="text-right">Paid</TableHead>
             <TableHead>Active</TableHead>
+            <TableHead className="text-right">Invite</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {rows.map((c) => (
             <TableRow key={c.id}>
               <TableCell>
-                <div className="text-sm">{c.display_name || c.email}</div>
-                <div className="text-xs text-muted-foreground">{c.email}</div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm">{c.display_name || c.email}</span>
+                  {c.invite_pending && <Chip tone="warning">Pending</Chip>}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {c.email}
+                  {c.invite_pending && invitedAgo(c.invite_last_sent_at ?? c.invited_at)
+                    ? ` · ${invitedAgo(c.invite_last_sent_at ?? c.invited_at)}`
+                    : ""}
+                </div>
               </TableCell>
               <TableCell className="text-right tnum text-sm">
                 {(Number(c.fee_rate) * 100).toFixed(1)}%
@@ -158,11 +167,24 @@ function AdminSourcingPage() {
                   onCheckedChange={(v) => toggleActive.mutate({ id: c.id, active: v })}
                 />
               </TableCell>
+              <TableCell className="text-right">
+                {c.invite_pending && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={resendInvite.isPending}
+                    onClick={() => resendInvite.mutate(c.id)}
+                  >
+                    <Send className="mr-1.5 h-3.5 w-3.5" />
+                    Resend invite
+                  </Button>
+                )}
+              </TableCell>
             </TableRow>
           ))}
           {rows.length === 0 && (
             <TableRow>
-              <TableCell colSpan={5} className="text-sm text-muted-foreground">
+              <TableCell colSpan={6} className="text-sm text-muted-foreground">
                 No collaborators yet.
               </TableCell>
             </TableRow>
