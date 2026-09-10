@@ -197,118 +197,128 @@ function AdminInventoryPage() {
       <SectionTabs tabs={ADMIN_FULFILMENT_TABS} />
       <OperationsToday />
 
-      {error && (
-        <Card className="mb-4 border-destructive/30">
-          <CardContent className="p-4 text-sm text-destructive">{friendlyError(error)}</CardContent>
-        </Card>
-      )}
-
-      {growthPercent > 0 && (
-        <div className="mb-4 flex items-center gap-2 rounded-xl border border-warning/30 bg-warning/10 px-4 py-2.5 text-sm text-warning">
-          <AlertTriangle className="h-4 w-4 shrink-0" />
-          A mostrar projeção com +{growthPercent}% de vendas em todas as workspaces — reflete um
-          cenário, não apenas o histórico real.
-        </div>
-      )}
-
-      <SummaryBar
-        items={[
-          { key: "ws", label: "Workspaces", value: workspaces.length },
-          { key: "skus", label: "SKUs tracked", value: allRows.length },
-          { key: "red", label: "Reorder now", value: counts.red, tone: "danger" },
-          { key: "amber", label: "Reorder soon", value: counts.amber, tone: "warning" },
-          { key: "green", label: "Healthy", value: counts.green, tone: "success" },
-          {
-            key: "value",
-            label: "Total inventory value",
-            value: formatUSD(inventoryValue),
-            hint: "Sellable units × purchase cost where known, else client price",
-          },
-        ]}
-      />
-
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <FilterTabs tabs={TABS} value={tab} onChange={setTab} />
-        <div className="flex flex-wrap items-center gap-1 rounded-full border border-border bg-card p-1">
-          {SCENARIOS.map((s) => (
-            <button
-              key={s.value}
-              type="button"
-              onClick={() => setGrowthPercent(s.value)}
-              className={cn(
-                "rounded-full px-3 py-1 text-[13px] font-medium transition-colors",
-                growthPercent === s.value
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {s.label}
-            </button>
-          ))}
-        </div>
-        <AdminSearch value={search} onChange={setSearch} placeholder="Search SKU or product" />
+      <div className="mb-4">
+        <FilterTabs tabs={VIEWS} value={view} onChange={setView} />
       </div>
 
-      {isLoading ? (
-        <Card>
-          <CardContent className="p-6 text-sm text-muted-foreground">Loading stock…</CardContent>
-        </Card>
-      ) : workspaces.length === 0 ? (
-        <Card>
-          <CardContent className="p-6 text-sm text-muted-foreground">
-            No workspace is reporting stock yet. Connect a tenant, or seed fake stock from the
-            simulator on the Integration page.
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-8">
-          {workspaces.map((ws) => {
-            const rows = filterRows(ws.rows as InventoryRow[]);
-            if (rows.length === 0) return null;
-            return (
-              <section key={ws.store_id}>
-                <PanelHeader
-                  title={ws.store_name ?? "Unnamed workspace"}
-                  description={`Tenant ${ws.tenant_id ?? "—"} · defaults ${ws.defaults.production}d production / ${ws.defaults.transit}d transit / ${ws.defaults.safety}d safety`}
-                  actions={
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="rounded-full"
-                      onClick={() =>
-                        setDefaultsFor({
-                          storeId: ws.store_id,
-                          production: ws.defaults.production ?? 0,
-                          transit: ws.defaults.transit ?? 0,
-                          safety: ws.defaults.safety ?? 0,
-                        })
+      {view === "workspaces" && (
+        <>
+          {error && (
+            <Card className="mb-4 border-destructive/30">
+              <CardContent className="p-4 text-sm text-destructive">{friendlyError(error)}</CardContent>
+            </Card>
+          )}
+
+          {growthPercent > 0 && (
+            <div className="mb-4 flex items-center gap-2 rounded-xl border border-warning/30 bg-warning/10 px-4 py-2.5 text-sm text-warning">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              A mostrar projeção com +{growthPercent}% de vendas em todas as workspaces — reflete um
+              cenário, não apenas o histórico real.
+            </div>
+          )}
+
+          <SummaryBar
+            items={[
+              { key: "ws", label: "Workspaces", value: workspaces.length },
+              { key: "skus", label: "SKUs tracked", value: allRows.length },
+              { key: "red", label: "Reorder now", value: counts.red, tone: "danger" },
+              { key: "amber", label: "Reorder soon", value: counts.amber, tone: "warning" },
+              { key: "green", label: "Healthy", value: counts.green, tone: "success" },
+              {
+                key: "value",
+                label: "Total inventory value",
+                value: formatUSD(inventoryValue),
+                hint: "Sellable units × purchase cost where known, else client price",
+              },
+            ]}
+          />
+
+          <div className="mb-4 flex flex-wrap items-center gap-2">
+            <FilterTabs tabs={TABS} value={tab} onChange={setTab} />
+            <div className="flex flex-wrap items-center gap-1 rounded-full border border-border bg-card p-1">
+              {SCENARIOS.map((s) => (
+                <button
+                  key={s.value}
+                  type="button"
+                  onClick={() => setGrowthPercent(s.value)}
+                  className={cn(
+                    "rounded-full px-3 py-1 text-[13px] font-medium transition-colors",
+                    growthPercent === s.value
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
+            <AdminSearch value={search} onChange={setSearch} placeholder="Search SKU or product" />
+          </div>
+
+          {isLoading ? (
+            <Card>
+              <CardContent className="p-6 text-sm text-muted-foreground">Loading stock…</CardContent>
+            </Card>
+          ) : workspaces.length === 0 ? (
+            <Card>
+              <CardContent className="p-6 text-sm text-muted-foreground">
+                No workspace is reporting stock yet. Connect a tenant, or seed fake stock from the
+                simulator on the Integration page.
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-8">
+              {workspaces.map((ws) => {
+                const rows = filterRows(ws.rows as InventoryRow[]);
+                if (rows.length === 0) return null;
+                return (
+                  <section key={ws.store_id}>
+                    <PanelHeader
+                      title={ws.store_name ?? "Unnamed workspace"}
+                      description={`Tenant ${ws.tenant_id ?? "—"} · defaults ${ws.defaults.production}d production / ${ws.defaults.transit}d transit / ${ws.defaults.safety}d safety`}
+                      actions={
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="rounded-full"
+                          onClick={() =>
+                            setDefaultsFor({
+                              storeId: ws.store_id,
+                              production: ws.defaults.production ?? 0,
+                              transit: ws.defaults.transit ?? 0,
+                              safety: ws.defaults.safety ?? 0,
+                            })
+                          }
+                        >
+                          Edit defaults
+                        </Button>
                       }
-                    >
-                      Edit defaults
-                    </Button>
-                  }
-                />
-                {ws.stale && (
-                  <div className="mb-2 flex items-center gap-2 rounded-lg border border-warning/30 bg-warning/10 px-3 py-1.5 text-[12px] text-warning">
-                    <AlertTriangle className="h-3.5 w-3.5" />
-                    Stale data — last sync{" "}
-                    {ws.last_captured_at
-                      ? new Date(ws.last_captured_at).toLocaleString("en-GB")
-                      : "never"}
-                  </div>
-                )}
-                <InventoryTable
-                  rows={rows}
-                  showOrigin
-                  planLabel="Planning"
-                  planIcon={SlidersHorizontal}
-                  onPlanReorder={(row) => row.product_id && setPlanningProductId(row.product_id)}
-                />
-              </section>
-            );
-          })}
-        </div>
+                    />
+                    {ws.stale && (
+                      <div className="mb-2 flex items-center gap-2 rounded-lg border border-warning/30 bg-warning/10 px-3 py-1.5 text-[12px] text-warning">
+                        <AlertTriangle className="h-3.5 w-3.5" />
+                        Stale data — last sync{" "}
+                        {ws.last_captured_at
+                          ? new Date(ws.last_captured_at).toLocaleString("en-GB")
+                          : "never"}
+                      </div>
+                    )}
+                    <InventoryTable
+                      rows={rows}
+                      showOrigin
+                      planLabel="Planning"
+                      planIcon={SlidersHorizontal}
+                      onPlanReorder={(row) => row.product_id && setPlanningProductId(row.product_id)}
+                    />
+                  </section>
+                );
+              })}
+            </div>
+          )}
+        </>
       )}
+
+      {view === "ecomflow" && <EcomflowStockView query={ecomflowQuery} />}
 
       <Dialog open={defaultsFor !== null} onOpenChange={(open) => !open && setDefaultsFor(null)}>
         <DialogContent>
