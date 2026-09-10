@@ -67,9 +67,7 @@ export const adminListSpyMarketInterest = createServerFn({ method: "GET" })
     await requireAdmin(context.supabase, context.userId);
     const { data, error } = await context.supabase
       .from("spymarket_interest")
-      .select(
-        "id, plan_interest, created_at, profiles(contact_name), entities(legal_name)",
-      )
+      .select("id, plan_interest, created_at, profiles(contact_name), entities(legal_name)")
       .order("created_at", { ascending: false })
       .limit(500);
     if (error) throw new Error(error.message);
@@ -77,10 +75,8 @@ export const adminListSpyMarketInterest = createServerFn({ method: "GET" })
       id: row.id,
       plan_interest: row.plan_interest,
       created_at: row.created_at,
-      contact_name:
-        (row.profiles as { contact_name?: string } | null)?.contact_name ?? "—",
-      entity_name:
-        (row.entities as { legal_name?: string } | null)?.legal_name ?? null,
+      contact_name: (row.profiles as { contact_name?: string } | null)?.contact_name ?? "—",
+      entity_name: (row.entities as { legal_name?: string } | null)?.legal_name ?? null,
     }));
     // Legacy tier names may still appear on historical rows; everything new
     // is the single module plan.

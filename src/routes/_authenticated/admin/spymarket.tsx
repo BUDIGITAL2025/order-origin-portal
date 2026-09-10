@@ -69,7 +69,6 @@ function AdminSpyMarketPage() {
         )}
       </div>
 
-
       {isPending ? (
         <Skeleton className="h-64 rounded-2xl" />
       ) : !data || data.entries.length === 0 ? (

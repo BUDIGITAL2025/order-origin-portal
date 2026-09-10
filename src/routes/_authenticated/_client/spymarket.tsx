@@ -8,10 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { getStripeEnvironment } from "@/lib/stripe";
-import {
-  createSpyMarketCheckout,
-  getMySpyMarketSubscription,
-} from "@/lib/spymarket.functions";
+import { createSpyMarketCheckout, getMySpyMarketSubscription } from "@/lib/spymarket.functions";
 
 export const Route = createFileRoute("/_authenticated/_client/spymarket")({
   head: () => ({
@@ -93,13 +90,9 @@ function SpyMarketPage() {
             <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/15">
               <Telescope className="h-4.5 w-4.5 text-primary" />
             </span>
-            <Badge className="bg-primary text-primary-foreground hover:bg-primary">
-              New
-            </Badge>
+            <Badge className="bg-primary text-primary-foreground hover:bg-primary">New</Badge>
           </div>
-          <h1 className="mt-5 text-3xl font-semibold tracking-tight">
-            SpyMarket
-          </h1>
+          <h1 className="mt-5 text-3xl font-semibold tracking-tight">SpyMarket</h1>
           <p className="mt-2 max-w-xl text-sm text-sidebar-foreground/70">
             Competitor intelligence for dropshipping, built by FlySales.
           </p>
@@ -187,8 +180,8 @@ function SpyMarketPage() {
 
       <p className="flex items-center gap-2 text-xs text-muted-foreground">
         <Store className="h-3.5 w-3.5" />
-        SpyMarket is billed separately from your FlySales workspace plan, on its
-        own monthly subscription. Cancel any time by contacting support.
+        SpyMarket is billed separately from your FlySales workspace plan, on its own monthly
+        subscription. Cancel any time by contacting support.
       </p>
     </div>
   );
