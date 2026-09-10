@@ -274,6 +274,17 @@ function AdminQuotesPage() {
                       dueSoon && "border-l-2 border-l-warning bg-warning/5",
                     )}
                   >
+                    <TableCell
+                      className="w-9 py-2.5"
+                      onClick={(e) => e.stopPropagation()}
+                including={undefined}
+                    >
+                      <Checkbox
+                        aria-label="Select request"
+                        checked={selectedIds.has(q.id)}
+                        onCheckedChange={(v) => toggleOne(q.id, v === true)}
+                      />
+                    </TableCell>
                     <TableCell className="whitespace-nowrap py-2.5 text-xs text-muted-foreground">
                       {formatDate(q.created_at)}
                     </TableCell>
