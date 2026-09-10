@@ -127,14 +127,19 @@ export async function sendAdminEmail(args: {
   subject: string;
   text: string;
 }): Promise<{ sent: boolean; error?: string }> {
-  const to =
-    process.env["ADMIN_DIGEST_EMAIL"]?.trim() ||
-    process.env["EMAIL_FROM_ADDRESS"]?.trim();
+  const to = process.env["ADMIN_DIGEST_EMAIL"]?.trim() || SENDER_ADDRESS;
   if (!to) {
     console.warn("[email] no ADMIN_DIGEST_EMAIL configured:", args.subject);
     return { sent: false, error: "no admin recipient" };
   }
-  return sendEmail({ to, subject: args.subject, text: args.text });
+  // Internal mail: same platform mailbox, ops display name, no support reply-to.
+  return sendEmail({
+    to,
+    subject: args.subject,
+    text: args.text,
+    senderName: OPS_SENDER_NAME,
+    replyTo: null,
+  });
 }
 
 /**
