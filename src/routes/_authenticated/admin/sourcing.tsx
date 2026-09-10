@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { UserPlus } from "lucide-react";
+import { Send, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/app-shell";
 import { SectionTabs, ADMIN_SOURCING_TABS } from "@/components/section-tabs";
@@ -27,9 +27,18 @@ import {
   adminEarningsReport,
   adminInviteCollaborator,
   adminListCollaborators,
+  adminResendCollaboratorInvite,
   adminSettleEarnings,
   adminUpdateCollaborator,
 } from "@/lib/sourcing.functions";
+
+/** "invited 3d ago" — makes stale pending invites obvious at a glance. */
+function invitedAgo(iso: string | null): string | null {
+  if (!iso) return null;
+  const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+  if (days <= 0) return "invited today";
+  return `invited ${days}d ago`;
+}
 
 export const Route = createFileRoute("/_authenticated/admin/sourcing")({
   head: () => ({
@@ -44,6 +53,7 @@ function AdminSourcingPage() {
   const fetchEarnings = useServerFn(adminEarningsReport);
   const callUpdate = useServerFn(adminUpdateCollaborator);
   const callSettle = useServerFn(adminSettleEarnings);
+  const callResend = useServerFn(adminResendCollaboratorInvite);
 
   const [inviteOpen, setInviteOpen] = useState(false);
   const [filter, setFilter] = useState<"all" | "pending" | "settled">("pending");
@@ -77,6 +87,15 @@ function AdminSourcingPage() {
       await queryClient.invalidateQueries();
     },
     onError: (e) => toast.error(friendlyError(e, "The payout was not recorded.")),
+  });
+
+  const resendInvite = useMutation({
+    mutationFn: (id: string) => callResend({ data: { id } }),
+    onSuccess: async () => {
+      toast.success("Invitation sent again.");
+      await queryClient.invalidateQueries({ queryKey: ["admin-collaborators"] });
+    },
+    onError: (e) => toast.error(friendlyError(e, "The invitation was not sent.")),
   });
 
   const pendingIds = earningRows.filter((r) => !r.settled).map((r) => r.id);
@@ -117,14 +136,23 @@ function AdminSourcingPage() {
             <TableHead className="text-right">Owed</TableHead>
             <TableHead className="text-right">Paid</TableHead>
             <TableHead>Active</TableHead>
+            <TableHead className="text-right">Invite</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {rows.map((c) => (
             <TableRow key={c.id}>
               <TableCell>
-                <div className="text-sm">{c.display_name || c.email}</div>
-                <div className="text-xs text-muted-foreground">{c.email}</div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm">{c.display_name || c.email}</span>
+                  {c.invite_pending && <Chip tone="warning">Pending</Chip>}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {c.email}
+                  {c.invite_pending && invitedAgo(c.invite_last_sent_at ?? c.invited_at)
+                    ? ` · ${invitedAgo(c.invite_last_sent_at ?? c.invited_at)}`
+                    : ""}
+                </div>
               </TableCell>
               <TableCell className="text-right tnum text-sm">
                 {(Number(c.fee_rate) * 100).toFixed(1)}%
@@ -139,11 +167,24 @@ function AdminSourcingPage() {
                   onCheckedChange={(v) => toggleActive.mutate({ id: c.id, active: v })}
                 />
               </TableCell>
+              <TableCell className="text-right">
+                {c.invite_pending && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={resendInvite.isPending}
+                    onClick={() => resendInvite.mutate(c.id)}
+                  >
+                    <Send className="mr-1.5 h-3.5 w-3.5" />
+                    Resend invite
+                  </Button>
+                )}
+              </TableCell>
             </TableRow>
           ))}
           {rows.length === 0 && (
             <TableRow>
-              <TableCell colSpan={5} className="text-sm text-muted-foreground">
+              <TableCell colSpan={6} className="text-sm text-muted-foreground">
                 No collaborators yet.
               </TableCell>
             </TableRow>
@@ -242,7 +283,11 @@ function InviteDialog({
       return callInvite({ data: parsed.data });
     },
     onSuccess: async (r) => {
-      toast.success(r.invited ? "Invitation sent." : "Existing account added to the desk.");
+      if (r.emailSent) toast.success("Invitation email sent.");
+      else
+        toast.warning(
+          `Collaborator added, but the email was not sent: ${r.emailError ?? "unknown reason"}`,
+        );
       onOpenChange(false);
       setEmail("");
       setName("");

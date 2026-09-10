@@ -503,3 +503,32 @@ export function sourcingThreadEmail(args: {
     note: "Reply from the sourcing desk. Client identity stays hidden by design.",
   });
 }
+
+/** Invitation to join the FlySales sourcing team (collaborator onboarding). */
+export function sourcingInviteEmail(args: {
+  inviteUrl: string;
+  displayName: string | null;
+  feePct: number;
+  expiresLabel: string;
+}): BuiltEmail {
+  return build("You've been invited to the FlySales sourcing team", {
+    heading: args.displayName
+      ? `${args.displayName}, welcome to the FlySales sourcing team`
+      : "You've been invited to the FlySales sourcing team",
+    preheader: "Set your password and open your sourcing desk.",
+    paragraphs: [
+      "You have been invited to join the FlySales sourcing team as a collaborator.",
+      "As a collaborator you get your own desk: the sourcing queue with the requests assigned to you, where you find suppliers and enter supplier prices, plus your own earnings page. Client identities and client prices are never shown to you — by design.",
+      "Use the button below to set your password and open your desk.",
+    ],
+    panel: {
+      title: "Your terms",
+      rows: [
+        { label: "Fee on supplier price", value: `${args.feePct.toFixed(1)}%`, strong: true },
+        { label: "Invitation valid until", value: args.expiresLabel },
+      ],
+    },
+    button: { label: "Accept the invitation", url: args.inviteUrl },
+    note: `This invitation link expires on ${args.expiresLabel}. If it has expired, ask your FlySales contact to send a new one.`,
+  });
+}

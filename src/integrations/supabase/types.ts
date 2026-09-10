@@ -753,6 +753,42 @@ export type Database = {
           },
         ]
       }
+      email_log: {
+        Row: {
+          created_at: string
+          error: string | null
+          id: string
+          kind: string
+          provider_message_id: string | null
+          related_id: string | null
+          status: string
+          subject: string
+          to_address: string
+        }
+        Insert: {
+          created_at?: string
+          error?: string | null
+          id?: string
+          kind: string
+          provider_message_id?: string | null
+          related_id?: string | null
+          status: string
+          subject: string
+          to_address: string
+        }
+        Update: {
+          created_at?: string
+          error?: string | null
+          id?: string
+          kind?: string
+          provider_message_id?: string | null
+          related_id?: string | null
+          status?: string
+          subject?: string
+          to_address?: string
+        }
+        Relationships: []
+      }
       entities: {
         Row: {
           account_id: string
@@ -2504,6 +2540,8 @@ export type Database = {
           email: string
           fee_rate: number
           id: string
+          invite_last_sent_at: string | null
+          invited_at: string | null
           updated_at: string
           user_id: string
         }
@@ -2514,6 +2552,8 @@ export type Database = {
           email: string
           fee_rate?: number
           id?: string
+          invite_last_sent_at?: string | null
+          invited_at?: string | null
           updated_at?: string
           user_id: string
         }
@@ -2524,6 +2564,8 @@ export type Database = {
           email?: string
           fee_rate?: number
           id?: string
+          invite_last_sent_at?: string | null
+          invited_at?: string | null
           updated_at?: string
           user_id?: string
         }
