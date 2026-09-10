@@ -122,6 +122,19 @@ export const completeSignup = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
 
+    // Invitation acceptance is resolved before any client profile/entity work.
+    // The collaborator trigger writes the authoritative sourcing role when the
+    // invitation record is created; is_sourcing covers older invitations.
+    const [{ data: roleRows }, { data: sourcingInvite }] = await Promise.all([
+      supabase.from("user_roles").select("role").eq("user_id", userId),
+      supabase.rpc("is_sourcing", { _user_id: userId }),
+    ]);
+    const invitedAsSourcing =
+      (roleRows ?? []).some((row) => row.role === "sourcing") || sourcingInvite === true;
+    if (invitedAsSourcing) {
+      return { ok: true, already: true, role: "sourcing" as const };
+    }
+
     const { data: existing } = await supabase
       .from("profiles")
       .select("id")
@@ -142,20 +155,6 @@ export const completeSignup = createServerFn({ method: "POST" })
           : {}),
       });
       if (profileError) throw new Error(profileError.message);
-    }
-
-    // Someone who accepted a sourcing-team invitation is NOT a client: they
-    // get the sourcing role and none of the client artifacts (no company
-    // entity, no workspace, no wallet).
-    const { data: sourcingInvite } = await supabase.rpc("is_sourcing", { _user_id: userId });
-    if (sourcingInvite === true) {
-      const { error: sourcingRoleError } = await supabase
-        .from("user_roles")
-        .insert({ user_id: userId, role: "sourcing" });
-      if (sourcingRoleError && sourcingRoleError.code !== "23505") {
-        throw new Error(sourcingRoleError.message);
-      }
-      return { ok: true, already: Boolean(existing), role: "sourcing" as const };
     }
 
     // Ensure the entity exists (covers retries after a partial attempt where
@@ -187,8 +186,11 @@ export async function assertNotSourcing(
   supabase: SupabaseClient<Database>,
   userId: string,
 ): Promise<void> {
-  const { data } = await supabase.rpc("is_sourcing", { _user_id: userId });
-  if (data === true) {
+  const [{ data }, { data: roles }] = await Promise.all([
+    supabase.rpc("is_sourcing", { _user_id: userId }),
+    supabase.from("user_roles").select("role").eq("user_id", userId),
+  ]);
+  if (data === true || (roles ?? []).some((row) => row.role === "sourcing")) {
     throw new Error("Forbidden: sourcing desk accounts cannot use the client portal");
   }
 }
