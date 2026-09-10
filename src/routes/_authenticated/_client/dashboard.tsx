@@ -43,6 +43,7 @@ function DashboardPage() {
   const fetchQuotes = useServerFn(listMyQuotes);
   const fetchOpenQuotes = useServerFn(listMyOpenQuotes);
   const fetchWallet = useServerFn(getMyWallet);
+  const fetchOrderAnalytics = useServerFn(getClientOrderAnalytics);
 
   const { data: context } = useQuery({
     queryKey: ["my-context"],
