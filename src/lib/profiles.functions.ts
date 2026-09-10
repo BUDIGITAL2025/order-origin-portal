@@ -1,5 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import type { Database } from "@/integrations/supabase/types";
 import {
   addStoreSchema,
   clientStatusSchema,
@@ -182,7 +184,7 @@ export const completeSignup = createServerFn({ method: "POST" })
  * directly. Menu hiding is cosmetic — this is the enforcement.
  */
 export async function assertNotSourcing(
-  supabase: { rpc: (fn: "is_sourcing", args: { _user_id: string }) => PromiseLike<{ data: unknown }> },
+  supabase: SupabaseClient<Database>,
   userId: string,
 ): Promise<void> {
   const { data } = await supabase.rpc("is_sourcing", { _user_id: userId });
