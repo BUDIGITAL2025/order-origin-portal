@@ -135,16 +135,6 @@ function EcomflowStockView({
   const [growthPercent, setGrowthPercent] = useState(0);
   const [filter, setFilter] = useState<(typeof ECOMFLOW_TABS)[number]["id"]>("all");
 
-  const fetchAnalytics = useServerFn(getEcomflowAnalytics);
-  const {
-    data: analytics,
-    isLoading: analyticsLoading,
-    error: analyticsError,
-  } = useQuery<EcomflowAnalytics>({
-    queryKey: ["ecomflow-analytics"],
-    staleTime: 60_000,
-    queryFn: () => fetchAnalytics(),
-  });
 
   const adjustedRows = useMemo(() => {
     return (data ?? []).map((row) => {
