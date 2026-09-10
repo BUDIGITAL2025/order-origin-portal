@@ -277,7 +277,7 @@ function AdminQuotesPage() {
                     <TableCell
                       className="w-9 py-2.5"
                       onClick={(e) => e.stopPropagation()}
-                including={undefined}
+                
                     >
                       <Checkbox
                         aria-label="Select request"
