@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useState } from "react";
-import { AlertTriangle, RefreshCw, SlidersHorizontal } from "lucide-react";
+import { useMemo, useState } from "react";
+import { AlertTriangle, Info, RefreshCw, SlidersHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/app-shell";
 import { SectionTabs, ADMIN_FULFILMENT_TABS } from "@/components/section-tabs";
@@ -50,7 +50,7 @@ type ViewId = (typeof VIEWS)[number]["id"];
 export const Route = createFileRoute("/_authenticated/admin/inventory")({
   validateSearch: (search: Record<string, unknown>): { state?: string | undefined; view?: ViewId | undefined } => ({
     state: typeof search["state"] === "string" ? search["state"] : undefined,
-    view: VIEWS.find((v) => v.id === search["view"])?.id ?? "workspaces",
+    view: VIEWS.find((v) => v.id === search["view"])?.id ?? "ecomflow",
   }),
   head: () => ({
     meta: [
@@ -93,19 +93,34 @@ type EcomflowRow = {
   isAccelerating: boolean;
 };
 
-const STATUS_STYLES: Record<string, string> = {
-  Critical: "bg-destructive/10 text-destructive border-destructive/25",
-  Warning: "bg-warning/10 text-warning border-warning/25",
-  Healthy: "bg-success/10 text-success border-success/25",
-  "Not Selling": "bg-muted text-muted-foreground border-border",
-  Accelerating: "bg-info/10 text-info border-info/25",
+type Bucket = "reorder_now" | "reorder_soon" | "healthy" | "no_sales";
+
+const BUCKET_STYLES: Record<Bucket, string> = {
+  reorder_now: "bg-destructive/10 text-destructive border-destructive/25",
+  reorder_soon: "bg-warning/10 text-warning border-warning/25",
+  healthy: "bg-success/10 text-success border-success/25",
+  no_sales: "bg-muted text-muted-foreground border-border",
 };
 
-function EcomflowStatusBadge({ status, isAccelerating }: { status: string | null; isAccelerating: boolean }) {
-  const label = isAccelerating ? "Accelerating" : status ?? "—";
+const BUCKET_LABELS: Record<Bucket, string> = {
+  reorder_now: "Reorder now",
+  reorder_soon: "Reorder soon",
+  healthy: "Healthy",
+  no_sales: "No sales",
+};
+
+const ECOMFLOW_TABS = [
+  { id: "all", label: "All" },
+  { id: "reorder_now", label: "Reorder now" },
+  { id: "reorder_soon", label: "Reorder soon" },
+  { id: "healthy", label: "Healthy" },
+  { id: "no_sales", label: "No sales" },
+] as const;
+
+function BucketBadge({ bucket }: { bucket: Bucket }) {
   return (
-    <Badge variant="outline" className={cn("font-normal", STATUS_STYLES[label] ?? STATUS_STYLES["Not Selling"])}>
-      {label}
+    <Badge variant="outline" className={cn("font-normal", BUCKET_STYLES[bucket])}>
+      {BUCKET_LABELS[bucket]}
     </Badge>
   );
 }
@@ -116,12 +131,50 @@ function EcomflowStockView({
   query: ReturnType<typeof useQuery<EcomflowRow[]>>;
 }) {
   const { data, isLoading, error } = query;
-  const rows = (data ?? []).slice().sort((a, b) => {
-    if (a.runwayDays == null && b.runwayDays == null) return 0;
-    if (a.runwayDays == null) return 1;
-    if (b.runwayDays == null) return -1;
-    return a.runwayDays - b.runwayDays;
-  });
+  const [growthPercent, setGrowthPercent] = useState(0);
+  const [filter, setFilter] = useState<(typeof ECOMFLOW_TABS)[number]["id"]>("all");
+
+  const adjustedRows = useMemo(() => {
+    return (data ?? []).map((row) => {
+      const adjustedRunwayDays =
+        row.avgDailySales && row.avgDailySales > 0 && row.runwayDays != null
+          ? row.runwayDays / (1 + growthPercent / 100)
+          : row.runwayDays;
+
+      const bucket: Bucket =
+        row.avgDailySales == null || row.avgDailySales <= 0
+          ? "no_sales"
+          : adjustedRunwayDays != null && adjustedRunwayDays <= 14
+            ? "reorder_now"
+            : adjustedRunwayDays != null && adjustedRunwayDays <= 30
+              ? "reorder_soon"
+              : "healthy";
+
+      return { ...row, adjustedRunwayDays, bucket };
+    });
+  }, [data, growthPercent]);
+
+  const counts = {
+    all: adjustedRows.length,
+    reorder_now: adjustedRows.filter((r) => r.bucket === "reorder_now").length,
+    reorder_soon: adjustedRows.filter((r) => r.bucket === "reorder_soon").length,
+    healthy: adjustedRows.filter((r) => r.bucket === "healthy").length,
+    no_sales: adjustedRows.filter((r) => r.bucket === "no_sales").length,
+  };
+
+  const tabsWithCounts = ECOMFLOW_TABS.map((t) => ({
+    ...t,
+    label: `${t.label} (${counts[t.id]})`,
+  }));
+
+  const rows = adjustedRows
+    .filter((r) => filter === "all" || r.bucket === filter)
+    .sort((a, b) => {
+      if (a.adjustedRunwayDays == null && b.adjustedRunwayDays == null) return 0;
+      if (a.adjustedRunwayDays == null) return 1;
+      if (b.adjustedRunwayDays == null) return -1;
+      return a.adjustedRunwayDays - b.adjustedRunwayDays;
+    });
 
   if (isLoading) {
     return (
@@ -140,58 +193,97 @@ function EcomflowStockView({
   }
 
   return (
-    <Card>
-      <CardContent className="p-0">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Product</TableHead>
-              <TableHead className="text-right">Available</TableHead>
-              <TableHead className="text-right">Committed</TableHead>
-              <TableHead className="text-right">Total</TableHead>
-              <TableHead className="text-right">Incoming</TableHead>
-              <TableHead className="text-right">Sales/day</TableHead>
-              <TableHead className="text-right">Runway</TableHead>
-              <TableHead>Status</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.length === 0 ? (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <FilterTabs tabs={tabsWithCounts} value={filter} onChange={setFilter} />
+        <div className="flex flex-wrap items-center gap-1 rounded-full border border-border bg-card p-1">
+          {SCENARIOS.map((s) => (
+            <button
+              key={s.value}
+              type="button"
+              onClick={() => setGrowthPercent(s.value)}
+              className={cn(
+                "rounded-full px-3 py-1 text-[13px] font-medium transition-colors",
+                growthPercent === s.value
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {growthPercent > 0 && (
+        <div className="flex items-center gap-2 rounded-xl border border-info/30 bg-info/10 px-4 py-2.5 text-sm text-info">
+          <Info className="h-4 w-4 shrink-0" />
+          Showing projection with +{growthPercent}% sales — runway and bucket reflect this scenario, not just Ecomflow's raw numbers.
+        </div>
+      )}
+
+      <Card>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={8} className="p-6 text-center text-sm text-muted-foreground">
-                  No Ecomflow SKUs found.
-                </TableCell>
+                <TableHead>Product</TableHead>
+                <TableHead className="text-right">Available</TableHead>
+                <TableHead className="text-right">Committed</TableHead>
+                <TableHead className="text-right">Total</TableHead>
+                <TableHead className="text-right">Incoming</TableHead>
+                <TableHead className="text-right">Sales/day</TableHead>
+                <TableHead className="text-right">Runway</TableHead>
+                <TableHead>Bucket</TableHead>
               </TableRow>
-            ) : (
-              rows.map((row) => (
-                <TableRow key={row.sku}>
-                  <TableCell>
-                    <div className="font-medium">{row.title}</div>
-                    <div className="text-[12px] text-muted-foreground">{row.sku}</div>
-                    {row.shopifySku && row.shopifySku !== row.sku && (
-                      <div className="text-[12px] text-muted-foreground">Shopify: {row.shopifySku}</div>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right tnum">{row.available}</TableCell>
-                  <TableCell className="text-right tnum">{row.committed}</TableCell>
-                  <TableCell className="text-right tnum">{row.total}</TableCell>
-                  <TableCell className="text-right tnum">{row.incoming}</TableCell>
-                  <TableCell className="text-right tnum">
-                    {row.avgDailySales != null ? row.avgDailySales.toFixed(2) : "—"}
-                  </TableCell>
-                  <TableCell className="text-right tnum">
-                    {row.runwayDays != null ? `${row.runwayDays}d` : "—"}
-                  </TableCell>
-                  <TableCell>
-                    <EcomflowStatusBadge status={row.status} isAccelerating={row.isAccelerating} />
+            </TableHeader>
+            <TableBody>
+              {rows.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={8} className="p-6 text-center text-sm text-muted-foreground">
+                    {filter === "all" ? "No Ecomflow SKUs found." : "No Ecomflow SKUs match this filter."}
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
+              ) : (
+                rows.map((row) => (
+                  <TableRow key={row.sku}>
+                    <TableCell>
+                      <div className="font-medium">{row.title}</div>
+                      <div className="text-[12px] text-muted-foreground">{row.sku}</div>
+                      {row.shopifySku && row.shopifySku !== row.sku && (
+                        <div className="text-[12px] text-muted-foreground">Shopify: {row.shopifySku}</div>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right tnum">{row.available}</TableCell>
+                    <TableCell className="text-right tnum">{row.committed}</TableCell>
+                    <TableCell className="text-right tnum">{row.total}</TableCell>
+                    <TableCell className="text-right tnum">{row.incoming}</TableCell>
+                    <TableCell className="text-right tnum">
+                      {row.avgDailySales != null ? row.avgDailySales.toFixed(2) : "—"}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="tnum">
+                        {row.avgDailySales == null || row.avgDailySales <= 0
+                          ? "∞"
+                          : row.adjustedRunwayDays != null
+                            ? `${row.adjustedRunwayDays.toFixed(1)}d`
+                            : "—"}
+                      </div>
+                      <div className="text-[11px] text-muted-foreground">
+                        (Ecomflow: {row.status ?? "—"})
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <BucketBadge bucket={row.bucket} />
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 
