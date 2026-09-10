@@ -88,6 +88,15 @@ function AdminSourcingPage() {
     onError: (e) => toast.error(friendlyError(e, "The payout was not recorded.")),
   });
 
+  const resendInvite = useMutation({
+    mutationFn: (id: string) => callResend({ data: { id } }),
+    onSuccess: async () => {
+      toast.success("Invitation sent again.");
+      await queryClient.invalidateQueries({ queryKey: ["admin-collaborators"] });
+    },
+    onError: (e) => toast.error(friendlyError(e, "The invitation was not sent.")),
+  });
+
   const pendingIds = earningRows.filter((r) => !r.settled).map((r) => r.id);
 
   return (
