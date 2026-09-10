@@ -78,6 +78,123 @@ const SCENARIOS = [
   { value: 50, label: "+50%" },
 ] as const;
 
+type EcomflowRow = {
+  sku: string;
+  title: string;
+  available: number;
+  committed: number;
+  total: number;
+  incoming: number;
+  shopifySku: string | null;
+  updatedAt: string | null;
+  runwayDays: number | null;
+  avgDailySales: number | null;
+  status: string | null;
+  isAccelerating: boolean;
+};
+
+const STATUS_STYLES: Record<string, string> = {
+  Critical: "bg-destructive/10 text-destructive border-destructive/25",
+  Warning: "bg-warning/10 text-warning border-warning/25",
+  Healthy: "bg-success/10 text-success border-success/25",
+  "Not Selling": "bg-muted text-muted-foreground border-border",
+  Accelerating: "bg-info/10 text-info border-info/25",
+};
+
+function EcomflowStatusBadge({ status, isAccelerating }: { status: string | null; isAccelerating: boolean }) {
+  const label = isAccelerating ? "Accelerating" : status ?? "—";
+  return (
+    <Badge variant="outline" className={cn("font-normal", STATUS_STYLES[label] ?? STATUS_STYLES["Not Selling"])}>
+      {label}
+    </Badge>
+  );
+}
+
+function EcomflowStockView({
+  query,
+}: {
+  query: ReturnType<typeof useQuery<EcomflowRow[]>>;
+}) {
+  const { data, isLoading, error } = query;
+  const rows = (data ?? []).slice().sort((a, b) => {
+    if (a.runwayDays == null && b.runwayDays == null) return 0;
+    if (a.runwayDays == null) return 1;
+    if (b.runwayDays == null) return -1;
+    return a.runwayDays - b.runwayDays;
+  });
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="p-6 text-sm text-muted-foreground">Loading Ecomflow stock…</CardContent>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card className="border-destructive/30">
+        <CardContent className="p-4 text-sm text-destructive">{friendlyError(error)}</CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardContent className="p-0">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Product</TableHead>
+              <TableHead className="text-right">Available</TableHead>
+              <TableHead className="text-right">Committed</TableHead>
+              <TableHead className="text-right">Total</TableHead>
+              <TableHead className="text-right">Incoming</TableHead>
+              <TableHead className="text-right">Sales/day</TableHead>
+              <TableHead className="text-right">Runway</TableHead>
+              <TableHead>Status</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rows.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={8} className="p-6 text-center text-sm text-muted-foreground">
+                  No Ecomflow SKUs found.
+                </TableCell>
+              </TableRow>
+            ) : (
+              rows.map((row) => (
+                <TableRow key={row.sku}>
+                  <TableCell>
+                    <div className="font-medium">{row.title}</div>
+                    <div className="text-[12px] text-muted-foreground">{row.sku}</div>
+                    {row.shopifySku && row.shopifySku !== row.sku && (
+                      <div className="text-[12px] text-muted-foreground">Shopify: {row.shopifySku}</div>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right tnum">{row.available}</TableCell>
+                  <TableCell className="text-right tnum">{row.committed}</TableCell>
+                  <TableCell className="text-right tnum">{row.total}</TableCell>
+                  <TableCell className="text-right tnum">{row.incoming}</TableCell>
+                  <TableCell className="text-right tnum">
+                    {row.avgDailySales != null ? row.avgDailySales.toFixed(2) : "—"}
+                  </TableCell>
+                  <TableCell className="text-right tnum">
+                    {row.runwayDays != null ? `${row.runwayDays}d` : "—"}
+                  </TableCell>
+                  <TableCell>
+                    <EcomflowStatusBadge status={row.status} isAccelerating={row.isAccelerating} />
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  );
+}
+
 function AdminInventoryPage() {
   const queryClient = useQueryClient();
   const navigate = Route.useNavigate();
