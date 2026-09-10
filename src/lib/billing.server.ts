@@ -899,6 +899,10 @@ export async function processStripeEvent(event: StripeEvent, env: StripeEnv): Pr
       return;
     }
 
+    // Stripe's registered endpoints send `invoice.paid`; `invoice.payment_succeeded`
+    // is the legacy twin. Both land here — the receipt is keyed on the invoice
+    // id, so receiving both issues exactly one document.
+    case "invoice.paid":
     case "invoice.payment_succeeded": {
       const invoice = event.data.object;
       // Only subscription invoices produce a Payment Receipt — one-off
