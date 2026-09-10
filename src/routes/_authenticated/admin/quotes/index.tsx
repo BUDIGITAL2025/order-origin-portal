@@ -83,11 +83,47 @@ function AdminQuotesPage() {
   const [photoFor, setPhotoFor] = useState<{ id: string; name: string; urls: string[] } | null>(
     null,
   );
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const queryClient = useQueryClient();
+  const callDelete = useServerFn(adminCleanupDelete);
 
   const { data, isPending } = useQuery({
     queryKey: ["admin-quotes", status ?? "all"],
     queryFn: () => fetchQuotes({ data: status ? { status } : {} }),
   });
+
+  // Bulk delete reuses the very same server call the row trash icon makes.
+  const bulkDelete = useMutation({
+    mutationFn: async (ids: string[]) => {
+      let failed = 0;
+      for (const id of ids) {
+        try {
+          await callDelete({ data: { type: "quote" as const, id } });
+        } catch {
+          failed += 1;
+        }
+      }
+      return { failed, total: ids.length };
+    },
+    onSuccess: ({ failed, total }) => {
+      setSelectedIds(new Set());
+      void queryClient.invalidateQueries({ queryKey: ["admin-quotes"] });
+      if (failed === 0) toast.success(`Deleted ${total} request${total === 1 ? "" : "s"}.`);
+      else
+        toast.error(
+          `${total - failed} deleted, ${failed} could not be deleted (they have financial history).`,
+        );
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  const toggleOne = (id: string, on: boolean) =>
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (on) next.add(id);
+      else next.delete(id);
+      return next;
+    });
 
   const quotes = data?.quotes ?? [];
 
