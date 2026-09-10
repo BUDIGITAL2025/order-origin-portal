@@ -55,3 +55,51 @@ export async function fetchAllEcomflowStockHealth() {
   }
   return items;
 }
+
+export async function fetchEcomflowStockHealthSummary() {
+  return callEcomflow<{
+    totalProducts: number; criticalCount: number; warningCount: number;
+    healthyCount: number; notSellingCount: number; acceleratingCount: number;
+  }>("/stock-health/summary");
+}
+
+export async function fetchEcomflowTopProducts(from: string, to: string) {
+  const data = await callEcomflow<{ products: { sku: string; title: string; unitsSold: number; orderCount: number }[] }>(
+    "/analytics/top-products",
+    { from, to, limit: "5" },
+  );
+  return data.products;
+}
+
+export async function fetchEcomflowActiveOrders(from: string, to: string) {
+  return callEcomflow<{ series: { period: string; activeOrders: number }[]; totalActiveOrders: number }>(
+    "/analytics/active-orders",
+    { from, to, granularity: "day" },
+  );
+}
+
+export async function fetchEcomflowTopCountries(from: string, to: string) {
+  const countryCounts = new Map<string, number>();
+  let page = 1;
+  let total = 0;
+  while (page <= 5) {
+    const data = await callEcomflow<{ orders: { country: string | null }[]; hasNextPage: boolean }>("/orders", {
+      minCreateDate: from,
+      maxCreateDate: to,
+      status: "NEW,PROCESSED,IN_TRANSIT,AWAITING_PICKUP,OUT_FOR_DELIVERY,DELIVERED",
+      limit: "200",
+      page: String(page),
+    });
+    for (const o of data.orders) {
+      const c = o.country ?? "Unknown";
+      countryCounts.set(c, (countryCounts.get(c) ?? 0) + 1);
+      total += 1;
+    }
+    if (!data.hasNextPage) break;
+    page += 1;
+  }
+  return [...countryCounts.entries()]
+    .map(([country, count]) => ({ country, count, pct: total > 0 ? (count / total) * 100 : 0 }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 10);
+}

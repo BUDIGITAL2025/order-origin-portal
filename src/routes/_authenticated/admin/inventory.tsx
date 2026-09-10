@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
-import { AlertTriangle, Info, RefreshCw, SlidersHorizontal } from "lucide-react";
+import { AlertTriangle, Info, RefreshCw, SlidersHorizontal, TrendingDown, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/app-shell";
 import { SectionTabs, ADMIN_FULFILMENT_TABS } from "@/components/section-tabs";
@@ -11,7 +11,7 @@ import { AdminSearch, FilterTabs, PanelHeader, SummaryBar } from "@/components/a
 import { InventoryTable, type InventoryRow } from "@/components/inventory-table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -35,7 +35,8 @@ import {
   setWorkspacePlanningDefaults,
   syncInventoryNow,
 } from "@/lib/inventory.functions";
-import { getEcomflowStock } from "@/lib/ecomflow.functions";
+import { getEcomflowStock, getEcomflowAnalytics } from "@/lib/ecomflow.functions";
+import { MiniSparkline } from "@/components/dashboard-viz";
 import { PlanningDialog } from "@/components/planning-dialog";
 import { friendlyError } from "@/lib/errors";
 import { formatUSD } from "@/lib/format";
@@ -117,6 +118,22 @@ const ECOMFLOW_TABS = [
   { id: "no_sales", label: "No sales" },
 ] as const;
 
+type EcomflowAnalytics = {
+  summary: {
+    totalProducts: number;
+    criticalCount: number;
+    warningCount: number;
+    healthyCount: number;
+    notSellingCount: number;
+    acceleratingCount: number;
+  };
+  topProducts: { sku: string; title: string; unitsSold: number; orderCount: number }[];
+  topCountries: { country: string; count: number; pct: number }[];
+  pctChange: number | null;
+  avgDailyOrders: number;
+  orderSeries: { period: string; activeOrders: number }[];
+};
+
 function BucketBadge({ bucket }: { bucket: Bucket }) {
   return (
     <Badge variant="outline" className={cn("font-normal", BUCKET_STYLES[bucket])}>
@@ -133,6 +150,17 @@ function EcomflowStockView({
   const { data, isLoading, error } = query;
   const [growthPercent, setGrowthPercent] = useState(0);
   const [filter, setFilter] = useState<(typeof ECOMFLOW_TABS)[number]["id"]>("all");
+
+  const fetchAnalytics = useServerFn(getEcomflowAnalytics);
+  const {
+    data: analytics,
+    isLoading: analyticsLoading,
+    error: analyticsError,
+  } = useQuery<EcomflowAnalytics>({
+    queryKey: ["ecomflow-analytics"],
+    staleTime: 60_000,
+    queryFn: () => fetchAnalytics(),
+  });
 
   const adjustedRows = useMemo(() => {
     return (data ?? []).map((row) => {
@@ -176,24 +204,123 @@ function EcomflowStockView({
       return a.adjustedRunwayDays - b.adjustedRunwayDays;
     });
 
-  if (isLoading) {
-    return (
-      <Card>
-        <CardContent className="p-6 text-sm text-muted-foreground">Loading Ecomflow stock…</CardContent>
-      </Card>
-    );
-  }
-
-  if (error) {
-    return (
-      <Card className="border-destructive/30">
-        <CardContent className="p-4 text-sm text-destructive">{friendlyError(error)}</CardContent>
-      </Card>
-    );
-  }
-
   return (
     <div className="space-y-4">
+      {analyticsError ? (
+        <Card className="border-destructive/30">
+          <CardContent className="p-4 text-sm text-destructive">{friendlyError(analyticsError)}</CardContent>
+        </Card>
+      ) : analyticsLoading ? (
+        <Card>
+          <CardContent className="p-6 text-sm text-muted-foreground">Loading Ecomflow analytics…</CardContent>
+        </Card>
+      ) : analytics ? (
+        <>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Avg. Daily Orders</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-semibold tnum">{analytics.avgDailyOrders.toFixed(2)}</div>
+                {analytics.pctChange != null && (
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      "mt-1 gap-0.5",
+                      analytics.pctChange >= 0
+                        ? "border-success/25 bg-success/10 text-success"
+                        : "border-destructive/25 bg-destructive/10 text-destructive",
+                    )}
+                  >
+                    {analytics.pctChange >= 0 ? (
+                      <TrendingUp className="h-3 w-3" />
+                    ) : (
+                      <TrendingDown className="h-3 w-3" />
+                    )}
+                    {Math.abs(analytics.pctChange).toFixed(1)}%
+                  </Badge>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Best Sellers</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {analytics.topProducts.map((p) => (
+                  <div key={p.sku} className="flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-medium">{p.title}</div>
+                      <div className="text-[11px] text-muted-foreground">{p.sku}</div>
+                    </div>
+                    <div className="tnum text-sm font-semibold">{p.unitsSold}</div>
+                  </div>
+                ))}
+                {analytics.topProducts.length === 0 && (
+                  <div className="text-sm text-muted-foreground">No top products this period.</div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Top Countries</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {analytics.topCountries.map((c) => (
+                  <div key={c.country} className="flex items-center justify-between gap-2">
+                    <div className="truncate text-sm">{c.country}</div>
+                    <div className="tnum text-sm font-semibold">{c.pct.toFixed(1)}%</div>
+                  </div>
+                ))}
+                {analytics.topCountries.length === 0 && (
+                  <div className="text-sm text-muted-foreground">No orders this period.</div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Inventory Health</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-1 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Healthy</span>
+                  <span className="font-semibold text-success">{analytics.summary.healthyCount}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Not Selling</span>
+                  <span className="font-semibold">{analytics.summary.notSellingCount}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Critical</span>
+                  <span className="font-semibold text-destructive">{analytics.summary.criticalCount}</span>
+                </div>
+                <div className="flex items-center justify-between border-t border-border pt-1">
+                  <span className="text-muted-foreground">Total Products</span>
+                  <span className="font-semibold">{analytics.summary.totalProducts}</span>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Incoming Orders</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <MiniSparkline values={analytics.orderSeries.map((s) => s.activeOrders)} />
+              <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
+                <span>{analytics.orderSeries[0]?.period ?? "—"}</span>
+                <span>{analytics.orderSeries[analytics.orderSeries.length - 1]?.period ?? "—"}</span>
+              </div>
+            </CardContent>
+          </Card>
+        </>
+      ) : null}
+
       <div className="flex flex-wrap items-center gap-2">
         <FilterTabs tabs={tabsWithCounts} value={filter} onChange={setFilter} />
         <div className="flex flex-wrap items-center gap-1 rounded-full border border-border bg-card p-1">
@@ -222,67 +349,77 @@ function EcomflowStockView({
         </div>
       )}
 
-      <Card>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Product</TableHead>
-                <TableHead className="text-right">Available</TableHead>
-                <TableHead className="text-right">Committed</TableHead>
-                <TableHead className="text-right">Total</TableHead>
-                <TableHead className="text-right">Incoming</TableHead>
-                <TableHead className="text-right">Sales/day</TableHead>
-                <TableHead className="text-right">Runway</TableHead>
-                <TableHead>Bucket</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.length === 0 ? (
+      {isLoading ? (
+        <Card>
+          <CardContent className="p-6 text-sm text-muted-foreground">Loading Ecomflow stock…</CardContent>
+        </Card>
+      ) : error ? (
+        <Card className="border-destructive/30">
+          <CardContent className="p-4 text-sm text-destructive">{friendlyError(error)}</CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={8} className="p-6 text-center text-sm text-muted-foreground">
-                    {filter === "all" ? "No Ecomflow SKUs found." : "No Ecomflow SKUs match this filter."}
-                  </TableCell>
+                  <TableHead>Product</TableHead>
+                  <TableHead className="text-right">Available</TableHead>
+                  <TableHead className="text-right">Committed</TableHead>
+                  <TableHead className="text-right">Total</TableHead>
+                  <TableHead className="text-right">Incoming</TableHead>
+                  <TableHead className="text-right">Sales/day</TableHead>
+                  <TableHead className="text-right">Runway</TableHead>
+                  <TableHead>Bucket</TableHead>
                 </TableRow>
-              ) : (
-                rows.map((row) => (
-                  <TableRow key={row.sku}>
-                    <TableCell>
-                      <div className="font-medium">{row.title}</div>
-                      <div className="text-[12px] text-muted-foreground">{row.sku}</div>
-                      {row.shopifySku && row.shopifySku !== row.sku && (
-                        <div className="text-[12px] text-muted-foreground">Shopify: {row.shopifySku}</div>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right tnum">{row.available}</TableCell>
-                    <TableCell className="text-right tnum">{row.committed}</TableCell>
-                    <TableCell className="text-right tnum">{row.total}</TableCell>
-                    <TableCell className="text-right tnum">{row.incoming}</TableCell>
-                    <TableCell className="text-right tnum">
-                      {row.avgDailySales != null ? row.avgDailySales.toFixed(2) : "—"}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="tnum">
-                        {row.avgDailySales == null || row.avgDailySales <= 0
-                          ? "∞"
-                          : row.adjustedRunwayDays != null
-                            ? `${row.adjustedRunwayDays.toFixed(1)}d`
-                            : "—"}
-                      </div>
-                      <div className="text-[11px] text-muted-foreground">
-                        (Ecomflow: {row.status ?? "—"})
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <BucketBadge bucket={row.bucket} />
+              </TableHeader>
+              <TableBody>
+                {rows.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="p-6 text-center text-sm text-muted-foreground">
+                      {filter === "all" ? "No Ecomflow SKUs found." : "No Ecomflow SKUs match this filter."}
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+                ) : (
+                  rows.map((row) => (
+                    <TableRow key={row.sku}>
+                      <TableCell>
+                        <div className="font-medium">{row.title}</div>
+                        <div className="text-[12px] text-muted-foreground">{row.sku}</div>
+                        {row.shopifySku && row.shopifySku !== row.sku && (
+                          <div className="text-[12px] text-muted-foreground">Shopify: {row.shopifySku}</div>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right tnum">{row.available}</TableCell>
+                      <TableCell className="text-right tnum">{row.committed}</TableCell>
+                      <TableCell className="text-right tnum">{row.total}</TableCell>
+                      <TableCell className="text-right tnum">{row.incoming}</TableCell>
+                      <TableCell className="text-right tnum">
+                        {row.avgDailySales != null ? row.avgDailySales.toFixed(2) : "—"}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="tnum">
+                          {row.avgDailySales == null || row.avgDailySales <= 0
+                            ? "∞"
+                            : row.adjustedRunwayDays != null
+                              ? `${row.adjustedRunwayDays.toFixed(1)}d`
+                              : "—"}
+                        </div>
+                        <div className="text-[11px] text-muted-foreground">
+                          (Ecomflow: {row.status ?? "—"})
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <BucketBadge bucket={row.bucket} />
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
