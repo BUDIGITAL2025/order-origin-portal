@@ -53,6 +53,7 @@ function AdminSourcingPage() {
   const fetchEarnings = useServerFn(adminEarningsReport);
   const callUpdate = useServerFn(adminUpdateCollaborator);
   const callSettle = useServerFn(adminSettleEarnings);
+  const callResend = useServerFn(adminResendCollaboratorInvite);
 
   const [inviteOpen, setInviteOpen] = useState(false);
   const [filter, setFilter] = useState<"all" | "pending" | "settled">("pending");
