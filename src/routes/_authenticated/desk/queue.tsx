@@ -13,11 +13,11 @@ import type { DeskLifecycle } from "@/lib/sourcing.functions";
 /** Read-only progress of a request this collaborator priced. */
 const LIFECYCLE: Record<
   DeskLifecycle,
-  { label: string; tone: "default" | "primary" | "success" | "warning" }
+  { label: string; tone: "neutral" | "primary" | "success" | "warning" }
 > = {
   new: { label: "New", tone: "warning" },
-  sourcing: { label: "Sourcing", tone: "default" },
-  quoted: { label: "Quoted", tone: "default" },
+  sourcing: { label: "Sourcing", tone: "neutral" },
+  quoted: { label: "Quoted", tone: "neutral" },
   published: { label: "Published", tone: "primary" },
   accepted: { label: "Accepted", tone: "success" },
   in_production: { label: "In production", tone: "primary" },
