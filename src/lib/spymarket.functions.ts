@@ -2,14 +2,15 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { stripeEnvSchema } from "./schemas";
+import { MODULE_PRICE_IDS } from "./price-ids";
 
 /**
- * SpyMarket interest capture. SpyMarket is a shell — no research tool, no
- * credits ledger, no external API. This module only records which plan an
- * account is interested in (one row per account; re-picking updates it).
+ * SpyMarket interest capture. Kept for historical waitlist rows — new
+ * registrations are always the single "module" plan, since the old
+ * starter/plus/max tiers are retired.
  */
 
-const planSchema = z.object({ plan: z.enum(["starter", "plus", "max"]) });
+const planSchema = z.object({ plan: z.literal("module").default("module") });
 
 /** Client: my current SpyMarket waitlist registration, if any. */
 export const getMySpyMarketInterest = createServerFn({ method: "GET" })
@@ -166,10 +167,10 @@ export const createSpyMarketCheckout = createServerFn({ method: "POST" })
       }
 
       const prices = await stripe.prices.list({
-        lookup_keys: [SPYMARKET_PRICE_IDS[data.plan]],
+        lookup_keys: [SPYMARKET_PRICE_ID],
       });
       const price = prices.data[0];
-      if (!price) throw new Error("SpyMarket plan price not found");
+      if (!price) throw new Error("SpyMarket module price not found");
 
       const session = await stripe.checkout.sessions.create({
         mode: "subscription",
@@ -180,14 +181,14 @@ export const createSpyMarketCheckout = createServerFn({ method: "POST" })
         metadata: {
           kind: "spymarket_subscription",
           flysales_user_id: context.userId,
-          plan: data.plan,
+          plan: "module",
         },
         subscription_data: {
           metadata: {
             kind: "spymarket_subscription",
             flysales_user_id: context.userId,
             userId: context.userId,
-            plan: data.plan,
+            plan: "module",
           },
         },
       });
