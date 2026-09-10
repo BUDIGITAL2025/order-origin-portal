@@ -118,3 +118,42 @@ export async function sendAdminEmail(args: {
   }
   return sendEmail({ to, subject: args.subject, text: args.text });
 }
+
+/**
+ * Send and record the attempt in `email_log` (admin-visible), so a missing
+ * invite can be diagnosed without guessing. Logging never throws.
+ */
+export async function sendLoggedEmail(
+  admin: Admin,
+  args: {
+    to: string;
+    subject: string;
+    text: string;
+    html?: string;
+    /** Short machine label, e.g. "sourcing_invite". */
+    kind: string;
+    /** Row this email belongs to, when there is one. */
+    relatedId?: string;
+  },
+): Promise<{ sent: boolean; id?: string; error?: string }> {
+  const result = await sendEmail({
+    to: args.to,
+    subject: args.subject,
+    text: args.text,
+    ...(args.html ? { html: args.html } : {}),
+  });
+  try {
+    await admin.from("email_log").insert({
+      to_address: args.to,
+      subject: args.subject,
+      kind: args.kind,
+      status: result.sent ? "sent" : "failed",
+      provider_message_id: result.id ?? null,
+      error: result.error ?? null,
+      related_id: args.relatedId ?? null,
+    });
+  } catch (e) {
+    console.error("[email] log insert failed:", e);
+  }
+  return result;
+}
