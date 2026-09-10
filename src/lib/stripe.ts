@@ -1,5 +1,4 @@
 import { loadStripe, Stripe } from "@stripe/stripe-js";
-import { STRIPE_FORCE_TEST_MODE } from "./stripe-mode";
 
 // Declared locally (duplicated with the server utility) so this client
 // module has no cross-tree imports. Structurally identical to the server
