@@ -118,6 +118,22 @@ const ECOMFLOW_TABS = [
   { id: "no_sales", label: "No sales" },
 ] as const;
 
+type EcomflowAnalytics = {
+  summary: {
+    totalProducts: number;
+    criticalCount: number;
+    warningCount: number;
+    healthyCount: number;
+    notSellingCount: number;
+    acceleratingCount: number;
+  };
+  topProducts: { sku: string; title: string; unitsSold: number; orderCount: number }[];
+  topCountries: { country: string; count: number; pct: number }[];
+  pctChange: number | null;
+  avgDailyOrders: number;
+  orderSeries: { period: string; activeOrders: number }[];
+};
+
 function BucketBadge({ bucket }: { bucket: Bucket }) {
   return (
     <Badge variant="outline" className={cn("font-normal", BUCKET_STYLES[bucket])}>
