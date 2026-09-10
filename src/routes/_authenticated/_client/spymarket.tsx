@@ -28,18 +28,16 @@ export const Route = createFileRoute("/_authenticated/_client/spymarket")({
   component: SpyMarketPage,
 });
 
-type PlanId = "starter" | "plus" | "max";
-
-const PLANS: Array<{
-  id: PlanId;
-  name: string;
-  credits: string;
-  price: string;
-}> = [
-  { id: "starter", name: "Starter", credits: "50,000 credits/month", price: "$99/month" },
-  { id: "plus", name: "Plus", credits: "125,000 credits/month", price: "$189/month" },
-  { id: "max", name: "Max", credits: "350,000 credits/month", price: "$349/month" },
-];
+/**
+ * SpyMarket is a single module at $49/month, in line with SEO ($49) and
+ * Ads ($39). The old $99/$189/$349 tiers came from the previous data
+ * provider and are retired.
+ */
+const MODULE = {
+  name: "SpyMarket",
+  price: "$49/month",
+  blurb: "Full access to competitor, ad and store research.",
+};
 
 const BENEFITS = [
   {
