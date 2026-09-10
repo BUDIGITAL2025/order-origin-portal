@@ -305,7 +305,15 @@ function OrderStockDialog({
   const callCreate = useServerFn(createStockPurchase);
 
   const [lineId, setLineId] = useState<string>("");
+  const gate = useWorkspaceModule(storeId, "fulfilment");
+  const warehouseLocked = !gate.isLoading && !gate.hasModule;
   const [path, setPath] = useState<"flysales" | "direct">("flysales");
+
+  // Without the Fulfilment module the warehouse path is not selectable, so a
+  // locked workspace always lands on PATH B — which stays fully open.
+  useEffect(() => {
+    if (warehouseLocked && path === "flysales") setPath("direct");
+  }, [warehouseLocked, path]);
   const [quantity, setQuantity] = useState("");
   const [address, setAddress] = useState({
     address1: "",
@@ -398,15 +406,27 @@ function OrderStockDialog({
                 <button
                   key={option.value}
                   type="button"
+                  disabled={option.value === "flysales" && warehouseLocked}
                   onClick={() => setPath(option.value)}
                   className={cn(
                     "rounded-xl border border-border p-3 text-left transition-colors hover:bg-muted/50",
                     path === option.value && "border-primary bg-primary/5",
+                    option.value === "flysales" &&
+                      warehouseLocked &&
+                      "cursor-not-allowed opacity-60 hover:bg-transparent",
                   )}
                 >
-                  <option.icon className="mb-1.5 h-4 w-4 text-muted-foreground" />
+                  {option.value === "flysales" && warehouseLocked ? (
+                    <Lock className="mb-1.5 h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <option.icon className="mb-1.5 h-4 w-4 text-muted-foreground" />
+                  )}
                   <div className="text-sm font-medium">{option.title}</div>
-                  <div className="text-xs text-muted-foreground">{option.hint}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {option.value === "flysales" && warehouseLocked
+                      ? "Needs FlySales Fulfilment ($49/month). Activate it on the Inbound page."
+                      : option.hint}
+                  </div>
                 </button>
               ))}
             </div>
