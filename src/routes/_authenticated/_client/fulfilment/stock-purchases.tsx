@@ -3,7 +3,7 @@ import { ProductCell } from "@/components/product-thumb";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
-import { Building2, PackagePlus, Warehouse } from "lucide-react";
+import { Building2, Lock, PackagePlus, Warehouse } from "lucide-react";
 import { toast } from "sonner";
 import { EmptyState, PageHeader } from "@/components/app-shell";
 import { SectionTabs, FULFILMENT_TABS } from "@/components/section-tabs";
@@ -28,6 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useWorkspaceModule } from "@/components/module-paywall";
 import { cn } from "@/lib/utils";
 import { friendlyError } from "@/lib/errors";
 import { formatDate, formatUSD } from "@/lib/format";
