@@ -84,11 +84,14 @@ function AdminInventoryPage() {
   const { state: stateParam, view: viewParam } = Route.useSearch();
   const view = viewParam ?? "workspaces";
   const setView = (next: ViewId) => {
-    void navigate({ search: { ...Route.useSearch(), view: next }, replace: true } as never);
+    void navigate({ search: (prev) => ({ ...prev, view: next }), replace: true });
   };
   const tab = (stateParam ?? "all") as (typeof TABS)[number]["id"];
   const setTab = (next: (typeof TABS)[number]["id"]) => {
-    void navigate({ search: next === "all" ? { view } : { state: next, view }, replace: true } as never);
+    void navigate({
+      search: (prev) => (next === "all" ? { ...prev, state: undefined } : { ...prev, state: next }),
+      replace: true,
+    });
   };
   const [search, setSearch] = useState("");
   const [growthPercent, setGrowthPercent] = useState(0);
