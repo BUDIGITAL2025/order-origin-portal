@@ -42,6 +42,16 @@ const DESK_LINE_COLUMNS =
 
 // ===================== Collaborator desk =====================
 
+/** Read-only progress of a request the collaborator priced themselves. */
+export type DeskLifecycle =
+  | "new"
+  | "sourcing"
+  | "quoted"
+  | "published"
+  | "accepted"
+  | "in_production"
+  | "received";
+
 /** Who am I on the sourcing desk? Returns null for everyone else. */
 export const getSourcingDeskContext = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -68,8 +78,12 @@ export const sourcingListQueue = createServerFn({ method: "GET" })
     const { data: quotes, error } = await admin
       .from("quote_requests")
       .select(DESK_QUOTE_COLUMNS)
-      .in("status", ["submitted", "sourcing", "quoted"])
-      .or(`assigned_sourcer.eq.${context.userId},assigned_sourcer.is.null`)
+      // Own requests stay visible through their whole lifecycle (including
+      // closed) so the desk can see how things ended; unassigned requests
+      // only show while they are still open work.
+      .or(
+        `assigned_sourcer.eq.${context.userId},and(assigned_sourcer.is.null,status.in.(submitted,sourcing,quoted))`,
+      )
       .order("quote_due_at", { ascending: true })
       .limit(200);
     if (error) throw new Error(error.message);
@@ -88,13 +102,66 @@ export const sourcingListQueue = createServerFn({ method: "GET" })
       }
     }
 
+    // Lifecycle: read-only progress of the collaborator's OWN requests, built
+    // from the quote layer and the stock purchase behind it. No client name,
+    // no destination, no order data ever crosses into this view.
+    const mineIds = (quotes ?? [])
+      .filter((q) => q.assigned_sourcer === context.userId)
+      .map((q) => q.id);
+    const [{ data: options }, { data: purchases }] = await Promise.all([
+      mineIds.length
+        ? admin
+            .from("quote_options")
+            .select("quote_request_id, published, accepted_at")
+            .in("quote_request_id", mineIds)
+        : Promise.resolve({ data: [] as { quote_request_id: string; published: boolean | null; accepted_at: string | null }[] }),
+      mineIds.length
+        ? admin
+            .from("stock_purchases")
+            .select("quote_request_id, status")
+            .in("quote_request_id", mineIds)
+        : Promise.resolve({ data: [] as { quote_request_id: string; status: string }[] }),
+    ]);
+    const publishedIds = new Set(
+      (options ?? []).filter((o) => o.published).map((o) => o.quote_request_id),
+    );
+    const acceptedIds = new Set(
+      (options ?? []).filter((o) => o.accepted_at).map((o) => o.quote_request_id),
+    );
+    const purchaseByQuote = new Map<string, string>();
+    for (const p of purchases ?? []) {
+      const rank = ["requested", "freight_quoted", "paid", "in_production", "shipped", "delivered"];
+      const current = purchaseByQuote.get(p.quote_request_id);
+      if (!current || rank.indexOf(p.status) > rank.indexOf(current)) {
+        purchaseByQuote.set(p.quote_request_id, p.status);
+      }
+    }
+
+    const lifecycleOf = (id: string, status: string, priced: number): DeskLifecycle => {
+      const purchase = purchaseByQuote.get(id);
+      if (purchase === "delivered") return "received";
+      if (purchase === "shipped" || purchase === "in_production" || purchase === "paid") {
+        return "in_production";
+      }
+      if (acceptedIds.has(id)) return "accepted";
+      if (publishedIds.has(id)) return "published";
+      if (status === "quoted") return "quoted";
+      if (priced > 0 || status === "sourcing") return "sourcing";
+      return "new";
+    };
+
     return {
       feeRate: Number(me.fee_rate),
-      quotes: (quotes ?? []).map((q) => ({
-        ...maskClientSiteUrl(q),
-        mine: q.assigned_sourcer === context.userId,
-        priced_lines: pricedByQuote.get(q.id) ?? 0,
-      })),
+      quotes: (quotes ?? []).map((q) => {
+        const mine = q.assigned_sourcer === context.userId;
+        const priced = pricedByQuote.get(q.id) ?? 0;
+        return {
+          ...maskClientSiteUrl(q),
+          mine,
+          priced_lines: priced,
+          lifecycle: mine ? lifecycleOf(q.id, q.status, priced) : null,
+        };
+      }),
     };
   });
 
