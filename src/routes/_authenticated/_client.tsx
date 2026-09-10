@@ -44,6 +44,9 @@ function ClientLayout() {
   // Admins never see the client area.
   if (ctx?.isAdmin) return <Navigate to="/admin/quotes" />;
 
+  // Sourcing collaborators live entirely on the desk — no client portal.
+  if (ctx?.isSourcing) return <Navigate to="/desk/queue" />;
+
   // Signed in but no profile row yet → complete company details first.
   if (ctx && !ctx.profile) return <CompleteProfile />;
 

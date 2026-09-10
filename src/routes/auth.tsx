@@ -63,6 +63,8 @@ function AuthPage() {
     const ctx = await callGetMyContext();
     if (ctx.isAdmin) {
       await navigate({ to: "/admin/quotes" });
+    } else if (ctx.isSourcing) {
+      await navigate({ to: "/desk/queue" });
     } else if (ctx.profile && ctx.profile.status !== "active") {
       await navigate({ to: "/pending" });
     } else {
