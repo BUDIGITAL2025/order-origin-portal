@@ -22,7 +22,8 @@ function AdminLayout() {
   }
 
   const sourcingAllowed =
-    !!ctx?.isSourcing && SOURCING_ALLOWED.some((p) => pathname === p || pathname.startsWith(p + "/"));
+    !!ctx?.isSourcing &&
+    SOURCING_ALLOWED.some((p) => pathname === p || pathname.startsWith(p + "/"));
 
   if (!ctx?.isAdmin && !sourcingAllowed) {
     return <Navigate to={ctx?.isSourcing ? "/desk/queue" : "/dashboard"} />;
@@ -37,11 +38,7 @@ function AdminLayout() {
   }
 
   return (
-    <AppShell
-      role="admin"
-      email={ctx.email}
-      companyName={ctx.entities[0]?.legal_name ?? null}
-    >
+    <AppShell role="admin" email={ctx.email} companyName={ctx.entities[0]?.legal_name ?? null}>
       <Outlet />
     </AppShell>
   );

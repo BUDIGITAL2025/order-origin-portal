@@ -274,11 +274,7 @@ function AdminQuotesPage() {
                       dueSoon && "border-l-2 border-l-warning bg-warning/5",
                     )}
                   >
-                    <TableCell
-                      className="w-9 py-2.5"
-                      onClick={(e) => e.stopPropagation()}
-                
-                    >
+                    <TableCell className="w-9 py-2.5" onClick={(e) => e.stopPropagation()}>
                       <Checkbox
                         aria-label="Select request"
                         checked={selectedIds.has(q.id)}
