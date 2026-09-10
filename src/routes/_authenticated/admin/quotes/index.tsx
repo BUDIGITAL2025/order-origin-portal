@@ -335,14 +335,19 @@ function AdminQuotesPage() {
                     </TableCell>
                     <TableCell className="py-2.5">
                       <RowActions>
-                        <Button asChild variant="ghost" size="icon" className="h-7 w-7">
+                        <Button
+                          asChild
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-primary hover:bg-primary/10 hover:text-primary"
+                        >
                           <Link
                             to="/admin/quotes/$id"
                             params={{ id: q.id }}
                             aria-label="Open request"
                             title="Open request"
                           >
-                            <ArrowUpRight className="h-3.5 w-3.5" />
+                            <ArrowUpRight className="h-[1.15rem] w-[1.15rem]" />
                           </Link>
                         </Button>
                         <RowAction
