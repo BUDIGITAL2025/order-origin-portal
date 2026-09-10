@@ -117,14 +117,14 @@ function SpyMarketPage() {
       </section>
 
       {/* Subscribed state */}
-      {activePlanRow && (
+      {isSubscribed && (
         <div className="flex items-start gap-3 rounded-2xl border border-primary/40 bg-primary/10 px-5 py-4">
           <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
             <Check className="h-3.5 w-3.5" />
           </span>
           <div>
             <p className="text-sm font-medium">
-              SpyMarket {activePlanRow.name} is active
+              {MODULE.name} is active
               {subscription?.status === "past_due" ? ", payment failed" : ""}.
             </p>
             <p className="mt-0.5 text-xs text-muted-foreground">
@@ -142,59 +142,45 @@ function SpyMarketPage() {
         </div>
       )}
 
-      {/* Plans — real checkout. */}
+      {/* Single module subscription — real checkout. */}
       <section>
-        <h2 className="text-lg font-semibold tracking-tight">Plans</h2>
+        <h2 className="text-lg font-semibold tracking-tight">Subscription</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          {activePlanRow
-            ? "To change or cancel your SpyMarket plan, contact support."
-            : "Subscribe now to lock your plan. Billing starts today; the research tool switches on for subscribers at launch."}
+          {isSubscribed
+            ? "To cancel your SpyMarket subscription, contact support."
+            : "Subscribe now to lock your price. Billing starts today; the research tool switches on for subscribers at launch."}
         </p>
         {isPending ? (
-          <div className="mt-4 grid gap-4 sm:grid-cols-3">
-            {PLANS.map((p) => (
-              <Skeleton key={p.id} className="h-56 rounded-2xl" />
-            ))}
-          </div>
+          <Skeleton className="mt-4 h-56 rounded-2xl sm:max-w-sm" />
         ) : (
-          <div className="mt-4 grid gap-4 sm:grid-cols-3">
-            {PLANS.map((plan) => {
-              const isActive = activePlan === plan.id;
-              return (
-                <div
-                  key={plan.id}
-                  className={cn(
-                    "flex flex-col rounded-2xl border bg-card p-6",
-                    isActive ? "border-primary" : "border-border",
-                  )}
-                >
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-base font-semibold">{plan.name}</h3>
-                    {isActive && (
-                      <Badge className="bg-primary text-primary-foreground hover:bg-primary">
-                        Your plan
-                      </Badge>
-                    )}
-                  </div>
-                  <p className="mt-1 text-sm text-muted-foreground">{plan.credits}</p>
-                  <p className="mt-4 text-2xl font-semibold tracking-tight">{plan.price}</p>
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    +10,000 credits included with your base plan
-                  </p>
-                  <Button
-                    className="mt-6 w-full"
-                    variant={isActive ? "outline" : "default"}
-                    disabled={isActive || mutation.isPending || activePlan != null}
-                    onClick={() => mutation.mutate(plan.id)}
-                  >
-                    {mutation.isPending && mutation.variables === plan.id && (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    )}
-                    {isActive ? "Current plan" : `Subscribe — ${plan.price}`}
-                  </Button>
-                </div>
-              );
-            })}
+          <div
+            className={cn(
+              "mt-4 flex flex-col rounded-2xl border bg-card p-6 sm:max-w-sm",
+              isSubscribed ? "border-primary" : "border-border",
+            )}
+          >
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-semibold">{MODULE.name}</h3>
+              {isSubscribed && (
+                <Badge className="bg-primary text-primary-foreground hover:bg-primary">
+                  Your plan
+                </Badge>
+              )}
+            </div>
+            <p className="mt-1 text-sm text-muted-foreground">{MODULE.blurb}</p>
+            <p className="mt-4 text-2xl font-semibold tracking-tight">{MODULE.price}</p>
+            <p className="mt-2 text-xs text-muted-foreground">
+              One module, one price — no credit tiers.
+            </p>
+            <Button
+              className="mt-6 w-full"
+              variant={isSubscribed ? "outline" : "default"}
+              disabled={isSubscribed || mutation.isPending}
+              onClick={() => mutation.mutate()}
+            >
+              {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isSubscribed ? "Current plan" : `Subscribe — ${MODULE.price}`}
+            </Button>
           </div>
         )}
       </section>
