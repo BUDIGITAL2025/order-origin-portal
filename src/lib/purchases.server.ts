@@ -47,21 +47,44 @@ export function isPayable(p: StockPurchase): boolean {
   return purchaseTotal(p) != null;
 }
 
-/** Human-readable timeline steps, in order, for the client and admin views. */
+/** Human-readable timeline steps, in order, for the client view. */
 export const PURCHASE_STEPS: Record<string, string[]> = {
   flysales: ["requested", "freight_quoted", "paid", "in_production", "shipped", "delivered"],
   direct: ["requested", "freight_quoted", "paid", "in_production", "shipped", "delivered"],
 };
 
+/**
+ * Internal purchase-order states. They exist between the client's payment and
+ * production, and the client must never see them — every one reads as "paid".
+ */
+const INTERNAL_STATES = [
+  "po_sent",
+  "invoice_uploaded",
+  "invoice_verified",
+  "invoice_discrepancy",
+  "supplier_paid",
+];
+
+/** The only status a client may be shown for a purchase. */
+export function publicPurchaseStatus(status: string): string {
+  return INTERNAL_STATES.includes(status) ? "paid" : status;
+}
+
 export const PURCHASE_STATUS_LABELS: Record<string, string> = {
   requested: "Requested",
   freight_quoted: "Freight quoted",
   paid: "Paid",
+  po_sent: "PO sent",
+  invoice_uploaded: "Invoice uploaded",
+  invoice_verified: "Invoice verified",
+  invoice_discrepancy: "Invoice discrepancy",
+  supplier_paid: "Supplier paid",
   in_production: "In production",
   shipped: "Shipped",
   delivered: "Delivered",
   cancelled: "Cancelled",
 };
+
 
 /**
  * PATH A only: create the inbound shipment for a paid purchase. Marked
@@ -175,23 +198,10 @@ export async function settlePaidPurchase(
     console.error("stock purchase receipt failed", purchaseId, e);
   }
 
-  if (purchase.sourced_by && purchase.supplier_unit_price && purchase.sourcing_fee_rate) {
-    try {
-      const { accrueSourcingEarning } = await import("./sourcing.server");
-      await accrueSourcingEarning(admin, {
-        collaboratorUserId: purchase.sourced_by,
-        reference: `purchase:${purchaseId}`,
-        description: `Commission on stock purchase ${purchaseRef(purchaseId)}`,
-        units: purchase.quantity,
-        feeRate: Number(purchase.sourcing_fee_rate),
-        supplierUnitPrice: Number(purchase.supplier_unit_price),
-        quoteLineId: purchase.quote_line_id,
-        stockPurchaseId: purchaseId,
-      });
-    } catch (e) {
-      console.error("earnings accrual failed for purchase", purchaseId, e);
-    }
-  }
+  // The collaborator's commission is NOT accrued here: it is confirmed when
+  // we actually pay the supplier (see adminRecordSupplierPayment).
+
+
 
   return purchase;
 }
