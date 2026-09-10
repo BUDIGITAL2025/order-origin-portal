@@ -9,6 +9,7 @@ import { SectionTabs, ADMIN_FULFILMENT_TABS } from "@/components/section-tabs";
 import { OperationsToday } from "@/components/operations-today";
 import { AdminSearch, FilterTabs, PanelHeader, SummaryBar } from "@/components/admin-ui";
 import { InventoryTable, type InventoryRow } from "@/components/inventory-table";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -22,18 +23,35 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
   getAdminInventory,
   setWorkspacePlanningDefaults,
   syncInventoryNow,
 } from "@/lib/inventory.functions";
+import { getEcomflowStock } from "@/lib/ecomflow.functions";
 import { PlanningDialog } from "@/components/planning-dialog";
 import { friendlyError } from "@/lib/errors";
 import { formatUSD } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
+const VIEWS = [
+  { id: "workspaces", label: "By workspace" },
+  { id: "ecomflow", label: "Ecomflow (live stock)" },
+] as const;
+type ViewId = (typeof VIEWS)[number]["id"];
+
 export const Route = createFileRoute("/_authenticated/admin/inventory")({
-  validateSearch: (search: Record<string, unknown>): { state?: string } =>
-    typeof search["state"] === "string" ? { state: search["state"] as string } : {},
+  validateSearch: (search: Record<string, unknown>): { state?: string; view?: ViewId } => ({
+    state: typeof search["state"] === "string" ? search["state"] : undefined,
+    view: VIEWS.find((v) => v.id === search["view"])?.id ?? "workspaces",
+  }),
   head: () => ({
     meta: [
       { title: "Inventory — FlySales admin" },
