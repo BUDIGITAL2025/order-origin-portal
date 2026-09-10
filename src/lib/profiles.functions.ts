@@ -173,8 +173,23 @@ export const completeSignup = createServerFn({ method: "POST" })
       .insert({ user_id: userId, role: "client" });
     if (roleError && roleError.code !== "23505") throw new Error(roleError.message);
 
-    return { ok: true, already: Boolean(existing) };
+    return { ok: true, already: Boolean(existing), role: "client" as const };
   });
+
+/**
+ * Server-side wall: sourcing collaborators must never reach client business
+ * flows (quotes as a buyer, wallet, orders), even by calling the endpoint
+ * directly. Menu hiding is cosmetic — this is the enforcement.
+ */
+export async function assertNotSourcing(
+  supabase: { rpc: (fn: "is_sourcing", args: { _user_id: string }) => PromiseLike<{ data: unknown }> },
+  userId: string,
+): Promise<void> {
+  const { data } = await supabase.rpc("is_sourcing", { _user_id: userId });
+  if (data === true) {
+    throw new Error("Forbidden: sourcing desk accounts cannot use the client portal");
+  }
+}
 
 /**
  * Record acceptance of the current Terms version. Called from the one-time
