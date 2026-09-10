@@ -66,6 +66,22 @@ export const Route = createFileRoute("/_authenticated/admin/orders")({
 
 type AdminOrder = Awaited<ReturnType<typeof adminListOrders>>["orders"][number];
 
+type EcomflowAnalytics = {
+  summary: {
+    totalProducts: number;
+    criticalCount: number;
+    warningCount: number;
+    healthyCount: number;
+    notSellingCount: number;
+    acceleratingCount: number;
+  };
+  topProducts: { sku: string; title: string; unitsSold: number; orderCount: number }[];
+  topCountries: { country: string; count: number; pct: number }[];
+  pctChange: number | null;
+  avgDailyOrders: number;
+  orderSeries: { period: string; activeOrders: number }[];
+};
+
 function workspaceOf(order: AdminOrder) {
   return order.stores as {
     store_name?: string | null;
