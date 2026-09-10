@@ -49,6 +49,11 @@ import { formatDateTime, formatUSD } from "@/lib/format";
 import { adminListOrders, adminSetOrderTracking } from "@/lib/orders.functions";
 import { adminListDisputes } from "@/lib/disputes.functions";
 import { orderTrackingSchema } from "@/lib/schemas";
+import { getEcomflowAnalytics } from "@/lib/ecomflow.functions";
+import { MiniSparkline } from "@/components/dashboard-viz";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/admin/orders")({
   validateSearch: (search: Record<string, unknown>): { stage?: string } =>
