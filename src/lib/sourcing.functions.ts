@@ -356,11 +356,18 @@ export const adminListCollaborators = createServerFn({ method: "GET" })
       else t.pending += Number(e.amount);
       totals.set(e.collaborator_user_id, t);
     }
+    // "Pending" = the account has never signed in, so the invite is unused.
+    const { data: list } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+    const signedIn = new Map(
+      (list?.users ?? []).map((u) => [u.id, Boolean(u.last_sign_in_at)] as const),
+    );
+
     return {
       collaborators: (data ?? []).map((c) => ({
         ...c,
         pending: Math.round((totals.get(c.user_id)?.pending ?? 0) * 100) / 100,
         settled_total: Math.round((totals.get(c.user_id)?.settled ?? 0) * 100) / 100,
+        invite_pending: !(signedIn.get(c.user_id) ?? false),
       })),
     };
   });
@@ -372,33 +379,89 @@ export const adminInviteCollaborator = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { requireAdmin, getAdminClient } = await import("./admin.server");
     await requireAdmin(context.supabase, context.userId);
+    const { sendCollaboratorInvite } = await import("./sourcing.server");
     const admin = await getAdminClient();
     const email = data.email.toLowerCase();
+    const displayName = data.display_name || null;
+    const feeRate = data.fee_rate_pct / 100;
 
-    // Existing account? Reuse it. Otherwise send a Supabase invite.
+    // Existing account? Reuse it. Otherwise the invite link creates it.
     const { data: list } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
-    let user = (list?.users ?? []).find((u) => u.email?.toLowerCase() === email) ?? null;
-    let invited = false;
-    if (!user) {
-      const { data: created, error } = await admin.auth.admin.inviteUserByEmail(email);
-      if (error) throw new Error(error.message);
-      user = created.user;
-      invited = true;
-    }
-    if (!user) throw new Error("Could not create the collaborator account");
+    const existingUser = (list?.users ?? []).find((u) => u.email?.toLowerCase() === email) ?? null;
 
-    const { error: insertError } = await admin.from("sourcing_collaborators").upsert(
-      {
-        user_id: user.id,
-        email,
-        display_name: data.display_name || null,
-        fee_rate: data.fee_rate_pct / 100,
-        active: true,
-      },
-      { onConflict: "user_id" },
-    );
+    const invite = await sendCollaboratorInvite(admin, {
+      email,
+      displayName,
+      feeRate,
+      existing: Boolean(existingUser),
+    });
+    const userId = existingUser?.id ?? invite.userId;
+    if (!userId) {
+      throw new Error(invite.error ?? "Could not create the collaborator account");
+    }
+
+    const now = new Date().toISOString();
+    const { data: row, error: insertError } = await admin
+      .from("sourcing_collaborators")
+      .upsert(
+        {
+          user_id: userId,
+          email,
+          display_name: displayName,
+          fee_rate: feeRate,
+          active: true,
+          invited_at: now,
+          invite_last_sent_at: now,
+        },
+        { onConflict: "user_id" },
+      )
+      .select("id")
+      .single();
     if (insertError) throw new Error(insertError.message);
-    return { ok: true, invited };
+
+    return {
+      ok: true,
+      invited: !existingUser,
+      emailSent: invite.sent,
+      messageId: invite.id ?? null,
+      emailError: invite.error ?? null,
+      collaboratorId: row?.id ?? null,
+    };
+  });
+
+/** Re-send the branded invitation to a collaborator who never signed in. */
+export const adminResendCollaboratorInvite = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ id: uuid }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { requireAdmin, getAdminClient } = await import("./admin.server");
+    await requireAdmin(context.supabase, context.userId);
+    const { sendCollaboratorInvite } = await import("./sourcing.server");
+    const admin = await getAdminClient();
+
+    const { data: row, error } = await admin
+      .from("sourcing_collaborators")
+      .select("id, user_id, email, display_name, fee_rate")
+      .eq("id", data.id)
+      .single();
+    if (error || !row) throw new Error("Collaborator not found");
+
+    const { data: existing } = await admin.auth.admin.getUserById(row.user_id);
+    const invite = await sendCollaboratorInvite(admin, {
+      email: row.email,
+      displayName: row.display_name,
+      feeRate: Number(row.fee_rate),
+      existing: Boolean(existing?.user),
+      collaboratorId: row.id,
+    });
+    if (!invite.sent) throw new Error(invite.error ?? "The invitation was not sent");
+
+    await admin
+      .from("sourcing_collaborators")
+      .update({ invite_last_sent_at: new Date().toISOString() })
+      .eq("id", row.id);
+
+    return { ok: true, messageId: invite.id ?? null };
   });
 
 export const adminUpdateCollaborator = createServerFn({ method: "POST" })
