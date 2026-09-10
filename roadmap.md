@@ -8,3 +8,4 @@
 
 ## Open
 - [ ] Optional: enable public file links in Settings → Privacy & Security if permanent photo URLs are preferred (currently temporary signed links)
+- [ ] Ecomflow live-stock tab on admin Inventory page
