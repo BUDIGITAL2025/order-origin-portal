@@ -92,6 +92,12 @@ function workspaceOf(order: AdminOrder) {
 function AdminOrdersPage() {
   const fetchOrders = useServerFn(adminListOrders);
   const fetchDisputes = useServerFn(adminListDisputes);
+  const fetchAnalytics = useServerFn(getEcomflowAnalytics);
+  const { data: analytics } = useQuery<EcomflowAnalytics>({
+    queryKey: ["ecomflow-analytics"],
+    staleTime: 60_000,
+    queryFn: () => fetchAnalytics(),
+  });
   const { data, isPending } = useQuery({
     queryKey: ["admin-orders"],
     queryFn: fetchOrders,
