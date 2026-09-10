@@ -126,7 +126,7 @@ const ADMIN_NAV: NavItem[] = [
 
 /** The collaborator desk is deliberately tiny: a queue and their earnings. */
 const SOURCING_NAV: NavItem[] = [
-  { to: "/desk/queue", label: "Sourcing queue", icon: ClipboardList },
+  { to: "/desk/queue", label: "Quote queue", icon: ClipboardList },
   { to: "/desk/earnings", label: "My earnings", icon: Wallet },
 ];
 
@@ -461,7 +461,9 @@ export function AppShell({
           ))}
         </nav>
         {role === "client" && <GetStartedSection stores={onboardingStores ?? []} />}
-        {role === "client" && <SupportLink stores={onboardingStores ?? []} />}
+        {(role === "client" || role === "sourcing") && (
+          <SupportLink stores={role === "client" ? (onboardingStores ?? []) : []} />
+        )}
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
