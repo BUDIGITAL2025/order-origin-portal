@@ -8,6 +8,21 @@ import { Button } from "@/components/ui/button";
 import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatDate } from "@/lib/format";
 import { sourcingListQueue } from "@/lib/sourcing.functions";
+import type { DeskLifecycle } from "@/lib/sourcing.functions";
+
+/** Read-only progress of a request this collaborator priced. */
+const LIFECYCLE: Record<
+  DeskLifecycle,
+  { label: string; tone: "neutral" | "primary" | "success" | "warning" }
+> = {
+  new: { label: "New", tone: "warning" },
+  sourcing: { label: "Sourcing", tone: "neutral" },
+  quoted: { label: "Quoted", tone: "neutral" },
+  published: { label: "Published", tone: "primary" },
+  accepted: { label: "Accepted", tone: "success" },
+  in_production: { label: "In production", tone: "primary" },
+  received: { label: "Received", tone: "success" },
+};
 
 export const Route = createFileRoute("/_authenticated/desk/queue")({
   head: () => ({
@@ -64,6 +79,7 @@ function QueuePage() {
               <TableHead>Countries</TableHead>
               <TableHead className="text-right">Vol./mo</TableHead>
               <TableHead>Priced</TableHead>
+              <TableHead>Progress</TableHead>
               <TableHead>Due</TableHead>
               <TableHead />
             </TableRow>
@@ -91,6 +107,13 @@ function QueuePage() {
                     <Chip tone="success">{q.priced_lines} variants</Chip>
                   ) : (
                     <Chip tone="warning">Not priced</Chip>
+                  )}
+                </TableCell>
+                <TableCell>
+                  {q.lifecycle ? (
+                    <Chip tone={LIFECYCLE[q.lifecycle].tone}>{LIFECYCLE[q.lifecycle].label}</Chip>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">—</span>
                   )}
                 </TableCell>
                 <TableCell className="whitespace-nowrap text-xs text-muted-foreground">

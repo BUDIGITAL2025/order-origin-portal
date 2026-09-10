@@ -5,13 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
@@ -32,7 +26,6 @@ export function useMyContext() {
 function ClientLayout() {
   const { data: ctx, isPending } = useMyContext();
 
-
   if (isPending) {
     return (
       <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">
@@ -43,6 +36,9 @@ function ClientLayout() {
 
   // Admins never see the client area.
   if (ctx?.isAdmin) return <Navigate to="/admin/quotes" />;
+
+  // Sourcing collaborators live entirely on the desk — no client portal.
+  if (ctx?.isSourcing) return <Navigate to="/desk/queue" />;
 
   // Signed in but no profile row yet → complete company details first.
   if (ctx && !ctx.profile) return <CompleteProfile />;
@@ -84,8 +80,8 @@ function SuspendedBanner() {
         <span className="font-medium">Your account is suspended.</span>{" "}
         <span className="text-muted-foreground">
           New quotes, orders and payments are paused. Orders already paid continue to fulfilment,
-          and you can still track them and open claims. Contact your account manager to
-          reactivate your account.
+          and you can still track them and open claims. Contact your account manager to reactivate
+          your account.
         </span>
       </p>
     </div>
@@ -114,7 +110,9 @@ function TermsAcceptanceBanner() {
       await queryClient.invalidateQueries({ queryKey: ["my-context"] });
       toast.success("Terms of Service accepted.");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Your acceptance was not recorded. Try again.");
+      toast.error(
+        err instanceof Error ? err.message : "Your acceptance was not recorded. Try again.",
+      );
     } finally {
       setBusy(false);
     }
@@ -163,7 +161,9 @@ function CompleteProfile() {
     setBusy(true);
     try {
       const source = getSignupSource();
-      await callCompleteSignup({ data: { ...values, ...(source ? { signup_source: source } : {}) } });
+      await callCompleteSignup({
+        data: { ...values, ...(source ? { signup_source: source } : {}) },
+      });
       await queryClient.invalidateQueries({ queryKey: ["my-context"] });
       toast.success("Profile saved.");
     } catch (err) {
@@ -180,7 +180,8 @@ function CompleteProfile() {
     void supabase.auth.getUser().then(({ data }) => {
       const meta = (data.user?.user_metadata ?? {}) as Record<string, unknown>;
       const fromMeta = {
-        contact_name: typeof meta["contact_name"] === "string" ? (meta["contact_name"] as string) : "",
+        contact_name:
+          typeof meta["contact_name"] === "string" ? (meta["contact_name"] as string) : "",
         phone: typeof meta["phone"] === "string" ? (meta["phone"] as string) : "",
         country: typeof meta["country"] === "string" ? (meta["country"] as string) : "",
       };
@@ -226,7 +227,12 @@ function CompleteProfile() {
           <form onSubmit={handleSubmit} className="space-y-3">
             <div className="space-y-1.5">
               <Label htmlFor="cp-contact">Contact name</Label>
-              <Input id="cp-contact" required value={form.contact_name} onChange={setField("contact_name")} />
+              <Input
+                id="cp-contact"
+                required
+                value={form.contact_name}
+                onChange={setField("contact_name")}
+              />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
@@ -235,7 +241,12 @@ function CompleteProfile() {
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="cp-country">Country</Label>
-                <Input id="cp-country" required value={form.country} onChange={setField("country")} />
+                <Input
+                  id="cp-country"
+                  required
+                  value={form.country}
+                  onChange={setField("country")}
+                />
               </div>
             </div>
             <Button type="submit" className="w-full" disabled={busy}>

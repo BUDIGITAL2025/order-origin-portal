@@ -1,5 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import type { Database } from "@/integrations/supabase/types";
 import {
   addStoreSchema,
   clientStatusSchema,
@@ -53,8 +55,10 @@ export interface ContextEntity {
 export interface MyContext {
   userId: string;
   email: string | null;
-  role: "admin" | "client";
+  role: "admin" | "client" | "sourcing";
   isAdmin: boolean;
+  /** True for sourcing collaborators — the desk is their entire app. */
+  isSourcing: boolean;
   /** Account identity only — billing, catalogue and quota live on entities/stores. */
   profile: {
     id: string;
@@ -86,11 +90,20 @@ export const getMyContext = createServerFn({ method: "GET" })
     ]);
     const roles = (roleRows ?? []).map((r) => r.role);
     const isAdmin = roles.includes("admin");
+    // Sourcing collaborators live entirely on the desk: the role row is the
+    // source of truth, with the collaborator record as a fallback for
+    // accounts invited before the role existed.
+    let isSourcing = !isAdmin && roles.includes("sourcing");
+    if (!isAdmin && !isSourcing) {
+      const { data: sourcing } = await supabase.rpc("is_sourcing", { _user_id: userId });
+      isSourcing = sourcing === true;
+    }
     return {
       userId,
       email: (claims?.email as string | undefined) ?? null,
-      role: isAdmin ? "admin" : "client",
+      role: isAdmin ? "admin" : isSourcing ? "sourcing" : "client",
       isAdmin,
+      isSourcing,
       profile: profile ?? null,
       entities: (entities ?? []) as unknown as ContextEntity[],
     };
@@ -131,6 +144,20 @@ export const completeSignup = createServerFn({ method: "POST" })
       if (profileError) throw new Error(profileError.message);
     }
 
+    // Someone who accepted a sourcing-team invitation is NOT a client: they
+    // get the sourcing role and none of the client artifacts (no company
+    // entity, no workspace, no wallet).
+    const { data: sourcingInvite } = await supabase.rpc("is_sourcing", { _user_id: userId });
+    if (sourcingInvite === true) {
+      const { error: sourcingRoleError } = await supabase
+        .from("user_roles")
+        .insert({ user_id: userId, role: "sourcing" });
+      if (sourcingRoleError && sourcingRoleError.code !== "23505") {
+        throw new Error(sourcingRoleError.message);
+      }
+      return { ok: true, already: Boolean(existing), role: "sourcing" as const };
+    }
+
     // Ensure the entity exists (covers retries after a partial attempt where
     // the profile row was written but the entity failed).
     const { data: entityRows } = await supabase.from("entities").select("id").limit(1);
@@ -148,8 +175,23 @@ export const completeSignup = createServerFn({ method: "POST" })
       .insert({ user_id: userId, role: "client" });
     if (roleError && roleError.code !== "23505") throw new Error(roleError.message);
 
-    return { ok: true, already: Boolean(existing) };
+    return { ok: true, already: Boolean(existing), role: "client" as const };
   });
+
+/**
+ * Server-side wall: sourcing collaborators must never reach client business
+ * flows (quotes as a buyer, wallet, orders), even by calling the endpoint
+ * directly. Menu hiding is cosmetic — this is the enforcement.
+ */
+export async function assertNotSourcing(
+  supabase: SupabaseClient<Database>,
+  userId: string,
+): Promise<void> {
+  const { data } = await supabase.rpc("is_sourcing", { _user_id: userId });
+  if (data === true) {
+    throw new Error("Forbidden: sourcing desk accounts cannot use the client portal");
+  }
+}
 
 /**
  * Record acceptance of the current Terms version. Called from the one-time

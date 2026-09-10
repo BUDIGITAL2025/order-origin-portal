@@ -6,13 +6,7 @@ import { BrandLogo } from "@/components/brand-logo";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { LegalFooter } from "@/components/legal";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
@@ -63,6 +57,8 @@ function AuthPage() {
     const ctx = await callGetMyContext();
     if (ctx.isAdmin) {
       await navigate({ to: "/admin/quotes" });
+    } else if (ctx.isSourcing) {
+      await navigate({ to: "/desk/queue" });
     } else if (ctx.profile && ctx.profile.status !== "active") {
       await navigate({ to: "/pending" });
     } else {
@@ -158,7 +154,7 @@ function AuthPage() {
         toast.success("Account created. Please confirm your email address, then sign in.");
         return;
       }
-      await callCompleteSignup({
+      const created = await callCompleteSignup({
         data: {
           contact_name: parsed.data.contact_name,
           phone: parsed.data.phone,
@@ -169,7 +165,8 @@ function AuthPage() {
         },
       });
       toast.success("Account created — welcome to FlySales.");
-      await navigate({ to: "/dashboard" });
+      // Someone who signed up from a sourcing-team invitation lands on the desk.
+      await navigate({ to: created.role === "sourcing" ? "/desk/queue" : "/dashboard" });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Sign up failed");
     } finally {
@@ -278,7 +275,8 @@ function AuthPage() {
               <CardContent className="space-y-3">
                 <CardTitle className="text-lg">Create your account</CardTitle>
                 <CardDescription>
-                  Just the basics — you'll add your workspace and company details from the dashboard.
+                  Just the basics — you'll add your workspace and company details from the
+                  dashboard.
                 </CardDescription>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="col-span-2 space-y-1.5">
@@ -307,15 +305,30 @@ function AuthPage() {
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="su-contact">Contact name</Label>
-                    <Input id="su-contact" required value={signup.contact_name} onChange={setField("contact_name")} />
+                    <Input
+                      id="su-contact"
+                      required
+                      value={signup.contact_name}
+                      onChange={setField("contact_name")}
+                    />
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="su-phone">Phone</Label>
-                    <Input id="su-phone" required value={signup.phone} onChange={setField("phone")} />
+                    <Input
+                      id="su-phone"
+                      required
+                      value={signup.phone}
+                      onChange={setField("phone")}
+                    />
                   </div>
                   <div className="col-span-2 space-y-1.5">
                     <Label htmlFor="su-country">Country</Label>
-                    <Input id="su-country" required value={signup.country} onChange={setField("country")} />
+                    <Input
+                      id="su-country"
+                      required
+                      value={signup.country}
+                      onChange={setField("country")}
+                    />
                   </div>
                 </div>
                 <div className="flex items-start gap-2.5 pt-1">

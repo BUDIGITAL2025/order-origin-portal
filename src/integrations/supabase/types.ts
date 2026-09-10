@@ -4349,7 +4349,7 @@ export type Database = {
       url_host: { Args: { p_url: string }; Returns: string }
     }
     Enums: {
-      app_role: "admin" | "client"
+      app_role: "admin" | "client" | "sourcing"
       dispute_author_role: "client" | "admin"
       dispute_reason: "not_delivered" | "damaged" | "wrong_product"
       dispute_resolution: "wallet_credit" | "reshipped" | "rejected"
@@ -4542,7 +4542,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "client"],
+      app_role: ["admin", "client", "sourcing"],
       dispute_author_role: ["client", "admin"],
       dispute_reason: ["not_delivered", "damaged", "wrong_product"],
       dispute_resolution: ["wallet_credit", "reshipped", "rejected"],
