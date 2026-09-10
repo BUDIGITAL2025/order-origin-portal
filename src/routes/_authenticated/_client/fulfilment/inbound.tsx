@@ -37,6 +37,7 @@ import {
   listStockInProducts,
   setInboundTracking,
 } from "@/lib/inbound.functions";
+import { FulfilmentPaywall, useWorkspaceModule } from "@/components/module-paywall";
 import { friendlyError } from "@/lib/errors";
 import { formatUSD } from "@/lib/format";
 
@@ -139,6 +140,9 @@ function InboundPage() {
     onError: (e) => toast.error(friendlyError(e)),
   });
 
+  const gate = useWorkspaceModule(storeId, "fulfilment");
+  const locked = !gate.isLoading && !gate.hasModule;
+
   const rows = shipments ?? [];
   const open = rows.filter((s) => s.status === "declared" || s.status === "in_transit");
   const piecesInTransit = open.reduce((sum, s) => sum + s.declared_pieces, 0);
@@ -150,28 +154,32 @@ function InboundPage() {
         title="Inbound"
         description="Stock you send to our fulfilment centre, from declaration to shelf."
         actions={
-          <div className="flex flex-wrap gap-2">
-            <Button
-              variant="outline"
-              className="rounded-full"
-              disabled={!storeId}
-              onClick={() => setProductOpen(true)}
-            >
-              <Plus className="mr-1.5 h-4 w-4" />
-              Add my product
-            </Button>
-            <Button
-              className="rounded-full"
-              disabled={!storeId}
-              onClick={() => setDeclareOpen(true)}
-            >
-              <Truck className="mr-1.5 h-4 w-4" />
-              Declare a shipment
-            </Button>
-          </div>
+          locked ? null : (
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                className="rounded-full"
+                disabled={!storeId}
+                onClick={() => setProductOpen(true)}
+              >
+                <Plus className="mr-1.5 h-4 w-4" />
+                Add my product
+              </Button>
+              <Button
+                className="rounded-full"
+                disabled={!storeId}
+                onClick={() => setDeclareOpen(true)}
+              >
+                <Truck className="mr-1.5 h-4 w-4" />
+                Declare a shipment
+              </Button>
+            </div>
+          )
         }
       />
       <SectionTabs tabs={FULFILMENT_TABS} />
+
+      {locked ? <FulfilmentPaywall storeId={storeId} action="Sending us stock to hold" /> : null}
 
       <SummaryBar
         items={[
@@ -198,13 +206,15 @@ function InboundPage() {
               {formatUSD(FEE_PER_PIECE + QC_PER_PIECE)} with quality control) on the quantity we
               count.
             </p>
-            <Button
-              className="rounded-full"
-              disabled={!storeId}
-              onClick={() => setDeclareOpen(true)}
-            >
-              Declare a shipment
-            </Button>
+            {locked ? null : (
+              <Button
+                className="rounded-full"
+                disabled={!storeId}
+                onClick={() => setDeclareOpen(true)}
+              >
+                Declare a shipment
+              </Button>
+            )}
           </CardContent>
         </Card>
       ) : (
