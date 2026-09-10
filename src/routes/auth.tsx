@@ -160,7 +160,7 @@ function AuthPage() {
         toast.success("Account created. Please confirm your email address, then sign in.");
         return;
       }
-      await callCompleteSignup({
+      const created = await callCompleteSignup({
         data: {
           contact_name: parsed.data.contact_name,
           phone: parsed.data.phone,
@@ -171,7 +171,8 @@ function AuthPage() {
         },
       });
       toast.success("Account created — welcome to FlySales.");
-      await navigate({ to: "/dashboard" });
+      // Someone who signed up from a sourcing-team invitation lands on the desk.
+      await navigate({ to: created.role === "sourcing" ? "/desk/queue" : "/dashboard" });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Sign up failed");
     } finally {
