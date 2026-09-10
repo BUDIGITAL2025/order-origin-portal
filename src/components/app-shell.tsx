@@ -113,6 +113,7 @@ const ADMIN_NAV: NavItem[] = [
   { to: "/admin/catalog-import", label: "Catalog import", icon: FileUp, badge: "New" },
   { to: "/admin/sourcing", label: "Sourcing team", icon: Handshake },
   { to: "/admin/stock-purchases", label: "Stock purchases", icon: PackageCheck },
+  { to: "/admin/supplier-payments", label: "Supplier payments", icon: Wallet, badge: "New" },
   { to: "/admin/products", label: "Products", icon: Package },
   { to: "/admin/orders", label: "Fulfilment", icon: Truck },
   { to: "/admin/suppliers", label: "Suppliers", icon: Factory },

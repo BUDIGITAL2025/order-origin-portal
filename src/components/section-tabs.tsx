@@ -67,6 +67,7 @@ export const ADMIN_BILLING_TABS: SectionTab[] = [
 
 export const DESK_TABS: SectionTab[] = [
   { to: "/desk/queue", label: "Queue" },
+  { to: "/desk/purchases", label: "Purchases" },
   { to: "/desk/earnings", label: "Earnings" },
 ];
 
@@ -74,4 +75,5 @@ export const ADMIN_SOURCING_TABS: SectionTab[] = [
   { to: "/admin/quotes", label: "Quote queue" },
   { to: "/admin/sourcing", label: "Collaborators" },
   { to: "/admin/stock-purchases", label: "Stock purchases" },
+  { to: "/admin/supplier-payments", label: "Supplier payments" },
 ];
