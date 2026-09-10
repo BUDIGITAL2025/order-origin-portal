@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { BrandLogo } from "@/components/brand-logo";
@@ -14,6 +15,7 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { MARKETING_URL } from "@/lib/config";
+import { getMyContext } from "@/lib/profiles.functions";
 import { passwordSchema } from "@/lib/schemas";
 
 export const Route = createFileRoute("/reset-password")({
@@ -29,6 +31,7 @@ export const Route = createFileRoute("/reset-password")({
 
 function ResetPasswordPage() {
   const navigate = useNavigate();
+  const fetchContext = useServerFn(getMyContext);
   const [ready, setReady] = useState(false);
   const [busy, setBusy] = useState(false);
   const [password, setPassword] = useState("");
@@ -66,9 +69,15 @@ function ResetPasswordPage() {
         toast.error(error.message);
         return;
       }
-      toast.success("Password updated — sign in with your new password.");
-      await supabase.auth.signOut();
-      await navigate({ to: "/auth" });
+      const account = await fetchContext();
+      if (account.isSourcing && !account.isAdmin) {
+        toast.success("Password set — welcome to your sourcing desk.");
+        await navigate({ to: "/desk/queue" });
+      } else {
+        toast.success("Password updated — sign in with your new password.");
+        await supabase.auth.signOut();
+        await navigate({ to: "/auth" });
+      }
     } finally {
       setBusy(false);
     }

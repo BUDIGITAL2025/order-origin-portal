@@ -1,5 +1,5 @@
 ## Active
-- [ ] Repair and verify sourcing invite role flow for sourcingtest3
+- [x] Repair sourcing invite role assignment before invite acceptance
 - [ ] Verify sourcing-only navigation and direct client-route blocking
 
 # Roadmap
