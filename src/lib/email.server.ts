@@ -3,9 +3,23 @@ import type { Database } from "@/integrations/supabase/types";
 
 type Admin = SupabaseClient<Database>;
 
-function sender(): { from: string; name: string; address: string | null } {
-  const name = process.env["EMAIL_SENDER_NAME"]?.trim() || "FlySales";
-  const address = process.env["EMAIL_FROM_ADDRESS"]?.trim() || null;
+/**
+ * Single source of truth for sender identity. Every transactional email —
+ * invites, receipts, tracking, reminders, claims, digests — ships from this
+ * platform mailbox. No template may hardcode its own `from`, and a personal
+ * address must never appear in the envelope.
+ */
+export const SENDER_ADDRESS = process.env["EMAIL_FROM_ADDRESS"]?.trim() || "noreply@flysales.app";
+/** Display name for everything client- and collaborator-facing. */
+export const SENDER_NAME = process.env["EMAIL_SENDER_NAME"]?.trim() || "FlySales";
+/** Display name reserved for internal ops mail (the daily digest). */
+export const OPS_SENDER_NAME = "FlySales Ops";
+/** Humans answer here; the sending mailbox is unattended. */
+export const REPLY_TO_ADDRESS =
+  process.env["EMAIL_REPLY_TO_ADDRESS"]?.trim() || "support@flysales.app";
+
+function sender(name = SENDER_NAME): { from: string; name: string; address: string | null } {
+  const address = SENDER_ADDRESS || null;
   return { name, address, from: address ? `${name} <${address}>` : name };
 }
 
