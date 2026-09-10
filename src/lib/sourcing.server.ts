@@ -286,3 +286,53 @@ export async function accrueEarningsForOrder(admin: Admin, orderId: string): Pro
   }
   return accrued;
 }
+
+/**
+ * Generate a sign-in link server-side and deliver it through OUR branded
+ * Resend template — Supabase's native invite mail is never used, so the
+ * invitation looks and logs like every other transactional email.
+ */
+export async function sendCollaboratorInvite(
+  admin: Admin,
+  args: {
+    email: string;
+    displayName: string | null;
+    feeRate: number;
+    /** true when the auth account already exists (resend / existing user). */
+    existing: boolean;
+    collaboratorId?: string;
+  },
+): Promise<{ sent: boolean; id?: string; error?: string; userId?: string }> {
+  const { appBaseUrl } = await import("./email-layout.server");
+  const { sourcingInviteEmail } = await import("./email-templates.server");
+  const { sendLoggedEmail } = await import("./email.server");
+
+  const redirectTo = `${appBaseUrl()}/reset-password`;
+  const { data, error } = await admin.auth.admin.generateLink({
+    type: args.existing ? "magiclink" : "invite",
+    email: args.email,
+    options: { redirectTo },
+  });
+  if (error || !data?.properties?.action_link) {
+    const message = error?.message ?? "Could not generate the invitation link";
+    console.error("[sourcing:invite] link generation failed:", message);
+    return { sent: false, error: message };
+  }
+
+  const expires = new Date(Date.now() + 24 * 3600 * 1000);
+  const built = sourcingInviteEmail({
+    inviteUrl: data.properties.action_link,
+    displayName: args.displayName,
+    feePct: args.feeRate * 100,
+    expiresLabel: expires.toUTCString().replace(" GMT", " UTC"),
+  });
+  const result = await sendLoggedEmail(admin, {
+    to: args.email,
+    subject: built.subject,
+    text: built.text,
+    html: built.html,
+    kind: "sourcing_invite",
+    ...(args.collaboratorId ? { relatedId: args.collaboratorId } : {}),
+  });
+  return { ...result, ...(data.user?.id ? { userId: data.user.id } : {}) };
+}
