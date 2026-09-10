@@ -86,11 +86,20 @@ export const getMyContext = createServerFn({ method: "GET" })
     ]);
     const roles = (roleRows ?? []).map((r) => r.role);
     const isAdmin = roles.includes("admin");
+    // Sourcing collaborators live entirely on the desk: the role row is the
+    // source of truth, with the collaborator record as a fallback for
+    // accounts invited before the role existed.
+    let isSourcing = !isAdmin && roles.includes("sourcing");
+    if (!isAdmin && !isSourcing) {
+      const { data: sourcing } = await supabase.rpc("is_sourcing", { _user_id: userId });
+      isSourcing = sourcing === true;
+    }
     return {
       userId,
       email: (claims?.email as string | undefined) ?? null,
-      role: isAdmin ? "admin" : "client",
+      role: isAdmin ? "admin" : isSourcing ? "sourcing" : "client",
       isAdmin,
+      isSourcing,
       profile: profile ?? null,
       entities: (entities ?? []) as unknown as ContextEntity[],
     };
