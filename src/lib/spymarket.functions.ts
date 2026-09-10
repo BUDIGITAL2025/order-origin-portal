@@ -88,15 +88,14 @@ export const adminListSpyMarketInterest = createServerFn({ method: "GET" })
 
 // ============= Paid SpyMarket subscriptions =============
 
-/** Human-readable Stripe price lookup keys, stable across test and live. */
-export const SPYMARKET_PRICE_IDS = {
-  starter: "spymarket_starter_monthly",
-  plus: "spymarket_plus_monthly",
-  max: "spymarket_max_monthly",
-} as const;
+/**
+ * SpyMarket is a single intelligence module at $49/month. The old
+ * starter/plus/max tiers belonged to the previous data provider and are
+ * archived in Stripe — nothing new can be bought on them.
+ */
+export const SPYMARKET_PRICE_ID = MODULE_PRICE_IDS.spymarket;
 
 const checkoutSchema = z.object({
-  plan: z.enum(["starter", "plus", "max"]),
   returnUrl: z.string().trim().url("Invalid return URL").max(500),
   environment: stripeEnvSchema,
 });
