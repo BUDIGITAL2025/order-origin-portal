@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { ArrowRight, Check, ClipboardList, CreditCard, Plus, RefreshCcw, Store, Wallet } from "lucide-react";
+import { ArrowRight, Check, ClipboardList, CreditCard, Package, Plus, RefreshCcw, Store, Wallet } from "lucide-react";
 import { CountUp, MiniSparkline, Reveal, balanceSeries, bucketCounts } from "@/components/dashboard-viz";
 
 import { EmptyState, PageHeader } from "@/components/app-shell";
@@ -24,6 +24,7 @@ import { Badge } from "@/components/ui/badge";
 import { getMyContext } from "@/lib/profiles.functions";
 import { listMyOpenQuotes, listMyQuotes } from "@/lib/quotes.functions";
 import { getMyWallet } from "@/lib/wallet.functions";
+import { getClientOrderAnalytics } from "@/lib/dashboard-analytics.functions";
 import { OpenQuotesWidget } from "@/components/open-quotes-widget";
 
 export const Route = createFileRoute("/_authenticated/_client/dashboard")({
@@ -42,6 +43,7 @@ function DashboardPage() {
   const fetchQuotes = useServerFn(listMyQuotes);
   const fetchOpenQuotes = useServerFn(listMyOpenQuotes);
   const fetchWallet = useServerFn(getMyWallet);
+  const fetchOrderAnalytics = useServerFn(getClientOrderAnalytics);
 
   const { data: context } = useQuery({
     queryKey: ["my-context"],
@@ -59,7 +61,6 @@ function DashboardPage() {
     queryKey: ["my-wallet"],
     queryFn: fetchWallet,
   });
-
   // Current store selection is persisted in localStorage (client-only), so
   // resolve it after hydration and fall back to the first store.
   const entities = context?.entities ?? [];
@@ -67,6 +68,11 @@ function DashboardPage() {
   useEffect(() => {
     setCurrentStoreId(getCurrentStoreId());
   }, []);
+  const { data: analytics } = useQuery({
+    queryKey: ["client-order-analytics", currentStoreId],
+    queryFn: () => fetchOrderAnalytics({ data: { storeId: currentStoreId! } }),
+    enabled: !!currentStoreId,
+  });
   const allStores = entities.flatMap((e) => e.stores);
   const store = allStores.find((s) => s.id === currentStoreId) ?? allStores[0] ?? null;
   const entity = entities.find((e) => e.id === store?.entity_id) ?? null;
@@ -300,6 +306,107 @@ function DashboardPage() {
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {analytics && (
+        <Reveal delay={360} className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <Card className="h-full">
+            <CardHeader className="pb-1">
+              <CardTitle className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                <ClipboardList className="h-3.5 w-3.5" /> Avg. Daily Orders
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-semibold leading-none">
+                <CountUp value={Number(analytics.avgDailyOrders.toFixed(2))} />
+              </div>
+              <div className="mt-2">
+                {analytics.pctChange != null ? (
+                  <Badge
+                    variant="outline"
+                    className={
+                      analytics.pctChange > 0
+                        ? "bg-success/15 text-success border-success/30"
+                        : analytics.pctChange < 0
+                          ? "bg-destructive/15 text-destructive border-destructive/30"
+                          : "bg-muted text-muted-foreground"
+                    }
+                  >
+                    {analytics.pctChange > 0 ? "↑" : analytics.pctChange < 0 ? "↓" : "→"}{" "}
+                    {Math.abs(analytics.pctChange).toFixed(1)}%
+                  </Badge>
+                ) : (
+                  <span className="text-xs text-muted-foreground">No previous period</span>
+                )}
+              </div>
+              <p className="mt-2 text-[11px] text-muted-foreground">Last 30 days vs prior 30 days</p>
+            </CardContent>
+          </Card>
+
+          <Card className="h-full">
+            <CardHeader className="pb-1">
+              <CardTitle className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                <Package className="h-3.5 w-3.5" /> Best Sellers
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {analytics.bestSellers.length === 0 ? (
+                <p className="text-xs text-muted-foreground">No paid orders yet</p>
+              ) : (
+                <ul className="space-y-2">
+                  {analytics.bestSellers.map((item) => (
+                    <li key={item.sku} className="flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium">{item.product_name}</p>
+                        <p className="text-[11px] text-muted-foreground">{item.sku}</p>
+                      </div>
+                      <span className="tnum text-sm font-semibold">{item.units}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="h-full">
+            <CardHeader className="pb-1">
+              <CardTitle className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                <Store className="h-3.5 w-3.5" /> Top Countries
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {analytics.topCountries.length === 0 ? (
+                <p className="text-xs text-muted-foreground">No orders yet</p>
+              ) : (
+                <ul className="space-y-2">
+                  {analytics.topCountries.map((c) => (
+                    <li key={c.country} className="flex items-center justify-between gap-2">
+                      <span className="truncate text-sm">{c.country}</span>
+                      <span className="tnum text-sm font-medium">{c.pct.toFixed(1)}%</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="h-full">
+            <CardHeader className="pb-1">
+              <CardTitle className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                <ClipboardList className="h-3.5 w-3.5" /> Incoming Orders
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-semibold leading-none">
+                <CountUp value={analytics.totalOrders} />
+              </div>
+              <div className="mt-3">
+                <MiniSparkline values={bucketCounts(analytics.orderDates, 30, 15)} height={34} className="h-9" />
+              </div>
+              <p className="mt-2 text-[11px] text-muted-foreground">Last 30 days</p>
+            </CardContent>
+          </Card>
+        </Reveal>
       )}
 
       <Reveal delay={380} className="mt-6">
