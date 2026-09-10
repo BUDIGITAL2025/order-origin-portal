@@ -29,6 +29,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { TableShell } from "@/components/admin-ui";
+import { useMyContext } from "@/routes/_authenticated/_client";
 import { supabase } from "@/integrations/supabase/client";
 import { friendlyError } from "@/lib/errors";
 import {
@@ -162,6 +163,10 @@ export function CatalogImportPanel({
   const removeRow = useServerFn(deleteCatalogRow);
   const toQuote = useServerFn(convertRowsToQuote);
   const toProducts = useServerFn(convertRowsToProducts);
+  // Sourcing collaborators may only create draft quote requests — client
+  // pricing and catalogue publishing stay with admins.
+  const { data: myCtx } = useMyContext();
+  const isAdmin = !!myCtx?.isAdmin;
 
   const [uploading, setUploading] = React.useState(false);
   const [page, setPage] = React.useState(1);
@@ -667,25 +672,31 @@ export function CatalogImportPanel({
                 {convertQuote.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Create quote request
               </Button>
-              <Button
-                variant="outline"
-                disabled={
-                  !selectedIds.length ||
-                  !workspace ||
-                  productName.trim().length < 2 ||
-                  convertProducts.isPending
-                }
-                onClick={() => convertProducts.mutate()}
-              >
-                {convertProducts.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Add to products
-              </Button>
-              <Button variant="ghost" asChild>
-                <Link to="/admin/quotes">Open quote queue</Link>
-              </Button>
+              {isAdmin && (
+                <>
+                  <Button
+                    variant="outline"
+                    disabled={
+                      !selectedIds.length ||
+                      !workspace ||
+                      productName.trim().length < 2 ||
+                      convertProducts.isPending
+                    }
+                    onClick={() => convertProducts.mutate()}
+                  >
+                    {convertProducts.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Add to products
+                  </Button>
+                  <Button variant="ghost" asChild>
+                    <Link to="/admin/quotes">Open quote queue</Link>
+                  </Button>
+                </>
+              )}
             </div>
             <p className="text-xs text-muted-foreground">
-              Everything lands as a draft — pricing and publishing stay in the normal flow.
+              {isAdmin
+                ? "Everything lands as a draft — pricing and publishing stay in the normal flow."
+                : "Rows you convert land as draft quote requests. Client pricing and publishing are handled by the FlySales team."}
             </p>
           </div>
         </div>
