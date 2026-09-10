@@ -27,9 +27,18 @@ import {
   adminEarningsReport,
   adminInviteCollaborator,
   adminListCollaborators,
+  adminResendCollaboratorInvite,
   adminSettleEarnings,
   adminUpdateCollaborator,
 } from "@/lib/sourcing.functions";
+
+/** "invited 3d ago" — makes stale pending invites obvious at a glance. */
+function invitedAgo(iso: string | null): string | null {
+  if (!iso) return null;
+  const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+  if (days <= 0) return "invited today";
+  return `invited ${days}d ago`;
+}
 
 export const Route = createFileRoute("/_authenticated/admin/sourcing")({
   head: () => ({
