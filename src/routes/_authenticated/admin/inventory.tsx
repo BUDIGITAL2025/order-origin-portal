@@ -35,8 +35,7 @@ import {
   setWorkspacePlanningDefaults,
   syncInventoryNow,
 } from "@/lib/inventory.functions";
-import { getEcomflowStock, getEcomflowAnalytics } from "@/lib/ecomflow.functions";
-import { MiniSparkline } from "@/components/dashboard-viz";
+import { getEcomflowStock } from "@/lib/ecomflow.functions";
 import { PlanningDialog } from "@/components/planning-dialog";
 import { friendlyError } from "@/lib/errors";
 import { formatUSD } from "@/lib/format";
