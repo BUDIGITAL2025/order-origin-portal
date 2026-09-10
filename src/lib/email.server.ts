@@ -74,7 +74,7 @@ export async function sendEmail(args: {
         subject: args.subject,
         text: args.text,
         html: args.html ?? htmlFromText(args.text),
-        ...(args.replyTo ? { reply_to: args.replyTo } : {}),
+        ...(replyTo ? { reply_to: replyTo } : {}),
       }),
     });
     const payload = (await response.json().catch(() => ({}))) as {
