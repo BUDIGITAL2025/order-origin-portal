@@ -53,8 +53,10 @@ export interface ContextEntity {
 export interface MyContext {
   userId: string;
   email: string | null;
-  role: "admin" | "client";
+  role: "admin" | "client" | "sourcing";
   isAdmin: boolean;
+  /** True for sourcing collaborators — the desk is their entire app. */
+  isSourcing: boolean;
   /** Account identity only — billing, catalogue and quota live on entities/stores. */
   profile: {
     id: string;
