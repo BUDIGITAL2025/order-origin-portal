@@ -18,6 +18,18 @@ export async function requireAdmin(
   }
 }
 
+/** Admins and active sourcing collaborators share the catalog import desk. */
+export async function requireAdminOrSourcing(
+  supabase: SupabaseClient<Database>,
+  userId: string,
+): Promise<void> {
+  const { data: admin } = await supabase.rpc("has_role", { _user_id: userId, _role: "admin" });
+  if (admin === true) return;
+  const { data: sourcing } = await supabase.rpc("is_sourcing", { _user_id: userId });
+  if (sourcing === true) return;
+  throw new Error("Forbidden: admin access required");
+}
+
 export async function getAdminClient() {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   return supabaseAdmin;

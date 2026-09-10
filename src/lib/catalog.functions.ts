@@ -72,7 +72,7 @@ export const startCatalogImport = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => startImportSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const { requireAdmin, getAdminClient } = await import("./admin.server");
+    const { requireAdminOrSourcing: requireAdmin, getAdminClient } = await import("./admin.server");
     const { extractCatalog, MAX_CATALOG_BYTES } = await import("./catalog.server");
     await requireAdmin(context.supabase, context.userId);
     const admin = await getAdminClient();
@@ -185,7 +185,7 @@ export const startCatalogImport = createServerFn({ method: "POST" })
 export const listCatalogImports = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { requireAdmin, getAdminClient } = await import("./admin.server");
+    const { requireAdminOrSourcing: requireAdmin, getAdminClient } = await import("./admin.server");
     await requireAdmin(context.supabase, context.userId);
     const admin = await getAdminClient();
     const { data, error } = await admin
@@ -202,7 +202,7 @@ export const getCatalogImport = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ import_id: uuid }).parse(input))
   .handler(async ({ data, context }) => {
-    const { requireAdmin, getAdminClient } = await import("./admin.server");
+    const { requireAdminOrSourcing: requireAdmin, getAdminClient } = await import("./admin.server");
     await requireAdmin(context.supabase, context.userId);
     const admin = await getAdminClient();
 
@@ -233,7 +233,7 @@ export const updateCatalogRow = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => rowPatchSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const { requireAdmin, getAdminClient } = await import("./admin.server");
+    const { requireAdminOrSourcing: requireAdmin, getAdminClient } = await import("./admin.server");
     await requireAdmin(context.supabase, context.userId);
     const admin = await getAdminClient();
     type RowUpdate =
@@ -253,7 +253,7 @@ export const addCatalogRow = createServerFn({ method: "POST" })
     z.object({ import_id: uuid, page_no: z.number().int().min(1).max(50).default(1) }).parse(input),
   )
   .handler(async ({ data, context }) => {
-    const { requireAdmin, getAdminClient } = await import("./admin.server");
+    const { requireAdminOrSourcing: requireAdmin, getAdminClient } = await import("./admin.server");
     await requireAdmin(context.supabase, context.userId);
     const admin = await getAdminClient();
     const { count } = await admin
@@ -273,7 +273,7 @@ export const deleteCatalogRow = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ row_id: uuid }).parse(input))
   .handler(async ({ data, context }) => {
-    const { requireAdmin, getAdminClient } = await import("./admin.server");
+    const { requireAdminOrSourcing: requireAdmin, getAdminClient } = await import("./admin.server");
     await requireAdmin(context.supabase, context.userId);
     const admin = await getAdminClient();
     const { error } = await admin.from("catalog_import_rows").delete().eq("id", data.row_id);
@@ -290,7 +290,7 @@ export const convertRowsToQuote = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => convertQuoteSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const { requireAdmin, getAdminClient } = await import("./admin.server");
+    const { requireAdminOrSourcing: requireAdmin, getAdminClient } = await import("./admin.server");
     await requireAdmin(context.supabase, context.userId);
     const admin = await getAdminClient();
 
@@ -383,7 +383,7 @@ export const convertRowsToProducts = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => convertProductsSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const { requireAdmin, getAdminClient } = await import("./admin.server");
+    const { requireAdminOrSourcing: requireAdmin, getAdminClient } = await import("./admin.server");
     await requireAdmin(context.supabase, context.userId);
     const admin = await getAdminClient();
 
@@ -428,7 +428,7 @@ export const convertRowsToProducts = createServerFn({ method: "POST" })
 export const listWorkspacesForImport = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { requireAdmin, getAdminClient } = await import("./admin.server");
+    const { requireAdminOrSourcing: requireAdmin, getAdminClient } = await import("./admin.server");
     await requireAdmin(context.supabase, context.userId);
     const admin = await getAdminClient();
     const { data, error } = await admin

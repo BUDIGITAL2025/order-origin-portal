@@ -36,6 +36,9 @@ import { formatUSD } from "@/lib/format";
 import logoAsset from "@/assets/flysales-logo-green.svg.asset.json";
 import { getOnboardingLinks } from "@/lib/onboarding.functions";
 import { getMyWallet } from "@/lib/wallet.functions";
+import { adminListQuotes } from "@/lib/quotes.functions";
+import { sourcingListQueue } from "@/lib/sourcing.functions";
+import { listMyQuoteSignals } from "@/lib/quote-thread.functions";
 import { cn } from "@/lib/utils";
 import { SUPPORT_EMAIL, supportMailto } from "@/lib/support";
 import { PaymentTestModeBanner } from "@/components/PaymentTestModeBanner";
@@ -127,6 +130,7 @@ const ADMIN_NAV: NavItem[] = [
 /** The collaborator desk is deliberately tiny: a queue and their earnings. */
 const SOURCING_NAV: NavItem[] = [
   { to: "/desk/queue", label: "Quote queue", icon: ClipboardList },
+  { to: "/admin/catalog-import", label: "Catalog import", icon: FileUp, badge: "New" },
   { to: "/desk/earnings", label: "My earnings", icon: Wallet },
 ];
 
@@ -366,6 +370,49 @@ function AccountMenu({
   );
 }
 
+/**
+ * "Something new here" dots. Each role reuses the exact query the destination
+ * page already runs, so the count is shared from cache, never recomputed.
+ */
+function useNavAlerts(role: "client" | "admin" | "sourcing"): Record<string, boolean> {
+  const fetchAdminQuotes = useServerFn(adminListQuotes);
+  const fetchQueue = useServerFn(sourcingListQueue);
+  const fetchSignals = useServerFn(listMyQuoteSignals);
+
+  const { data: adminQuotes } = useQuery({
+    queryKey: ["admin-quotes", "all"],
+    queryFn: () => fetchAdminQuotes({ data: {} }),
+    enabled: role === "admin",
+    staleTime: 60_000,
+  });
+  const { data: queue } = useQuery({
+    queryKey: ["sourcing-queue"],
+    queryFn: fetchQueue,
+    enabled: role === "sourcing",
+    staleTime: 60_000,
+  });
+  const { data: signals } = useQuery({
+    queryKey: ["my-quote-signals"],
+    queryFn: fetchSignals,
+    enabled: role === "client",
+    staleTime: 60_000,
+  });
+
+  const alerts: Record<string, boolean> = {};
+  if (role === "admin") {
+    alerts["/admin/quotes"] = (adminQuotes?.quotes ?? []).some(
+      (q) => q.status === "submitted" || q.status === "sourcing",
+    );
+  }
+  if (role === "sourcing") {
+    alerts["/desk/queue"] = (queue?.quotes ?? []).some((q) => q.priced_lines === 0);
+  }
+  if (role === "client") {
+    alerts["/sourcing"] = Object.values(signals?.unread ?? {}).some((n) => Number(n) > 0);
+  }
+  return alerts;
+}
+
 export function AppShell({
   role,
   email,
@@ -384,6 +431,7 @@ export function AppShell({
   const queryClient = useQueryClient();
   const pathname = useRouterState({ select: (r) => r.location.pathname });
   const nav = role === "admin" ? ADMIN_NAV : role === "sourcing" ? SOURCING_NAV : CLIENT_NAV;
+  const alerts = useNavAlerts(role);
 
   // Manual active matching so "/sourcing/new" doesn't light up "My quotes".
   const isActive = (to: string) => {
@@ -452,6 +500,13 @@ export function AppShell({
             >
               <item.icon className="h-4 w-4" />
               {item.label}
+              {alerts[item.to] && (
+                <span
+                  aria-label="New items"
+                  title="New items"
+                  className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary"
+                />
+              )}
               {item.badge && (
                 <Badge className="ml-auto bg-primary/15 px-1.5 py-0 text-[9px] font-medium text-primary hover:bg-primary/15">
                   {item.badge}

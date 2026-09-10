@@ -168,7 +168,7 @@ export function QuoteThread({
         </div>
       </CardHeader>
       <CardContent className="flex min-h-0 flex-1 flex-col gap-4">
-        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
+        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto rounded-lg bg-muted/50 p-3">
           {ordered.length === 0 && (
             <p className="text-sm text-muted-foreground">
               {isSourcing
@@ -191,14 +191,17 @@ export function QuoteThread({
             }
             const mine = m.author_role === mineRole;
             const fromUs = m.author_role === "admin" || m.author_role === "sourcing";
+            // One colour per role so no two senders ever look alike.
+            const bubbleTone = mine
+              ? "border-primary/40 bg-primary/10"
+              : m.author_role === "client"
+                ? "border-sky-500/40 bg-sky-500/10"
+                : m.author_role === "admin"
+                  ? "border-amber-500/40 bg-amber-500/10"
+                  : "border-violet-500/40 bg-violet-500/10";
             return (
               <div key={m.id} className={cn("flex", mine ? "justify-end" : "justify-start")}>
-                <div
-                  className={cn(
-                    "max-w-[85%] rounded-xl border border-border p-3",
-                    mine ? "border-primary/40 bg-primary/10" : "bg-muted/40",
-                  )}
-                >
+                <div className={cn("max-w-[85%] rounded-xl border p-3 shadow-sm", bubbleTone)}>
                   <div className="mb-1 flex items-center gap-2 text-xs text-muted-foreground">
                     {mode === "client" && fromUs && <BrandAvatar />}
                     <span>{authorLabel(m.author_role, mode, clientLabel)}</span>

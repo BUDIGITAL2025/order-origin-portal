@@ -1,8 +1,9 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { ArrowUpRight } from "lucide-react";
+import { toast } from "sonner";
 import { z } from "zod";
 import { EmptyState, PageHeader } from "@/components/app-shell";
 import { QuoteSlaBadge } from "@/components/quote-sla";
@@ -18,6 +19,7 @@ import {
   Value,
 } from "@/components/admin-ui";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table,
   TableBody,
@@ -32,6 +34,7 @@ import { PhotoManagerDialog } from "@/components/photo-manager";
 import { ImagePlus } from "lucide-react";
 import { formatDate } from "@/lib/format";
 import { effectiveTier } from "@/lib/plans";
+import { adminCleanupDelete } from "@/lib/cleanup.functions";
 import { adminListQuotes } from "@/lib/quotes.functions";
 import { cn } from "@/lib/utils";
 
@@ -80,11 +83,47 @@ function AdminQuotesPage() {
   const [photoFor, setPhotoFor] = useState<{ id: string; name: string; urls: string[] } | null>(
     null,
   );
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const queryClient = useQueryClient();
+  const callDelete = useServerFn(adminCleanupDelete);
 
   const { data, isPending } = useQuery({
     queryKey: ["admin-quotes", status ?? "all"],
     queryFn: () => fetchQuotes({ data: status ? { status } : {} }),
   });
+
+  // Bulk delete reuses the very same server call the row trash icon makes.
+  const bulkDelete = useMutation({
+    mutationFn: async (ids: string[]) => {
+      let failed = 0;
+      for (const id of ids) {
+        try {
+          await callDelete({ data: { type: "quote" as const, id } });
+        } catch {
+          failed += 1;
+        }
+      }
+      return { failed, total: ids.length };
+    },
+    onSuccess: ({ failed, total }) => {
+      setSelectedIds(new Set());
+      void queryClient.invalidateQueries({ queryKey: ["admin-quotes"] });
+      if (failed === 0) toast.success(`Deleted ${total} request${total === 1 ? "" : "s"}.`);
+      else
+        toast.error(
+          `${total - failed} deleted, ${failed} could not be deleted (they have financial history).`,
+        );
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  const toggleOne = (id: string, on: boolean) =>
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (on) next.add(id);
+      else next.delete(id);
+      return next;
+    });
 
   const quotes = data?.quotes ?? [];
 
@@ -167,6 +206,23 @@ function AdminQuotesPage() {
         </Button>
       </ToolBar>
 
+      {selectedIds.size > 0 && (
+        <div className="mb-3 flex items-center gap-3 rounded-lg border border-border bg-muted/50 px-3 py-2">
+          <span className="text-[13px] font-medium">{selectedIds.size} selected</span>
+          <Button
+            size="sm"
+            variant="destructive"
+            disabled={bulkDelete.isPending}
+            onClick={() => bulkDelete.mutate([...selectedIds])}
+          >
+            {bulkDelete.isPending ? "Deleting…" : "Delete selected"}
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => setSelectedIds(new Set())}>
+            Clear selection
+          </Button>
+        </div>
+      )}
+
       {isPending ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
       ) : sorted.length === 0 ? (
@@ -179,6 +235,15 @@ function AdminQuotesPage() {
           <Table className="text-[13px]">
             <TableHeader>
               <TableRow>
+                <TableHead className="h-9 w-9">
+                  <Checkbox
+                    aria-label="Select all rows"
+                    checked={sorted.length > 0 && sorted.every((q) => selectedIds.has(q.id))}
+                    onCheckedChange={(v) =>
+                      setSelectedIds(v === true ? new Set(sorted.map((q) => q.id)) : new Set())
+                    }
+                  />
+                </TableHead>
                 <TableHead className="h-9">Requested</TableHead>
                 <TableHead className="h-9">Client</TableHead>
                 <TableHead className="h-9">Product</TableHead>
@@ -209,6 +274,13 @@ function AdminQuotesPage() {
                       dueSoon && "border-l-2 border-l-warning bg-warning/5",
                     )}
                   >
+                    <TableCell className="w-9 py-2.5" onClick={(e) => e.stopPropagation()}>
+                      <Checkbox
+                        aria-label="Select request"
+                        checked={selectedIds.has(q.id)}
+                        onCheckedChange={(v) => toggleOne(q.id, v === true)}
+                      />
+                    </TableCell>
                     <TableCell className="whitespace-nowrap py-2.5 text-xs text-muted-foreground">
                       {formatDate(q.created_at)}
                     </TableCell>
@@ -259,14 +331,19 @@ function AdminQuotesPage() {
                     </TableCell>
                     <TableCell className="py-2.5">
                       <RowActions>
-                        <Button asChild variant="ghost" size="icon" className="h-7 w-7">
+                        <Button
+                          asChild
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-primary hover:bg-primary/10 hover:text-primary"
+                        >
                           <Link
                             to="/admin/quotes/$id"
                             params={{ id: q.id }}
                             aria-label="Open request"
                             title="Open request"
                           >
-                            <ArrowUpRight className="h-3.5 w-3.5" />
+                            <ArrowUpRight className="h-[1.15rem] w-[1.15rem]" />
                           </Link>
                         </Button>
                         <RowAction

@@ -162,10 +162,16 @@ function AdminOrdersPage() {
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Avg. Daily Orders</CardTitle>
+                <CardTitle>
+                  <span className="inline-block rounded-full bg-primary px-2.5 py-0.5 text-xs font-semibold text-primary-foreground">
+                    Avg. Daily Orders
+                  </span>
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-semibold tnum">{analytics.avgDailyOrders.toFixed(2)}</div>
+                <div className="text-2xl font-semibold tnum">
+                  {analytics.avgDailyOrders.toFixed(2)}
+                </div>
                 {analytics.pctChange != null && (
                   <Badge
                     variant="outline"
@@ -189,7 +195,11 @@ function AdminOrdersPage() {
 
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Best Sellers</CardTitle>
+                <CardTitle>
+                  <span className="inline-block rounded-full bg-primary px-2.5 py-0.5 text-xs font-semibold text-primary-foreground">
+                    Best Sellers
+                  </span>
+                </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
                 {analytics.topProducts.map((p) => (
@@ -209,7 +219,11 @@ function AdminOrdersPage() {
 
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Top Countries</CardTitle>
+                <CardTitle>
+                  <span className="inline-block rounded-full bg-primary px-2.5 py-0.5 text-xs font-semibold text-primary-foreground">
+                    Top Countries
+                  </span>
+                </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
                 {analytics.topCountries.map((c) => (
@@ -226,12 +240,18 @@ function AdminOrdersPage() {
 
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Inventory Health</CardTitle>
+                <CardTitle>
+                  <span className="inline-block rounded-full bg-primary px-2.5 py-0.5 text-xs font-semibold text-primary-foreground">
+                    Inventory Health
+                  </span>
+                </CardTitle>
               </CardHeader>
               <CardContent className="space-y-1 text-sm">
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Healthy</span>
-                  <span className="font-semibold text-success">{analytics.summary.healthyCount}</span>
+                  <span className="font-semibold text-success">
+                    {analytics.summary.healthyCount}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Not Selling</span>
@@ -239,7 +259,9 @@ function AdminOrdersPage() {
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Critical</span>
-                  <span className="font-semibold text-destructive">{analytics.summary.criticalCount}</span>
+                  <span className="font-semibold text-destructive">
+                    {analytics.summary.criticalCount}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between border-t border-border pt-1">
                   <span className="text-muted-foreground">Total Products</span>
@@ -251,13 +273,19 @@ function AdminOrdersPage() {
 
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Incoming Orders</CardTitle>
+              <CardTitle>
+                <span className="inline-block rounded-full bg-primary px-2.5 py-0.5 text-xs font-semibold text-primary-foreground">
+                  Incoming Orders
+                </span>
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <MiniSparkline values={analytics.orderSeries.map((s) => s.activeOrders)} />
               <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
                 <span>{analytics.orderSeries[0]?.period ?? "—"}</span>
-                <span>{analytics.orderSeries[analytics.orderSeries.length - 1]?.period ?? "—"}</span>
+                <span>
+                  {analytics.orderSeries[analytics.orderSeries.length - 1]?.period ?? "—"}
+                </span>
               </div>
             </CardContent>
           </Card>
