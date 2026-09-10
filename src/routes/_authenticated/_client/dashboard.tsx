@@ -24,6 +24,7 @@ import { Badge } from "@/components/ui/badge";
 import { getMyContext } from "@/lib/profiles.functions";
 import { listMyOpenQuotes, listMyQuotes } from "@/lib/quotes.functions";
 import { getMyWallet } from "@/lib/wallet.functions";
+import { getClientOrderAnalytics } from "@/lib/dashboard-analytics.functions";
 import { OpenQuotesWidget } from "@/components/open-quotes-widget";
 
 export const Route = createFileRoute("/_authenticated/_client/dashboard")({
