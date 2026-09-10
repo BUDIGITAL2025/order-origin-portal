@@ -38,6 +38,9 @@ function htmlFromText(text: string): string {
  * provider accepted the message so callers can log it if they care.
  * When RESEND_API_KEY is unset the message is logged with a loud warning.
  */
+/** A file shipped with the message (base64 content, as Resend expects). */
+export type EmailAttachment = { filename: string; contentBase64: string; contentType?: string };
+
 export async function sendEmail(args: {
   to: string;
   subject: string;
@@ -48,6 +51,8 @@ export async function sendEmail(args: {
   replyTo?: string | null;
   /** Display name override; only the ops digest uses this. */
   senderName?: string;
+  /** Files to attach, e.g. a purchase-order PDF. */
+  attachments?: EmailAttachment[];
 }): Promise<{ sent: boolean; id?: string; error?: string }> {
   const apiKey = process.env["RESEND_API_KEY"]?.trim();
   const { from, address } = sender(args.senderName ?? SENDER_NAME);
@@ -75,6 +80,15 @@ export async function sendEmail(args: {
         text: args.text,
         html: args.html ?? htmlFromText(args.text),
         ...(replyTo ? { reply_to: replyTo } : {}),
+        ...(args.attachments?.length
+          ? {
+              attachments: args.attachments.map((a) => ({
+                filename: a.filename,
+                content: a.contentBase64,
+                ...(a.contentType ? { content_type: a.contentType } : {}),
+              })),
+            }
+          : {}),
       }),
     });
     const payload = (await response.json().catch(() => ({}))) as {
@@ -157,6 +171,10 @@ export async function sendLoggedEmail(
     kind: string;
     /** Row this email belongs to, when there is one. */
     relatedId?: string;
+    /** Files to attach, e.g. a purchase-order PDF. */
+    attachments?: EmailAttachment[];
+    /** Optional reply-to override (a PO answers to the sourcing desk). */
+    replyTo?: string | null;
   },
 ): Promise<{ sent: boolean; id?: string; error?: string }> {
   const result = await sendEmail({
@@ -164,6 +182,8 @@ export async function sendLoggedEmail(
     subject: args.subject,
     text: args.text,
     ...(args.html ? { html: args.html } : {}),
+    ...(args.attachments?.length ? { attachments: args.attachments } : {}),
+    ...(args.replyTo !== undefined ? { replyTo: args.replyTo } : {}),
   });
   try {
     await admin.from("email_log").insert({

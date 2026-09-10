@@ -113,6 +113,7 @@ const ADMIN_NAV: NavItem[] = [
   { to: "/admin/catalog-import", label: "Catalog import", icon: FileUp, badge: "New" },
   { to: "/admin/sourcing", label: "Sourcing team", icon: Handshake },
   { to: "/admin/stock-purchases", label: "Stock purchases", icon: PackageCheck },
+  { to: "/admin/supplier-payments", label: "Supplier payments", icon: Wallet, badge: "New" },
   { to: "/admin/products", label: "Products", icon: Package },
   { to: "/admin/orders", label: "Fulfilment", icon: Truck },
   { to: "/admin/suppliers", label: "Suppliers", icon: Factory },
@@ -127,9 +128,10 @@ const ADMIN_NAV: NavItem[] = [
   { to: "/admin/ads", label: "Ads", icon: Megaphone, badge: "New" },
 ];
 
-/** The collaborator desk is deliberately tiny: a queue and their earnings. */
+/** The collaborator desk stays tiny: their queue, purchases and earnings. */
 const SOURCING_NAV: NavItem[] = [
   { to: "/desk/queue", label: "Quote queue", icon: ClipboardList },
+  { to: "/desk/purchases", label: "Purchases", icon: PackageCheck, badge: "New" },
   { to: "/admin/catalog-import", label: "Catalog import", icon: FileUp, badge: "New" },
   { to: "/desk/earnings", label: "My earnings", icon: Wallet },
 ];

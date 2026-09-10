@@ -45,10 +45,12 @@ import { Route as AuthenticatedAdminSourcingRouteImport } from './routes/_authen
 import { Route as AuthenticatedAdminSpymarketRouteImport } from './routes/_authenticated/admin/spymarket'
 import { Route as AuthenticatedAdminSpymarketToolsRouteImport } from './routes/_authenticated/admin/spymarket-tools'
 import { Route as AuthenticatedAdminStockPurchasesRouteImport } from './routes/_authenticated/admin/stock-purchases'
+import { Route as AuthenticatedAdminSupplierPaymentsRouteImport } from './routes/_authenticated/admin/supplier-payments'
 import { Route as AuthenticatedAdminSuppliersRouteImport } from './routes/_authenticated/admin/suppliers'
 import { Route as AuthenticatedAdminWalletRouteImport } from './routes/_authenticated/admin/wallet'
 import { Route as AuthenticatedDeskIndexRouteImport } from './routes/_authenticated/desk/index'
 import { Route as AuthenticatedDeskEarningsRouteImport } from './routes/_authenticated/desk/earnings'
+import { Route as AuthenticatedDeskPurchasesRouteImport } from './routes/_authenticated/desk/purchases'
 import { Route as AuthenticatedDeskQueueRouteImport } from './routes/_authenticated/desk/queue'
 import { Route as AuthenticatedClientBillingIndexRouteImport } from './routes/_authenticated/_client/billing/index'
 import { Route as AuthenticatedClientBillingReceiptsRouteImport } from './routes/_authenticated/_client/billing/receipts'
@@ -77,6 +79,7 @@ import { Route as AuthenticatedAdminDisputesIdRouteImport } from './routes/_auth
 import { Route as AuthenticatedAdminFulfilmentProductsRouteImport } from './routes/_authenticated/admin/fulfilment.products'
 import { Route as AuthenticatedAdminQuotesIndexRouteImport } from './routes/_authenticated/admin/quotes/index'
 import { Route as AuthenticatedAdminQuotesIdRouteImport } from './routes/_authenticated/admin/quotes/$id'
+import { Route as AuthenticatedDeskPurchaseIdRouteImport } from './routes/_authenticated/desk/purchase.$id'
 import { Route as AuthenticatedDeskQuoteIdRouteImport } from './routes/_authenticated/desk/quote.$id'
 import { Route as ApiPublicCronAutoTopupRouteImport } from './routes/api/public/cron/auto-topup'
 import { Route as ApiPublicCronDailyDigestRouteImport } from './routes/api/public/cron/daily-digest'
@@ -291,6 +294,12 @@ const AuthenticatedAdminStockPurchasesRoute =
     path: '/stock-purchases',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminSupplierPaymentsRoute =
+  AuthenticatedAdminSupplierPaymentsRouteImport.update({
+    id: '/supplier-payments',
+    path: '/supplier-payments',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminSuppliersRoute =
   AuthenticatedAdminSuppliersRouteImport.update({
     id: '/suppliers',
@@ -312,6 +321,12 @@ const AuthenticatedDeskEarningsRoute =
   AuthenticatedDeskEarningsRouteImport.update({
     id: '/earnings',
     path: '/earnings',
+    getParentRoute: () => AuthenticatedDeskRoute,
+  } as any)
+const AuthenticatedDeskPurchasesRoute =
+  AuthenticatedDeskPurchasesRouteImport.update({
+    id: '/purchases',
+    path: '/purchases',
     getParentRoute: () => AuthenticatedDeskRoute,
   } as any)
 const AuthenticatedDeskQueueRoute = AuthenticatedDeskQueueRouteImport.update({
@@ -481,6 +496,12 @@ const AuthenticatedAdminQuotesIdRoute =
     path: '/quotes/$id',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedDeskPurchaseIdRoute =
+  AuthenticatedDeskPurchaseIdRouteImport.update({
+    id: '/purchase/$id',
+    path: '/purchase/$id',
+    getParentRoute: () => AuthenticatedDeskRoute,
+  } as any)
 const AuthenticatedDeskQuoteIdRoute =
   AuthenticatedDeskQuoteIdRouteImport.update({
     id: '/quote/$id',
@@ -582,9 +603,11 @@ export interface FileRoutesByFullPath {
   '/admin/spymarket': typeof AuthenticatedAdminSpymarketRoute
   '/admin/spymarket-tools': typeof AuthenticatedAdminSpymarketToolsRoute
   '/admin/stock-purchases': typeof AuthenticatedAdminStockPurchasesRoute
+  '/admin/supplier-payments': typeof AuthenticatedAdminSupplierPaymentsRoute
   '/admin/suppliers': typeof AuthenticatedAdminSuppliersRoute
   '/admin/wallet': typeof AuthenticatedAdminWalletRoute
   '/desk/earnings': typeof AuthenticatedDeskEarningsRoute
+  '/desk/purchases': typeof AuthenticatedDeskPurchasesRoute
   '/desk/queue': typeof AuthenticatedDeskQueueRoute
   '/desk/': typeof AuthenticatedDeskIndexRoute
   '/billing/receipts': typeof AuthenticatedClientBillingReceiptsRoute
@@ -608,6 +631,7 @@ export interface FileRoutesByFullPath {
   '/admin/disputes/$id': typeof AuthenticatedAdminDisputesIdRoute
   '/admin/fulfilment/products': typeof AuthenticatedAdminFulfilmentProductsRoute
   '/admin/quotes/$id': typeof AuthenticatedAdminQuotesIdRoute
+  '/desk/purchase/$id': typeof AuthenticatedDeskPurchaseIdRoute
   '/desk/quote/$id': typeof AuthenticatedDeskQuoteIdRoute
   '/api/public/cron/auto-topup': typeof ApiPublicCronAutoTopupRoute
   '/api/public/cron/daily-digest': typeof ApiPublicCronDailyDigestRoute
@@ -660,9 +684,11 @@ export interface FileRoutesByTo {
   '/admin/spymarket': typeof AuthenticatedAdminSpymarketRoute
   '/admin/spymarket-tools': typeof AuthenticatedAdminSpymarketToolsRoute
   '/admin/stock-purchases': typeof AuthenticatedAdminStockPurchasesRoute
+  '/admin/supplier-payments': typeof AuthenticatedAdminSupplierPaymentsRoute
   '/admin/suppliers': typeof AuthenticatedAdminSuppliersRoute
   '/admin/wallet': typeof AuthenticatedAdminWalletRoute
   '/desk/earnings': typeof AuthenticatedDeskEarningsRoute
+  '/desk/purchases': typeof AuthenticatedDeskPurchasesRoute
   '/desk/queue': typeof AuthenticatedDeskQueueRoute
   '/desk': typeof AuthenticatedDeskIndexRoute
   '/billing/receipts': typeof AuthenticatedClientBillingReceiptsRoute
@@ -686,6 +712,7 @@ export interface FileRoutesByTo {
   '/admin/disputes/$id': typeof AuthenticatedAdminDisputesIdRoute
   '/admin/fulfilment/products': typeof AuthenticatedAdminFulfilmentProductsRoute
   '/admin/quotes/$id': typeof AuthenticatedAdminQuotesIdRoute
+  '/desk/purchase/$id': typeof AuthenticatedDeskPurchaseIdRoute
   '/desk/quote/$id': typeof AuthenticatedDeskQuoteIdRoute
   '/api/public/cron/auto-topup': typeof ApiPublicCronAutoTopupRoute
   '/api/public/cron/daily-digest': typeof ApiPublicCronDailyDigestRoute
@@ -742,9 +769,11 @@ export interface FileRoutesById {
   '/_authenticated/admin/spymarket': typeof AuthenticatedAdminSpymarketRoute
   '/_authenticated/admin/spymarket-tools': typeof AuthenticatedAdminSpymarketToolsRoute
   '/_authenticated/admin/stock-purchases': typeof AuthenticatedAdminStockPurchasesRoute
+  '/_authenticated/admin/supplier-payments': typeof AuthenticatedAdminSupplierPaymentsRoute
   '/_authenticated/admin/suppliers': typeof AuthenticatedAdminSuppliersRoute
   '/_authenticated/admin/wallet': typeof AuthenticatedAdminWalletRoute
   '/_authenticated/desk/earnings': typeof AuthenticatedDeskEarningsRoute
+  '/_authenticated/desk/purchases': typeof AuthenticatedDeskPurchasesRoute
   '/_authenticated/desk/queue': typeof AuthenticatedDeskQueueRoute
   '/_authenticated/desk/': typeof AuthenticatedDeskIndexRoute
   '/_authenticated/_client/billing/receipts': typeof AuthenticatedClientBillingReceiptsRoute
@@ -768,6 +797,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/disputes/$id': typeof AuthenticatedAdminDisputesIdRoute
   '/_authenticated/admin/fulfilment/products': typeof AuthenticatedAdminFulfilmentProductsRoute
   '/_authenticated/admin/quotes/$id': typeof AuthenticatedAdminQuotesIdRoute
+  '/_authenticated/desk/purchase/$id': typeof AuthenticatedDeskPurchaseIdRoute
   '/_authenticated/desk/quote/$id': typeof AuthenticatedDeskQuoteIdRoute
   '/api/public/cron/auto-topup': typeof ApiPublicCronAutoTopupRoute
   '/api/public/cron/daily-digest': typeof ApiPublicCronDailyDigestRoute
@@ -823,9 +853,11 @@ export interface FileRouteTypes {
     | '/admin/spymarket'
     | '/admin/spymarket-tools'
     | '/admin/stock-purchases'
+    | '/admin/supplier-payments'
     | '/admin/suppliers'
     | '/admin/wallet'
     | '/desk/earnings'
+    | '/desk/purchases'
     | '/desk/queue'
     | '/desk/'
     | '/billing/receipts'
@@ -849,6 +881,7 @@ export interface FileRouteTypes {
     | '/admin/disputes/$id'
     | '/admin/fulfilment/products'
     | '/admin/quotes/$id'
+    | '/desk/purchase/$id'
     | '/desk/quote/$id'
     | '/api/public/cron/auto-topup'
     | '/api/public/cron/daily-digest'
@@ -901,9 +934,11 @@ export interface FileRouteTypes {
     | '/admin/spymarket'
     | '/admin/spymarket-tools'
     | '/admin/stock-purchases'
+    | '/admin/supplier-payments'
     | '/admin/suppliers'
     | '/admin/wallet'
     | '/desk/earnings'
+    | '/desk/purchases'
     | '/desk/queue'
     | '/desk'
     | '/billing/receipts'
@@ -927,6 +962,7 @@ export interface FileRouteTypes {
     | '/admin/disputes/$id'
     | '/admin/fulfilment/products'
     | '/admin/quotes/$id'
+    | '/desk/purchase/$id'
     | '/desk/quote/$id'
     | '/api/public/cron/auto-topup'
     | '/api/public/cron/daily-digest'
@@ -982,9 +1018,11 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/spymarket'
     | '/_authenticated/admin/spymarket-tools'
     | '/_authenticated/admin/stock-purchases'
+    | '/_authenticated/admin/supplier-payments'
     | '/_authenticated/admin/suppliers'
     | '/_authenticated/admin/wallet'
     | '/_authenticated/desk/earnings'
+    | '/_authenticated/desk/purchases'
     | '/_authenticated/desk/queue'
     | '/_authenticated/desk/'
     | '/_authenticated/_client/billing/receipts'
@@ -1008,6 +1046,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/disputes/$id'
     | '/_authenticated/admin/fulfilment/products'
     | '/_authenticated/admin/quotes/$id'
+    | '/_authenticated/desk/purchase/$id'
     | '/_authenticated/desk/quote/$id'
     | '/api/public/cron/auto-topup'
     | '/api/public/cron/daily-digest'
@@ -1300,6 +1339,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminStockPurchasesRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/supplier-payments': {
+      id: '/_authenticated/admin/supplier-payments'
+      path: '/supplier-payments'
+      fullPath: '/admin/supplier-payments'
+      preLoaderRoute: typeof AuthenticatedAdminSupplierPaymentsRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/suppliers': {
       id: '/_authenticated/admin/suppliers'
       path: '/suppliers'
@@ -1326,6 +1372,13 @@ declare module '@tanstack/react-router' {
       path: '/earnings'
       fullPath: '/desk/earnings'
       preLoaderRoute: typeof AuthenticatedDeskEarningsRouteImport
+      parentRoute: typeof AuthenticatedDeskRoute
+    }
+    '/_authenticated/desk/purchases': {
+      id: '/_authenticated/desk/purchases'
+      path: '/purchases'
+      fullPath: '/desk/purchases'
+      preLoaderRoute: typeof AuthenticatedDeskPurchasesRouteImport
       parentRoute: typeof AuthenticatedDeskRoute
     }
     '/_authenticated/desk/queue': {
@@ -1523,6 +1576,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/quotes/$id'
       preLoaderRoute: typeof AuthenticatedAdminQuotesIdRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/desk/purchase/$id': {
+      id: '/_authenticated/desk/purchase/$id'
+      path: '/purchase/$id'
+      fullPath: '/desk/purchase/$id'
+      preLoaderRoute: typeof AuthenticatedDeskPurchaseIdRouteImport
+      parentRoute: typeof AuthenticatedDeskRoute
     }
     '/_authenticated/desk/quote/$id': {
       id: '/_authenticated/desk/quote/$id'
@@ -1746,6 +1806,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminSpymarketRoute: typeof AuthenticatedAdminSpymarketRoute
   AuthenticatedAdminSpymarketToolsRoute: typeof AuthenticatedAdminSpymarketToolsRoute
   AuthenticatedAdminStockPurchasesRoute: typeof AuthenticatedAdminStockPurchasesRoute
+  AuthenticatedAdminSupplierPaymentsRoute: typeof AuthenticatedAdminSupplierPaymentsRoute
   AuthenticatedAdminSuppliersRoute: typeof AuthenticatedAdminSuppliersRoute
   AuthenticatedAdminWalletRoute: typeof AuthenticatedAdminWalletRoute
   AuthenticatedAdminFulfilmentProductsRoute: typeof AuthenticatedAdminFulfilmentProductsRoute
@@ -1771,6 +1832,8 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminSpymarketRoute: AuthenticatedAdminSpymarketRoute,
   AuthenticatedAdminSpymarketToolsRoute: AuthenticatedAdminSpymarketToolsRoute,
   AuthenticatedAdminStockPurchasesRoute: AuthenticatedAdminStockPurchasesRoute,
+  AuthenticatedAdminSupplierPaymentsRoute:
+    AuthenticatedAdminSupplierPaymentsRoute,
   AuthenticatedAdminSuppliersRoute: AuthenticatedAdminSuppliersRoute,
   AuthenticatedAdminWalletRoute: AuthenticatedAdminWalletRoute,
   AuthenticatedAdminFulfilmentProductsRoute:
@@ -1784,15 +1847,19 @@ const AuthenticatedAdminRouteWithChildren =
 
 interface AuthenticatedDeskRouteChildren {
   AuthenticatedDeskEarningsRoute: typeof AuthenticatedDeskEarningsRoute
+  AuthenticatedDeskPurchasesRoute: typeof AuthenticatedDeskPurchasesRoute
   AuthenticatedDeskQueueRoute: typeof AuthenticatedDeskQueueRoute
   AuthenticatedDeskIndexRoute: typeof AuthenticatedDeskIndexRoute
+  AuthenticatedDeskPurchaseIdRoute: typeof AuthenticatedDeskPurchaseIdRoute
   AuthenticatedDeskQuoteIdRoute: typeof AuthenticatedDeskQuoteIdRoute
 }
 
 const AuthenticatedDeskRouteChildren: AuthenticatedDeskRouteChildren = {
   AuthenticatedDeskEarningsRoute: AuthenticatedDeskEarningsRoute,
+  AuthenticatedDeskPurchasesRoute: AuthenticatedDeskPurchasesRoute,
   AuthenticatedDeskQueueRoute: AuthenticatedDeskQueueRoute,
   AuthenticatedDeskIndexRoute: AuthenticatedDeskIndexRoute,
+  AuthenticatedDeskPurchaseIdRoute: AuthenticatedDeskPurchaseIdRoute,
   AuthenticatedDeskQuoteIdRoute: AuthenticatedDeskQuoteIdRoute,
 }
 

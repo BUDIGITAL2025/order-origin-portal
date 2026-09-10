@@ -134,9 +134,11 @@ export const listMyStockPurchases = createServerFn({ method: "POST" })
       .order("created_at", { ascending: false })
       .limit(200);
     if (error) throw new Error(error.message);
-    const { purchaseRef, purchaseTotal } = await import("./purchases.server");
+    const { purchaseRef, purchaseTotal, publicPurchaseStatus } = await import("./purchases.server");
     return (rows ?? []).map((p) => ({
       ...p,
+      // Internal purchase-order steps are never exposed to the client.
+      status: publicPurchaseStatus(p.status),
       ref: purchaseRef(p.id),
       payable_total: purchaseTotal(p),
     }));

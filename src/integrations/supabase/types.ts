@@ -1927,6 +1927,44 @@ export type Database = {
         }
         Relationships: []
       }
+      purchase_events: {
+        Row: {
+          actor_id: string | null
+          actor_role: string | null
+          created_at: string
+          detail: string | null
+          event: string
+          id: string
+          purchase_id: string
+        }
+        Insert: {
+          actor_id?: string | null
+          actor_role?: string | null
+          created_at?: string
+          detail?: string | null
+          event: string
+          id?: string
+          purchase_id: string
+        }
+        Update: {
+          actor_id?: string | null
+          actor_role?: string | null
+          created_at?: string
+          detail?: string | null
+          event?: string
+          id?: string
+          purchase_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_events_purchase_id_fkey"
+            columns: ["purchase_id"]
+            isOneToOne: false
+            referencedRelation: "stock_purchases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quote_intents: {
         Row: {
           created_at: string
@@ -2934,17 +2972,39 @@ export type Database = {
           inbound_shipment_id: string | null
           paid_at: string | null
           path: Database["public"]["Enums"]["stock_purchase_path"]
+          po_document_path: string | null
+          po_generated_at: string | null
+          po_lead_days: number | null
+          po_number: string | null
+          po_payment_terms: string | null
+          po_sent_at: string | null
+          po_sent_channel: string | null
           product_id: string | null
           product_name: string
           quantity: number
           quote_line_id: string | null
           quote_request_id: string | null
+          reveal_consignee: boolean
           shipped_at: string | null
           sku: string | null
           sourced_by: string | null
           sourcing_fee_rate: number | null
           status: Database["public"]["Enums"]["stock_purchase_status"]
           store_id: string
+          supplier_id: string | null
+          supplier_invoice_currency: string | null
+          supplier_invoice_extract: Json | null
+          supplier_invoice_note: string | null
+          supplier_invoice_number: string | null
+          supplier_invoice_path: string | null
+          supplier_invoice_state: string | null
+          supplier_invoice_total: number | null
+          supplier_invoice_uploaded_at: string | null
+          supplier_paid_at: string | null
+          supplier_paid_by: string | null
+          supplier_payment_method: string | null
+          supplier_payment_proof_path: string | null
+          supplier_payment_reference: string | null
           supplier_unit_price: number | null
           total_amount: number | null
           tracking_carrier: string | null
@@ -2971,17 +3031,39 @@ export type Database = {
           inbound_shipment_id?: string | null
           paid_at?: string | null
           path: Database["public"]["Enums"]["stock_purchase_path"]
+          po_document_path?: string | null
+          po_generated_at?: string | null
+          po_lead_days?: number | null
+          po_number?: string | null
+          po_payment_terms?: string | null
+          po_sent_at?: string | null
+          po_sent_channel?: string | null
           product_id?: string | null
           product_name: string
           quantity: number
           quote_line_id?: string | null
           quote_request_id?: string | null
+          reveal_consignee?: boolean
           shipped_at?: string | null
           sku?: string | null
           sourced_by?: string | null
           sourcing_fee_rate?: number | null
           status?: Database["public"]["Enums"]["stock_purchase_status"]
           store_id: string
+          supplier_id?: string | null
+          supplier_invoice_currency?: string | null
+          supplier_invoice_extract?: Json | null
+          supplier_invoice_note?: string | null
+          supplier_invoice_number?: string | null
+          supplier_invoice_path?: string | null
+          supplier_invoice_state?: string | null
+          supplier_invoice_total?: number | null
+          supplier_invoice_uploaded_at?: string | null
+          supplier_paid_at?: string | null
+          supplier_paid_by?: string | null
+          supplier_payment_method?: string | null
+          supplier_payment_proof_path?: string | null
+          supplier_payment_reference?: string | null
           supplier_unit_price?: number | null
           total_amount?: number | null
           tracking_carrier?: string | null
@@ -3008,17 +3090,39 @@ export type Database = {
           inbound_shipment_id?: string | null
           paid_at?: string | null
           path?: Database["public"]["Enums"]["stock_purchase_path"]
+          po_document_path?: string | null
+          po_generated_at?: string | null
+          po_lead_days?: number | null
+          po_number?: string | null
+          po_payment_terms?: string | null
+          po_sent_at?: string | null
+          po_sent_channel?: string | null
           product_id?: string | null
           product_name?: string
           quantity?: number
           quote_line_id?: string | null
           quote_request_id?: string | null
+          reveal_consignee?: boolean
           shipped_at?: string | null
           sku?: string | null
           sourced_by?: string | null
           sourcing_fee_rate?: number | null
           status?: Database["public"]["Enums"]["stock_purchase_status"]
           store_id?: string
+          supplier_id?: string | null
+          supplier_invoice_currency?: string | null
+          supplier_invoice_extract?: Json | null
+          supplier_invoice_note?: string | null
+          supplier_invoice_number?: string | null
+          supplier_invoice_path?: string | null
+          supplier_invoice_state?: string | null
+          supplier_invoice_total?: number | null
+          supplier_invoice_uploaded_at?: string | null
+          supplier_paid_at?: string | null
+          supplier_paid_by?: string | null
+          supplier_payment_method?: string | null
+          supplier_payment_proof_path?: string | null
+          supplier_payment_reference?: string | null
           supplier_unit_price?: number | null
           total_amount?: number | null
           tracking_carrier?: string | null
@@ -3083,6 +3187,13 @@ export type Database = {
             columns: ["store_id"]
             isOneToOne: false
             referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_purchases_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
             referencedColumns: ["id"]
           },
         ]
@@ -3227,6 +3338,11 @@ export type Database = {
       suppliers: {
         Row: {
           active: boolean
+          address: string | null
+          contact_email: string | null
+          contact_name: string | null
+          contact_phone: string | null
+          country: string | null
           created_at: string
           default_production_lead_days: number | null
           default_transit_lead_days: number | null
@@ -3237,6 +3353,11 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          address?: string | null
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          country?: string | null
           created_at?: string
           default_production_lead_days?: number | null
           default_transit_lead_days?: number | null
@@ -3247,6 +3368,11 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          address?: string | null
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          country?: string | null
           created_at?: string
           default_production_lead_days?: number | null
           default_transit_lead_days?: number | null
@@ -3867,6 +3993,7 @@ export type Database = {
         }[]
       }
       generate_document_number: { Args: never; Returns: string }
+      generate_po_number: { Args: never; Returns: string }
       generate_sku: { Args: { p_prefix: string }; Returns: string }
       get_client_quote_lines: {
         Args: { p_quote_request_id: string }
@@ -4406,6 +4533,11 @@ export type Database = {
         | "requested"
         | "freight_quoted"
         | "paid"
+        | "po_sent"
+        | "invoice_uploaded"
+        | "invoice_verified"
+        | "invoice_discrepancy"
+        | "supplier_paid"
         | "in_production"
         | "shipped"
         | "delivered"
@@ -4604,6 +4736,11 @@ export const Constants = {
         "requested",
         "freight_quoted",
         "paid",
+        "po_sent",
+        "invoice_uploaded",
+        "invoice_verified",
+        "invoice_discrepancy",
+        "supplier_paid",
         "in_production",
         "shipped",
         "delivered",
