@@ -1,6 +1,6 @@
 ## Active
 - [x] Repair sourcing invite role assignment before invite acceptance
-- [ ] Verify sourcing-only navigation and direct client-route blocking
+- [x] Verify sourcing-only navigation and direct client-route blocking
 
 # Roadmap
 
