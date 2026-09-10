@@ -383,7 +383,9 @@ export const convertRowsToProducts = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => convertProductsSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const { requireAdminOrSourcing: requireAdmin, getAdminClient } = await import("./admin.server");
+    // Admin-only: this sets client-facing catalogue products, which sourcing
+    // collaborators must never create.
+    const { requireAdmin, getAdminClient } = await import("./admin.server");
     await requireAdmin(context.supabase, context.userId);
     const admin = await getAdminClient();
 
