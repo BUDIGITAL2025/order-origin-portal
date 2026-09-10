@@ -158,7 +158,15 @@ function money(n: number): string {
 }
 
 function s(value: unknown): string {
-  return String(value ?? "").replace(/[^\x20-\x7E\xA0-\xFF]|[\x80-\x9F]/g, "?");
+  // Helvetica only speaks WinAnsi, so fold the common typographic characters
+  // (em dash, curly quotes, ellipsis) to plain ASCII before stripping the rest.
+  return String(value ?? "")
+    .replace(/[\u2010-\u2015]/g, "-")
+    .replace(/[\u2018\u2019\u201B]/g, "'")
+    .replace(/[\u201C\u201D]/g, '"')
+    .replace(/\u2026/g, "...")
+    .replace(/[\u00A0\u2007\u202F]/g, " ")
+    .replace(/[^\x20-\x7E\xA0-\xFF]|[\x80-\x9F]/g, "?");
 }
 
 function poDate(d: Date): string {
