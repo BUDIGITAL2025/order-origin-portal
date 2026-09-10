@@ -33,12 +33,14 @@ export const getClientOrderAnalytics = createServerFn({ method: "GET" })
     // Best sellers: sum quantity by sku, top 5
     const unitsBySku = new Map<string, number>();
     for (const row of itemsRows ?? []) {
-      unitsBySku.set(row.sku, (unitsBySku.get(row.sku) ?? 0) + row.quantity);
+      const sku = row.sku ?? "unknown";
+      unitsBySku.set(sku, (unitsBySku.get(sku) ?? 0) + (row.quantity ?? 0));
     }
     const bestSellers = [...unitsBySku.entries()]
       .map(([sku, units]) => ({ sku, units, product_name: nameBySku.get(sku) ?? sku }))
       .sort((a, b) => b.units - a.units)
       .slice(0, 5);
+
 
     // Avg daily orders: last 30d vs previous 30d
     const last30 = (orders90 ?? []).filter((o) => o.created_at >= since30);
