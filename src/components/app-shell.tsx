@@ -39,6 +39,7 @@ import { getMyWallet } from "@/lib/wallet.functions";
 import { cn } from "@/lib/utils";
 import { SUPPORT_EMAIL, supportMailto } from "@/lib/support";
 import { PaymentTestModeBanner } from "@/components/PaymentTestModeBanner";
+import { STRIPE_FORCE_TEST_MODE } from "@/lib/stripe-mode";
 import { LegalFooter } from "@/components/legal";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { StoreSwitcher, getCurrentStoreId, STORE_CHANGED_EVENT } from "@/components/store-switcher";
@@ -472,6 +473,22 @@ export function AppShell({
             </div>
           )}
           <div className="ml-auto flex items-center gap-2">
+            {role === "admin" && !STRIPE_FORCE_TEST_MODE && (
+              <span
+                title="Stripe is in LIVE mode — real cards are charged"
+                className="rounded-full bg-red-600 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white"
+              >
+                Live
+              </span>
+            )}
+            {role === "admin" && STRIPE_FORCE_TEST_MODE && (
+              <span
+                title="Stripe is in TEST mode — no real money moves"
+                className="rounded-full border border-border px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
+              >
+                Test
+              </span>
+            )}
             {role === "client" && <WalletChip />}
             <ThemeToggle />
             <AccountMenu
