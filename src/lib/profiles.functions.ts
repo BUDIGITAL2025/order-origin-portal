@@ -142,6 +142,20 @@ export const completeSignup = createServerFn({ method: "POST" })
       if (profileError) throw new Error(profileError.message);
     }
 
+    // Someone who accepted a sourcing-team invitation is NOT a client: they
+    // get the sourcing role and none of the client artifacts (no company
+    // entity, no workspace, no wallet).
+    const { data: sourcingInvite } = await supabase.rpc("is_sourcing", { _user_id: userId });
+    if (sourcingInvite === true) {
+      const { error: sourcingRoleError } = await supabase
+        .from("user_roles")
+        .insert({ user_id: userId, role: "sourcing" });
+      if (sourcingRoleError && sourcingRoleError.code !== "23505") {
+        throw new Error(sourcingRoleError.message);
+      }
+      return { ok: true, already: Boolean(existing), role: "sourcing" as const };
+    }
+
     // Ensure the entity exists (covers retries after a partial attempt where
     // the profile row was written but the entity failed).
     const { data: entityRows } = await supabase.from("entities").select("id").limit(1);
