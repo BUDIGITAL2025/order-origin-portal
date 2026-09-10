@@ -8,13 +8,10 @@ const getEnv = (key: string): string => {
 
 export type StripeEnv = "sandbox" | "live";
 
-/**
- * Stage gate: production is deliberately staying in Stripe test mode for now.
- * While this is true, every server-side Stripe API call is routed to the
- * sandbox account — even if a stale live client token asks for "live".
- * Set to false only as part of the intentional go-live change.
- */
-export const STRIPE_FORCE_TEST_MODE = true;
+// The master switch lives in a browser-safe module so the client bundle and
+// the server share one constant. Re-exported for existing server imports.
+export { STRIPE_FORCE_TEST_MODE } from "./stripe-mode";
+import { STRIPE_FORCE_TEST_MODE } from "./stripe-mode";
 
 function effectiveStripeEnv(requestedEnv: StripeEnv): StripeEnv {
   return STRIPE_FORCE_TEST_MODE ? "sandbox" : requestedEnv;
