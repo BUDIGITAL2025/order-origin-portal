@@ -3,9 +3,23 @@ import type { Database } from "@/integrations/supabase/types";
 
 type Admin = SupabaseClient<Database>;
 
-function sender(): { from: string; name: string; address: string | null } {
-  const name = process.env["EMAIL_SENDER_NAME"]?.trim() || "FlySales";
-  const address = process.env["EMAIL_FROM_ADDRESS"]?.trim() || null;
+/**
+ * Single source of truth for sender identity. Every transactional email —
+ * invites, receipts, tracking, reminders, claims, digests — ships from this
+ * platform mailbox. No template may hardcode its own `from`, and a personal
+ * address must never appear in the envelope.
+ */
+export const SENDER_ADDRESS = process.env["EMAIL_FROM_ADDRESS"]?.trim() || "noreply@flysales.app";
+/** Display name for everything client- and collaborator-facing. */
+export const SENDER_NAME = process.env["EMAIL_SENDER_NAME"]?.trim() || "FlySales";
+/** Display name reserved for internal ops mail (the daily digest). */
+export const OPS_SENDER_NAME = "FlySales Ops";
+/** Humans answer here; the sending mailbox is unattended. */
+export const REPLY_TO_ADDRESS =
+  process.env["EMAIL_REPLY_TO_ADDRESS"]?.trim() || "support@flysales.app";
+
+function sender(name = SENDER_NAME): { from: string; name: string; address: string | null } {
+  const address = SENDER_ADDRESS || null;
   return { name, address, from: address ? `${name} <${address}>` : name };
 }
 
@@ -30,10 +44,14 @@ export async function sendEmail(args: {
   text: string;
   /** Branded HTML part; falls back to the escaped text when omitted. */
   html?: string;
-  replyTo?: string;
+  /** Defaults to support@ — pass null only for internal ops mail. */
+  replyTo?: string | null;
+  /** Display name override; only the ops digest uses this. */
+  senderName?: string;
 }): Promise<{ sent: boolean; id?: string; error?: string }> {
   const apiKey = process.env["RESEND_API_KEY"]?.trim();
-  const { from, address } = sender();
+  const { from, address } = sender(args.senderName ?? SENDER_NAME);
+  const replyTo = args.replyTo === null ? null : (args.replyTo ?? REPLY_TO_ADDRESS);
 
   if (!apiKey || !address) {
     console.warn(
@@ -56,7 +74,7 @@ export async function sendEmail(args: {
         subject: args.subject,
         text: args.text,
         html: args.html ?? htmlFromText(args.text),
-        ...(args.replyTo ? { reply_to: args.replyTo } : {}),
+        ...(replyTo ? { reply_to: replyTo } : {}),
       }),
     });
     const payload = (await response.json().catch(() => ({}))) as {
@@ -109,14 +127,19 @@ export async function sendAdminEmail(args: {
   subject: string;
   text: string;
 }): Promise<{ sent: boolean; error?: string }> {
-  const to =
-    process.env["ADMIN_DIGEST_EMAIL"]?.trim() ||
-    process.env["EMAIL_FROM_ADDRESS"]?.trim();
+  const to = process.env["ADMIN_DIGEST_EMAIL"]?.trim() || SENDER_ADDRESS;
   if (!to) {
     console.warn("[email] no ADMIN_DIGEST_EMAIL configured:", args.subject);
     return { sent: false, error: "no admin recipient" };
   }
-  return sendEmail({ to, subject: args.subject, text: args.text });
+  // Internal mail: same platform mailbox, ops display name, no support reply-to.
+  return sendEmail({
+    to,
+    subject: args.subject,
+    text: args.text,
+    senderName: OPS_SENDER_NAME,
+    replyTo: null,
+  });
 }
 
 /**
