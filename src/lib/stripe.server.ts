@@ -21,9 +21,7 @@ const GATEWAY_STRIPE_BASE = "https://connector-gateway.lovable.dev/stripe";
 
 export function getConnectionApiKey(requestedEnv: StripeEnv): string {
   const env = effectiveStripeEnv(requestedEnv);
-  return env === "sandbox"
-    ? getEnv("STRIPE_SANDBOX_API_KEY")
-    : getEnv("STRIPE_LIVE_API_KEY");
+  return env === "sandbox" ? getEnv("STRIPE_SANDBOX_API_KEY") : getEnv("STRIPE_LIVE_API_KEY");
 }
 
 // Routes api.stripe.com requests through the connector gateway.

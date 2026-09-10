@@ -125,8 +125,10 @@ export const Route = createFileRoute("/api/public/cron/daily-digest")({
             ads_call_failures: adsFailures.count ?? 0,
           };
 
+          const { STRIPE_FORCE_TEST_MODE } = await import("@/lib/stripe-mode");
           const lines: string[] = [
             `FlySales daily ops digest — ${new Date().toISOString().slice(0, 10)}`,
+            `Payments mode: ${STRIPE_FORCE_TEST_MODE ? "TEST (forced) — no real money moves" : "LIVE — real cards are charged"}`,
             "",
             `Failed Stripe webhooks (24h): ${summary.failed_webhooks}`,
             ...(webhooks.data ?? []).map(
