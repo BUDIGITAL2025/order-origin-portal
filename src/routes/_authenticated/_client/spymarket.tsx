@@ -65,9 +65,9 @@ function SpyMarketPage() {
   });
 
   const mutation = useMutation({
-    mutationFn: async (plan: PlanId) => {
+    mutationFn: async () => {
       const result = await checkout({
-        data: { plan, returnUrl: `${window.location.origin}/spymarket`, environment },
+        data: { returnUrl: `${window.location.origin}/spymarket`, environment },
       });
       if ("error" in result) throw new Error(result.error);
       return result;
@@ -80,11 +80,9 @@ function SpyMarketPage() {
     },
   });
 
-  const activePlan =
-    subscription && (subscription.status === "active" || subscription.status === "past_due")
-      ? (subscription.plan as PlanId)
-      : null;
-  const activePlanRow = PLANS.find((p) => p.id === activePlan) ?? null;
+  const isSubscribed = Boolean(
+    subscription && (subscription.status === "active" || subscription.status === "past_due"),
+  );
 
   return (
     <div className="space-y-8">
