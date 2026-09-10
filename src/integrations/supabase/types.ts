@@ -4358,7 +4358,7 @@ export type Database = {
         | "need_product_details"
       quote_line_status: "pending" | "accepted" | "rejected"
       quote_status: "submitted" | "sourcing" | "quoted" | "closed" | "expired"
-      spymarket_plan: "starter" | "plus" | "max"
+      spymarket_plan: "starter" | "plus" | "max" | "module"
       stock_purchase_path: "flysales" | "direct"
       stock_purchase_status:
         | "requested"
@@ -4556,7 +4556,7 @@ export const Constants = {
       ],
       quote_line_status: ["pending", "accepted", "rejected"],
       quote_status: ["submitted", "sourcing", "quoted", "closed", "expired"],
-      spymarket_plan: ["starter", "plus", "max"],
+      spymarket_plan: ["starter", "plus", "max", "module"],
       stock_purchase_path: ["flysales", "direct"],
       stock_purchase_status: [
         "requested",

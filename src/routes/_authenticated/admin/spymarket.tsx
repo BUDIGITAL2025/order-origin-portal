@@ -25,10 +25,12 @@ export const Route = createFileRoute("/_authenticated/admin/spymarket")({
   component: AdminSpyMarketPage,
 });
 
+/** Legacy tier names still appear on historical rows; SpyMarket is now one module. */
 const PLAN_LABEL: Record<string, string> = {
-  starter: "Starter",
-  plus: "Plus",
-  max: "Max",
+  module: "SpyMarket module",
+  starter: "Starter (retired)",
+  plus: "Plus (retired)",
+  max: "Max (retired)",
 };
 
 function AdminSpyMarketPage() {
@@ -42,15 +44,12 @@ function AdminSpyMarketPage() {
     <div>
       <PageHeader
         title="SpyMarket waitlist"
-        description="Interest registrations for the upcoming SpyMarket product. Counts per plan are negotiation material."
+        description="Interest registrations for the SpyMarket module ($49/month). The old $99/$189/$349 tiers are retired — those registrations now buy the module."
       />
 
-      {/* Count per plan */}
       <div className="mb-6 grid gap-4 sm:grid-cols-4">
         {isPending || !data ? (
           <>
-            <Skeleton className="h-20 rounded-2xl" />
-            <Skeleton className="h-20 rounded-2xl" />
             <Skeleton className="h-20 rounded-2xl" />
             <Skeleton className="h-20 rounded-2xl" />
           </>
@@ -60,10 +59,10 @@ function AdminSpyMarketPage() {
               <p className="text-xs text-muted-foreground">Total</p>
               <p className="mt-1 text-2xl font-semibold tnum">{data.total}</p>
             </div>
-            {(["starter", "plus", "max"] as const).map((plan) => (
+            {Object.entries(data.counts).map(([plan, count]) => (
               <div key={plan} className="rounded-2xl border border-border bg-card p-4">
-                <p className="text-xs text-muted-foreground">{PLAN_LABEL[plan]}</p>
-                <p className="mt-1 text-2xl font-semibold tnum">{data.counts[plan]}</p>
+                <p className="text-xs text-muted-foreground">{PLAN_LABEL[plan] ?? plan}</p>
+                <p className="mt-1 text-2xl font-semibold tnum">{count}</p>
               </div>
             ))}
           </>

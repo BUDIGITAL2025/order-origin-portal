@@ -15,13 +15,10 @@ export const PRICE_CATALOGUE = {
   // Wallet top-ups: a $1 unit price charged by quantity
   topup_unit: { label: "Wallet top-up unit", usd: 1, interval: null },
 
-  // SpyMarket tiers (src/lib/spymarket.functions.ts SPYMARKET_PRICE_IDS)
-  spymarket_starter_monthly: { label: "SpyMarket Starter", usd: 99, interval: "month" },
-  spymarket_plus_monthly: { label: "SpyMarket Plus", usd: 189, interval: "month" },
-  spymarket_max_monthly: { label: "SpyMarket Max", usd: 349, interval: "month" },
-
-  // Intelligence module add-ons (registry not built yet — prices reserved so
-  // test and live stay in sync when the module activation system lands)
+  // Intelligence module add-ons. SpyMarket's old $99/$189/$349 tiers were
+  // legacy of the previous data provider and are archived in Stripe; the
+  // module is a single $49/month subscription like SEO and Ads.
+  module_spymarket_monthly: { label: "FlySales SpyMarket", usd: 49, interval: "month" },
   module_seo_monthly: { label: "FlySales SEO", usd: 49, interval: "month" },
   module_ads_monthly: { label: "FlySales Ads", usd: 39, interval: "month" },
   module_growth_bundle_monthly: { label: "Growth Bundle", usd: 99, interval: "month" },
@@ -30,6 +27,7 @@ export const PRICE_CATALOGUE = {
 export type PriceLookupKey = keyof typeof PRICE_CATALOGUE;
 
 export const MODULE_PRICE_IDS = {
+  spymarket: "module_spymarket_monthly",
   seo: "module_seo_monthly",
   ads: "module_ads_monthly",
   bundle: "module_growth_bundle_monthly",

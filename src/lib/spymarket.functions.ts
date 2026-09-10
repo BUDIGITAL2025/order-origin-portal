@@ -2,14 +2,15 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { stripeEnvSchema } from "./schemas";
+import { MODULE_PRICE_IDS } from "./price-ids";
 
 /**
- * SpyMarket interest capture. SpyMarket is a shell — no research tool, no
- * credits ledger, no external API. This module only records which plan an
- * account is interested in (one row per account; re-picking updates it).
+ * SpyMarket interest capture. Kept for historical waitlist rows — new
+ * registrations are always the single "module" plan, since the old
+ * starter/plus/max tiers are retired.
  */
 
-const planSchema = z.object({ plan: z.enum(["starter", "plus", "max"]) });
+const planSchema = z.object({ plan: z.literal("module").default("module") });
 
 /** Client: my current SpyMarket waitlist registration, if any. */
 export const getMySpyMarketInterest = createServerFn({ method: "GET" })
@@ -66,9 +67,7 @@ export const adminListSpyMarketInterest = createServerFn({ method: "GET" })
     await requireAdmin(context.supabase, context.userId);
     const { data, error } = await context.supabase
       .from("spymarket_interest")
-      .select(
-        "id, plan_interest, created_at, profiles(contact_name), entities(legal_name)",
-      )
+      .select("id, plan_interest, created_at, profiles(contact_name), entities(legal_name)")
       .order("created_at", { ascending: false })
       .limit(500);
     if (error) throw new Error(error.message);
@@ -76,27 +75,29 @@ export const adminListSpyMarketInterest = createServerFn({ method: "GET" })
       id: row.id,
       plan_interest: row.plan_interest,
       created_at: row.created_at,
-      contact_name:
-        (row.profiles as { contact_name?: string } | null)?.contact_name ?? "—",
-      entity_name:
-        (row.entities as { legal_name?: string } | null)?.legal_name ?? null,
+      contact_name: (row.profiles as { contact_name?: string } | null)?.contact_name ?? "—",
+      entity_name: (row.entities as { legal_name?: string } | null)?.legal_name ?? null,
     }));
-    const counts = { starter: 0, plus: 0, max: 0 };
-    for (const e of entries) counts[e.plan_interest as keyof typeof counts] += 1;
+    // Legacy tier names may still appear on historical rows; everything new
+    // is the single module plan.
+    const counts: Record<string, number> = {};
+    for (const e of entries) {
+      const key = String(e.plan_interest);
+      counts[key] = (counts[key] ?? 0) + 1;
+    }
     return { entries, counts, total: entries.length };
   });
 
 // ============= Paid SpyMarket subscriptions =============
 
-/** Human-readable Stripe price lookup keys, stable across test and live. */
-export const SPYMARKET_PRICE_IDS = {
-  starter: "spymarket_starter_monthly",
-  plus: "spymarket_plus_monthly",
-  max: "spymarket_max_monthly",
-} as const;
+/**
+ * SpyMarket is a single intelligence module at $49/month. The old
+ * starter/plus/max tiers belonged to the previous data provider and are
+ * archived in Stripe — nothing new can be bought on them.
+ */
+export const SPYMARKET_PRICE_ID = MODULE_PRICE_IDS.spymarket;
 
 const checkoutSchema = z.object({
-  plan: z.enum(["starter", "plus", "max"]),
   returnUrl: z.string().trim().url("Invalid return URL").max(500),
   environment: stripeEnvSchema,
 });
@@ -167,10 +168,10 @@ export const createSpyMarketCheckout = createServerFn({ method: "POST" })
       }
 
       const prices = await stripe.prices.list({
-        lookup_keys: [SPYMARKET_PRICE_IDS[data.plan]],
+        lookup_keys: [SPYMARKET_PRICE_ID],
       });
       const price = prices.data[0];
-      if (!price) throw new Error("SpyMarket plan price not found");
+      if (!price) throw new Error("SpyMarket module price not found");
 
       const session = await stripe.checkout.sessions.create({
         mode: "subscription",
@@ -181,14 +182,14 @@ export const createSpyMarketCheckout = createServerFn({ method: "POST" })
         metadata: {
           kind: "spymarket_subscription",
           flysales_user_id: context.userId,
-          plan: data.plan,
+          plan: "module",
         },
         subscription_data: {
           metadata: {
             kind: "spymarket_subscription",
             flysales_user_id: context.userId,
             userId: context.userId,
-            plan: data.plan,
+            plan: "module",
           },
         },
       });
