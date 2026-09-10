@@ -206,6 +206,23 @@ function AdminQuotesPage() {
         </Button>
       </ToolBar>
 
+      {selectedIds.size > 0 && (
+        <div className="mb-3 flex items-center gap-3 rounded-lg border border-border bg-muted/50 px-3 py-2">
+          <span className="text-[13px] font-medium">{selectedIds.size} selected</span>
+          <Button
+            size="sm"
+            variant="destructive"
+            disabled={bulkDelete.isPending}
+            onClick={() => bulkDelete.mutate([...selectedIds])}
+          >
+            {bulkDelete.isPending ? "Deleting…" : "Delete selected"}
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => setSelectedIds(new Set())}>
+            Clear selection
+          </Button>
+        </div>
+      )}
+
       {isPending ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
       ) : sorted.length === 0 ? (
@@ -218,6 +235,15 @@ function AdminQuotesPage() {
           <Table className="text-[13px]">
             <TableHeader>
               <TableRow>
+                <TableHead className="h-9 w-9">
+                  <Checkbox
+                    aria-label="Select all rows"
+                    checked={sorted.length > 0 && sorted.every((q) => selectedIds.has(q.id))}
+                    onCheckedChange={(v) =>
+                      setSelectedIds(v === true ? new Set(sorted.map((q) => q.id)) : new Set())
+                    }
+                  />
+                </TableHead>
                 <TableHead className="h-9">Requested</TableHead>
                 <TableHead className="h-9">Client</TableHead>
                 <TableHead className="h-9">Product</TableHead>
