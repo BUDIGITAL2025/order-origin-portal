@@ -457,15 +457,19 @@ export const adminInviteCollaborator = createServerFn({ method: "POST" })
     const { data: list } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
     const existingUser = (list?.users ?? []).find((u) => u.email?.toLowerCase() === email) ?? null;
 
-    const invite = await sendCollaboratorInvite(admin, {
-      email,
-      displayName,
-      feeRate,
-      existing: Boolean(existingUser),
-    });
-    const userId = existingUser?.id ?? invite.userId;
+    // Generate the auth account first, then bind it to the collaborator row.
+    // The database trigger assigns `sourcing` here, before the email link can
+    // ever be accepted, so signup can never fall through to `client`.
+    let userId = existingUser?.id ?? null;
     if (!userId) {
-      throw new Error(invite.error ?? "Could not create the collaborator account");
+      const { data: created, error: createError } = await admin.auth.admin.createUser({
+        email,
+        email_confirm: true,
+      });
+      if (createError || !created.user) {
+        throw new Error(createError?.message ?? "Could not create the collaborator account");
+      }
+      userId = created.user.id;
     }
 
     const now = new Date().toISOString();
@@ -486,6 +490,14 @@ export const adminInviteCollaborator = createServerFn({ method: "POST" })
       .select("id")
       .single();
     if (insertError) throw new Error(insertError.message);
+
+    const invite = await sendCollaboratorInvite(admin, {
+      email,
+      displayName,
+      feeRate,
+      existing: true,
+      collaboratorId: row.id,
+    });
 
     return {
       ok: true,

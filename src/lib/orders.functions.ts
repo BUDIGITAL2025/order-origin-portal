@@ -37,6 +37,7 @@ export const listMyCatalogue = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => storeIdSchema.parse(input))
   .handler(async ({ data, context }) => {
+    await assertNotSourcing(context.supabase, context.userId);
     const { data: products, error } = await context.supabase
       .from("products")
       .select("id, sku, product_name, variant_label, product_type, moq")
@@ -94,6 +95,7 @@ export const importMyManualOrders = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => importManualOrdersSchema.parse(input))
   .handler(async ({ data, context }) => {
+    await assertNotSourcing(context.supabase, context.userId);
     const payload = data.orders.map((o) => ({
       client_reference: o.client_reference || null,
       customer: o.customer,
@@ -198,6 +200,7 @@ export const adminSetOrderTracking = createServerFn({ method: "POST" })
 export const listMyOrders = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
+    await assertNotSourcing(context.supabase, context.userId);
     const { data, error } = await context.supabase
       .from("orders")
       .select(
@@ -220,6 +223,7 @@ export const getMyOrder = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ order_id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
+    await assertNotSourcing(context.supabase, context.userId);
     const { data: order, error } = await context.supabase
       .from("orders")
       .select(
