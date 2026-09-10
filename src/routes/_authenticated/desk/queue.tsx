@@ -91,9 +91,11 @@ function QueuePage() {
                   {formatDate(q.created_at)}
                 </TableCell>
                 <TableCell className="max-w-72">
-                  <div className="truncate text-sm">
-                    {q.product_name || q.product_url || "Product request"}
-                  </div>
+                  <ProductCell
+                    imageUrls={(q as { image_urls?: string[] | null }).image_urls ?? []}
+                    name={q.product_name || q.product_url || "Product request"}
+                    size={32}
+                  />
                   {q.mine ? <Chip tone="primary">Mine</Chip> : null}
                 </TableCell>
                 <TableCell className="text-xs uppercase text-muted-foreground">
