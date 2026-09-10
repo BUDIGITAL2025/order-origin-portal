@@ -44,13 +44,7 @@ const DESK_LINE_COLUMNS =
 
 /** Read-only progress of a request the collaborator priced themselves. */
 export type DeskLifecycle =
-  | "new"
-  | "sourcing"
-  | "quoted"
-  | "published"
-  | "accepted"
-  | "in_production"
-  | "received";
+  "new" | "sourcing" | "quoted" | "published" | "accepted" | "in_production" | "received";
 
 /** Who am I on the sourcing desk? Returns null for everyone else. */
 export const getSourcingDeskContext = createServerFn({ method: "GET" })
@@ -114,7 +108,13 @@ export const sourcingListQueue = createServerFn({ method: "GET" })
             .from("quote_options")
             .select("quote_request_id, published, accepted_at")
             .in("quote_request_id", mineIds)
-        : Promise.resolve({ data: [] as { quote_request_id: string; published: boolean | null; accepted_at: string | null }[] }),
+        : Promise.resolve({
+            data: [] as {
+              quote_request_id: string;
+              published: boolean | null;
+              accepted_at: string | null;
+            }[],
+          }),
       mineIds.length
         ? admin
             .from("stock_purchases")
