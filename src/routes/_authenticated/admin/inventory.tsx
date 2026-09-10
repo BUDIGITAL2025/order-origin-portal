@@ -127,6 +127,15 @@ function AdminInventoryPage() {
     queryKey: ["admin-inventory", growthPercent],
     staleTime: 60_000,
     queryFn: () => fetchInventory({ data: { growthPercent } }),
+    enabled: view === "workspaces",
+  });
+
+  const fetchEcomflow = useServerFn(getEcomflowStock);
+  const ecomflowQuery = useQuery({
+    queryKey: ["ecomflow-stock"],
+    staleTime: 60_000,
+    queryFn: () => fetchEcomflow(),
+    enabled: view === "ecomflow",
   });
 
   const callSync = useServerFn(syncInventoryNow);
