@@ -68,6 +68,11 @@ function DashboardPage() {
   useEffect(() => {
     setCurrentStoreId(getCurrentStoreId());
   }, []);
+  const { data: analytics } = useQuery({
+    queryKey: ["client-order-analytics", currentStoreId],
+    queryFn: () => fetchOrderAnalytics({ data: { storeId: currentStoreId! } }),
+    enabled: !!currentStoreId,
+  });
   const allStores = entities.flatMap((e) => e.stores);
   const store = allStores.find((s) => s.id === currentStoreId) ?? allStores[0] ?? null;
   const entity = entities.find((e) => e.id === store?.entity_id) ?? null;
