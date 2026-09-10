@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
-import { AlertTriangle, Info, RefreshCw, SlidersHorizontal, TrendingDown, TrendingUp } from "lucide-react";
+import { AlertTriangle, Info, RefreshCw, SlidersHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/app-shell";
 import { SectionTabs, ADMIN_FULFILMENT_TABS } from "@/components/section-tabs";
@@ -35,8 +35,7 @@ import {
   setWorkspacePlanningDefaults,
   syncInventoryNow,
 } from "@/lib/inventory.functions";
-import { getEcomflowStock, getEcomflowAnalytics } from "@/lib/ecomflow.functions";
-import { MiniSparkline } from "@/components/dashboard-viz";
+import { getEcomflowStock } from "@/lib/ecomflow.functions";
 import { PlanningDialog } from "@/components/planning-dialog";
 import { friendlyError } from "@/lib/errors";
 import { formatUSD } from "@/lib/format";
@@ -118,21 +117,6 @@ const ECOMFLOW_TABS = [
   { id: "no_sales", label: "No sales" },
 ] as const;
 
-type EcomflowAnalytics = {
-  summary: {
-    totalProducts: number;
-    criticalCount: number;
-    warningCount: number;
-    healthyCount: number;
-    notSellingCount: number;
-    acceleratingCount: number;
-  };
-  topProducts: { sku: string; title: string; unitsSold: number; orderCount: number }[];
-  topCountries: { country: string; count: number; pct: number }[];
-  pctChange: number | null;
-  avgDailyOrders: number;
-  orderSeries: { period: string; activeOrders: number }[];
-};
 
 function BucketBadge({ bucket }: { bucket: Bucket }) {
   return (
@@ -151,16 +135,6 @@ function EcomflowStockView({
   const [growthPercent, setGrowthPercent] = useState(0);
   const [filter, setFilter] = useState<(typeof ECOMFLOW_TABS)[number]["id"]>("all");
 
-  const fetchAnalytics = useServerFn(getEcomflowAnalytics);
-  const {
-    data: analytics,
-    isLoading: analyticsLoading,
-    error: analyticsError,
-  } = useQuery<EcomflowAnalytics>({
-    queryKey: ["ecomflow-analytics"],
-    staleTime: 60_000,
-    queryFn: () => fetchAnalytics(),
-  });
 
   const adjustedRows = useMemo(() => {
     return (data ?? []).map((row) => {
@@ -206,120 +180,6 @@ function EcomflowStockView({
 
   return (
     <div className="space-y-4">
-      {analyticsError ? (
-        <Card className="border-destructive/30">
-          <CardContent className="p-4 text-sm text-destructive">{friendlyError(analyticsError)}</CardContent>
-        </Card>
-      ) : analyticsLoading ? (
-        <Card>
-          <CardContent className="p-6 text-sm text-muted-foreground">Loading Ecomflow analytics…</CardContent>
-        </Card>
-      ) : analytics ? (
-        <>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Avg. Daily Orders</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-semibold tnum">{analytics.avgDailyOrders.toFixed(2)}</div>
-                {analytics.pctChange != null && (
-                  <Badge
-                    variant="outline"
-                    className={cn(
-                      "mt-1 gap-0.5",
-                      analytics.pctChange >= 0
-                        ? "border-success/25 bg-success/10 text-success"
-                        : "border-destructive/25 bg-destructive/10 text-destructive",
-                    )}
-                  >
-                    {analytics.pctChange >= 0 ? (
-                      <TrendingUp className="h-3 w-3" />
-                    ) : (
-                      <TrendingDown className="h-3 w-3" />
-                    )}
-                    {Math.abs(analytics.pctChange).toFixed(1)}%
-                  </Badge>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Best Sellers</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {analytics.topProducts.map((p) => (
-                  <div key={p.sku} className="flex items-center justify-between gap-2">
-                    <div className="min-w-0">
-                      <div className="truncate text-sm font-medium">{p.title}</div>
-                      <div className="text-[11px] text-muted-foreground">{p.sku}</div>
-                    </div>
-                    <div className="tnum text-sm font-semibold">{p.unitsSold}</div>
-                  </div>
-                ))}
-                {analytics.topProducts.length === 0 && (
-                  <div className="text-sm text-muted-foreground">No top products this period.</div>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Top Countries</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {analytics.topCountries.map((c) => (
-                  <div key={c.country} className="flex items-center justify-between gap-2">
-                    <div className="truncate text-sm">{c.country}</div>
-                    <div className="tnum text-sm font-semibold">{c.pct.toFixed(1)}%</div>
-                  </div>
-                ))}
-                {analytics.topCountries.length === 0 && (
-                  <div className="text-sm text-muted-foreground">No orders this period.</div>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Inventory Health</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-1 text-sm">
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Healthy</span>
-                  <span className="font-semibold text-success">{analytics.summary.healthyCount}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Not Selling</span>
-                  <span className="font-semibold">{analytics.summary.notSellingCount}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Critical</span>
-                  <span className="font-semibold text-destructive">{analytics.summary.criticalCount}</span>
-                </div>
-                <div className="flex items-center justify-between border-t border-border pt-1">
-                  <span className="text-muted-foreground">Total Products</span>
-                  <span className="font-semibold">{analytics.summary.totalProducts}</span>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Incoming Orders</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <MiniSparkline values={analytics.orderSeries.map((s) => s.activeOrders)} />
-              <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
-                <span>{analytics.orderSeries[0]?.period ?? "—"}</span>
-                <span>{analytics.orderSeries[analytics.orderSeries.length - 1]?.period ?? "—"}</span>
-              </div>
-            </CardContent>
-          </Card>
-        </>
-      ) : null}
 
       <div className="flex flex-wrap items-center gap-2">
         <FilterTabs tabs={tabsWithCounts} value={filter} onChange={setFilter} />

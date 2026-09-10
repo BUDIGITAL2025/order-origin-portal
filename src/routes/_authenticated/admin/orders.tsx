@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Truck } from "lucide-react";
+import { Truck, TrendingDown, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
 import { EmptyState, PageHeader } from "@/components/app-shell";
 import { SectionTabs, ADMIN_FULFILMENT_TABS } from "@/components/section-tabs";
@@ -49,6 +49,11 @@ import { formatDateTime, formatUSD } from "@/lib/format";
 import { adminListOrders, adminSetOrderTracking } from "@/lib/orders.functions";
 import { adminListDisputes } from "@/lib/disputes.functions";
 import { orderTrackingSchema } from "@/lib/schemas";
+import { getEcomflowAnalytics } from "@/lib/ecomflow.functions";
+import { MiniSparkline } from "@/components/dashboard-viz";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/admin/orders")({
   validateSearch: (search: Record<string, unknown>): { stage?: string } =>
@@ -61,6 +66,22 @@ export const Route = createFileRoute("/_authenticated/admin/orders")({
 
 type AdminOrder = Awaited<ReturnType<typeof adminListOrders>>["orders"][number];
 
+type EcomflowAnalytics = {
+  summary: {
+    totalProducts: number;
+    criticalCount: number;
+    warningCount: number;
+    healthyCount: number;
+    notSellingCount: number;
+    acceleratingCount: number;
+  };
+  topProducts: { sku: string; title: string; unitsSold: number; orderCount: number }[];
+  topCountries: { country: string; count: number; pct: number }[];
+  pctChange: number | null;
+  avgDailyOrders: number;
+  orderSeries: { period: string; activeOrders: number }[];
+};
+
 function workspaceOf(order: AdminOrder) {
   return order.stores as {
     store_name?: string | null;
@@ -71,6 +92,12 @@ function workspaceOf(order: AdminOrder) {
 function AdminOrdersPage() {
   const fetchOrders = useServerFn(adminListOrders);
   const fetchDisputes = useServerFn(adminListDisputes);
+  const fetchAnalytics = useServerFn(getEcomflowAnalytics);
+  const { data: analytics } = useQuery<EcomflowAnalytics>({
+    queryKey: ["ecomflow-analytics"],
+    staleTime: 60_000,
+    queryFn: () => fetchAnalytics(),
+  });
   const { data, isPending } = useQuery({
     queryKey: ["admin-orders"],
     queryFn: fetchOrders,
@@ -129,6 +156,113 @@ function AdminOrdersPage() {
       />
       <SectionTabs tabs={ADMIN_FULFILMENT_TABS} />
       <OperationsToday />
+
+      {analytics ? (
+        <>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Avg. Daily Orders</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-semibold tnum">{analytics.avgDailyOrders.toFixed(2)}</div>
+                {analytics.pctChange != null && (
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      "mt-1 gap-0.5",
+                      analytics.pctChange >= 0
+                        ? "border-success/25 bg-success/10 text-success"
+                        : "border-destructive/25 bg-destructive/10 text-destructive",
+                    )}
+                  >
+                    {analytics.pctChange >= 0 ? (
+                      <TrendingUp className="h-3 w-3" />
+                    ) : (
+                      <TrendingDown className="h-3 w-3" />
+                    )}
+                    {Math.abs(analytics.pctChange).toFixed(1)}%
+                  </Badge>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Best Sellers</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {analytics.topProducts.map((p) => (
+                  <div key={p.sku} className="flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-medium">{p.title}</div>
+                      <div className="text-[11px] text-muted-foreground">{p.sku}</div>
+                    </div>
+                    <div className="tnum text-sm font-semibold">{p.unitsSold}</div>
+                  </div>
+                ))}
+                {analytics.topProducts.length === 0 && (
+                  <div className="text-sm text-muted-foreground">No top products this period.</div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Top Countries</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {analytics.topCountries.map((c) => (
+                  <div key={c.country} className="flex items-center justify-between gap-2">
+                    <div className="truncate text-sm">{c.country}</div>
+                    <div className="tnum text-sm font-semibold">{c.pct.toFixed(1)}%</div>
+                  </div>
+                ))}
+                {analytics.topCountries.length === 0 && (
+                  <div className="text-sm text-muted-foreground">No orders this period.</div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Inventory Health</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-1 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Healthy</span>
+                  <span className="font-semibold text-success">{analytics.summary.healthyCount}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Not Selling</span>
+                  <span className="font-semibold">{analytics.summary.notSellingCount}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Critical</span>
+                  <span className="font-semibold text-destructive">{analytics.summary.criticalCount}</span>
+                </div>
+                <div className="flex items-center justify-between border-t border-border pt-1">
+                  <span className="text-muted-foreground">Total Products</span>
+                  <span className="font-semibold">{analytics.summary.totalProducts}</span>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Incoming Orders</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <MiniSparkline values={analytics.orderSeries.map((s) => s.activeOrders)} />
+              <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
+                <span>{analytics.orderSeries[0]?.period ?? "—"}</span>
+                <span>{analytics.orderSeries[analytics.orderSeries.length - 1]?.period ?? "—"}</span>
+              </div>
+            </CardContent>
+          </Card>
+        </>
+      ) : null}
 
       {isPending ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
