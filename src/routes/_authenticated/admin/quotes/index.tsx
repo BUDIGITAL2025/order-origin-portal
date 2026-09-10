@@ -1,8 +1,9 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { ArrowUpRight } from "lucide-react";
+import { toast } from "sonner";
 import { z } from "zod";
 import { EmptyState, PageHeader } from "@/components/app-shell";
 import { QuoteSlaBadge } from "@/components/quote-sla";
@@ -18,6 +19,7 @@ import {
   Value,
 } from "@/components/admin-ui";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table,
   TableBody,
@@ -32,6 +34,7 @@ import { PhotoManagerDialog } from "@/components/photo-manager";
 import { ImagePlus } from "lucide-react";
 import { formatDate } from "@/lib/format";
 import { effectiveTier } from "@/lib/plans";
+import { adminCleanupDelete } from "@/lib/cleanup.functions";
 import { adminListQuotes } from "@/lib/quotes.functions";
 import { cn } from "@/lib/utils";
 
