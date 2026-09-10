@@ -1,3 +1,7 @@
+## Active
+- [ ] Repair and verify sourcing invite role flow for sourcingtest3
+- [ ] Verify sourcing-only navigation and direct client-route blocking
+
 # Roadmap
 
 ## Done
