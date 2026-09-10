@@ -431,6 +431,7 @@ export function AppShell({
   const queryClient = useQueryClient();
   const pathname = useRouterState({ select: (r) => r.location.pathname });
   const nav = role === "admin" ? ADMIN_NAV : role === "sourcing" ? SOURCING_NAV : CLIENT_NAV;
+  const alerts = useNavAlerts(role);
 
   // Manual active matching so "/sourcing/new" doesn't light up "My quotes".
   const isActive = (to: string) => {
@@ -499,6 +500,13 @@ export function AppShell({
             >
               <item.icon className="h-4 w-4" />
               {item.label}
+              {alerts[item.to] && (
+                <span
+                  aria-label="New items"
+                  title="New items"
+                  className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary"
+                />
+              )}
               {item.badge && (
                 <Badge className="ml-auto bg-primary/15 px-1.5 py-0 text-[9px] font-medium text-primary hover:bg-primary/15">
                   {item.badge}
