@@ -130,6 +130,7 @@ export const sourcingListQueue = createServerFn({ method: "GET" })
     );
     const purchaseByQuote = new Map<string, string>();
     for (const p of purchases ?? []) {
+      if (!p.quote_request_id) continue;
       const rank = ["requested", "freight_quoted", "paid", "in_production", "shipped", "delivered"];
       const current = purchaseByQuote.get(p.quote_request_id);
       if (!current || rank.indexOf(p.status) > rank.indexOf(current)) {
