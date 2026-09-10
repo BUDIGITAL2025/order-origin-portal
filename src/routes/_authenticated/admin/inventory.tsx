@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
-import { AlertTriangle, Info, RefreshCw, SlidersHorizontal } from "lucide-react";
+import { AlertTriangle, Info, RefreshCw, SlidersHorizontal, TrendingDown, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/app-shell";
 import { SectionTabs, ADMIN_FULFILMENT_TABS } from "@/components/section-tabs";
@@ -11,7 +11,7 @@ import { AdminSearch, FilterTabs, PanelHeader, SummaryBar } from "@/components/a
 import { InventoryTable, type InventoryRow } from "@/components/inventory-table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -35,7 +35,8 @@ import {
   setWorkspacePlanningDefaults,
   syncInventoryNow,
 } from "@/lib/inventory.functions";
-import { getEcomflowStock } from "@/lib/ecomflow.functions";
+import { getEcomflowStock, getEcomflowAnalytics } from "@/lib/ecomflow.functions";
+import { MiniSparkline } from "@/components/dashboard-viz";
 import { PlanningDialog } from "@/components/planning-dialog";
 import { friendlyError } from "@/lib/errors";
 import { formatUSD } from "@/lib/format";
