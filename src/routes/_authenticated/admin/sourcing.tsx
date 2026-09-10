@@ -283,7 +283,11 @@ function InviteDialog({
       return callInvite({ data: parsed.data });
     },
     onSuccess: async (r) => {
-      toast.success(r.invited ? "Invitation sent." : "Existing account added to the desk.");
+      if (r.emailSent) toast.success("Invitation email sent.");
+      else
+        toast.warning(
+          `Collaborator added, but the email was not sent: ${r.emailError ?? "unknown reason"}`,
+        );
       onOpenChange(false);
       setEmail("");
       setName("");
