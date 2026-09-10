@@ -61,12 +61,6 @@ function DashboardPage() {
     queryKey: ["my-wallet"],
     queryFn: fetchWallet,
   });
-  const { data: analytics } = useQuery({
-    queryKey: ["client-order-analytics", currentStoreId],
-    queryFn: () => fetchOrderAnalytics({ data: { storeId: currentStoreId! } }),
-    enabled: !!currentStoreId,
-  });
-
   // Current store selection is persisted in localStorage (client-only), so
   // resolve it after hydration and fall back to the first store.
   const entities = context?.entities ?? [];
