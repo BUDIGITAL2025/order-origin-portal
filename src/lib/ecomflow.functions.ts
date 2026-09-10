@@ -33,3 +33,37 @@ export const getEcomflowStock = createServerFn({ method: "GET" })
       };
     });
   });
+
+export const getEcomflowAnalytics = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { requireAdmin } = await import("./admin.server");
+    await requireAdmin(context.supabase, context.userId);
+
+    const {
+      fetchEcomflowStockHealthSummary, fetchEcomflowTopProducts,
+      fetchEcomflowActiveOrders, fetchEcomflowTopCountries,
+    } = await import("./ecomflow.server");
+    const to = new Date().toISOString();
+    const from30 = new Date(Date.now() - 30 * 86400000).toISOString();
+    const from60 = new Date(Date.now() - 60 * 86400000).toISOString();
+
+    const [summary, topProducts, activeOrders30, activeOrdersPrev30, topCountries] = await Promise.all([
+      fetchEcomflowStockHealthSummary(),
+      fetchEcomflowTopProducts(from30, to),
+      fetchEcomflowActiveOrders(from30, to),
+      fetchEcomflowActiveOrders(from60, from30),
+      fetchEcomflowTopCountries(from30, to),
+    ]);
+
+    const avgDailyOrders = activeOrders30.totalActiveOrders / 30;
+    const avgDailyOrdersPrev = activeOrdersPrev30.totalActiveOrders / 30;
+    const pctChange = avgDailyOrdersPrev > 0
+      ? ((avgDailyOrders - avgDailyOrdersPrev) / avgDailyOrdersPrev) * 100
+      : null;
+
+    return {
+      summary, topProducts, topCountries, pctChange, avgDailyOrders,
+      orderSeries: activeOrders30.series,
+    };
+  });
