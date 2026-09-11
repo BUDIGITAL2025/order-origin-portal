@@ -168,7 +168,7 @@ function BillingPage() {
       const result = await callSubscribe({
         data: {
           plan,
-          returnUrl: `${window.location.origin}/billing`,
+          returnUrl: `${window.location.origin}/billing/subscription`,
           environment,
           ...(storeId ? { storeId } : {}),
         },

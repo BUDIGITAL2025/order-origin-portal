@@ -38,7 +38,7 @@ export function TopUpCheckoutDialog({
           amountUsd,
           ...(storeId ? { storeId } : {}),
           ...(entityId ? { entityId } : {}),
-          returnUrl: `${window.location.origin}/billing?topup=done&session_id={CHECKOUT_SESSION_ID}`,
+          returnUrl: `${window.location.origin}/billing/wallet?topup=done&session_id={CHECKOUT_SESSION_ID}`,
           environment: getStripeEnvironment(),
         },
       });
