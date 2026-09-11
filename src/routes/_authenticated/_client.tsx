@@ -166,7 +166,11 @@ function CompleteProfile() {
     try {
       const source = getSignupSource();
       await callCompleteSignup({
-        data: { ...values, ...(source ? { signup_source: source } : {}) },
+        data: {
+          ...values,
+          ...(acceptedAtSignup.current ? { terms_accepted: true } : {}),
+          ...(source ? { signup_source: source } : {}),
+        },
       });
       await queryClient.invalidateQueries({ queryKey: ["my-context"] });
       toast.success("Profile saved.");
@@ -189,6 +193,7 @@ function CompleteProfile() {
         phone: typeof meta["phone"] === "string" ? (meta["phone"] as string) : "",
         country: typeof meta["country"] === "string" ? (meta["country"] as string) : "",
       };
+      acceptedAtSignup.current = meta["terms_accepted"] === true;
       setForm(fromMeta);
       const parsed = completeSignupSchema.safeParse(fromMeta);
       if (parsed.success) {
