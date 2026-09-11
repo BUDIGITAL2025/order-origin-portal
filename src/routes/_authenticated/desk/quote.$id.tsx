@@ -107,7 +107,9 @@ function DeskQuotePage() {
     setLoaded(true);
   }, [data, loaded]);
 
-  const feeRate = data?.feeRate ?? 0;
+  // Once a line is priced its rate is frozen — show that, not today's tier.
+  const frozen = data?.lines?.find((l) => l.sourcing_fee_rate != null)?.sourcing_fee_rate;
+  const feeRate = frozen != null ? Number(frozen) : (data?.feeRate ?? 0);
 
   const setField = (index: number, key: keyof LineDraft, value: string) =>
     setLines((prev) => prev.map((l, i) => (i === index ? { ...l, [key]: value } : l)));
@@ -381,7 +383,9 @@ function DeskQuotePage() {
               <p className="text-2xl font-semibold tnum">{formatUSD(totalFee)}</p>
               <p className="text-xs text-muted-foreground">
                 Per unit across {lines.length} variant{lines.length === 1 ? "" : "s"}, at{" "}
-                {(feeRate * 100).toFixed(1)}%. It is paid out on units the client actually buys.
+                {(feeRate * 100).toFixed(1)}%
+                {frozen != null ? " (locked on this quote)" : " (your current rate)"}. It is paid
+                out on units the client actually buys.
               </p>
               <Button className="w-full" disabled={save.isPending} onClick={() => save.mutate()}>
                 {save.isPending ? "Saving…" : "Submit sourcing"}

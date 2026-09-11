@@ -6,6 +6,7 @@ import { SectionTabs, DESK_TABS } from "@/components/section-tabs";
 import { Chip, SummaryBar, TableShell } from "@/components/admin-ui";
 import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatDate, formatUSD } from "@/lib/format";
+import { pct, tierTermsSentence } from "@/lib/fee-tiers";
 import { sourcingMyEarnings } from "@/lib/sourcing.functions";
 
 export const Route = createFileRoute("/_authenticated/desk/earnings")({
@@ -39,6 +40,40 @@ function EarningsPage() {
       />
       <SectionTabs tabs={DESK_TABS} />
 
+      {data?.tier && data.tiers ? (
+        <div className="mb-4 rounded-xl border border-border bg-card p-4">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <div>
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                Your service fee right now
+              </p>
+              <p className="text-2xl font-semibold tnum">{pct(data.tier.rate)}</p>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Your service fee: {tierTermsSentence(data.tiers)}.
+            </p>
+          </div>
+
+          <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
+            <div
+              className="h-full rounded-full bg-primary transition-all"
+              style={{ width: `${Math.round(data.tier.progress * 100)}%` }}
+            />
+          </div>
+          <p className="mt-2 text-xs text-muted-foreground">
+            {data.tier.nextAt != null
+              ? `${data.tier.count} / ${data.tier.nextAt} paid transactions — ${
+                  data.tier.nextRate != null ? pct(data.tier.nextRate) : "the next rate"
+                } after ${data.tier.nextAt}`
+              : `${data.tier.count} paid transactions — you are on your final rate.`}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            The rate is locked onto every quote the moment you price it, so crossing a tier never
+            changes a price you already gave.
+          </p>
+        </div>
+      ) : null}
+
       <SummaryBar
         items={[
           {
@@ -47,7 +82,12 @@ function EarningsPage() {
             value: formatUSD(data?.pending ?? 0),
             tone: "primary",
           },
-          { key: "settled", label: "Paid out", value: formatUSD(data?.settled ?? 0), tone: "success" },
+          {
+            key: "settled",
+            label: "Paid out",
+            value: formatUSD(data?.settled ?? 0),
+            tone: "success",
+          },
           { key: "lines", label: "Entries", value: String(rows.length) },
         ]}
       />

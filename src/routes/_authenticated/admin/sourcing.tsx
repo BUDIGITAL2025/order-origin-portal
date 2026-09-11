@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Send, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/app-shell";
@@ -23,6 +23,7 @@ import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/compon
 import { friendlyError } from "@/lib/errors";
 import { formatDate, formatUSD } from "@/lib/format";
 import { collaboratorInviteSchema } from "@/lib/schemas";
+import { DEFAULT_FEE_TIERS, pct, tierTermsSentence, type FeeTier } from "@/lib/fee-tiers";
 import {
   adminEarningsReport,
   adminInviteCollaborator,
@@ -56,6 +57,9 @@ function AdminSourcingPage() {
   const callResend = useServerFn(adminResendCollaboratorInvite);
 
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [editing, setEditing] = useState<{ id: string; name: string; tiers: FeeTier[] } | null>(
+    null,
+  );
   const [filter, setFilter] = useState<"all" | "pending" | "settled">("pending");
 
   const { data: collaborators } = useQuery({
@@ -132,7 +136,7 @@ function AdminSourcingPage() {
         <TableHeader>
           <TableRow>
             <TableHead>Collaborator</TableHead>
-            <TableHead className="text-right">Fee</TableHead>
+            <TableHead>Fee tier</TableHead>
             <TableHead className="text-right">Owed</TableHead>
             <TableHead className="text-right">Paid</TableHead>
             <TableHead>Active</TableHead>
@@ -154,8 +158,26 @@ function AdminSourcingPage() {
                     : ""}
                 </div>
               </TableCell>
-              <TableCell className="text-right tnum text-sm">
-                {(Number(c.fee_rate) * 100).toFixed(1)}%
+              <TableCell>
+                <button
+                  type="button"
+                  className="text-left"
+                  onClick={() =>
+                    setEditing({ id: c.id, name: c.display_name || c.email, tiers: c.fee_tiers })
+                  }
+                >
+                  <span className="text-sm font-medium">{pct(c.tier.rate)}</span>
+                  <span className="ml-1 text-xs text-muted-foreground">
+                    {c.tier.nextAt != null
+                      ? `· ${c.tier.count} / ${c.tier.nextAt}${
+                          c.tier.nextRate != null ? ` → ${pct(c.tier.nextRate)}` : ""
+                        }`
+                      : `· ${c.tier.count} transactions · final rate`}
+                  </span>
+                  <div className="text-xs text-muted-foreground underline-offset-2 hover:underline">
+                    {tierTermsSentence(c.fee_tiers)}
+                  </div>
+                </button>
               </TableCell>
               <TableCell className="text-right tnum text-sm">{formatUSD(c.pending)}</TableCell>
               <TableCell className="text-right tnum text-sm text-muted-foreground">
@@ -255,6 +277,7 @@ function AdminSourcingPage() {
       </TableShell>
 
       <InviteDialog open={inviteOpen} onOpenChange={setInviteOpen} />
+      <TiersDialog editing={editing} onClose={() => setEditing(null)} />
     </div>
   );
 }
@@ -270,14 +293,12 @@ function InviteDialog({
   const callInvite = useServerFn(adminInviteCollaborator);
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
-  const [fee, setFee] = useState("8");
 
   const invite = useMutation({
     mutationFn: async () => {
       const parsed = collaboratorInviteSchema.safeParse({
         email,
         display_name: name,
-        fee_rate_pct: Number(fee),
       });
       if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? "Check your input");
       return callInvite({ data: parsed.data });
@@ -314,9 +335,9 @@ function InviteDialog({
             <Label>Name</Label>
             <Input value={name} onChange={(e) => setName(e.target.value)} />
           </div>
-          <div className="space-y-1.5">
-            <Label>Fee on supplier price (%)</Label>
-            <Input inputMode="decimal" value={fee} onChange={(e) => setFee(e.target.value)} />
+          <div className="rounded-lg border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
+            Standard terms: {tierTermsSentence(DEFAULT_FEE_TIERS)}. The invitation email states
+            these terms. You can negotiate an exception after they join.
           </div>
         </div>
         <DialogFooter>
@@ -325,6 +346,112 @@ function InviteDialog({
           </Button>
           <Button disabled={invite.isPending} onClick={() => invite.mutate()}>
             {invite.isPending ? "Sending…" : "Send invitation"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/**
+ * Negotiated exceptions: the tier table is per agent. Editing it only affects
+ * quotes priced from now on — every quote already carries its frozen rate.
+ */
+function TiersDialog({
+  editing,
+  onClose,
+}: {
+  editing: { id: string; name: string; tiers: FeeTier[] } | null;
+  onClose: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const callUpdate = useServerFn(adminUpdateCollaborator);
+  const [rows, setRows] = useState<{ upto: string; rate: string }[]>([]);
+
+  useEffect(() => {
+    if (!editing) return;
+    setRows(
+      editing.tiers.map((t) => ({
+        upto: t.upto == null ? "" : String(t.upto),
+        rate: String(Math.round(t.rate * 1000) / 10),
+      })),
+    );
+  }, [editing]);
+
+  const save = useMutation({
+    mutationFn: async () => {
+      if (!editing) return;
+      const tiers = rows.map((r) => ({
+        upto: r.upto.trim() === "" ? null : Number(r.upto),
+        rate_pct: Number(r.rate),
+      }));
+      return callUpdate({ data: { id: editing.id, fee_tiers: tiers } });
+    },
+    onSuccess: async () => {
+      toast.success("Tier terms updated. Quotes already priced keep their rate.");
+      onClose();
+      await queryClient.invalidateQueries({ queryKey: ["admin-collaborators"] });
+    },
+    onError: (e) => toast.error(friendlyError(e, "The tiers were not saved.")),
+  });
+
+  return (
+    <Dialog open={!!editing} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Fee tiers — {editing?.name}</DialogTitle>
+          <DialogDescription>
+            Each row is a rate up to a cumulative number of paid transactions. Leave the last row's
+            count empty so it runs forever.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-2">
+          {rows.map((r, i) => (
+            <div key={i} className="flex items-end gap-2">
+              <div className="flex-1 space-y-1.5">
+                <Label className="text-xs">Up to transaction</Label>
+                <Input
+                  inputMode="numeric"
+                  placeholder="forever"
+                  value={r.upto}
+                  onChange={(e) =>
+                    setRows((p) => p.map((x, j) => (j === i ? { ...x, upto: e.target.value } : x)))
+                  }
+                />
+              </div>
+              <div className="w-24 space-y-1.5">
+                <Label className="text-xs">Rate %</Label>
+                <Input
+                  inputMode="decimal"
+                  value={r.rate}
+                  onChange={(e) =>
+                    setRows((p) => p.map((x, j) => (j === i ? { ...x, rate: e.target.value } : x)))
+                  }
+                />
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setRows((p) => p.filter((_, j) => j !== i))}
+              >
+                Remove
+              </Button>
+            </div>
+          ))}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setRows((p) => [...p, { upto: "", rate: "3" }])}
+          >
+            Add tier
+          </Button>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button disabled={save.isPending} onClick={() => save.mutate()}>
+            {save.isPending ? "Saving…" : "Save tiers"}
           </Button>
         </DialogFooter>
       </DialogContent>

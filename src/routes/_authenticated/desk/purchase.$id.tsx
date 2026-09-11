@@ -217,7 +217,10 @@ function PurchaseDetailPage() {
     return <p className="text-sm text-muted-foreground">Loading…</p>;
   }
 
-  const chip = PURCHASE_CHIPS[purchase.status] ?? { label: purchase.status, tone: "neutral" as const };
+  const chip = PURCHASE_CHIPS[purchase.status] ?? {
+    label: purchase.status,
+    tone: "neutral" as const,
+  };
   const invoiceGap =
     purchase.invoice_total != null && purchase.expected_total != null
       ? purchase.invoice_total - purchase.expected_total
