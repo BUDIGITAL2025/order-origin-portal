@@ -94,7 +94,11 @@ export function FulfilmentPaywall({
         Billed separately from your plan and from the Growth Bundle. Dropshipping per order, and
         buying stock direct to your own address, stay open without it.
       </p>
-      <Button className="mt-4" disabled={!storeId || start.isPending} onClick={() => start.mutate()}>
+      <Button
+        className="mt-4"
+        disabled={!storeId || start.isPending}
+        onClick={() => start.mutate()}
+      >
         {start.isPending ? (
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
         ) : (

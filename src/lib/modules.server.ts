@@ -53,11 +53,7 @@ export async function hasModule(
  * the action — checked in both environments so a locked workspace can never
  * use the warehouse service by calling the endpoint directly.
  */
-export async function requireModule(
-  client: Admin,
-  storeId: string,
-  key: ModuleKey,
-): Promise<void> {
+export async function requireModule(client: Admin, storeId: string, key: ModuleKey): Promise<void> {
   const sandbox = await hasModule(client, storeId, key, "sandbox");
   const live = sandbox ? true : await hasModule(client, storeId, key, "live");
   if (!sandbox && !live) {
