@@ -192,14 +192,51 @@ export function SimulatorPanel({ releases }: { releases: ReleaseRow[] }) {
           <Fact label="Webhook secret" value={data?.webhook_secret_set ? "configured" : "missing"} />
           <Fact label="Simulator URL" value={data?.simulator_url ?? "unknown app base URL"} mono />
           <Fact
-            label="Test workspace"
+            label="Target workspace"
             mono
             value={
               data?.workspace
                 ? `${data.workspace.name ?? data.workspace.id.slice(0, 8)} · ${data.workspace.skus.length} SKU(s) · ${data.workspace.countries.join(", ")}`
-                : "none found (needs a tenant id + priced products)"
+                : "none found (needs a TEST workspace with a tenant id + priced products)"
             }
           />
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border/60 bg-card px-3.5 py-3">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              Simulator target
+              {data?.workspace?.is_test ? (
+                <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">
+                  TEST WORKSPACE
+                </Badge>
+              ) : (
+                <Badge variant="destructive">NO TEST WORKSPACE</Badge>
+              )}
+            </div>
+            <div className="text-xs text-muted-foreground">
+              Only workspaces flagged as test workspaces can be targeted. Real client workspaces are
+              refused by the server.
+            </div>
+          </div>
+          <Select value={data?.workspace?.id ?? ""} onValueChange={chooseTarget}>
+            <SelectTrigger className="h-9 w-[280px] text-xs">
+              <SelectValue placeholder="Pick a test workspace…" />
+            </SelectTrigger>
+            <SelectContent>
+              {(data?.test_workspaces ?? []).length === 0 ? (
+                <SelectItem value="none" disabled>
+                  No test workspaces
+                </SelectItem>
+              ) : (
+                (data?.test_workspaces ?? []).map((w) => (
+                  <SelectItem key={w.id} value={w.id}>
+                    {w.name ?? w.id.slice(0, 8)} · {w.priced_skus} SKU(s)
+                  </SelectItem>
+                ))
+              )}
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/60 bg-card px-3.5 py-3">
