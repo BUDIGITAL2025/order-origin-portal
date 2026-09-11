@@ -3216,6 +3216,7 @@ export type Database = {
           fee_waived: boolean
           id: string
           integration_mode: Database["public"]["Enums"]["integration_mode"]
+          is_test: boolean
           middleware_tenant_id: string | null
           pending_plan_change:
             | Database["public"]["Enums"]["subscription_plan"]
@@ -3247,6 +3248,7 @@ export type Database = {
           fee_waived?: boolean
           id?: string
           integration_mode?: Database["public"]["Enums"]["integration_mode"]
+          is_test?: boolean
           middleware_tenant_id?: string | null
           pending_plan_change?:
             | Database["public"]["Enums"]["subscription_plan"]
@@ -3278,6 +3280,7 @@ export type Database = {
           fee_waived?: boolean
           id?: string
           integration_mode?: Database["public"]["Enums"]["integration_mode"]
+          is_test?: boolean
           middleware_tenant_id?: string | null
           pending_plan_change?:
             | Database["public"]["Enums"]["subscription_plan"]
@@ -3763,6 +3766,7 @@ export type Database = {
           p_description: string
           p_entity_id: string
           p_reference?: string
+          p_simulator?: boolean
           p_type: string
         }
         Returns: {
@@ -3801,6 +3805,7 @@ export type Database = {
           fee_waived: boolean
           id: string
           integration_mode: Database["public"]["Enums"]["integration_mode"]
+          is_test: boolean
           middleware_tenant_id: string | null
           pending_plan_change:
             | Database["public"]["Enums"]["subscription_plan"]
@@ -4054,6 +4059,7 @@ export type Database = {
         Args: { p_store_id: string; p_url: string }
         Returns: boolean
       }
+      entity_is_test: { Args: { p_entity_id: string }; Returns: boolean }
       explode_product: {
         Args: { p_product_id: string; p_quantity: number }
         Returns: {
