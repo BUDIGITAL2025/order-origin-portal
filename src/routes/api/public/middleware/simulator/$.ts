@@ -28,6 +28,32 @@ async function guard(request: Request): Promise<Response | null> {
   return null;
 }
 
+/** Reads the tenant id off the request, whichever way the caller sent it. */
+function tenantOf(request: Request, url: URL, payload?: unknown): string | null {
+  const header =
+    request.headers.get(process.env["MIDDLEWARE_TENANT_HEADER"]?.trim() || "x-tenant-id") ??
+    url.searchParams.get("tenant_id");
+  if (header) return header;
+  const body = payload as { tenant_id?: unknown } | null;
+  return typeof body?.tenant_id === "string" ? body.tenant_id : null;
+}
+
+/**
+ * HARD GUARD — the simulator door only serves TEST workspaces. A real
+ * workspace's tenant id is refused here even with a valid token.
+ */
+async function guardTenant(tenantId: string | null): Promise<Response | null> {
+  if (!tenantId) return null;
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { assertTestTenant } = await import("@/lib/simulator.server");
+  try {
+    await assertTestTenant(supabaseAdmin, tenantId);
+    return null;
+  } catch (err) {
+    return new Response(err instanceof Error ? err.message : "SIMULATOR_BLOCKED", { status: 403 });
+  }
+}
+
 export const Route = createFileRoute("/api/public/middleware/simulator/$")({
   server: {
     handlers: {
