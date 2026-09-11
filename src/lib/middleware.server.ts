@@ -483,7 +483,7 @@ export async function callMiddleware(
   },
 
 ): Promise<CallOutcome> {
-  const target = await resolveOutboundTarget(admin);
+  const target = await resolveOutboundTarget(admin, args.tenantId ?? null);
   const { baseUrl, serviceToken, simulator } = target;
   const method = args.method ?? "POST";
 
