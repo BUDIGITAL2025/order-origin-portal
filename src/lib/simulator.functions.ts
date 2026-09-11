@@ -21,11 +21,7 @@ export const adminSimulatorStatus = createServerFn({ method: "GET" })
 
     const [target, calls] = await Promise.all([
       sim.findSimulatableWorkspace(db).catch(() => null),
-      db
-        .from("simulator_calls")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(20),
+      db.from("simulator_calls").select("*").order("created_at", { ascending: false }).limit(20),
     ]);
 
     return {

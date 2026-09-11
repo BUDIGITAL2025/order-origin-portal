@@ -206,7 +206,10 @@ export function SimulatorPanel({ releases }: { releases: ReleaseRow[] }) {
       <CardContent className="space-y-4">
         <div className="grid gap-2 sm:grid-cols-2">
           <Fact label="Simulator token" value={data?.token_set ? "configured" : "missing"} />
-          <Fact label="Webhook secret" value={data?.webhook_secret_set ? "configured" : "missing"} />
+          <Fact
+            label="Webhook secret"
+            value={data?.webhook_secret_set ? "configured" : "missing"}
+          />
           <Fact label="Simulator URL" value={data?.simulator_url ?? "unknown app base URL"} mono />
           <Fact
             label="Target workspace"
@@ -413,7 +416,10 @@ export function SimulatorPanel({ releases }: { releases: ReleaseRow[] }) {
                   <span className="shrink-0 rounded-full border border-primary/50 px-1.5 py-px text-[10px] text-primary">
                     {call.action}
                   </span>
-                  <span className="min-w-0 flex-1 truncate text-foreground/80" title={call.endpoint}>
+                  <span
+                    className="min-w-0 flex-1 truncate text-foreground/80"
+                    title={call.endpoint}
+                  >
                     {call.endpoint}
                   </span>
                   {call.replay_count > 0 ? (

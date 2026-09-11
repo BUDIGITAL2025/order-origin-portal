@@ -100,9 +100,8 @@ async function postSignedWebhook(
   admin: Admin,
   payload: Record<string, unknown>,
 ): Promise<{ ok: boolean; status: number | null; body: string }> {
-  const { middlewareConfig, computeSignature, SIGNATURE_HEADER, TIMESTAMP_HEADER } = await import(
-    "./middleware.server"
-  );
+  const { middlewareConfig, computeSignature, SIGNATURE_HEADER, TIMESTAMP_HEADER } =
+    await import("./middleware.server");
   const { webhookSecret } = middlewareConfig();
   if (!webhookSecret) throw new Error("MIDDLEWARE_WEBHOOK_SECRET is not configured.");
   const base = await appBaseUrl(admin);
@@ -187,8 +186,8 @@ async function pricedCatalogue(
       Array.isArray(
         (p as unknown as { product_country_prices?: unknown[] }).product_country_prices,
       ) &&
-      ((p as unknown as { product_country_prices: unknown[] }).product_country_prices ?? []).length >
-        0,
+      ((p as unknown as { product_country_prices: unknown[] }).product_country_prices ?? [])
+        .length > 0,
   );
   const countries = new Set<string>();
   for (const p of priced) {
@@ -204,9 +203,9 @@ async function pricedCatalogue(
 }
 
 /** Every TEST workspace with a middleware tenant id — the only pickable targets. */
-export async function listSimulatorWorkspaces(admin: Admin): Promise<
-  { id: string; name: string | null; tenant_id: string | null; priced_skus: number }[]
-> {
+export async function listSimulatorWorkspaces(
+  admin: Admin,
+): Promise<{ id: string; name: string | null; tenant_id: string | null; priced_skus: number }[]> {
   const { data: stores, error } = await admin
     .from("stores")
     .select("id, store_name, middleware_tenant_id, is_test")
@@ -265,9 +264,7 @@ export async function findSimulatableWorkspace(admin: Admin): Promise<{
 
   const candidates = (stores ?? []) as SimStore[];
   const ordered = stored?.value
-    ? [...candidates].sort((a, b) =>
-        a.id === stored.value ? -1 : b.id === stored.value ? 1 : 0,
-      )
+    ? [...candidates].sort((a, b) => (a.id === stored.value ? -1 : b.id === stored.value ? 1 : 0))
     : candidates;
 
   for (const store of ordered) {
@@ -300,8 +297,7 @@ export async function simulateOrderCreated(admin: Admin): Promise<{
     sku,
     qty: Math.floor(Math.random() * 3) + 1,
   }));
-  const destination =
-    target.countries[Math.floor(Math.random() * target.countries.length)] ?? "US";
+  const destination = target.countries[Math.floor(Math.random() * target.countries.length)] ?? "US";
 
   const middlewareOrderId = randomRef("SIM");
   const eventId = `sim-${crypto.randomUUID()}`;
