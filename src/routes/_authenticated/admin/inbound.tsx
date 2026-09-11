@@ -26,6 +26,10 @@ import {
   adminRefuseInbound,
 } from "@/lib/inbound.functions";
 import { CleanupRowActions, ShowArchivedToggle } from "@/components/cleanup-actions";
+import {
+  FulfilmentModelDialog,
+  type FulfilmentModelTarget,
+} from "@/components/fulfilment-model-dialog";
 import { friendlyError } from "@/lib/errors";
 import { formatUSD, formatDateTime } from "@/lib/format";
 
@@ -276,6 +280,7 @@ function CountDialog({ shipment, onClose }: { shipment: Shipment | null; onClose
   const queryClient = useQueryClient();
   const [counts, setCounts] = useState<Record<string, string>>({});
   const [cartons, setCartons] = useState("");
+  const [modelFor, setModelFor] = useState<FulfilmentModelTarget | null>(null);
 
   useEffect(() => {
     if (shipment) {
@@ -358,31 +363,56 @@ function CountDialog({ shipment, onClose }: { shipment: Shipment | null; onClose
           {(shipment?.lines ?? []).map((l) => {
             const counted = Number(counts[l.id] ?? 0);
             const gap = counted !== l.declared_qty;
+            const perOrder =
+              (l as { products?: { fulfilment_model?: string } | null }).products
+                ?.fulfilment_model === "per_order";
             return (
-              <div key={l.id} className="flex items-end gap-3">
-                <div className="flex-1">
-                  <p className="text-sm font-medium">{l.product_name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {l.sku} · declared {l.declared_qty}
-                  </p>
+              <div key={l.id}>
+                <div className="flex items-end gap-3">
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">{l.product_name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {l.sku} · declared {l.declared_qty}
+                    </p>
+                  </div>
+                  <div className="w-28">
+                    <Label className="text-xs">Counted</Label>
+                    <Input
+                      className="mt-1"
+                      type="number"
+                      min={0}
+                      value={counts[l.id] ?? ""}
+                      onChange={(e) => setCounts((prev) => ({ ...prev, [l.id]: e.target.value }))}
+                    />
+                  </div>
+                  <span
+                    className={`mb-2 w-16 text-xs ${gap ? "text-warning" : "text-muted-foreground"}`}
+                  >
+                    {gap
+                      ? `${counted > l.declared_qty ? "+" : ""}${counted - l.declared_qty}`
+                      : "match"}
+                  </span>
                 </div>
-                <div className="w-28">
-                  <Label className="text-xs">Counted</Label>
-                  <Input
-                    className="mt-1"
-                    type="number"
-                    min={0}
-                    value={counts[l.id] ?? ""}
-                    onChange={(e) => setCounts((prev) => ({ ...prev, [l.id]: e.target.value }))}
-                  />
-                </div>
-                <span
-                  className={`mb-2 w-16 text-xs ${gap ? "text-warning" : "text-muted-foreground"}`}
-                >
-                  {gap
-                    ? `${counted > l.declared_qty ? "+" : ""}${counted - l.declared_qty}`
-                    : "match"}
-                </span>
+                {perOrder && l.product_id && (
+                  <div className="mt-1 flex flex-wrap items-center gap-2 rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-xs">
+                    <span>This product received stock — switch to stock_in?</span>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-6 rounded-full px-2 text-[11px]"
+                      onClick={() =>
+                        setModelFor({
+                          id: l.product_id as string,
+                          product_name: l.product_name,
+                          sku: l.sku,
+                          fulfilment_model: "per_order",
+                        })
+                      }
+                    >
+                      Switch to stock_in
+                    </Button>
+                  </div>
+                )}
               </div>
             );
           })}
@@ -412,6 +442,11 @@ function CountDialog({ shipment, onClose }: { shipment: Shipment | null; onClose
           </Button>
         </DialogFooter>
       </DialogContent>
+      <FulfilmentModelDialog
+        target={modelFor}
+        onClose={() => setModelFor(null)}
+        invalidateKeys={[["admin-inbound"]]}
+      />
     </Dialog>
   );
 }

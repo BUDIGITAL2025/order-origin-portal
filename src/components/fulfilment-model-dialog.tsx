@@ -19,10 +19,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { friendlyError } from "@/lib/errors";
-import {
-  adminGetFulfilmentModelContext,
-  adminSetFulfilmentModel,
-} from "@/lib/inbound.functions";
+import { adminGetFulfilmentModelContext, adminSetFulfilmentModel } from "@/lib/inbound.functions";
 
 export type FulfilmentModelTarget = {
   id: string;
