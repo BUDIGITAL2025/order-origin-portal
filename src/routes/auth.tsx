@@ -143,6 +143,11 @@ function AuthPage() {
             contact_name: parsed.data.contact_name,
             phone: parsed.data.phone,
             country: parsed.data.country,
+            // The signup checkbox was ticked — carried on the auth user so the
+            // deferred profile completion (email-confirmation flow) stamps
+            // acceptance too, instead of showing an "updated terms" banner.
+            terms_accepted: true,
+            terms_version: TERMS_VERSION,
           },
         },
       });
