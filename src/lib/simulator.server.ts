@@ -72,16 +72,11 @@ export async function releaseOverrideEnabled(admin: Admin): Promise<boolean> {
 }
 
 /**
- * Flip the override. Refuses whenever a REAL middleware base URL is
- * configured — the simulator must never shadow a live fulfilment engine.
+ * Flip the override. The override is scoped per TEST workspace: releases for
+ * `is_test` workspaces go to the simulator, everything else keeps using the
+ * real middleware, so a configured live engine is never shadowed.
  */
 export async function setReleaseOverride(admin: Admin, enabled: boolean): Promise<void> {
-  const real = envOrNull("MIDDLEWARE_BASE_URL");
-  if (enabled && real && !isSimulatorUrl(real)) {
-    throw new Error(
-      "A real MIDDLEWARE_BASE_URL is configured — the simulator cannot take over releases.",
-    );
-  }
   if (enabled && !simulatorToken()) {
     throw new Error("MIDDLEWARE_SIMULATOR_TOKEN is not configured.");
   }
