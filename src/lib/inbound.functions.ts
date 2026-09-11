@@ -375,24 +375,134 @@ export const adminRefuseInbound = createServerFn({ method: "POST" })
     return shipment;
   });
 
-/** Admin: flip a product between the two fulfilment models. */
+/** Latest fulfilment-centre count for one SKU, straight from the snapshots. */
+async function warehouseUnits(
+  admin: Awaited<ReturnType<typeof import("./admin.server").getAdminClient>>,
+  storeId: string,
+  sku: string,
+): Promise<number> {
+  const { data } = await admin
+    .from("inventory_snapshots")
+    .select("quantity")
+    .eq("store_id", storeId)
+    .eq("sku", sku)
+    .eq("location", "Fulfilment center")
+    .order("captured_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return Number(data?.quantity ?? 0);
+}
+
+/**
+ * Admin: everything the fulfilment-model toggle needs to decide — the current
+ * model, whether the workspace holds the paid Fulfilment module, and how many
+ * units are sitting in the warehouse (which blocks going back to per_order).
+ */
+export const adminGetFulfilmentModelContext = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ product_id: uuid }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { requireAdmin, getAdminClient } = await import("./admin.server");
+    await requireAdmin(context.supabase, context.userId);
+    const admin = await getAdminClient();
+
+    const { data: product, error } = await admin
+      .from("products")
+      .select("id, sku, product_name, variant_label, store_id, fulfilment_model")
+      .eq("id", data.product_id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!product) throw new Error("Product not found");
+
+    const { hasModule } = await import("./modules.server");
+    const [sandbox, live, store] = await Promise.all([
+      hasModule(admin, product.store_id, "fulfilment", "sandbox"),
+      hasModule(admin, product.store_id, "fulfilment", "live"),
+      admin.from("stores").select("store_name").eq("id", product.store_id).maybeSingle(),
+    ]);
+
+    return {
+      product,
+      store_name: store.data?.store_name ?? null,
+      has_module: sandbox || live,
+      warehouse_units: await warehouseUnits(admin, product.store_id, product.sku),
+    };
+  });
+
+/**
+ * Admin: flip a product between the two fulfilment models.
+ *
+ * stock_in needs the workspace to hold the paid Fulfilment module (the admin
+ * may grant it in the same click). Going back to per_order is refused while
+ * units are still stored with us — the database function is the real wall.
+ */
 export const adminSetFulfilmentModel = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
     z
-      .object({ product_id: uuid, fulfilment_model: z.enum(["per_order", "stock_in"]) })
+      .object({
+        product_id: uuid,
+        fulfilment_model: z.enum(["per_order", "stock_in"]),
+        grant_module: z.boolean().optional(),
+      })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
     const { requireAdmin, getAdminClient } = await import("./admin.server");
     await requireAdmin(context.supabase, context.userId);
     const admin = await getAdminClient();
-    const { error } = await admin
+
+    const { data: product, error: readError } = await admin
       .from("products")
-      .update({ fulfilment_model: data.fulfilment_model })
-      .eq("id", data.product_id);
-    if (error) throw new Error(error.message);
-    return { ok: true };
+      .select("id, sku, store_id, fulfilment_model")
+      .eq("id", data.product_id)
+      .maybeSingle();
+    if (readError) throw new Error(readError.message);
+    if (!product) throw new Error("Product not found");
+
+    let granted = false;
+    if (data.fulfilment_model === "stock_in") {
+      const { hasModule } = await import("./modules.server");
+      const holds =
+        (await hasModule(admin, product.store_id, "fulfilment", "sandbox")) ||
+        (await hasModule(admin, product.store_id, "fulfilment", "live"));
+      if (!holds) {
+        if (!data.grant_module) {
+          throw new Error(
+            "MODULE_REQUIRED: this workspace does not hold FlySales Fulfilment ($49/month). Grant it to continue.",
+          );
+        }
+        const { error: grantError } = await admin.from("workspace_modules").upsert(
+          {
+            store_id: product.store_id,
+            module_key: "fulfilment",
+            environment: "sandbox",
+            status: "active",
+            source: "admin_grant",
+            granted_by: context.userId,
+            notes: "Granted with a switch to stock_in fulfilment.",
+          },
+          { onConflict: "store_id,module_key,environment" },
+        );
+        if (grantError) throw new Error(grantError.message);
+        granted = true;
+      }
+    }
+
+    const { error } = await admin.rpc("admin_set_fulfilment_model", {
+      p_product_id: data.product_id,
+      p_model: data.fulfilment_model,
+    });
+    if (error) {
+      const stock = /STOCK_EXISTS:(\d+)/.exec(error.message);
+      if (stock) {
+        throw new Error(
+          `${stock[1]} units in warehouse — move or ship that stock before switching back to per order.`,
+        );
+      }
+      throw new Error(error.message);
+    }
+    return { ok: true, granted };
   });
 
 /** Admin: the outbound fee grid for a stock-in product (variant × country). */
