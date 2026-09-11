@@ -43,8 +43,7 @@ export const Route = createFileRoute("/_authenticated/_client/billing/receipts")
       { title: "Payment Receipts — FlySales" },
       {
         name: "description",
-        content:
-          "Proof of payment for every order payment, wallet top-up and subscription charge.",
+        content: "Proof of payment for every order payment, wallet top-up and subscription charge.",
       },
       { name: "robots", content: "noindex" },
     ],
@@ -60,7 +59,6 @@ const TYPE_LABELS: Record<DocumentType, string> = {
   subscription: "Subscription",
   inbound_fee: "Inbound service fee",
   stock_purchase: "Stock purchase",
-
 };
 
 function monthStart(): string {
@@ -150,8 +148,7 @@ function DocumentsPage() {
           )}
         >
           {label}
-          {active &&
-            (asc ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />)}
+          {active && (asc ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />)}
         </button>
       </TableHead>
     );
@@ -308,9 +305,7 @@ function DocumentsPage() {
                 ) : (
                   visible.map((doc) => (
                     <TableRow key={doc.id} className="hover:bg-accent/60">
-                      <TableCell className="tnum py-3 font-medium">
-                        {doc.document_number}
-                      </TableCell>
+                      <TableCell className="tnum py-3 font-medium">{doc.document_number}</TableCell>
                       <TableCell className="py-3">
                         <DocumentTypeBadge type={doc.document_type} />
                       </TableCell>

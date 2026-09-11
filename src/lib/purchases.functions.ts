@@ -504,9 +504,7 @@ export const adminAdvancePurchase = createServerFn({ method: "POST" })
     // payments page. The unique reference makes a repeat call a no-op.
     const { data: row } = await admin
       .from("stock_purchases")
-      .select(
-        "id, sourced_by, sourcing_fee_rate, supplier_unit_price, quantity, quote_line_id",
-      )
+      .select("id, sourced_by, sourcing_fee_rate, supplier_unit_price, quantity, quote_line_id")
       .eq("id", data.purchase_id)
       .maybeSingle();
     if (row?.sourced_by && row.supplier_unit_price && row.sourcing_fee_rate) {

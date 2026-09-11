@@ -332,9 +332,7 @@ export async function computeWorkspaceInventory(
       : rawTotal;
     // Hand-counted stock already had paid/processing units taken off above, so
     // counting them again as reserved would deduct the same order twice.
-    const reserved = manualRow
-      ? (manualRow.reserved ?? 0)
-      : (reservedBySku.get(sku) ?? 0);
+    const reserved = manualRow ? (manualRow.reserved ?? 0) : (reservedBySku.get(sku) ?? 0);
     const incoming = (manualRow?.incoming ?? 0) + (incomingBySku.get(sku) ?? 0);
     const sellable = Math.max(0, totalStock - reserved);
     const vel = velocityBySku.get(sku) ?? { units_7d: 0, units_30d: 0 };
