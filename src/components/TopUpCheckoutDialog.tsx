@@ -38,7 +38,7 @@ export function TopUpCheckoutDialog({
           amountUsd,
           ...(storeId ? { storeId } : {}),
           ...(entityId ? { entityId } : {}),
-          returnUrl: `${window.location.origin}/billing?topup=done&session_id={CHECKOUT_SESSION_ID}`,
+          returnUrl: `${window.location.origin}/billing/wallet?topup=done&session_id={CHECKOUT_SESSION_ID}`,
           environment: getStripeEnvironment(),
         },
       });
@@ -54,9 +54,8 @@ export function TopUpCheckoutDialog({
         <DialogHeader>
           <DialogTitle>Top up ${amountUsd.toFixed(2)}</DialogTitle>
           <DialogDescription>
-            Prepaid funds in USD, used to pay for your orders. The balance stays yours
-            until an order is paid. Your card is saved so you can enable auto top-up
-            later.
+            Prepaid funds in USD, used to pay for your orders. The balance stays yours until an
+            order is paid. Your card is saved so you can enable auto top-up later.
           </DialogDescription>
         </DialogHeader>
         <EmbeddedCheckoutProvider stripe={getStripe()} options={options}>

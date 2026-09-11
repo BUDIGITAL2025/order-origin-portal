@@ -1,3 +1,5 @@
+import { useEffect } from "react";
+import { toast } from "sonner";
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
@@ -29,10 +31,21 @@ export const Route = createFileRoute("/_authenticated/_client/billing/wallet")({
       { name: "robots", content: "noindex" },
     ],
   }),
+  validateSearch: (search: Record<string, unknown>): { topup?: string } =>
+    typeof search["topup"] === "string" ? { topup: search["topup"] } : {},
   component: WalletPage,
 });
 
 function WalletPage() {
+  const navigate = Route.useNavigate();
+  const { topup } = Route.useSearch();
+  // Coming back from a Stripe top-up: confirm it, then clean the URL.
+  useEffect(() => {
+    if (topup !== "done") return;
+    toast.success("Top-up received. Your balance updates as soon as the payment confirms.");
+    void navigate({ to: "/billing/wallet", replace: true, search: {} });
+  }, [topup, navigate]);
+
   const ctx = useMyContext().data;
   const storeId = getCurrentStoreId() ?? ctx?.entities?.[0]?.stores?.[0]?.id ?? null;
   const entityId = ctx?.entities?.[0]?.id ?? null;

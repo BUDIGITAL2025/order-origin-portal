@@ -498,6 +498,33 @@ export const adminAdvancePurchase = createServerFn({ method: "POST" })
       })
       .eq("id", data.purchase_id);
     if (error) throw new Error(error.message);
+
+    // Moving a purchase forward from here also commits the money, so the
+    // agent's commission must exist even when admin skips the supplier
+    // payments page. The unique reference makes a repeat call a no-op.
+    const { data: row } = await admin
+      .from("stock_purchases")
+      .select("id, sourced_by, sourcing_fee_rate, supplier_unit_price, quantity, quote_line_id")
+      .eq("id", data.purchase_id)
+      .maybeSingle();
+    if (row?.sourced_by && row.supplier_unit_price && row.sourcing_fee_rate) {
+      try {
+        const { accrueSourcingEarning } = await import("./sourcing.server");
+        const { purchaseRef } = await import("./purchases.server");
+        await accrueSourcingEarning(admin, {
+          collaboratorUserId: row.sourced_by,
+          reference: `purchase:${row.id}`,
+          description: `Commission on stock purchase ${purchaseRef(row.id)}`,
+          units: row.quantity,
+          feeRate: Number(row.sourcing_fee_rate),
+          supplierUnitPrice: Number(row.supplier_unit_price),
+          quoteLineId: row.quote_line_id,
+          stockPurchaseId: row.id,
+        });
+      } catch (e) {
+        console.error("earnings accrual failed on purchase advance", row.id, e);
+      }
+    }
     return { ok: true };
   });
 

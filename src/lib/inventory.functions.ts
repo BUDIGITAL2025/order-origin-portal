@@ -278,8 +278,10 @@ export const setProductPlanning = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { requireAdmin } = await import("./admin.server");
     await requireAdmin(context.supabase, context.userId);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin
+    // Must run as the admin user: the products guard trigger only lets these
+    // planning columns through for a caller with the admin role (service_role
+    // has no auth.uid() and is rejected).
+    const { error } = await context.supabase
       .from("products")
       .update({
         supplier_id: data.supplier_id,
