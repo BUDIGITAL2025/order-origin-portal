@@ -232,6 +232,7 @@ export function SkuDetailDialog({
   const fetchClient = useServerFn(getFulfilmentSku);
   const fetchAdmin = useServerFn(adminGetFulfilmentSku);
   const [photosOpen, setPhotosOpen] = React.useState(false);
+  const [modelOpen, setModelOpen] = React.useState(false);
 
   const { data, isPending } = useQuery({
     queryKey: ["fulfilment-sku", row?.id ?? "", isAdmin],
@@ -363,6 +364,25 @@ export function SkuDetailDialog({
               </Section>
 
               {isAdmin && (
+                <Section title="Fulfilment model">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Chip tone={row?.fulfilment_model === "stock_in" ? "info" : "neutral"}>
+                      {row?.fulfilment_model === "stock_in" ? "stock_in" : "per_order"}
+                    </Chip>
+                    <span className="text-sm text-muted-foreground">
+                      {row?.fulfilment_model === "stock_in"
+                        ? "Orders consume warehouse stock; outbound pricing comes from the fulfilment grid."
+                        : "Orders are produced per order at the quoted price."}
+                    </span>
+                    <Button variant="outline" size="sm" onClick={() => setModelOpen(true)}>
+                      <Repeat className="mr-1.5 h-3.5 w-3.5" />
+                      Change model
+                    </Button>
+                  </div>
+                </Section>
+              )}
+
+              {isAdmin && (
                 <Section title="Supplier">
                   <p className="text-sm">
                     {(data.supplier as { name: string } | null)?.name ?? "Not linked"}
@@ -431,6 +451,23 @@ export function SkuDetailDialog({
           )}
         </DialogContent>
       </Dialog>
+
+      {isAdmin && row && (
+        <FulfilmentModelDialog
+          target={
+            modelOpen
+              ? {
+                  id: row.id,
+                  product_name: row.product_name,
+                  sku: row.sku,
+                  fulfilment_model: row.fulfilment_model,
+                }
+              : null
+          }
+          onClose={() => setModelOpen(false)}
+          invalidateKeys={invalidateKeys}
+        />
+      )}
 
       {isAdmin && (
         <PhotoManagerDialog
