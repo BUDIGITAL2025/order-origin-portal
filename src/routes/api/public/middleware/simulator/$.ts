@@ -101,6 +101,9 @@ export const Route = createFileRoute("/api/public/middleware/simulator/$")({
           return new Response("Invalid JSON", { status: 400 });
         }
 
+        const blockedTenant = await guardTenant(tenantOf(request, new URL(request.url), payload));
+        if (blockedTenant) return blockedTenant;
+
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
         const { data: existing } = await supabaseAdmin
