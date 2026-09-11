@@ -9,11 +9,15 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ImagePlus } from "lucide-react";
-import { Chip, EmptyCell, TableShell, Value } from "@/components/admin-ui";
+import { ImagePlus, Repeat } from "lucide-react";
+import { Chip, EmptyCell, RowAction, RowActions, TableShell, Value } from "@/components/admin-ui";
 import { EmptyState } from "@/components/app-shell";
 import { PhotoManagerDialog } from "@/components/photo-manager";
 import { ProductThumb } from "@/components/product-thumb";
+import {
+  FulfilmentModelDialog,
+  type FulfilmentModelTarget,
+} from "@/components/fulfilment-model-dialog";
 import { SkuText } from "@/components/sku-text";
 import { Button } from "@/components/ui/button";
 import {
@@ -80,6 +84,7 @@ export function FulfilmentCatalog({
   invalidateKeys?: unknown[][];
 }) {
   const [openSku, setOpenSku] = React.useState<CatalogRow | null>(null);
+  const [modelFor, setModelFor] = React.useState<FulfilmentModelTarget | null>(null);
 
   if (isPending) return <p className="text-sm text-muted-foreground">Loading…</p>;
   if (rows.length === 0) {
@@ -106,6 +111,7 @@ export function FulfilmentCatalog({
               <TableHead className="h-9 text-right">Days of cover</TableHead>
               <TableHead className="h-9 text-right">Weight</TableHead>
               <TableHead className="h-9">Status</TableHead>
+              {isAdmin && <TableHead className="h-9 text-right">Actions</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -159,11 +165,37 @@ export function FulfilmentCatalog({
                     {r.archived_at ? "archived" : r.status}
                   </Chip>
                 </TableCell>
+                {isAdmin && (
+                  <TableCell className="py-2" onClick={(e) => e.stopPropagation()}>
+                    <RowActions>
+                      <RowAction
+                        label="Fulfilment model"
+                        icon={Repeat}
+                        onClick={() =>
+                          setModelFor({
+                            id: r.id,
+                            product_name: r.product_name,
+                            sku: r.sku,
+                            fulfilment_model: r.fulfilment_model,
+                          })
+                        }
+                      />
+                    </RowActions>
+                  </TableCell>
+                )}
               </TableRow>
             ))}
           </TableBody>
         </Table>
       </TableShell>
+
+      {isAdmin && (
+        <FulfilmentModelDialog
+          target={modelFor}
+          onClose={() => setModelFor(null)}
+          invalidateKeys={invalidateKeys}
+        />
+      )}
 
       <SkuDetailDialog
         row={openSku}
