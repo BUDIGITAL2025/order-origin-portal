@@ -40,14 +40,29 @@ export const adminSimulatorStatus = createServerFn({ method: "GET" })
             id: target.store.id,
             name: target.store.store_name,
             tenant_id: target.store.middleware_tenant_id,
+            is_test: target.store.is_test === true,
             skus: target.skus.slice(0, 6),
             countries: target.countries,
           }
         : null,
+      test_workspaces: await sim.listSimulatorWorkspaces(db).catch(() => []),
       pull_queue: await sim.listSimulatorPullOrders(db),
       inventory_rows: (await sim.listSimulatorInventory(db)).length,
       calls: calls.data ?? [],
     };
+  });
+
+/** Point the simulator at a TEST workspace. Real workspaces are refused. */
+export const adminSetSimulatorTarget = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ store_id: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { requireAdmin, getAdminClient } = await import("./admin.server");
+    await requireAdmin(context.supabase, context.userId);
+    const db = await getAdminClient();
+    const { setSimulatorTarget } = await import("./simulator.server");
+    await setSimulatorTarget(db, data.store_id);
+    return { store_id: data.store_id };
   });
 
 /** Turn the "point releases at the simulator" override on or off. */
