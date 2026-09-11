@@ -64,9 +64,9 @@ export const Route = createFileRoute("/api/public/middleware/simulator/$")({
         if (denied) return denied;
 
         const url = new URL(request.url);
-        const tenantId =
-          request.headers.get(process.env["MIDDLEWARE_TENANT_HEADER"]?.trim() || "x-tenant-id") ??
-          url.searchParams.get("tenant_id");
+        const tenantId = tenantOf(request, url);
+        const blocked = await guardTenant(tenantId);
+        if (blocked) return blocked;
 
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
