@@ -51,13 +51,15 @@ export const getSourcingDeskContext = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { getAdminClient } = await import("./admin.server");
+    const { collaboratorTier } = await import("./sourcing.server");
     const admin = await getAdminClient();
     const { data } = await admin
       .from("sourcing_collaborators")
-      .select("id, email, display_name, fee_rate, active")
+      .select("*")
       .eq("user_id", context.userId)
       .maybeSingle();
-    return { collaborator: data?.active ? data : null };
+    if (!data?.active) return { collaborator: null, tier: null };
+    return { collaborator: data, tier: collaboratorTier(data) };
   });
 
 /** The queue: requests assigned to me, plus anything still unassigned. */
@@ -65,7 +67,8 @@ export const sourcingListQueue = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { getAdminClient } = await import("./admin.server");
-    const { requireCollaborator } = await import("./sourcing.server");
+    const { requireCollaborator, collaboratorFeeRate, collaboratorTier } =
+      await import("./sourcing.server");
     const admin = await getAdminClient();
     const me = await requireCollaborator(admin, context.userId);
 
@@ -152,7 +155,8 @@ export const sourcingListQueue = createServerFn({ method: "GET" })
     };
 
     return {
-      feeRate: Number(me.fee_rate),
+      feeRate: collaboratorFeeRate(me),
+      tier: collaboratorTier(me),
       quotes: (quotes ?? []).map((q) => {
         const mine = q.assigned_sourcer === context.userId;
         const priced = pricedByQuote.get(q.id) ?? 0;
@@ -172,7 +176,8 @@ export const sourcingGetQuote = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => z.object({ quote_id: uuid }).parse(input))
   .handler(async ({ data, context }) => {
     const { getAdminClient } = await import("./admin.server");
-    const { requireCollaborator, feeAmount } = await import("./sourcing.server");
+    const { requireCollaborator, feeAmount, collaboratorFeeRate } =
+      await import("./sourcing.server");
     const admin = await getAdminClient();
     const me = await requireCollaborator(admin, context.userId);
 
@@ -224,7 +229,7 @@ export const sourcingGetQuote = createServerFn({ method: "POST" })
     }
 
     return {
-      feeRate: Number(me.fee_rate),
+      feeRate: collaboratorFeeRate(me),
       quote: maskClientSiteUrl(quote),
       essentialsOnly: quote.client_site === true,
       preview,
@@ -236,7 +241,7 @@ export const sourcingGetQuote = createServerFn({ method: "POST" })
           : sourcingFee(
               Number(l.supplier_cogs ?? l.supplier_unit_price ?? 0),
               Number(l.supplier_shipping ?? 0),
-              Number(l.sourcing_fee_rate ?? me.fee_rate),
+              Number(l.sourcing_fee_rate ?? collaboratorFeeRate(me)),
             ),
       })),
     };
@@ -257,7 +262,8 @@ export const sourcingSaveLines = createServerFn({ method: "POST" })
     const { ensureDefaultOption } = await import("./quote-offers.server");
     const admin = await getAdminClient();
     const me = await sourcing.requireCollaborator(admin, context.userId);
-    const feeRate = Number(me.fee_rate);
+    // Frozen onto the lines at save time — later tier crossings never reprice.
+    const feeRate = sourcing.collaboratorFeeRate(me);
 
     const { data: quote } = await admin
       .from("quote_requests")
@@ -333,9 +339,10 @@ export const sourcingMyEarnings = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { getAdminClient } = await import("./admin.server");
-    const { requireCollaborator } = await import("./sourcing.server");
+    const { requireCollaborator, collaboratorTier } = await import("./sourcing.server");
+    const { parseFeeTiers } = await import("./fee-tiers");
     const admin = await getAdminClient();
-    await requireCollaborator(admin, context.userId);
+    const me = await requireCollaborator(admin, context.userId);
 
     const { data, error } = await admin
       .from("sourcing_earnings")
@@ -349,7 +356,13 @@ export const sourcingMyEarnings = createServerFn({ method: "GET" })
       Math.round(
         rows.filter((r) => r.settled === settled).reduce((a, r) => a + Number(r.amount), 0) * 100,
       ) / 100;
-    return { rows, pending: total(false), settled: total(true) };
+    return {
+      rows,
+      pending: total(false),
+      settled: total(true),
+      tier: collaboratorTier(me),
+      tiers: parseFeeTiers(me.fee_tiers),
+    };
   });
 
 /**
@@ -430,9 +443,13 @@ export const adminListCollaborators = createServerFn({ method: "GET" })
       (list?.users ?? []).map((u) => [u.id, Boolean(u.last_sign_in_at)] as const),
     );
 
+    const { parseFeeTiers, tierProgress } = await import("./fee-tiers");
+
     return {
       collaborators: (data ?? []).map((c) => ({
         ...c,
+        fee_tiers: parseFeeTiers(c.fee_tiers),
+        tier: tierProgress(parseFeeTiers(c.fee_tiers), Number(c.paid_transactions ?? 0)),
         pending: Math.round((totals.get(c.user_id)?.pending ?? 0) * 100) / 100,
         settled_total: Math.round((totals.get(c.user_id)?.settled ?? 0) * 100) / 100,
         invite_pending: !(signedIn.get(c.user_id) ?? false),
@@ -449,9 +466,12 @@ export const adminInviteCollaborator = createServerFn({ method: "POST" })
     await requireAdmin(context.supabase, context.userId);
     const { sendCollaboratorInvite } = await import("./sourcing.server");
     const admin = await getAdminClient();
+    const { DEFAULT_FEE_TIERS } = await import("./fee-tiers");
     const email = data.email.toLowerCase();
     const displayName = data.display_name || null;
-    const feeRate = data.fee_rate_pct / 100;
+    const feeTiers = data.fee_tiers
+      ? data.fee_tiers.map((t) => ({ upto: t.upto, rate: t.rate_pct / 100 }))
+      : DEFAULT_FEE_TIERS;
 
     // Existing account? Reuse it. Otherwise the invite link creates it.
     const { data: list } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
@@ -480,7 +500,7 @@ export const adminInviteCollaborator = createServerFn({ method: "POST" })
           user_id: userId,
           email,
           display_name: displayName,
-          fee_rate: feeRate,
+          fee_tiers: feeTiers,
           active: true,
           invited_at: now,
           invite_last_sent_at: now,
@@ -494,7 +514,7 @@ export const adminInviteCollaborator = createServerFn({ method: "POST" })
     const invite = await sendCollaboratorInvite(admin, {
       email,
       displayName,
-      feeRate,
+      feeTiers,
       existing: true,
       collaboratorId: row.id,
     });
@@ -521,7 +541,7 @@ export const adminResendCollaboratorInvite = createServerFn({ method: "POST" })
 
     const { data: row, error } = await admin
       .from("sourcing_collaborators")
-      .select("id, user_id, email, display_name, fee_rate")
+      .select("id, user_id, email, display_name, fee_tiers")
       .eq("id", data.id)
       .single();
     if (error || !row) throw new Error("Collaborator not found");
@@ -530,7 +550,7 @@ export const adminResendCollaboratorInvite = createServerFn({ method: "POST" })
     const invite = await sendCollaboratorInvite(admin, {
       email: row.email,
       displayName: row.display_name,
-      feeRate: Number(row.fee_rate),
+      feeTiers: (await import("./fee-tiers")).parseFeeTiers(row.fee_tiers),
       existing: Boolean(existing?.user),
       collaboratorId: row.id,
     });
@@ -555,7 +575,9 @@ export const adminUpdateCollaborator = createServerFn({ method: "POST" })
       .from("sourcing_collaborators")
       .update({
         ...(data.display_name !== undefined ? { display_name: data.display_name || null } : {}),
-        ...(data.fee_rate_pct !== undefined ? { fee_rate: data.fee_rate_pct / 100 } : {}),
+        ...(data.fee_tiers !== undefined
+          ? { fee_tiers: data.fee_tiers.map((t) => ({ upto: t.upto, rate: t.rate_pct / 100 })) }
+          : {}),
         ...(data.active !== undefined ? { active: data.active } : {}),
       })
       .eq("id", data.id);

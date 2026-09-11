@@ -13,13 +13,27 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import { round2 } from "./admin.server";
 import { closedPrice, sourcingCostOf } from "./pricing";
+import { parseFeeTiers, rateForCount, tierProgress, type TierProgress } from "./fee-tiers";
 
 type Admin = SupabaseClient<Database>;
 
 export type Collaborator = Database["public"]["Tables"]["sourcing_collaborators"]["Row"];
 
-/** Default commission on the supplier price. */
+/** Opening rate of the standard tier table — used when no agent is involved. */
 export const DEFAULT_FEE_RATE = 0.08;
+
+/**
+ * The rate that applies to this agent's next quote: read from their tier table
+ * against their cumulative paid-transaction count. Frozen onto the quote line
+ * at save time, so crossing a tier never repriced anything already quoted.
+ */
+export function collaboratorFeeRate(c: Collaborator): number {
+  return rateForCount(parseFeeTiers(c.fee_tiers), Number(c.paid_transactions ?? 0));
+}
+
+export function collaboratorTier(c: Collaborator): TierProgress {
+  return tierProgress(parseFeeTiers(c.fee_tiers), Number(c.paid_transactions ?? 0));
+}
 /** Default owner margin on the sourcing cost, in percent. */
 export const DEFAULT_MARGIN_PCT = 15;
 /** Minimum units when stock ships into the FlySales warehouse. */
@@ -143,7 +157,6 @@ export async function writeSourcingLines(
   // flag across re-saves, so the fee is never applied a second time.
   const feeIncludedById = new Map((existing ?? []).map((l) => [l.id, l.fee_included === true]));
 
-
   const now = new Date().toISOString();
   const saved: SavedSourcingLine[] = [];
 
@@ -177,7 +190,6 @@ export async function writeSourcingLines(
       ...(args.optionId ? { option_id: args.optionId } : {}),
       ...(args.sourcedBy ? { sourced_by: args.sourcedBy } : {}),
     };
-
 
     if (line.id && existingIds.has(line.id)) {
       const { data: updated, error } = await admin
@@ -250,6 +262,9 @@ export async function accrueSourcingEarning(
     if (error.code === "23505") return false;
     throw new Error(error.message);
   }
+  // Same anchor as the money: one settled transaction, one step towards the
+  // next fee tier. Replays hit the unique reference above and never count.
+  await admin.rpc("bump_sourcing_transactions", { p_user_id: args.collaboratorUserId });
   return true;
 }
 
@@ -297,7 +312,7 @@ export async function sendCollaboratorInvite(
   args: {
     email: string;
     displayName: string | null;
-    feeRate: number;
+    feeTiers: import("./fee-tiers").FeeTier[];
     /** true when the auth account already exists (resend / existing user). */
     existing: boolean;
     collaboratorId?: string;
@@ -323,7 +338,7 @@ export async function sendCollaboratorInvite(
   const built = sourcingInviteEmail({
     inviteUrl: data.properties.action_link,
     displayName: args.displayName,
-    feePct: args.feeRate * 100,
+    feeTiers: args.feeTiers,
     expiresLabel: expires.toUTCString().replace(" GMT", " UTC"),
   });
   const result = await sendLoggedEmail(admin, {

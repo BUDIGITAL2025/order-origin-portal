@@ -492,16 +492,27 @@ export const stockInPriceSchema = z.object({
 
 // ============= Sourcing collaborators & the pricing chain =============
 
+/** Volume tiers on the agent's terms: rate applies until `upto` transactions. */
+export const feeTiersSchema = z
+  .array(
+    z.object({
+      upto: z.number().int().min(1).max(1_000_000).nullable(),
+      rate_pct: z.number().min(0, "Fee cannot be negative").max(100),
+    }),
+  )
+  .min(1, "Add at least one tier")
+  .max(6);
+
 export const collaboratorInviteSchema = z.object({
   email: z.string().trim().email("Invalid email address").max(255),
   display_name: z.string().trim().max(120).optional().or(z.literal("")),
-  fee_rate_pct: z.number().min(0, "Fee cannot be negative").max(100).default(8),
+  fee_tiers: feeTiersSchema.optional(),
 });
 
 export const collaboratorUpdateSchema = z.object({
   id: z.string().uuid(),
   display_name: z.string().trim().max(120).optional().or(z.literal("")),
-  fee_rate_pct: z.number().min(0).max(100).optional(),
+  fee_tiers: feeTiersSchema.optional(),
   active: z.boolean().optional(),
 });
 
@@ -578,7 +589,6 @@ export const quoteIntentSchema = z.object({
   countries: z.array(countryCodeSchema).max(3).optional(),
   note: z.string().trim().max(1000).optional().or(z.literal("")),
 });
-
 
 export const publishQuoteSchema = z.object({
   quote_id: z.string().uuid(),

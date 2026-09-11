@@ -1,4 +1,5 @@
 ## Active
+- [x] Volume-based agent fee tiers (8%/5%/3%), frozen per quote, desk + admin visibility
 - [x] Repair sourcing invite role assignment before invite acceptance
 - [x] Verify sourcing-only navigation and direct client-route blocking
 

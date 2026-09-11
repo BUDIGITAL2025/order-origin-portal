@@ -505,10 +505,26 @@ export function sourcingThreadEmail(args: {
 }
 
 /** Invitation to join the FlySales sourcing team (collaborator onboarding). */
+/** One panel row per tier, so the terms read as terms and not as a number. */
+function tierRows(tiers: import("./fee-tiers").FeeTier[]) {
+  let floor = 0;
+  return tiers.map((tier, i) => {
+    const rate = `${Math.round(tier.rate * 1000) / 10}%`;
+    const label =
+      tier.upto == null
+        ? `Fee from transaction ${floor + 1} onward`
+        : i === 0
+          ? `Fee on your first ${tier.upto} paid transactions`
+          : `Fee on transactions ${floor + 1}–${tier.upto}`;
+    floor = tier.upto ?? floor;
+    return { label, value: rate, strong: i === 0 };
+  });
+}
+
 export function sourcingInviteEmail(args: {
   inviteUrl: string;
   displayName: string | null;
-  feePct: number;
+  feeTiers: import("./fee-tiers").FeeTier[];
   expiresLabel: string;
 }): BuiltEmail {
   return build("You've been invited to the FlySales sourcing team", {
@@ -519,12 +535,13 @@ export function sourcingInviteEmail(args: {
     paragraphs: [
       "You have been invited to join the FlySales sourcing team as a collaborator.",
       "As a collaborator you get your own desk: the sourcing queue with the requests assigned to you, where you find suppliers and enter supplier prices, plus your own earnings page. Client identities and client prices are never shown to you — by design.",
+      "Your service fee is volume-based: it starts higher and drops as you deliver. The rate is locked onto each quote when you price it, so a quote you already sent never changes.",
       "Use the button below to set your password and open your desk.",
     ],
     panel: {
       title: "Your terms",
       rows: [
-        { label: "Fee on supplier price", value: `${args.feePct.toFixed(1)}%`, strong: true },
+        ...tierRows(args.feeTiers),
         { label: "Invitation valid until", value: args.expiresLabel },
       ],
     },

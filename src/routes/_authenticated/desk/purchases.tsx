@@ -90,15 +90,16 @@ function PurchasesPage() {
           </TableHeader>
           <TableBody>
             {rows.map((p) => {
-              const chip = PURCHASE_CHIPS[p.status] ?? { label: p.status, tone: "neutral" as const };
+              const chip = PURCHASE_CHIPS[p.status] ?? {
+                label: p.status,
+                tone: "neutral" as const,
+              };
               return (
                 <TableRow key={p.id}>
                   <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
                     {p.paid_at ? formatDate(p.paid_at) : "—"}
                   </TableCell>
-                  <TableCell className="text-xs font-medium">
-                    {p.po_number ?? p.ref}
-                  </TableCell>
+                  <TableCell className="text-xs font-medium">{p.po_number ?? p.ref}</TableCell>
                   <TableCell className="max-w-72 text-sm">
                     {p.product_name}
                     {p.variant_label ? (

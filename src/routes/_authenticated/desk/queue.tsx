@@ -60,7 +60,11 @@ function QueuePage() {
           { key: "queue", label: "In queue", value: String(quotes.length) },
           { key: "mine", label: "Assigned to me", value: String(mine.length), tone: "primary" },
           { key: "open", label: "Not priced yet", value: String(open.length), tone: "warning" },
-          { key: "fee", label: "Your fee", value: `${((data?.feeRate ?? 0) * 100).toFixed(1)}%` },
+          {
+            key: "fee",
+            label: "Your rate now",
+            value: `${((data?.feeRate ?? 0) * 100).toFixed(1)}%`,
+          },
         ]}
       />
 

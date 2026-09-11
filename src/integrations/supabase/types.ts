@@ -2577,9 +2577,11 @@ export type Database = {
           display_name: string | null
           email: string
           fee_rate: number
+          fee_tiers: Json
           id: string
           invite_last_sent_at: string | null
           invited_at: string | null
+          paid_transactions: number
           updated_at: string
           user_id: string
         }
@@ -2589,9 +2591,11 @@ export type Database = {
           display_name?: string | null
           email: string
           fee_rate?: number
+          fee_tiers?: Json
           id?: string
           invite_last_sent_at?: string | null
           invited_at?: string | null
+          paid_transactions?: number
           updated_at?: string
           user_id: string
         }
@@ -2601,9 +2605,11 @@ export type Database = {
           display_name?: string | null
           email?: string
           fee_rate?: number
+          fee_tiers?: Json
           id?: string
           invite_last_sent_at?: string | null
           invited_at?: string | null
+          paid_transactions?: number
           updated_at?: string
           user_id?: string
         }
@@ -3777,6 +3783,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      bump_sourcing_transactions: {
+        Args: { p_user_id: string }
+        Returns: number
       }
       connect_draft_store: {
         Args: { p_store_id: string; p_store_name?: string; p_store_url: string }
