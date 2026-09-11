@@ -470,9 +470,8 @@ async function syncModuleSubscription(
 
   const storeId = m["flysales_store_id"] ?? null;
   const moduleKey = m["module_key"] ?? null;
-  const item = (
-    sub["items"] as { data?: Array<{ current_period_end?: number }> } | undefined
-  )?.data?.[0];
+  const item = (sub["items"] as { data?: Array<{ current_period_end?: number }> } | undefined)
+    ?.data?.[0];
   const periodEndUnix =
     item?.current_period_end ?? (sub["current_period_end"] as number | undefined) ?? null;
   const status =
@@ -500,7 +499,10 @@ async function syncModuleSubscription(
   if (!storeId || !moduleKey) throw new Error("module subscription without store or module key");
   const { error } = await admin
     .from("workspace_modules")
-    .upsert({ ...row, store_id: storeId, module_key: moduleKey }, { onConflict: "store_id,module_key,environment" });
+    .upsert(
+      { ...row, store_id: storeId, module_key: moduleKey },
+      { onConflict: "store_id,module_key,environment" },
+    );
   if (error) throw new Error(error.message);
   return true;
 }
