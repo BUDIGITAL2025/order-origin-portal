@@ -72,16 +72,11 @@ export async function releaseOverrideEnabled(admin: Admin): Promise<boolean> {
 }
 
 /**
- * Flip the override. Refuses whenever a REAL middleware base URL is
- * configured — the simulator must never shadow a live fulfilment engine.
+ * Flip the override. The override is scoped per TEST workspace: releases for
+ * `is_test` workspaces go to the simulator, everything else keeps using the
+ * real middleware, so a configured live engine is never shadowed.
  */
 export async function setReleaseOverride(admin: Admin, enabled: boolean): Promise<void> {
-  const real = envOrNull("MIDDLEWARE_BASE_URL");
-  if (enabled && real && !isSimulatorUrl(real)) {
-    throw new Error(
-      "A real MIDDLEWARE_BASE_URL is configured — the simulator cannot take over releases.",
-    );
-  }
   if (enabled && !simulatorToken()) {
     throw new Error("MIDDLEWARE_SIMULATOR_TOKEN is not configured.");
   }
@@ -160,6 +155,17 @@ export async function assertTestWorkspace(admin: Admin, storeId: string): Promis
 }
 
 /** Same guard, starting from a middleware tenant id. */
+/** Non-throwing check: does this middleware tenant belong to a TEST workspace? */
+export async function isTestTenant(admin: Admin, tenantId: string | null): Promise<boolean> {
+  if (!tenantId) return false;
+  const { data } = await admin
+    .from("stores")
+    .select("is_test")
+    .eq("middleware_tenant_id", tenantId)
+    .maybeSingle();
+  return (data as { is_test?: boolean } | null)?.is_test === true;
+}
+
 export async function assertTestTenant(admin: Admin, tenantId: string): Promise<SimStore> {
   const { data: store, error } = await admin
     .from("stores")
