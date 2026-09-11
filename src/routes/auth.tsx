@@ -15,6 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getAppBaseUrl, MARKETING_URL } from "@/lib/config";
 import { loginSchema, signupSchema } from "@/lib/schemas";
 import { getSignupSource } from "@/lib/acquisition";
+import { TERMS_VERSION } from "@/lib/terms";
 import { completeSignup, getMyContext } from "@/lib/profiles.functions";
 
 export const Route = createFileRoute("/auth")({
