@@ -155,6 +155,17 @@ export async function assertTestWorkspace(admin: Admin, storeId: string): Promis
 }
 
 /** Same guard, starting from a middleware tenant id. */
+/** Non-throwing check: does this middleware tenant belong to a TEST workspace? */
+export async function isTestTenant(admin: Admin, tenantId: string | null): Promise<boolean> {
+  if (!tenantId) return false;
+  const { data } = await admin
+    .from("stores")
+    .select("is_test")
+    .eq("middleware_tenant_id", tenantId)
+    .maybeSingle();
+  return (data as { is_test?: boolean } | null)?.is_test === true;
+}
+
 export async function assertTestTenant(admin: Admin, tenantId: string): Promise<SimStore> {
   const { data: store, error } = await admin
     .from("stores")
