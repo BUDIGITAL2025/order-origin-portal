@@ -134,52 +134,146 @@ type SimStore = {
   id: string;
   store_name: string | null;
   middleware_tenant_id: string | null;
+  is_test?: boolean;
 };
 
+const TARGET_KEY = "simulator_target_store";
+
 /**
- * Finds a workspace that has a middleware tenant id AND priced catalogue
- * products, so an order.created can be built with real SKUs and countries.
+ * HARD GUARD — the simulator may only ever touch a workspace explicitly
+ * flagged `is_test`. Every simulator entry point runs this on the server
+ * before anything else; a real workspace can never be a simulator target.
+ */
+export async function assertTestWorkspace(admin: Admin, storeId: string): Promise<SimStore> {
+  const { data: store, error } = await admin
+    .from("stores")
+    .select("id, store_name, middleware_tenant_id, is_test")
+    .eq("id", storeId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!store) throw new Error("SIMULATOR_BLOCKED: that workspace does not exist.");
+  if (!(store as SimStore).is_test) {
+    throw new Error(
+      `SIMULATOR_BLOCKED: "${store.store_name ?? storeId}" is a REAL workspace. The simulator only runs on workspaces flagged as test workspaces.`,
+    );
+  }
+  return store as SimStore;
+}
+
+/** Same guard, starting from a middleware tenant id. */
+export async function assertTestTenant(admin: Admin, tenantId: string): Promise<SimStore> {
+  const { data: store, error } = await admin
+    .from("stores")
+    .select("id, store_name, middleware_tenant_id, is_test")
+    .eq("middleware_tenant_id", tenantId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!store) throw new Error("SIMULATOR_BLOCKED: no workspace matches that tenant id.");
+  return assertTestWorkspace(admin, store.id);
+}
+
+async function pricedCatalogue(
+  admin: Admin,
+  storeId: string,
+): Promise<{ skus: string[]; countries: string[] }> {
+  const { data: products } = await admin
+    .from("products")
+    .select("id, sku, product_country_prices(country_code)")
+    .eq("store_id", storeId)
+    .eq("status", "active")
+    .limit(20);
+  const priced = (products ?? []).filter(
+    (p) =>
+      Array.isArray(
+        (p as unknown as { product_country_prices?: unknown[] }).product_country_prices,
+      ) &&
+      ((p as unknown as { product_country_prices: unknown[] }).product_country_prices ?? []).length >
+        0,
+  );
+  const countries = new Set<string>();
+  for (const p of priced) {
+    for (const row of (p as unknown as { product_country_prices: { country_code: string }[] })
+      .product_country_prices) {
+      countries.add(row.country_code);
+    }
+  }
+  return {
+    skus: priced.map((p) => (p as unknown as { sku: string }).sku),
+    countries: [...countries],
+  };
+}
+
+/** Every TEST workspace with a middleware tenant id — the only pickable targets. */
+export async function listSimulatorWorkspaces(admin: Admin): Promise<
+  { id: string; name: string | null; tenant_id: string | null; priced_skus: number }[]
+> {
+  const { data: stores, error } = await admin
+    .from("stores")
+    .select("id, store_name, middleware_tenant_id, is_test")
+    .eq("is_test", true)
+    .not("middleware_tenant_id", "is", null)
+    .limit(25);
+  if (error) throw new Error(error.message);
+  const out = [];
+  for (const store of stores ?? []) {
+    const { skus } = await pricedCatalogue(admin, store.id);
+    out.push({
+      id: store.id,
+      name: store.store_name,
+      tenant_id: store.middleware_tenant_id,
+      priced_skus: skus.length,
+    });
+  }
+  return out;
+}
+
+/** Remember which test workspace the panel targets. Refuses real workspaces. */
+export async function setSimulatorTarget(admin: Admin, storeId: string): Promise<void> {
+  await assertTestWorkspace(admin, storeId);
+  const { error } = await admin
+    .from("internal_settings")
+    .upsert(
+      { key: TARGET_KEY, value: storeId, updated_at: new Date().toISOString() },
+      { onConflict: "key" },
+    );
+  if (error) throw new Error(error.message);
+}
+
+/**
+ * Resolves the simulator target: the stored choice when it is still a test
+ * workspace, otherwise the first test workspace with priced products.
+ * NEVER returns a real workspace.
  */
 export async function findSimulatableWorkspace(admin: Admin): Promise<{
   store: SimStore;
   skus: string[];
   countries: string[];
 } | null> {
+  const { data: stored } = await admin
+    .from("internal_settings")
+    .select("value")
+    .eq("key", TARGET_KEY)
+    .maybeSingle();
+
   const { data: stores, error } = await admin
     .from("stores")
-    .select("id, store_name, middleware_tenant_id")
+    .select("id, store_name, middleware_tenant_id, is_test")
+    .eq("is_test", true)
     .not("middleware_tenant_id", "is", null)
     .limit(25);
   if (error) throw new Error(error.message);
 
-  for (const store of stores ?? []) {
-    const { data: products } = await admin
-      .from("products")
-      .select("id, sku, product_country_prices(country_code)")
-      .eq("store_id", store.id)
-      .eq("status", "active")
-      .limit(20);
-    const priced = (products ?? []).filter(
-      (p) =>
-        Array.isArray(
-          (p as unknown as { product_country_prices?: unknown[] }).product_country_prices,
-        ) &&
-        ((p as unknown as { product_country_prices: unknown[] }).product_country_prices ?? [])
-          .length > 0,
-    );
-    if (priced.length === 0) continue;
-    const countries = new Set<string>();
-    for (const p of priced) {
-      for (const row of (p as unknown as { product_country_prices: { country_code: string }[] })
-        .product_country_prices) {
-        countries.add(row.country_code);
-      }
-    }
-    return {
-      store: store as SimStore,
-      skus: priced.map((p) => (p as unknown as { sku: string }).sku),
-      countries: [...countries],
-    };
+  const candidates = (stores ?? []) as SimStore[];
+  const ordered = stored?.value
+    ? [...candidates].sort((a, b) =>
+        a.id === stored.value ? -1 : b.id === stored.value ? 1 : 0,
+      )
+    : candidates;
+
+  for (const store of ordered) {
+    const { skus, countries } = await pricedCatalogue(admin, store.id);
+    if (skus.length === 0) continue;
+    return { store, skus, countries };
   }
   return null;
 }
