@@ -3759,6 +3759,47 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      admin_set_fulfilment_model: {
+        Args: {
+          p_model: Database["public"]["Enums"]["fulfilment_model"]
+          p_product_id: string
+        }
+        Returns: {
+          archived_at: string | null
+          client_owned: boolean
+          created_at: string
+          fulfilment_model: Database["public"]["Enums"]["fulfilment_model"]
+          id: string
+          image_url: string | null
+          image_urls: string[]
+          middleware_product_id: string | null
+          moq: number | null
+          price_override: number | null
+          product_name: string
+          product_type: Database["public"]["Enums"]["product_type"]
+          production_lead_days: number | null
+          push_error: string | null
+          push_status: Database["public"]["Enums"]["push_status"]
+          quote_line_id: string | null
+          safety_margin_days: number | null
+          sku: string
+          status: Database["public"]["Enums"]["product_status"]
+          store_id: string
+          supplier_id: string | null
+          tags: string[]
+          transit_lead_days: number | null
+          variant_label: string | null
+          weight: number | null
+          weight_grams: number | null
+          weight_unit: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "products"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       apply_wallet_transaction: {
         Args: {
           p_amount: number
