@@ -137,9 +137,21 @@ export const completeSignup = createServerFn({ method: "POST" })
 
     const { data: existing } = await supabase
       .from("profiles")
-      .select("id")
+      .select("id, terms_version")
       .eq("id", userId)
       .maybeSingle();
+
+    // Retry of a partial signup: the profile row exists but acceptance was
+    // never stamped. Stamp it now so the "updated terms" banner stays hidden.
+    if (existing && data.terms_accepted && !existing.terms_version) {
+      await supabase
+        .from("profiles")
+        .update({
+          terms_version: TERMS_VERSION,
+          terms_accepted_at: new Date().toISOString(),
+        })
+        .eq("id", userId);
+    }
 
     if (!existing) {
       const { error: profileError } = await supabase.from("profiles").insert({

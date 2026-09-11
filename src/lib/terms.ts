@@ -9,6 +9,16 @@ import { LEGAL_ENTITY_NAME } from "./legal-entity";
 export const TERMS_VERSION = "2026-08-23";
 export const TERMS_LAST_UPDATED = "August 23, 2026";
 
+/**
+ * True only when the current terms are NEWER than what the user accepted.
+ * Versions are date strings, so a lexicographic compare is chronological.
+ * A never-accepted profile (null) also needs to accept.
+ */
+export function needsTermsAcceptance(acceptedVersion: string | null | undefined): boolean {
+  if (!acceptedVersion) return true;
+  return TERMS_VERSION > acceptedVersion;
+}
+
 export interface TermsSection {
   id: string;
   title: string;

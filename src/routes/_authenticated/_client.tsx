@@ -12,7 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { acceptCurrentTerms, completeSignup, getMyContext } from "@/lib/profiles.functions";
 import { completeSignupSchema } from "@/lib/schemas";
 import { getSignupSource } from "@/lib/acquisition";
-import { TERMS_VERSION } from "@/lib/terms";
+import { needsTermsAcceptance } from "@/lib/terms";
 
 export const Route = createFileRoute("/_authenticated/_client")({
   component: ClientLayout,
@@ -101,7 +101,7 @@ function TermsAcceptanceBanner() {
   const queryClient = useQueryClient();
   const [busy, setBusy] = useState(false);
 
-  if (!ctx?.profile || ctx.profile.terms_version === TERMS_VERSION) return null;
+  if (!ctx?.profile || !needsTermsAcceptance(ctx.profile.terms_version)) return null;
 
   const handleAccept = async () => {
     setBusy(true);
@@ -153,6 +153,10 @@ function CompleteProfile() {
   const [phase, setPhase] = useState<"checking" | "form">("checking");
   const attempted = useRef(false);
   const [form, setForm] = useState({ contact_name: "", phone: "", country: "" });
+  // Whether the signup form's Terms checkbox was ticked (carried on the auth
+  // user's metadata). Stamped onto the profile so a brand-new account never
+  // sees the "updated terms" banner.
+  const acceptedAtSignup = useRef(false);
 
   const setField = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm((s) => ({ ...s, [key]: e.target.value }));
@@ -162,7 +166,11 @@ function CompleteProfile() {
     try {
       const source = getSignupSource();
       await callCompleteSignup({
-        data: { ...values, ...(source ? { signup_source: source } : {}) },
+        data: {
+          ...values,
+          ...(acceptedAtSignup.current ? { terms_accepted: true } : {}),
+          ...(source ? { signup_source: source } : {}),
+        },
       });
       await queryClient.invalidateQueries({ queryKey: ["my-context"] });
       toast.success("Profile saved.");
@@ -185,6 +193,7 @@ function CompleteProfile() {
         phone: typeof meta["phone"] === "string" ? (meta["phone"] as string) : "",
         country: typeof meta["country"] === "string" ? (meta["country"] as string) : "",
       };
+      acceptedAtSignup.current = meta["terms_accepted"] === true;
       setForm(fromMeta);
       const parsed = completeSignupSchema.safeParse(fromMeta);
       if (parsed.success) {

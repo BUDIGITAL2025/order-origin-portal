@@ -15,6 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getAppBaseUrl, MARKETING_URL } from "@/lib/config";
 import { loginSchema, signupSchema } from "@/lib/schemas";
 import { getSignupSource } from "@/lib/acquisition";
+import { TERMS_VERSION } from "@/lib/terms";
 import { completeSignup, getMyContext } from "@/lib/profiles.functions";
 
 export const Route = createFileRoute("/auth")({
@@ -143,6 +144,11 @@ function AuthPage() {
             contact_name: parsed.data.contact_name,
             phone: parsed.data.phone,
             country: parsed.data.country,
+            // The signup checkbox was ticked — carried on the auth user so the
+            // deferred profile completion (email-confirmation flow) stamps
+            // acceptance too, instead of showing an "updated terms" banner.
+            terms_accepted: true,
+            terms_version: TERMS_VERSION,
           },
         },
       });
