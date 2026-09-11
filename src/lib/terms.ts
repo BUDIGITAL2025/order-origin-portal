@@ -6,7 +6,7 @@
  */
 import { LEGAL_ENTITY_NAME } from "./legal-entity";
 
-export const TERMS_VERSION = "2026-12-01";
+export const TERMS_VERSION = "2026-08-23";
 export const TERMS_LAST_UPDATED = "August 23, 2026";
 
 /**
