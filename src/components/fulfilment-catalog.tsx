@@ -9,11 +9,15 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ImagePlus } from "lucide-react";
-import { Chip, EmptyCell, TableShell, Value } from "@/components/admin-ui";
+import { ImagePlus, Repeat } from "lucide-react";
+import { Chip, EmptyCell, RowAction, RowActions, TableShell, Value } from "@/components/admin-ui";
 import { EmptyState } from "@/components/app-shell";
 import { PhotoManagerDialog } from "@/components/photo-manager";
 import { ProductThumb } from "@/components/product-thumb";
+import {
+  FulfilmentModelDialog,
+  type FulfilmentModelTarget,
+} from "@/components/fulfilment-model-dialog";
 import { SkuText } from "@/components/sku-text";
 import { Button } from "@/components/ui/button";
 import {
@@ -80,6 +84,7 @@ export function FulfilmentCatalog({
   invalidateKeys?: unknown[][];
 }) {
   const [openSku, setOpenSku] = React.useState<CatalogRow | null>(null);
+  const [modelFor, setModelFor] = React.useState<FulfilmentModelTarget | null>(null);
 
   if (isPending) return <p className="text-sm text-muted-foreground">Loading…</p>;
   if (rows.length === 0) {
@@ -106,6 +111,7 @@ export function FulfilmentCatalog({
               <TableHead className="h-9 text-right">Days of cover</TableHead>
               <TableHead className="h-9 text-right">Weight</TableHead>
               <TableHead className="h-9">Status</TableHead>
+              {isAdmin && <TableHead className="h-9 text-right">Actions</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -159,11 +165,37 @@ export function FulfilmentCatalog({
                     {r.archived_at ? "archived" : r.status}
                   </Chip>
                 </TableCell>
+                {isAdmin && (
+                  <TableCell className="py-2" onClick={(e) => e.stopPropagation()}>
+                    <RowActions>
+                      <RowAction
+                        label="Fulfilment model"
+                        icon={Repeat}
+                        onClick={() =>
+                          setModelFor({
+                            id: r.id,
+                            product_name: r.product_name,
+                            sku: r.sku,
+                            fulfilment_model: r.fulfilment_model,
+                          })
+                        }
+                      />
+                    </RowActions>
+                  </TableCell>
+                )}
               </TableRow>
             ))}
           </TableBody>
         </Table>
       </TableShell>
+
+      {isAdmin && (
+        <FulfilmentModelDialog
+          target={modelFor}
+          onClose={() => setModelFor(null)}
+          invalidateKeys={invalidateKeys}
+        />
+      )}
 
       <SkuDetailDialog
         row={openSku}
@@ -200,6 +232,7 @@ export function SkuDetailDialog({
   const fetchClient = useServerFn(getFulfilmentSku);
   const fetchAdmin = useServerFn(adminGetFulfilmentSku);
   const [photosOpen, setPhotosOpen] = React.useState(false);
+  const [modelOpen, setModelOpen] = React.useState(false);
 
   const { data, isPending } = useQuery({
     queryKey: ["fulfilment-sku", row?.id ?? "", isAdmin],
@@ -331,6 +364,25 @@ export function SkuDetailDialog({
               </Section>
 
               {isAdmin && (
+                <Section title="Fulfilment model">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Chip tone={row?.fulfilment_model === "stock_in" ? "info" : "neutral"}>
+                      {row?.fulfilment_model === "stock_in" ? "stock_in" : "per_order"}
+                    </Chip>
+                    <span className="text-sm text-muted-foreground">
+                      {row?.fulfilment_model === "stock_in"
+                        ? "Orders consume warehouse stock; outbound pricing comes from the fulfilment grid."
+                        : "Orders are produced per order at the quoted price."}
+                    </span>
+                    <Button variant="outline" size="sm" onClick={() => setModelOpen(true)}>
+                      <Repeat className="mr-1.5 h-3.5 w-3.5" />
+                      Change model
+                    </Button>
+                  </div>
+                </Section>
+              )}
+
+              {isAdmin && (
                 <Section title="Supplier">
                   <p className="text-sm">
                     {(data.supplier as { name: string } | null)?.name ?? "Not linked"}
@@ -399,6 +451,23 @@ export function SkuDetailDialog({
           )}
         </DialogContent>
       </Dialog>
+
+      {isAdmin && row && (
+        <FulfilmentModelDialog
+          target={
+            modelOpen
+              ? {
+                  id: row.id,
+                  product_name: row.product_name,
+                  sku: row.sku,
+                  fulfilment_model: row.fulfilment_model,
+                }
+              : null
+          }
+          onClose={() => setModelOpen(false)}
+          invalidateKeys={invalidateKeys}
+        />
+      )}
 
       {isAdmin && (
         <PhotoManagerDialog
