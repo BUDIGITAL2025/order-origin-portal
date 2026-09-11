@@ -264,14 +264,14 @@ export function SimulatorPanel({ releases }: { releases: ReleaseRow[] }) {
             <div className="text-sm font-medium">Point releases at simulator</div>
             <div className="text-xs text-muted-foreground">
               {blocked
-                ? "Disabled: a real MIDDLEWARE_BASE_URL is configured."
+                ? "Only TEST workspaces are routed to the simulator — the real fulfilment engine keeps handling every real workspace."
                 : "Outbound release/reject calls go to the simulator so they flip to 'sent'."}
             </div>
           </label>
           <Switch
             id="sim-override"
             checked={overrideOn}
-            disabled={blocked || busy === "override" || !data?.token_set}
+            disabled={busy === "override" || !data?.token_set}
             onCheckedChange={toggleOverride}
           />
         </div>
