@@ -437,7 +437,10 @@ export type CallOutcome =
  * simulator only takes over when no real base URL is configured and an admin
  * turned the override on (test tooling).
  */
-export async function resolveOutboundTarget(admin: Admin): Promise<{
+export async function resolveOutboundTarget(
+  admin: Admin,
+  tenantId?: string | null,
+): Promise<{
   baseUrl: string | null;
   serviceToken: string | null;
   simulator: boolean;
@@ -448,9 +451,16 @@ export async function resolveOutboundTarget(admin: Admin): Promise<{
     releaseOverrideEnabled,
     simulatorBaseUrl,
     simulatorToken,
+    isTestTenant,
   } = await import("./simulator.server");
 
   if (baseUrl && !isSimulatorUrl(baseUrl)) {
+    // A real engine is configured: it always wins, EXCEPT for workspaces
+    // explicitly flagged as test workspaces while the override is on.
+    if ((await releaseOverrideEnabled(admin)) && (await isTestTenant(admin, tenantId ?? null))) {
+      const simBase = await simulatorBaseUrl(admin);
+      return { baseUrl: simBase, serviceToken: simulatorToken(), simulator: true };
+    }
     return { baseUrl, serviceToken, simulator: false };
   }
   if (await releaseOverrideEnabled(admin)) {
