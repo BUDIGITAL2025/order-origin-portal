@@ -66,6 +66,22 @@ export function SimulatorPanel({ releases }: { releases: ReleaseRow[] }) {
     ]);
   }
 
+  const setTarget = useServerFn(adminSetSimulatorTarget);
+
+  async function chooseTarget(storeId: string) {
+    if (!storeId || storeId === "none") return;
+    setBusy("target");
+    try {
+      await setTarget({ data: { store_id: storeId } });
+      toast.success("Simulator target set");
+      await refresh();
+    } catch (err) {
+      toast.error(friendlyError(err, "Could not target that workspace"));
+    } finally {
+      setBusy(null);
+    }
+  }
+
   async function toggleOverride(enabled: boolean) {
     setBusy("override");
     try {
