@@ -59,7 +59,10 @@ export async function verifyWebhookSignature(args: {
   rawBody: string;
 }): Promise<{ ok: true } | { ok: false; reason: string }> {
   const { timestamp, rawBody } = args;
-  const provided = (args.signature ?? "").replace(/^sha256=/i, "").trim().toLowerCase();
+  const provided = (args.signature ?? "")
+    .replace(/^sha256=/i, "")
+    .trim()
+    .toLowerCase();
   if (!timestamp || !provided) return { ok: false, reason: "missing signature headers" };
 
   const ts = Number(timestamp);
@@ -117,7 +120,10 @@ export async function logIntegrationCall(
 
 // ============= Event payloads (C2) =============
 
-const tenantIdSchema = z.string().trim().regex(/^rs_[0-9a-f]{32}$/, "Invalid tenant_id");
+const tenantIdSchema = z
+  .string()
+  .trim()
+  .regex(/^rs_[0-9a-f]{32}$/, "Invalid tenant_id");
 
 const orderLineSchema = z.object({
   sku: z.string().trim().min(1).max(120),
@@ -152,9 +158,7 @@ export const orderUpdatedSchema = z.object({
   tenant_id: tenantIdSchema,
   order: z.object({
     middleware_order_id: z.string().trim().min(1).max(200),
-    status: z
-      .enum(["processing", "shipped", "delivered", "cancelled", "needs_review"])
-      .optional(),
+    status: z.enum(["processing", "shipped", "delivered", "cancelled", "needs_review"]).optional(),
     external_ref: z.string().trim().max(200).optional().nullable(),
     destination_country: z
       .string()
@@ -308,9 +312,8 @@ async function handleTrackingUpdated(admin: Admin, payload: unknown) {
 
   // Same atomic claim as the admin path: at most one tracking email ever.
   if (firstTracking && !order.tracking_notified_at) {
-    const accountId = (
-      order.stores as { entities?: { account_id?: string | null } | null } | null
-    )?.entities?.account_id;
+    const accountId = (order.stores as { entities?: { account_id?: string | null } | null } | null)
+      ?.entities?.account_id;
     if (accountId) {
       const { data: claimed } = await admin
         .from("orders")
@@ -419,7 +422,6 @@ export function tenantSelector(tenantId: string | null): {
   return { headers: { [header]: tenantId }, query: {} };
 }
 
-
 const CALL_TIMEOUT_MS = 10_000;
 
 export type CallOutcome =
@@ -446,13 +448,8 @@ export async function resolveOutboundTarget(
   simulator: boolean;
 }> {
   const { baseUrl, serviceToken } = middlewareConfig();
-  const {
-    isSimulatorUrl,
-    releaseOverrideEnabled,
-    simulatorBaseUrl,
-    simulatorToken,
-    isTestTenant,
-  } = await import("./simulator.server");
+  const { isSimulatorUrl, releaseOverrideEnabled, simulatorBaseUrl, simulatorToken, isTestTenant } =
+    await import("./simulator.server");
 
   if (baseUrl && !isSimulatorUrl(baseUrl)) {
     // A real engine is configured: it always wins, EXCEPT for workspaces
@@ -481,7 +478,6 @@ export async function callMiddleware(
     headers?: Record<string, string>;
     query?: Record<string, string>;
   },
-
 ): Promise<CallOutcome> {
   const target = await resolveOutboundTarget(admin, args.tenantId ?? null);
   const { baseUrl, serviceToken, simulator } = target;
@@ -660,10 +656,7 @@ export async function dispatchPendingReleases(
  * a release failure must never surface on a money path — the retry cron
  * catches up.
  */
-export async function releaseAfterPayment(
-  admin: Admin,
-  orderIds: string[],
-): Promise<void> {
+export async function releaseAfterPayment(admin: Admin, orderIds: string[]): Promise<void> {
   if (orderIds.length === 0) return;
   try {
     await dispatchPendingReleases(admin, { orderIds, limit: orderIds.length });
