@@ -168,7 +168,13 @@ async function accountIdForEntity(admin: Admin, entityId: string): Promise<strin
  */
 export async function creditWalletOnce(
   admin: Admin,
-  args: { entityId: string; amountUsd: number; reference: string; description: string },
+  args: {
+    entityId: string;
+    amountUsd: number;
+    reference: string;
+    description: string;
+    simulator?: boolean;
+  },
 ): Promise<Database["public"]["Tables"]["wallet_transactions"]["Row"] | null> {
   const { data, error } = await admin.rpc("apply_wallet_transaction", {
     p_entity_id: args.entityId,
@@ -176,6 +182,8 @@ export async function creditWalletOnce(
     p_amount: round2(args.amountUsd),
     p_description: args.description,
     p_reference: args.reference,
+    // Simulator marker: the ledger function refuses these outside test workspaces.
+    p_simulator: args.simulator === true,
   });
   if (error) {
     if (isDuplicateReference(error.message)) return null;
@@ -187,7 +195,13 @@ export async function creditWalletOnce(
 /** Debit the wallet exactly once per Stripe reference (refunds). */
 export async function debitWalletOnce(
   admin: Admin,
-  args: { entityId: string; amountUsd: number; reference: string; description: string },
+  args: {
+    entityId: string;
+    amountUsd: number;
+    reference: string;
+    description: string;
+    simulator?: boolean;
+  },
 ): Promise<void> {
   const { error } = await admin.rpc("apply_wallet_transaction", {
     p_entity_id: args.entityId,
@@ -195,6 +209,7 @@ export async function debitWalletOnce(
     p_amount: round2(args.amountUsd),
     p_description: args.description,
     p_reference: args.reference,
+    p_simulator: args.simulator === true,
   });
   if (error && !isDuplicateReference(error.message)) throw new Error(error.message);
 }
