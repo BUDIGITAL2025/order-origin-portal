@@ -291,7 +291,7 @@ export async function simulateOrderCreated(admin: Admin): Promise<{
   const target = await findSimulatableWorkspace(admin);
   if (!target) {
     throw new Error(
-      "No workspace with a middleware tenant id and priced products was found. Connect a tenant id and accept a quote first.",
+      "SIMULATOR_BLOCKED: no TEST workspace with a middleware tenant id and priced products was found. Flag a workspace as a test workspace first — the simulator never runs on real workspaces.",
     );
   }
   const skuPool = [...target.skus].sort(() => Math.random() - 0.5);
@@ -448,7 +448,7 @@ export async function queueSimulatorPullOrder(admin: Admin): Promise<SimulatorPu
   const target = await findSimulatableWorkspace(admin);
   if (!target?.store.middleware_tenant_id) {
     throw new Error(
-      "No workspace with a middleware tenant id and priced products was found. Connect a tenant id and accept a quote first.",
+      "SIMULATOR_BLOCKED: no TEST workspace with a middleware tenant id and priced products was found. Flag a workspace as a test workspace first — the simulator never runs on real workspaces.",
     );
   }
   const skuPool = [...target.skus].sort(() => Math.random() - 0.5);
@@ -546,7 +546,7 @@ export async function seedSimulatorInventory(
   const target = await findSimulatableWorkspace(admin);
   if (!target?.store.middleware_tenant_id) {
     throw new Error(
-      "No workspace with a middleware tenant id and priced products was found. Connect a tenant id and accept a quote first.",
+      "SIMULATOR_BLOCKED: no TEST workspace with a middleware tenant id and priced products was found. Flag a workspace as a test workspace first — the simulator never runs on real workspaces.",
     );
   }
   const tenantId = target.store.middleware_tenant_id;
