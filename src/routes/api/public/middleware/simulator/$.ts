@@ -14,10 +14,6 @@ import { createFileRoute } from "@tanstack/react-router";
 /** Shared gate: no admin session here — this route IS the middleware target. */
 async function guard(request: Request): Promise<Response | null> {
   const token = process.env["MIDDLEWARE_SIMULATOR_TOKEN"]?.trim();
-  const realBase = process.env["MIDDLEWARE_BASE_URL"]?.trim();
-  if (realBase && realBase !== "REPLACE_ME" && !realBase.includes("/middleware/simulator")) {
-    return new Response("Simulator disabled: real middleware configured", { status: 403 });
-  }
   if (!token) return new Response("Simulator not configured", { status: 503 });
   const provided = /^Bearer ([^\s,]+)$/.exec(request.headers.get("authorization") ?? "")?.[1];
   const { createHash, timingSafeEqual } = await import("node:crypto");
@@ -43,7 +39,18 @@ function tenantOf(request: Request, url: URL, payload?: unknown): string | null 
  * workspace's tenant id is refused here even with a valid token.
  */
 async function guardTenant(tenantId: string | null): Promise<Response | null> {
-  if (!tenantId) return null;
+  if (!tenantId) {
+    // With a real fulfilment engine configured the simulator is a per-test-
+    // workspace override, so an untagged call has nothing to prove it is a test.
+    const realBase = process.env["MIDDLEWARE_BASE_URL"]?.trim();
+    if (realBase && realBase !== "REPLACE_ME" && !realBase.includes("/middleware/simulator")) {
+      return new Response(
+        "SIMULATOR_BLOCKED: a tenant id of a test workspace is required while a real middleware is configured.",
+        { status: 403 },
+      );
+    }
+    return null;
+  }
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { assertTestTenant } = await import("@/lib/simulator.server");
   try {
