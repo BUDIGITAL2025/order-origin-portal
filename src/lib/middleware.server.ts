@@ -504,6 +504,12 @@ export async function callMiddleware(
     return { ok: false, skipped: true };
   }
 
+  // The simulator door needs to see which test workspace a call belongs to.
+  const simulatorHeaders =
+    simulator && args.tenantId
+      ? { [process.env["MIDDLEWARE_TENANT_HEADER"]?.trim() || "X-Tenant-ID"]: args.tenantId }
+      : {};
+
   const queryString = new URLSearchParams(args.query ?? {}).toString();
   const url = `${baseUrl.replace(/\/+$/, "")}${args.endpoint}${queryString ? `?${queryString}` : ""}`;
   const controller = new AbortController();
@@ -515,6 +521,7 @@ export async function callMiddleware(
         Authorization: `Bearer ${serviceToken}`,
         "Idempotency-Key": args.idempotencyKey,
         "Content-Type": "application/json",
+        ...simulatorHeaders,
         ...(args.headers ?? {}),
       },
 
