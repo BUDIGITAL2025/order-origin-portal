@@ -344,11 +344,12 @@ export async function simulateTracking(
 ): Promise<{ event_id: string; tracking_number: string; tracking_carrier: string }> {
   const { data: order, error } = await admin
     .from("orders")
-    .select("id, middleware_order_id, source, stores(middleware_tenant_id)")
+    .select("id, store_id, middleware_order_id, source, stores(middleware_tenant_id)")
     .eq("id", orderId)
     .maybeSingle();
   if (error) throw new Error(error.message);
   if (!order?.middleware_order_id) throw new Error("Not a middleware order.");
+  await assertTestWorkspace(admin, order.store_id);
   const tenantId = (order.stores as { middleware_tenant_id?: string | null } | null)
     ?.middleware_tenant_id;
   if (!tenantId) throw new Error("Workspace has no middleware tenant id.");
@@ -377,10 +378,11 @@ export async function simulateOrderStatus(
 ): Promise<{ event_id: string }> {
   const { data: order } = await admin
     .from("orders")
-    .select("id, middleware_order_id, stores(middleware_tenant_id)")
+    .select("id, store_id, middleware_order_id, stores(middleware_tenant_id)")
     .eq("id", orderId)
     .maybeSingle();
   if (!order?.middleware_order_id) throw new Error("Not a middleware order.");
+  await assertTestWorkspace(admin, order.store_id);
   const tenantId = (order.stores as { middleware_tenant_id?: string | null } | null)
     ?.middleware_tenant_id;
   if (!tenantId) throw new Error("Workspace has no middleware tenant id.");
