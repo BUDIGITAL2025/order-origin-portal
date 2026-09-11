@@ -23,6 +23,7 @@ import {
   adminQueueSimulatorPullOrder,
   adminSeedSimulatorInventory,
   adminSetSimulatorOverride,
+  adminSetSimulatorTarget,
   adminSimulateOrder,
   adminSimulateTracking,
   adminSimulatorStatus,
