@@ -17,10 +17,10 @@ type StripeEnv = "sandbox" | "live";
 // test mode).
 const TEST_TOKEN =
   (import.meta.env["VITE_PAYMENTS_CLIENT_TOKEN_TEST"] as string | undefined) ||
-  "pk_test_51U2WZXRGrujZpoc6GiatKwoZMzvqPkJkXCmucedGHsj7zHtbyJPje2vRiplMVI0kcI6a7IBC3276D596uRJRWNKm00TgiZoMlT";
+  "pk_test_51UFY5JGbNoUPCmzMU2cBA6sx3tUwjIDo1XVcVCKasAUhYrQRKZryvB944FLA02k8oOTDJKi8CUuoBAqVJW0r3L1P00MORkmVyd";
 const LIVE_TOKEN =
   (import.meta.env["VITE_PAYMENTS_CLIENT_TOKEN_LIVE"] as string | undefined) ||
-  "pk_live_51S5uRMLuZDiZc2C5VwUfES2GDRw3bN47Q8VY6BewY85NZAmYhVrmNNYcjm2yma3DZsyKGr3Xqj58pPa0x8aC3Dkt00lcNhFI4q";
+  "pk_live_51UFb0zPw8DAwWlgPAGeA7ti9R8lYTmvIbZd5h4hM806DUu6esvIaCvC7ncfPrccKkyhsCC9jdjS4DNs17y5aEolt00IRnPuIGo";
 // Legacy single-token var kept as a fallback for whichever mode matches it.
 const LEGACY_TOKEN = import.meta.env["VITE_PAYMENTS_CLIENT_TOKEN"] as string | undefined;
 
