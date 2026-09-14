@@ -450,9 +450,12 @@ function AdminQuoteDetailPage() {
               ...(cell.lineId ? { id: cell.lineId } : {}),
               variant_label: row.label.trim(),
               country_code: country,
+              // Sent in the supplier's own currency — the server converts and
+              // freezes the rate, so the original amount stays the truth.
               supplier_cogs: num(cell.supplier_cogs),
               supplier_shipping: num(cell.supplier_shipping),
               supplier_tax: num(cell.supplier_tax),
+              supplier_currency: cell.currency,
               supplier_name: cell.supplier_name,
               moq: row.moq ? Number(row.moq) : null,
               lead_time_days: row.lead_time_days ? Number(row.lead_time_days) : null,
