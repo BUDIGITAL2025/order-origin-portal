@@ -335,7 +335,7 @@ function AdminQuotesPage() {
                           asChild
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8 rounded-md border border-foreground/70 bg-background p-1 text-primary hover:bg-primary/10 hover:text-primary"
+                          className="h-8 w-8 rounded-md bg-primary p-1 text-primary-foreground hover:bg-primary/90"
                         >
                           <Link
                             to="/admin/quotes/$id"
