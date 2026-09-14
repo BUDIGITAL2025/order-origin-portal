@@ -472,6 +472,9 @@ export const adminSetFulfilmentModel = createServerFn({ method: "POST" })
             "MODULE_REQUIRED: this workspace does not hold FlySales Fulfilment ($49/month). Grant it to continue.",
           );
         }
+        // Granting a paid module is an owner decision, not a daily operation.
+        const { requireOwner } = await import("./admin.server");
+        await requireOwner(context.supabase, context.userId);
         const { error: grantError } = await admin.from("workspace_modules").upsert(
           {
             store_id: product.store_id,
