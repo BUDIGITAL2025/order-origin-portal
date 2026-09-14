@@ -452,7 +452,7 @@ export const convertRowsToQuote = createServerFn({ method: "POST" })
           status: "pending",
           variant_label: variantLabel(row),
           country_code: data.country_code,
-          moq: row.inner_qty ?? null,
+          moq: (qtyIsMoq ? (row.available_qty ?? row.inner_qty) : row.inner_qty) ?? null,
           sourcing_notes: notes || null,
           sourcing_image_urls: row.image_urls ?? [],
         });
