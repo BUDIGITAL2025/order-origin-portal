@@ -63,8 +63,8 @@ export const registerSpyMarketInterest = createServerFn({ method: "POST" })
 export const adminListSpyMarketInterest = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { requireAdmin } = await import("./admin.server");
-    await requireAdmin(context.supabase, context.userId);
+    const { requireStaffRead } = await import("./admin.server");
+    await requireStaffRead(context.supabase, context.userId);
     const { data, error } = await context.supabase
       .from("spymarket_interest")
       .select("id, plan_interest, created_at, profiles(contact_name), entities(legal_name)")

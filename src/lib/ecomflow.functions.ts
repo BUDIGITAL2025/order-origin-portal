@@ -7,8 +7,8 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 export const getEcomflowStock = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { requireAdmin } = await import("./admin.server");
-    await requireAdmin(context.supabase, context.userId);
+    const { requireStaffRead } = await import("./admin.server");
+    await requireStaffRead(context.supabase, context.userId);
 
     const { fetchAllEcomflowSkus, fetchAllEcomflowStockHealth } = await import("./ecomflow.server");
     const [skus, health] = await Promise.all([fetchAllEcomflowSkus(), fetchAllEcomflowStockHealth()]);
@@ -37,8 +37,8 @@ export const getEcomflowStock = createServerFn({ method: "GET" })
 export const getEcomflowAnalytics = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { requireAdmin } = await import("./admin.server");
-    await requireAdmin(context.supabase, context.userId);
+    const { requireStaffRead } = await import("./admin.server");
+    await requireStaffRead(context.supabase, context.userId);
 
     const {
       fetchEcomflowStockHealthSummary, fetchEcomflowTopProducts,

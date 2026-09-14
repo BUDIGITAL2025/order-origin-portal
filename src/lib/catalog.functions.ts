@@ -185,8 +185,8 @@ export const startCatalogImport = createServerFn({ method: "POST" })
 export const listCatalogImports = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { requireAdminOrSourcing: requireAdmin, getAdminClient } = await import("./admin.server");
-    await requireAdmin(context.supabase, context.userId);
+    const { requireAdminOrSourcing: requireStaffRead, getAdminClient } = await import("./admin.server");
+    await requireStaffRead(context.supabase, context.userId);
     const admin = await getAdminClient();
     const { data, error } = await admin
       .from("catalog_imports")
@@ -430,8 +430,8 @@ export const convertRowsToProducts = createServerFn({ method: "POST" })
 export const listWorkspacesForImport = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { requireAdminOrSourcing: requireAdmin, getAdminClient } = await import("./admin.server");
-    await requireAdmin(context.supabase, context.userId);
+    const { requireAdminOrSourcing: requireStaffRead, getAdminClient } = await import("./admin.server");
+    await requireStaffRead(context.supabase, context.userId);
     const admin = await getAdminClient();
     const { data, error } = await admin
       .from("stores")

@@ -68,8 +68,8 @@ export const adminGetWallet = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => clientIdSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const { requireAdmin, getAdminClient } = await import("./admin.server");
-    await requireAdmin(context.supabase, context.userId);
+    const { requireStaffRead, getAdminClient } = await import("./admin.server");
+    await requireStaffRead(context.supabase, context.userId);
     const admin = await getAdminClient();
     const { data: rows, error } = await admin
       .from("wallet_transactions")

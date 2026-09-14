@@ -209,8 +209,8 @@ export const syncWorkspaceInventory = createServerFn({ method: "POST" })
 export const listSuppliers = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { requireAdmin } = await import("./admin.server");
-    await requireAdmin(context.supabase, context.userId);
+    const { requireStaffRead } = await import("./admin.server");
+    await requireStaffRead(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const [{ data: suppliers, error }, { data: products }] = await Promise.all([
       supabaseAdmin.from("suppliers").select("*").order("name"),
