@@ -473,19 +473,203 @@ export function CatalogImportPanel({
     onError: (e) => toast.error(friendlyError(e)),
   });
 
+  const sheetRows = sheet
+    ? buildSheetRows({
+        headers: sheet.headers,
+        body: sheet.body,
+        mapping: sheet.mapping,
+        defaultCurrency: sheet.defaultCurrency,
+      })
+    : [];
+
+  const confirmSheet = async () => {
+    if (!sheet) return;
+    setUploading(true);
+    try {
+      const result = await startSheet({
+        data: {
+          file_path: sheet.file_path,
+          file_name: sheet.file_name,
+          mime_type: sheet.mime_type,
+          sheet_name: sheet.sheet,
+          column_mapping: sheet.mapping as Record<string, number>,
+          rows: sheetRows,
+        },
+      });
+      toast.success(`${result.rows} rows imported — review them before converting.`);
+      setSheet(null);
+      setSheetFile(null);
+      onOpenImport(result.import_id);
+    } catch (e) {
+      toast.error(friendlyError(e));
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  if (sheet && !importId) {
+    const unavailable = sheetRows.filter((r) => r.unavailable).length;
+    return (
+      <div className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="text-sm">
+            <span className="font-medium">{sheet.file_name}</span>{" "}
+            <span className="text-muted-foreground">· match the columns</span>
+          </div>
+          <div className="flex items-center gap-2">
+            {sheet.sheetNames.length > 1 && (
+              <Select
+                value={sheet.sheet}
+                onValueChange={(v) => {
+                  if (sheetFile) void readSheet(sheetFile, sheet.file_path, v, sheet);
+                }}
+              >
+                <SelectTrigger className="h-8 w-44 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {sheet.sheetNames.map((n) => (
+                    <SelectItem key={n} value={n}>
+                      {n}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setSheet(null);
+                setSheetFile(null);
+              }}
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+
+        {sheet.commission.length > 0 && (
+          <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-xs">
+            Commission columns are ignored; your fee is applied by the platform.
+            <span className="text-muted-foreground"> ({sheet.commission.join(", ")})</span>
+          </div>
+        )}
+
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {SHEET_FIELDS.map((f) => (
+            <div key={f.key} className="space-y-1.5">
+              <Label className="text-xs">{f.label}</Label>
+              <Select
+                value={sheet.mapping[f.key] == null ? "none" : String(sheet.mapping[f.key])}
+                onValueChange={(v) =>
+                  setSheet((prev) =>
+                    prev
+                      ? {
+                          ...prev,
+                          mapping: {
+                            ...prev.mapping,
+                            [f.key as SheetField]: v === "none" ? undefined : Number(v),
+                          },
+                        }
+                      : prev,
+                  )
+                }
+              >
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Not in this file</SelectItem>
+                  {sheet.headers.map((h, i) => (
+                    <SelectItem key={`${h}-${i}`} value={String(i)}>
+                      {h}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ))}
+          <div className="space-y-1.5">
+            <Label className="text-xs">Currency when the file does not say</Label>
+            <Select
+              value={sheet.defaultCurrency}
+              onValueChange={(v) =>
+                setSheet((prev) =>
+                  prev ? { ...prev, defaultCurrency: v as SupplierCurrency } : prev,
+                )
+              }
+            >
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {SUPPLIER_CURRENCIES.map((c) => (
+                  <SelectItem key={c} value={c}>
+                    {CURRENCY_LABEL[c]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <TableShell>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                {SHEET_FIELDS.map((f) => (
+                  <TableHead key={f.key} className="text-xs">
+                    {f.label}
+                  </TableHead>
+                ))}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {sheetRows.slice(0, 8).map((r, i) => (
+                <TableRow key={i} className={r.unavailable ? "opacity-50" : ""}>
+                  <TableCell className="text-xs">{r.item_no ?? "—"}</TableCell>
+                  <TableCell className="text-xs">{r.description ?? "—"}</TableCell>
+                  <TableCell className="text-xs">{r.color ?? "—"}</TableCell>
+                  <TableCell className="text-xs">{r.size_text ?? "—"}</TableCell>
+                  <TableCell className="text-xs tnum">{r.unit_price ?? "—"}</TableCell>
+                  <TableCell className="text-xs">{r.currency}</TableCell>
+                  <TableCell className="text-xs tnum">{r.available_qty ?? "—"}</TableCell>
+                  <TableCell className="text-xs">{r.remark ?? "—"}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableShell>
+
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-xs text-muted-foreground">
+            {sheetRows.length} rows found
+            {unavailable ? ` · ${unavailable} flagged unavailable (excluded by default)` : ""}
+          </p>
+          <Button onClick={() => void confirmSheet()} disabled={uploading || !sheetRows.length}>
+            {uploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            Import {sheetRows.length} rows
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   if (!importId) {
     return (
       <div className="rounded-lg border border-dashed border-border p-8 text-center">
         <FileUp className="mx-auto mb-3 h-6 w-6 text-muted-foreground" />
         <p className="text-sm font-medium">Upload a supplier catalogue</p>
         <p className="mx-auto mt-1 max-w-md text-xs text-muted-foreground">
-          PDF (up to {MAX_PAGES} pages) or a photo of the price list, up to 15MB. One upload is one
-          AI reading; every row is reviewed by hand before anything is created.
+          PDF (up to {MAX_PAGES} pages), a photo of the price list, or an XLSX/CSV sheet — up to
+          15MB. Spreadsheets are read directly with a column-matching step; PDFs and photos use one
+          AI reading. Every row is reviewed by hand before anything is created.
         </p>
         <label className="mt-4 inline-flex">
           <input
             type="file"
-            accept="application/pdf,image/png,image/jpeg,image/webp"
+            accept="application/pdf,image/png,image/jpeg,image/webp,.xlsx,.xls,.csv"
             className="hidden"
             onChange={(e) => {
               const f = e.target.files?.[0];
