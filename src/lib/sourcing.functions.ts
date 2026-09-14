@@ -596,6 +596,68 @@ export const adminUpdateCollaborator = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+/**
+ * Remove a collaborator. Commission history is money history: a collaborator
+ * with any ledger row is deactivated (the row survives so old earnings still
+ * resolve to a name), never deleted. With no ledger at all — and always for a
+ * never-accepted invitation — the record goes for real, and the auth account
+ * with it so the invitation link stops working.
+ */
+export const adminRemoveCollaborator = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ id: uuid }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { requireAdmin, getAdminClient } = await import("./admin.server");
+    await requireAdmin(context.supabase, context.userId);
+    const admin = await getAdminClient();
+
+    const { data: row, error } = await admin
+      .from("sourcing_collaborators")
+      .select("id, user_id, email, display_name")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!row) throw new Error("Collaborator not found");
+
+    const [{ count: ledgerCount }, { data: authUser }] = await Promise.all([
+      admin
+        .from("sourcing_earnings")
+        .select("id", { count: "exact", head: true })
+        .eq("collaborator_user_id", row.user_id),
+      admin.auth.admin.getUserById(row.user_id),
+    ]);
+    const invitePending = !authUser?.user?.last_sign_in_at;
+    const hasLedger = (ledgerCount ?? 0) > 0;
+
+    if (hasLedger && !invitePending) {
+      const { error: deactivateError } = await admin
+        .from("sourcing_collaborators")
+        .update({ active: false })
+        .eq("id", row.id);
+      if (deactivateError) throw new Error(deactivateError.message);
+      return { ok: true as const, mode: "deactivated" as const };
+    }
+
+    const { error: deleteError } = await admin
+      .from("sourcing_collaborators")
+      .delete()
+      .eq("id", row.id);
+    if (deleteError) throw new Error(deleteError.message);
+    await admin.from("user_roles").delete().eq("user_id", row.user_id).eq("role", "sourcing");
+    // A pending invitee has no other footprint, so the auth account goes too —
+    // that is what invalidates the outstanding invitation link.
+    if (invitePending) {
+      const { data: otherRoles } = await admin
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", row.user_id);
+      if ((otherRoles ?? []).length === 0) {
+        await admin.auth.admin.deleteUser(row.user_id);
+      }
+    }
+    return { ok: true as const, mode: "deleted" as const };
+  });
+
 export const adminAssignSourcer = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => assignSourcerSchema.parse(input))

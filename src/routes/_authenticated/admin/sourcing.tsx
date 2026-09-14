@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { Send, UserPlus } from "lucide-react";
+import { Send, Trash2, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/app-shell";
 import { SectionTabs, ADMIN_SOURCING_TABS } from "@/components/section-tabs";
@@ -19,6 +19,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { friendlyError } from "@/lib/errors";
 import { formatDate, formatUSD } from "@/lib/format";
@@ -28,6 +39,7 @@ import {
   adminEarningsReport,
   adminInviteCollaborator,
   adminListCollaborators,
+  adminRemoveCollaborator,
   adminResendCollaboratorInvite,
   adminSettleEarnings,
   adminUpdateCollaborator,
@@ -55,12 +67,16 @@ function AdminSourcingPage() {
   const callUpdate = useServerFn(adminUpdateCollaborator);
   const callSettle = useServerFn(adminSettleEarnings);
   const callResend = useServerFn(adminResendCollaboratorInvite);
+  const callRemove = useServerFn(adminRemoveCollaborator);
 
   const [inviteOpen, setInviteOpen] = useState(false);
   const [editing, setEditing] = useState<{ id: string; name: string; tiers: FeeTier[] } | null>(
     null,
   );
   const [filter, setFilter] = useState<"all" | "pending" | "settled">("pending");
+  // Removed collaborators keep their ledger history, so they stay reachable
+  // behind this switch instead of disappearing from the page entirely.
+  const [teamView, setTeamView] = useState<"active" | "removed">("active");
 
   const { data: collaborators } = useQuery({
     queryKey: ["admin-collaborators"],
@@ -72,6 +88,8 @@ function AdminSourcingPage() {
   });
 
   const rows = collaborators?.collaborators ?? [];
+  const visibleRows = rows.filter((c) => (teamView === "active" ? c.active : !c.active));
+  const removedCount = rows.filter((c) => !c.active).length;
   const earningRows = earnings?.rows ?? [];
   const pendingTotal = rows.reduce((s, c) => s + c.pending, 0);
   const settledTotal = rows.reduce((s, c) => s + c.settled_total, 0);
@@ -100,6 +118,19 @@ function AdminSourcingPage() {
       await queryClient.invalidateQueries({ queryKey: ["admin-collaborators"] });
     },
     onError: (e) => toast.error(friendlyError(e, "The invitation was not sent.")),
+  });
+
+  const removeCollaborator = useMutation({
+    mutationFn: (id: string) => callRemove({ data: { id } }),
+    onSuccess: async (r) => {
+      toast.success(
+        r.mode === "deleted"
+          ? "Collaborator removed."
+          : "Collaborator removed — kept under “Removed” so the commission history still shows their name.",
+      );
+      await queryClient.invalidateQueries();
+    },
+    onError: (e) => toast.error(friendlyError(e, "The collaborator was not removed.")),
   });
 
   const pendingIds = earningRows.filter((r) => !r.settled).map((r) => r.id);
@@ -132,6 +163,17 @@ function AdminSourcingPage() {
         ]}
       />
 
+      <div className="mb-3">
+        <FilterTabs
+          value={teamView}
+          onChange={setTeamView}
+          tabs={[
+            { id: "active", label: "Active" },
+            { id: "removed", label: `Removed${removedCount ? ` (${removedCount})` : ""}` },
+          ]}
+        />
+      </div>
+
       <TableShell className="mb-6">
         <TableHeader>
           <TableRow>
@@ -141,10 +183,11 @@ function AdminSourcingPage() {
             <TableHead className="text-right">Paid</TableHead>
             <TableHead>Active</TableHead>
             <TableHead className="text-right">Invite</TableHead>
+            <TableHead className="w-10" />
           </TableRow>
         </TableHeader>
         <TableBody>
-          {rows.map((c) => (
+          {visibleRows.map((c) => (
             <TableRow key={c.id}>
               <TableCell>
                 <div className="flex items-center gap-2">
@@ -202,12 +245,49 @@ function AdminSourcingPage() {
                   </Button>
                 )}
               </TableCell>
+              <TableCell className="text-right">
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label={`Remove ${c.display_name || c.email}`}
+                      className="h-7 w-7 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>
+                        Remove {c.display_name || c.email} from the sourcing team?
+                      </AlertDialogTitle>
+                      <AlertDialogDescription>
+                        {c.invite_pending
+                          ? "This invitation was never accepted, so the record is deleted for good and the invitation link stops working."
+                          : c.pending > 0
+                            ? `This collaborator is still owed ${formatUSD(c.pending)} in commission — removing them will not cancel what's owed. Because they have commission history, the record is kept under “Removed” so the ledger still shows their name.`
+                            : "If they have no commission history the record is deleted for good; otherwise it is kept under “Removed” so the ledger still shows their name."}
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        disabled={removeCollaborator.isPending}
+                        onClick={() => removeCollaborator.mutate(c.id)}
+                      >
+                        Remove
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </TableCell>
             </TableRow>
           ))}
-          {rows.length === 0 && (
+          {visibleRows.length === 0 && (
             <TableRow>
-              <TableCell colSpan={6} className="text-sm text-muted-foreground">
-                No collaborators yet.
+              <TableCell colSpan={7} className="text-sm text-muted-foreground">
+                {teamView === "removed" ? "No removed collaborators." : "No collaborators yet."}
               </TableCell>
             </TableRow>
           )}
