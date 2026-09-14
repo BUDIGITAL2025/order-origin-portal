@@ -44,7 +44,25 @@ import {
 /** House sourcing fee rate, mirrored from the server default. */
 const DEFAULT_FEE_RATE = 0.08;
 import { formatDate, formatUSD, money2 } from "@/lib/format";
-import { fxNote, type SupplierCurrency } from "@/lib/fx";
+import {
+  CURRENCY_LABEL,
+  CURRENCY_SYMBOL,
+  SUPPLIER_CURRENCIES,
+  formatCurrency,
+  rateFor,
+  toUsd,
+  type FxRates,
+  type SupplierCurrency,
+} from "@/lib/fx";
+import { getTodayFxRates } from "@/lib/fx.functions";
+import { pct } from "@/lib/fee-tiers";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { effectiveTier, TIER_LABELS } from "@/lib/plans";
 import {
