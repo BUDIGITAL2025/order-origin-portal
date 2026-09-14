@@ -98,9 +98,10 @@ export async function flagBreachedQuotes(
   if (error || !breached?.length) return 0;
 
   for (const q of breached) {
+    // Admin-only notification: no store_id / entity_id, so the client-side
+    // RLS policy never matches it and only staff see the breach.
     await admin.from("notifications").insert({
       kind: "quote_sla_breach",
-      store_id: q.store_id,
       title: "Quote request past its 48h target",
       body: `A quote request (${q.product_name ?? q.product_url}) is still awaiting a quote past its 48-hour sourcing target.`,
     });

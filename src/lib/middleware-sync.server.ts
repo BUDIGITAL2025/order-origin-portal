@@ -295,6 +295,17 @@ async function landNeedsReview(
       : {}),
   });
   if (error) throw new Error(error.message);
+  // Admin-only bell: someone has to look at this order by hand.
+  try {
+    const { notify } = await import("./billing.server");
+    await notify(admin, {
+      kind: "order_needs_review",
+      title: "Order needs review",
+      body: `Order ${args.mapped.external_ref ?? id} landed incomplete — missing: ${args.mapped.missing.join(", ")}.`,
+    });
+  } catch (e) {
+    console.error("needs-review notification failed", e);
+  }
   await admin.from("integration_events").insert({
     event_id: `pull-needs-review-${id}`,
     event_type: "order.needs_review",

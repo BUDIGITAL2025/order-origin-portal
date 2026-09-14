@@ -74,6 +74,19 @@ export const openDispute = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     const row = disputeId as unknown as { id: string } | null;
     if (!row?.id) throw new Error("Dispute was not created");
+
+    // Admin-only heads-up: a client just opened a claim.
+    try {
+      const { getAdminClient } = await import("./admin.server");
+      const { notify } = await import("./billing.server");
+      await notify(await getAdminClient(), {
+        kind: "dispute_opened",
+        title: "New claim opened",
+        body: `A client opened a claim (${data.reason.replace(/_/g, " ")}) on one of their orders.`,
+      });
+    } catch (e) {
+      console.error("dispute open notification failed", e);
+    }
     return { dispute_id: row.id };
   });
 

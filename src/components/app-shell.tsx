@@ -39,7 +39,12 @@ import { getOnboardingLinks } from "@/lib/onboarding.functions";
 import { getMyWallet } from "@/lib/wallet.functions";
 import { adminListQuotes } from "@/lib/quotes.functions";
 import { sourcingListQueue } from "@/lib/sourcing.functions";
-import { listMyQuoteSignals } from "@/lib/quote-thread.functions";
+import { listUnreadNavKinds, markNavKindsRead } from "@/lib/notifications.functions";
+import {
+  kindsForNav,
+  navPathsWithAlerts,
+  type NavAudience,
+} from "@/lib/notifications-nav-map";
 import { cn } from "@/lib/utils";
 import { SUPPORT_EMAIL, supportMailto } from "@/lib/support";
 import { PaymentTestModeBanner } from "@/components/PaymentTestModeBanner";
@@ -62,7 +67,6 @@ interface NavItem {
   to: string;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
-  badge?: string;
 }
 
 const CLIENT_NAV: NavItem[] = [
@@ -72,8 +76,8 @@ const CLIENT_NAV: NavItem[] = [
   { to: "/products", label: "Products", icon: Package },
   { to: "/fulfilment", label: "Fulfilment", icon: Truck },
   { to: "/billing", label: "Billing", icon: Wallet },
-  { to: "/ads", label: "Ads", icon: Megaphone, badge: "New" },
-  { to: "/spymarket", label: "SpyMarket", icon: Telescope, badge: "New" },
+  { to: "/ads", label: "Ads", icon: Megaphone },
+  { to: "/spymarket", label: "SpyMarket", icon: Telescope },
 ];
 
 /**
@@ -111,10 +115,10 @@ function PastDueBanner() {
 const ADMIN_NAV: NavItem[] = [
   { to: "/admin/quotes", label: "Quote queue", icon: ClipboardList },
   { to: "/admin/requests", label: "Client requests", icon: MessageSquare },
-  { to: "/admin/catalog-import", label: "Catalog import", icon: FileUp, badge: "New" },
+  { to: "/admin/catalog-import", label: "Catalog import", icon: FileUp },
   { to: "/admin/sourcing", label: "Sourcing team", icon: Handshake },
   { to: "/admin/stock-purchases", label: "Stock purchases", icon: PackageCheck },
-  { to: "/admin/supplier-payments", label: "Supplier payments", icon: Wallet, badge: "New" },
+  { to: "/admin/supplier-payments", label: "Supplier payments", icon: Wallet },
   { to: "/admin/products", label: "Products", icon: Package },
   { to: "/admin/orders", label: "Fulfilment", icon: Truck },
   { to: "/admin/suppliers", label: "Suppliers", icon: Factory },
@@ -124,16 +128,16 @@ const ADMIN_NAV: NavItem[] = [
   { to: "/admin/wallet", label: "Billing", icon: Wallet },
   { to: "/admin/integration", label: "Integration", icon: Plug },
   { to: "/admin/spymarket", label: "SpyMarket waitlist", icon: Telescope },
-  { to: "/admin/spymarket-tools", label: "SpyMarket tools", icon: FlaskConical, badge: "New" },
-  { to: "/admin/seo-tools", label: "FlySales SEO", icon: LineChart, badge: "New" },
-  { to: "/admin/ads", label: "Ads", icon: Megaphone, badge: "New" },
+  { to: "/admin/spymarket-tools", label: "SpyMarket tools", icon: FlaskConical },
+  { to: "/admin/seo-tools", label: "FlySales SEO", icon: LineChart },
+  { to: "/admin/ads", label: "Ads", icon: Megaphone },
 ];
 
 /** The collaborator desk stays tiny: their queue, purchases and earnings. */
 const SOURCING_NAV: NavItem[] = [
   { to: "/desk/queue", label: "Quote queue", icon: ClipboardList },
-  { to: "/desk/purchases", label: "Purchases", icon: PackageCheck, badge: "New" },
-  { to: "/admin/catalog-import", label: "Catalog import", icon: FileUp, badge: "New" },
+  { to: "/desk/purchases", label: "Purchases", icon: PackageCheck },
+  { to: "/admin/catalog-import", label: "Catalog import", icon: FileUp },
   { to: "/desk/earnings", label: "My earnings", icon: Wallet },
 ];
 
@@ -374,13 +378,26 @@ function AccountMenu({
 }
 
 /**
- * "Something new here" dots. Each role reuses the exact query the destination
- * page already runs, so the count is shared from cache, never recomputed.
+ * "Something new here" dots.
+ *
+ * Generic path: unread notifications, mapped to nav items through
+ * NOTIFICATION_NAV_MAP — one query per role, no per-item wiring.
+ * Exception: the two quote queues (Admin and Sourcing desk) keep using the
+ * pending-work count their page already computes, because that count reflects
+ * outstanding work directly rather than "has anyone looked at this".
  */
-function useNavAlerts(role: "client" | "admin" | "sourcing"): Record<string, boolean> {
+function useNavAlerts(role: "client" | "admin" | "sourcing"): {
+  alerts: Record<string, boolean>;
+  markRead: (to: string) => void;
+} {
   const fetchAdminQuotes = useServerFn(adminListQuotes);
   const fetchQueue = useServerFn(sourcingListQueue);
-  const fetchSignals = useServerFn(listMyQuoteSignals);
+  const fetchUnreadKinds = useServerFn(listUnreadNavKinds);
+  const markRead = useServerFn(markNavKindsRead);
+  const queryClient = useQueryClient();
+
+  const audience: NavAudience | null =
+    role === "admin" ? "admin" : role === "client" ? "client" : null;
 
   const { data: adminQuotes } = useQuery({
     queryKey: ["admin-quotes", "all"],
@@ -394,14 +411,20 @@ function useNavAlerts(role: "client" | "admin" | "sourcing"): Record<string, boo
     enabled: role === "sourcing",
     staleTime: 60_000,
   });
-  const { data: signals } = useQuery({
-    queryKey: ["my-quote-signals"],
-    queryFn: fetchSignals,
-    enabled: role === "client",
+  const { data: unread } = useQuery({
+    queryKey: ["nav-unread-kinds", audience],
+    queryFn: () => fetchUnreadKinds({ data: { audience: audience as NavAudience } }),
+    enabled: audience !== null,
     staleTime: 60_000,
   });
 
   const alerts: Record<string, boolean> = {};
+  if (audience) {
+    for (const path of navPathsWithAlerts(audience, unread?.kinds ?? [])) {
+      alerts[path] = true;
+    }
+  }
+  // Pending-work exceptions win over the notifications table.
   if (role === "admin") {
     alerts["/admin/quotes"] = (adminQuotes?.quotes ?? []).some(
       (q) => q.status === "submitted" || q.status === "sourcing",
@@ -410,10 +433,19 @@ function useNavAlerts(role: "client" | "admin" | "sourcing"): Record<string, boo
   if (role === "sourcing") {
     alerts["/desk/queue"] = (queue?.quotes ?? []).some((q) => q.priced_lines === 0);
   }
-  if (role === "client") {
-    alerts["/sourcing"] = Object.values(signals?.unread ?? {}).some((n) => Number(n) > 0);
-  }
-  return alerts;
+
+  const clear = React.useCallback(
+    (to: string) => {
+      if (!audience) return;
+      if (kindsForNav(audience, to).length === 0) return;
+      void markRead({ data: { audience, to } }).then(() =>
+        queryClient.invalidateQueries({ queryKey: ["nav-unread-kinds", audience] }),
+      );
+    },
+    [audience, markRead, queryClient],
+  );
+
+  return { alerts, markRead: clear };
 }
 
 export function AppShell({
@@ -443,7 +475,7 @@ export function AppShell({
       ? [...baseNav, { to: "/admin/team", label: "Team", icon: ShieldCheck }]
       : baseNav;
 
-  const alerts = useNavAlerts(role);
+  const { alerts, markRead } = useNavAlerts(role);
 
   // Manual active matching so "/sourcing/new" doesn't light up "My quotes".
   const isActive = (to: string) => {
@@ -476,6 +508,15 @@ export function AppShell({
       return pathname.startsWith("/admin/wallet") || pathname.startsWith("/admin/documents");
     return pathname === to || pathname.startsWith(to + "/");
   };
+
+  // Landing on a section marks its notifications read, so the bell clears.
+  const activePath = nav.find((item) => isActive(item.to))?.to ?? null;
+  React.useEffect(() => {
+    if (activePath && alerts[activePath]) markRead(activePath);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activePath]);
+
+
 
   const handleSignOut = async () => {
     // Sign-out hygiene: tear down queries first so none refetch against a
@@ -526,11 +567,6 @@ export function AppShell({
                   title="New items"
                   className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary"
                 />
-              )}
-              {item.badge && (
-                <Badge className="ml-auto bg-primary/15 px-1.5 py-0 text-[9px] font-medium text-primary hover:bg-primary/15">
-                  {item.badge}
-                </Badge>
               )}
             </Link>
           ))}
