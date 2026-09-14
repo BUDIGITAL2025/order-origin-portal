@@ -30,7 +30,7 @@ const HINTS: Record<SheetField, RegExp> = {
   size_text: /(size|dimension|measure|尺寸|规格尺寸)/i,
   unit_price: /(unit ?price|price|fob|exw|cost|单价|价格)/i,
   currency: /(currency|curr\.?|币种)/i,
-  available_qty: /(qty|quantity|pcs|units|stock|数量|库存)/i,
+  available_qty: /(moq|min(imum)? ?(order)?|qty|quantity|pcs|units|stock|数量|库存|起订)/i,
   remark: /(remark|note|comment|status|备注|说明)/i,
 };
 
