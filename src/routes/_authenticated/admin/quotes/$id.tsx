@@ -332,22 +332,30 @@ function AdminQuoteDetailPage() {
           };
           byVariant.set(l.variant_label, row);
         }
+        // The supplier's own amount is the source of truth: a foreign line is
+        // edited in its own currency and read back in USD at the frozen rate.
+        const currency = ((l.supplier_currency as SupplierCurrency | null) ??
+          "USD") as SupplierCurrency;
+        const foreign = currency !== "USD" && l.fx_rate_used != null;
         row.cells[l.country_code] = {
           lineId: l.id,
           status: l.status,
-          supplier_cogs: money2(l.supplier_cogs ?? 0),
-          supplier_shipping: money2(l.supplier_shipping ?? 0),
+          currency,
+          supplier_cogs: money2(
+            foreign ? (l.supplier_cogs_original ?? 0) : (l.supplier_cogs ?? 0),
+          ),
+          supplier_shipping: money2(
+            foreign ? (l.supplier_shipping_original ?? 0) : (l.supplier_shipping ?? 0),
+          ),
           supplier_tax: money2(l.supplier_tax ?? 0),
           margin_pct: l.margin_pct != null ? String(l.margin_pct) : "0",
           fee_rate: l.sourcing_fee_rate != null ? Number(l.sourcing_fee_rate) : DEFAULT_FEE_RATE,
           fee_included: l.fee_included === true,
           supplier_name: "",
-          ...(l.supplier_currency && l.supplier_currency !== "USD" && l.fx_rate_used
+          ...(foreign
             ? {
                 fx: {
-                  currency: l.supplier_currency as string,
-                  cogs: Number(l.supplier_cogs_original ?? 0),
-                  shipping: Number(l.supplier_shipping_original ?? 0),
+                  currency,
                   rate: Number(l.fx_rate_used),
                   date: (l.fx_rate_date as string | null) ?? null,
                 },
@@ -373,7 +381,7 @@ function AdminQuoteDetailPage() {
   const allCells = rows.flatMap((r) =>
     countries.map((c) => r.cells[c]).filter((c): c is CellForm => c != null),
   );
-  const prices = allCells.map(cellPrice);
+  const prices = allCells.map((c) => cellPrice(c, cellRate(c, todayFx)));
   const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
   const maxPrice = prices.length > 0 ? Math.max(...prices) : 0;
 
