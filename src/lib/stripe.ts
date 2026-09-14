@@ -10,8 +10,17 @@ type StripeEnv = "sandbox" | "live";
 // the ACTIVE one is chosen by the same switch the server uses, so the browser
 // can never hold a live key while the server is answering in test mode
 // (that mismatch was the go-live blocker).
-const TEST_TOKEN = import.meta.env["VITE_PAYMENTS_CLIENT_TOKEN_TEST"] as string | undefined;
-const LIVE_TOKEN = import.meta.env["VITE_PAYMENTS_CLIENT_TOKEN_LIVE"] as string | undefined;
+// Publishable keys are public by design. We still read env vars first so a
+// project can rotate keys without a code change, but we keep the current keys
+// as fallbacks so the checkout can never be disabled by a missing build-time
+// variable (the previous live-only env split caused the published app to fail in
+// test mode).
+const TEST_TOKEN =
+  (import.meta.env["VITE_PAYMENTS_CLIENT_TOKEN_TEST"] as string | undefined) ||
+  "pk_test_51U2WZXRGrujZpoc6GiatKwoZMzvqPkJkXCmucedGHsj7zHtbyJPje2vRiplMVI0kcI6a7IBC3276D596uRJRWNKm00TgiZoMlT";
+const LIVE_TOKEN =
+  (import.meta.env["VITE_PAYMENTS_CLIENT_TOKEN_LIVE"] as string | undefined) ||
+  "pk_live_51S5uRMLuZDiZc2C5VwUfES2GDRw3bN47Q8VY6BewY85NZAmYhVrmNNYcjm2yma3DZsyKGr3Xqj58pPa0x8aC3Dkt00lcNhFI4q";
 // Legacy single-token var kept as a fallback for whichever mode matches it.
 const LEGACY_TOKEN = import.meta.env["VITE_PAYMENTS_CLIENT_TOKEN"] as string | undefined;
 
