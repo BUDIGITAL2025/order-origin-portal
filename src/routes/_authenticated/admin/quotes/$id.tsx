@@ -952,7 +952,7 @@ function AdminQuoteDetailPage() {
                   <div
                     className="grid min-w-max"
                     style={{
-                      gridTemplateColumns: `220px repeat(${Math.max(countries.length, 1)}, minmax(200px, 1fr))`,
+                      gridTemplateColumns: `220px repeat(${Math.max(countries.length, 1)}, minmax(280px, 1fr))`,
                     }}
                   >
                     <div className="border-b border-border bg-muted/40 p-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
