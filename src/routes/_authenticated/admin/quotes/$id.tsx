@@ -100,17 +100,21 @@ const GRID_FIELDS: { key: GridField; label: string; short?: string }[] = [
 interface CellForm {
   lineId: string | null;
   status: string;
+  /** COGS as the SUPPLIER quotes it, in `currency`. USD is computed from it. */
   supplier_cogs: string;
+  /** Supplier shipping per unit, in the same currency as COGS. */
   supplier_shipping: string;
+  /** The import-tax passthrough is always settled in USD. */
   supplier_tax: string;
+  currency: SupplierCurrency;
   margin_pct: string;
   /** Snapshotted sourcing fee rate; the house default until sourcing saves one. */
   fee_rate: number;
   /** True for lines whose entered cost already contains the sourcing fee. */
   fee_included: boolean;
   supplier_name: string;
-  /** Supplier-side currency detail, frozen when the agent saved the line. */
-  fx?: { currency: string; cogs: number; shipping: number; rate: number; date: string | null };
+  /** Rate frozen on the saved line — kept while the currency is unchanged. */
+  fx?: { currency: SupplierCurrency; rate: number; date: string | null };
 }
 
 interface VariantRow {
@@ -128,7 +132,8 @@ function emptyCell(country?: string): CellForm {
     status: "pending",
     supplier_cogs: "0",
     supplier_shipping: "0",
-    supplier_tax: country ? String(defaultImportTax(country)) : "0",
+    supplier_tax: money2(country ? defaultImportTax(country) : 0),
+    currency: "USD",
     margin_pct: "0",
     fee_rate: DEFAULT_FEE_RATE,
     fee_included: false,
