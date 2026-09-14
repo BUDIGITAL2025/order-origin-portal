@@ -11,7 +11,7 @@ import type { FxRates } from "./fx";
 
 type Admin = SupabaseClient<Database>;
 
-const ENDPOINT = "https://api.frankfurter.app/latest?base=USD&symbols=EUR,CNY";
+const ENDPOINT = "https://api.frankfurter.dev/v1/latest?base=USD&symbols=EUR,CNY";
 
 function today(): string {
   return new Date().toISOString().slice(0, 10);
