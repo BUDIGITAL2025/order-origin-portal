@@ -393,6 +393,16 @@ export const convertRowsToQuote = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     if (!rows?.length) throw new Error("No rows selected");
 
+    // Supplier spreadsheets quote a production MOQ in their quantity column —
+    // it is the order minimum, not stock on hand. AI-extracted catalogues keep
+    // the old meaning (available stock), where the carton inner qty is the MOQ.
+    const { data: importRow } = await admin
+      .from("catalog_imports")
+      .select("source_kind")
+      .eq("id", data.import_id)
+      .maybeSingle();
+    const qtyIsMoq = importRow?.source_kind === "spreadsheet";
+
     const groups = data.mode === "single_product" ? [rows] : rows.map((r) => [r] as typeof rows);
     const createdQuoteIds: string[] = [];
 
