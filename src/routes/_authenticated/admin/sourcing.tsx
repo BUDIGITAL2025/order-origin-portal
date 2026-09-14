@@ -67,12 +67,16 @@ function AdminSourcingPage() {
   const callUpdate = useServerFn(adminUpdateCollaborator);
   const callSettle = useServerFn(adminSettleEarnings);
   const callResend = useServerFn(adminResendCollaboratorInvite);
+  const callRemove = useServerFn(adminRemoveCollaborator);
 
   const [inviteOpen, setInviteOpen] = useState(false);
   const [editing, setEditing] = useState<{ id: string; name: string; tiers: FeeTier[] } | null>(
     null,
   );
   const [filter, setFilter] = useState<"all" | "pending" | "settled">("pending");
+  // Removed collaborators keep their ledger history, so they stay reachable
+  // behind this switch instead of disappearing from the page entirely.
+  const [teamView, setTeamView] = useState<"active" | "removed">("active");
 
   const { data: collaborators } = useQuery({
     queryKey: ["admin-collaborators"],
