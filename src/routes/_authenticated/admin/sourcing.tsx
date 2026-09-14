@@ -245,12 +245,49 @@ function AdminSourcingPage() {
                   </Button>
                 )}
               </TableCell>
+              <TableCell className="text-right">
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label={`Remove ${c.display_name || c.email}`}
+                      className="h-7 w-7 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>
+                        Remove {c.display_name || c.email} from the sourcing team?
+                      </AlertDialogTitle>
+                      <AlertDialogDescription>
+                        {c.invite_pending
+                          ? "This invitation was never accepted, so the record is deleted for good and the invitation link stops working."
+                          : c.pending > 0
+                            ? `This collaborator is still owed ${formatUSD(c.pending)} in commission — removing them will not cancel what's owed. Because they have commission history, the record is kept under “Removed” so the ledger still shows their name.`
+                            : "If they have no commission history the record is deleted for good; otherwise it is kept under “Removed” so the ledger still shows their name."}
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        disabled={removeCollaborator.isPending}
+                        onClick={() => removeCollaborator.mutate(c.id)}
+                      >
+                        Remove
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </TableCell>
             </TableRow>
           ))}
-          {rows.length === 0 && (
+          {visibleRows.length === 0 && (
             <TableRow>
-              <TableCell colSpan={6} className="text-sm text-muted-foreground">
-                No collaborators yet.
+              <TableCell colSpan={7} className="text-sm text-muted-foreground">
+                {teamView === "removed" ? "No removed collaborators." : "No collaborators yet."}
               </TableCell>
             </TableRow>
           )}
