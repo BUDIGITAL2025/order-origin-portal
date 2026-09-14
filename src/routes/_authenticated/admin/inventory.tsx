@@ -41,7 +41,7 @@ import { friendlyError } from "@/lib/errors";
 import { formatUSD } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
-const VIEWS = [
+export const VIEWS = [
   { id: "workspaces", label: "By workspace" },
   { id: "ecomflow", label: "Ecomflow (live stock)" },
 ] as const;
