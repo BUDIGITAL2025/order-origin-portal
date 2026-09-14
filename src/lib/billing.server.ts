@@ -1107,8 +1107,10 @@ export async function processStripeEvent(event: StripeEvent, env: StripeEnv): Pr
       return;
     }
 
-    // The client opened a checkout and never paid (or abandoned it). Release
-    // the pending batch so those orders can be paid again.
+    // The client opened a checkout and never paid (or abandoned it), or a
+    // delayed payment method ultimately failed. Release the pending batch so
+    // those orders can be paid again.
+    case "checkout.session.async_payment_failed":
     case "checkout.session.expired": {
       const session = event.data.object;
       const sessionId = String(session["id"] ?? "");
