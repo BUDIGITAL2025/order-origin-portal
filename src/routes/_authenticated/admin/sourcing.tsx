@@ -163,6 +163,17 @@ function AdminSourcingPage() {
         ]}
       />
 
+      <div className="mb-3">
+        <FilterTabs
+          value={teamView}
+          onChange={setTeamView}
+          tabs={[
+            { id: "active", label: "Active" },
+            { id: "removed", label: `Removed${removedCount ? ` (${removedCount})` : ""}` },
+          ]}
+        />
+      </div>
+
       <TableShell className="mb-6">
         <TableHeader>
           <TableRow>
@@ -172,10 +183,11 @@ function AdminSourcingPage() {
             <TableHead className="text-right">Paid</TableHead>
             <TableHead>Active</TableHead>
             <TableHead className="text-right">Invite</TableHead>
+            <TableHead className="w-10" />
           </TableRow>
         </TableHeader>
         <TableBody>
-          {rows.map((c) => (
+          {visibleRows.map((c) => (
             <TableRow key={c.id}>
               <TableCell>
                 <div className="flex items-center gap-2">
