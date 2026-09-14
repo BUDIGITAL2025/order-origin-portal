@@ -38,7 +38,7 @@ function maskClientSiteUrl<T extends { product_url: string | null; client_site?:
 
 /** Columns of a quote line a collaborator may see — no unit_price, no margin. */
 const DESK_LINE_COLUMNS =
-  "id, quote_request_id, variant_label, country_code, sku, supplier_id, supplier_unit_price, supplier_cogs, supplier_shipping, supplier_tax, fee_included, moq, production_lead_days, sourcing_notes, sourcing_image_urls, sourcing_fee_rate, sourcing_cost, sourced_at, status";
+  "id, quote_request_id, variant_label, country_code, sku, supplier_id, supplier_unit_price, supplier_cogs, supplier_shipping, supplier_tax, supplier_currency, supplier_cogs_original, supplier_shipping_original, fx_rate_used, fx_rate_date, fee_included, moq, production_lead_days, sourcing_notes, sourcing_image_urls, sourcing_fee_rate, sourcing_cost, sourced_at, status";
 
 // ===================== Collaborator desk =====================
 
@@ -275,10 +275,14 @@ export const sourcingSaveLines = createServerFn({ method: "POST" })
       throw new Error("This request is assigned to another collaborator");
     }
 
+    const needsFx = data.lines.some((l) => l.supplier_currency && l.supplier_currency !== "USD");
+    const fx = needsFx ? await (await import("./fx.server")).ensureDailyRates(admin) : undefined;
+
     const saved = await sourcing.writeSourcingLines(admin, {
       quoteId: data.quote_id,
       lines: data.lines,
       feeRate,
+      fx,
       sourcedBy: context.userId,
       optionId: data.option_id ?? (await ensureDefaultOption(admin, data.quote_id)),
     });
