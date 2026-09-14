@@ -85,9 +85,7 @@ export function mapQuoteForAdmin(row: unknown, internal?: QuoteInternal | null):
  * quote_breach_notified_at and records a notification (visible to admins via
  * the notifications admin policy). Idempotent — already-stamped rows skip.
  */
-export async function flagBreachedQuotes(
-  admin: SupabaseClient<Database>,
-): Promise<number> {
+export async function flagBreachedQuotes(admin: SupabaseClient<Database>): Promise<number> {
   const nowIso = new Date().toISOString();
   const { data: breached, error } = await admin
     .from("quote_requests")
@@ -98,16 +96,14 @@ export async function flagBreachedQuotes(
   if (error || !breached?.length) return 0;
 
   for (const q of breached) {
+    // Admin-only notification: no store_id / entity_id, so the client-side
+    // RLS policy never matches it and only staff see the breach.
     await admin.from("notifications").insert({
       kind: "quote_sla_breach",
-      store_id: q.store_id,
       title: "Quote request past its 48h target",
       body: `A quote request (${q.product_name ?? q.product_url}) is still awaiting a quote past its 48-hour sourcing target.`,
     });
-    await admin
-      .from("quote_requests")
-      .update({ quote_breach_notified_at: nowIso })
-      .eq("id", q.id);
+    await admin.from("quote_requests").update({ quote_breach_notified_at: nowIso }).eq("id", q.id);
   }
   return breached.length;
 }

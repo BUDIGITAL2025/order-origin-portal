@@ -646,7 +646,22 @@ export async function evaluateInventoryAlerts(
       { onConflict: "store_id,sku" },
     );
 
-    if (!alerting || !accountId) continue;
+    if (!alerting) continue;
+
+    // In-app bell for the workspace owner on every transition into amber/red.
+    try {
+      const { notify } = await import("./billing.server");
+      await notify(admin, {
+        storeId: store.id,
+        kind: "inventory_reorder",
+        title: row.state === "red" ? "Stock critical — reorder now" : "Stock running low",
+        body: `${row.product_name ?? row.sku} (${row.sku}) has ${row.days_of_cover ?? 0} days of cover left.`,
+      });
+    } catch (e) {
+      console.error("inventory alert notification failed", e);
+    }
+
+    if (!accountId) continue;
 
     try {
       const { sendClientEmail } = await import("./email.server");

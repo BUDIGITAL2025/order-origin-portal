@@ -74,6 +74,19 @@ export const openDispute = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     const row = disputeId as unknown as { id: string } | null;
     if (!row?.id) throw new Error("Dispute was not created");
+
+    // Admin-only heads-up: a client just opened a claim.
+    try {
+      const { getAdminClient } = await import("./admin.server");
+      const { notify } = await import("./billing.server");
+      await notify(await getAdminClient(), {
+        kind: "dispute_opened",
+        title: "New claim opened",
+        body: `A client opened a claim (${data.reason.replace(/_/g, " ")}) on one of their orders.`,
+      });
+    } catch (e) {
+      console.error("dispute open notification failed", e);
+    }
     return { dispute_id: row.id };
   });
 
@@ -227,7 +240,8 @@ export const adminResolveDispute = createServerFn({ method: "POST" })
           : data.resolution === "reshipped"
             ? "approved — a reshipment is on the way"
             : "rejected";
-      const body = `Your dispute for order ${orderNumber} was ${label}.` +
+      const body =
+        `Your dispute for order ${orderNumber} was ${label}.` +
         (data.client_message ? ` ${data.client_message}` : "");
       await notify(admin, {
         entityId,
@@ -290,8 +304,13 @@ export const adminDisputeSkuReport = createServerFn({ method: "GET" })
     >();
     for (const dispute of disputes ?? []) {
       for (const sku of skusByOrder.get(dispute.order_id) ?? []) {
-        const row =
-          bySku.get(sku) ?? { sku, disputes: 0, open: 0, approved: 0, last_dispute_at: dispute.created_at };
+        const row = bySku.get(sku) ?? {
+          sku,
+          disputes: 0,
+          open: 0,
+          approved: 0,
+          last_dispute_at: dispute.created_at,
+        };
         row.disputes += 1;
         if (dispute.status === "open" || dispute.status === "investigating") row.open += 1;
         if (dispute.status === "approved") row.approved += 1;

@@ -69,6 +69,22 @@ export const createQuoteRequest = createServerFn({ method: "POST" })
       ...(data.preview_id ? { p_preview_id: data.preview_id } : {}),
     });
     if (error) throw toSubmitError(error.message);
+
+    // Tell the admin queue a new request landed. Best-effort: the request is
+    // already saved, a failed notification must never fail the submission.
+    try {
+      const { getAdminClient } = await import("./admin.server");
+      const { notify } = await import("./billing.server");
+      await notify(await getAdminClient(), {
+        kind: "quote_request_submitted",
+        title: "New quote request",
+        body: `A client submitted a quote request${
+          data.product_name ? ` for ${data.product_name}` : ""
+        }.`,
+      });
+    } catch (e) {
+      console.error("quote submit notification failed", e);
+    }
     return { ok: true, quote_id: created?.id ?? null };
   });
 

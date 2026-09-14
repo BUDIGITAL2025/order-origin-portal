@@ -238,7 +238,7 @@ async function handleOrderUpdated(admin: Admin, payload: unknown) {
   const { data: existing, error: readError } = await admin
     .from("orders")
     .select(
-      "id, status, external_order_number, destination_country, shipped_at, delivered_at, cancelled_at",
+      "id, store_id, status, external_order_number, destination_country, shipped_at, delivered_at, cancelled_at",
     )
     .eq("middleware_order_id", parsed.order.middleware_order_id)
     .maybeSingle();
@@ -277,6 +277,27 @@ async function handleOrderUpdated(admin: Admin, payload: unknown) {
   if (Object.keys(update).length === 0) return { order_id: existing.id, changed: false };
   const { error } = await admin.from("orders").update(update).eq("id", existing.id);
   if (error) throw new Error(error.message);
+  // Bells: the client hears about shipping, staff about orders to review.
+  try {
+    const { notify } = await import("./billing.server");
+    const label = existing.external_order_number ?? existing.id.slice(0, 8);
+    if (update["status"] === "shipped") {
+      await notify(admin, {
+        storeId: existing.store_id,
+        kind: "order_shipped",
+        title: "Order shipped",
+        body: `Order ${label} is on its way.`,
+      });
+    } else if (update["status"] === "needs_review") {
+      await notify(admin, {
+        kind: "order_needs_review",
+        title: "Order needs review",
+        body: `Order ${label} was flagged for manual review.`,
+      });
+    }
+  } catch (e) {
+    console.error("order status notification failed", e);
+  }
   return { order_id: existing.id, changed: true };
 }
 

@@ -49,13 +49,19 @@ export const listMyCatalogue = createServerFn({ method: "GET" })
     const { data: countryPrices, error: pricesError } = await context.supabase
       .from("product_country_prices")
       .select("product_id, country_code, unit_price, lead_time_days")
-      .in("product_id", (products ?? []).map((p) => p.id));
+      .in(
+        "product_id",
+        (products ?? []).map((p) => p.id),
+      );
     if (pricesError) throw new Error(pricesError.message);
 
     const { data: bundlePrices, error: bundleError } = await context.supabase
       .from("bundle_prices")
       .select("bundle_product_id, country_code, effective_price, max_lead_time_days")
-      .in("bundle_product_id", (products ?? []).map((p) => p.id));
+      .in(
+        "bundle_product_id",
+        (products ?? []).map((p) => p.id),
+      );
     if (bundleError) throw new Error(bundleError.message);
 
     return {
@@ -144,7 +150,7 @@ export const adminSetOrderTracking = createServerFn({ method: "POST" })
     const { data: order, error: readError } = await admin
       .from("orders")
       .select(
-        "id, external_order_number, status, tracking_number, tracking_notified_at, stores(store_name, entities(account_id))",
+        "id, store_id, external_order_number, status, tracking_number, tracking_notified_at, stores(store_name, entities(account_id))",
       )
       .eq("id", data.order_id)
       .maybeSingle();
@@ -162,6 +168,21 @@ export const adminSetOrderTracking = createServerFn({ method: "POST" })
     }
     const { error } = await admin.from("orders").update(update).eq("id", order.id);
     if (error) throw new Error(error.message);
+
+    // In-app bell for the client the moment the order becomes shipped.
+    if (update["status"] === "shipped") {
+      try {
+        const { notify } = await import("./billing.server");
+        await notify(admin, {
+          storeId: order.store_id,
+          kind: "order_shipped",
+          title: "Order shipped",
+          body: `Order ${order.external_order_number ?? order.id.slice(0, 8)} shipped with ${data.tracking_carrier} (${data.tracking_number}).`,
+        });
+      } catch (e) {
+        console.error("order shipped notification failed", e);
+      }
+    }
 
     // Email the client at most once — the first time tracking appears.
     // Claim the notification atomically BEFORE sending: only the request that
