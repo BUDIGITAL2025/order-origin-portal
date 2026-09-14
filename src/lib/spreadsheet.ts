@@ -14,7 +14,9 @@ export const SHEET_FIELDS = [
   { key: "size_text", label: "Size" },
   { key: "unit_price", label: "Unit price" },
   { key: "currency", label: "Currency" },
-  { key: "available_qty", label: "Quantity" },
+  // Supplier sheets quote their production minimum in the quantity column, so
+  // this maps straight to the line MOQ — not to stock on hand.
+  { key: "available_qty", label: "MOQ (qty)" },
   { key: "remark", label: "Remark" },
 ] as const;
 
