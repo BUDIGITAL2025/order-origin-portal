@@ -505,8 +505,8 @@ export const adminSetPlan = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => subscriptionPlanSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const { requireAdmin } = await import("./admin.server");
-    await requireAdmin(context.supabase, context.userId);
+    const { requireOwner } = await import("./admin.server");
+    await requireOwner(context.supabase, context.userId);
     const { error } = await context.supabase
       .from("stores")
       .update({ subscription_plan: data.subscription_plan })
@@ -520,8 +520,8 @@ export const adminSetFeeWaived = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => feeWaivedSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const { requireAdmin } = await import("./admin.server");
-    await requireAdmin(context.supabase, context.userId);
+    const { requireOwner } = await import("./admin.server");
+    await requireOwner(context.supabase, context.userId);
     const { error } = await context.supabase
       .from("stores")
       .update({ fee_waived: data.fee_waived })
@@ -556,8 +556,8 @@ export const adminSetTierOverride = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => tierOverrideSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const { requireAdmin } = await import("./admin.server");
-    await requireAdmin(context.supabase, context.userId);
+    const { requireOwner } = await import("./admin.server");
+    await requireOwner(context.supabase, context.userId);
     const { error } = await context.supabase
       .from("stores")
       .update({ tier_override: data.tier_override })
