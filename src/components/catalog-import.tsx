@@ -40,11 +40,45 @@ import {
   getCatalogImport,
   listWorkspacesForImport,
   startCatalogImport,
+  startSpreadsheetImport,
   updateCatalogRow,
 } from "@/lib/catalog.functions";
+import {
+  SHEET_FIELDS,
+  buildSheetRows,
+  commissionColumns,
+  currencyFromHeader,
+  guessMapping,
+  headerLabel,
+  type ColumnMapping,
+  type SheetField,
+} from "@/lib/spreadsheet";
+import { CURRENCY_LABEL, SUPPLIER_CURRENCIES, type SupplierCurrency } from "@/lib/fx";
 
 const MAX_BYTES = 15 * 1024 * 1024;
 const MAX_PAGES = 10;
+
+const SHEET_MIMES = [
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.ms-excel",
+  "text/csv",
+];
+const isSheetFile = (file: File) =>
+  SHEET_MIMES.includes(file.type) || /\.(xlsx|xls|csv)$/i.test(file.name);
+
+/** A parsed spreadsheet waiting for the user to confirm the column mapping. */
+type SheetDraft = {
+  file_path: string;
+  file_name: string;
+  mime_type: string;
+  sheetNames: string[];
+  sheet: string;
+  headers: string[];
+  body: unknown[][];
+  mapping: ColumnMapping;
+  commission: string[];
+  defaultCurrency: SupplierCurrency;
+};
 
 type Row = {
   id: string;
@@ -63,6 +97,9 @@ type Row = {
   bbox: unknown;
   low_confidence: string[];
   image_urls: string[];
+  currency: string;
+  remark: string | null;
+  unavailable: boolean;
   included: boolean;
   converted_quote_id: string | null;
   converted_product_id: string | null;
@@ -169,6 +206,8 @@ export function CatalogImportPanel({
   const isAdmin = !!myCtx?.isAdmin;
 
   const [uploading, setUploading] = React.useState(false);
+  const [sheet, setSheet] = React.useState<SheetDraft | null>(null);
+  const startSheet = useServerFn(startSpreadsheetImport);
   const [page, setPage] = React.useState(1);
   const [selected, setSelected] = React.useState<Record<string, boolean>>({});
   const [mode, setMode] = React.useState<"single_product" | "product_per_row">("single_product");
@@ -237,14 +276,72 @@ export function CatalogImportPanel({
     onError: (e) => toast.error(friendlyError(e)),
   });
 
+  /** Read a workbook in the browser and open the column-mapping step. */
+  async function readSheet(file: File, path: string, sheetName?: string, parsed?: SheetDraft) {
+    const XLSX = await import("xlsx");
+    const workbook = XLSX.read(await file.arrayBuffer(), { type: "array" });
+    const names = workbook.SheetNames;
+    const chosen = sheetName && names.includes(sheetName) ? sheetName : (names[0] ?? "");
+    const grid = XLSX.utils.sheet_to_json<unknown[]>(workbook.Sheets[chosen]!, {
+      header: 1,
+      blankrows: false,
+      defval: null,
+    });
+    // The header row is the first row with at least two labelled cells.
+    const headerIndex = grid.findIndex(
+      (r) => r.filter((c) => c != null && String(c).trim() !== "").length >= 2,
+    );
+    if (headerIndex < 0) throw new Error("This sheet has no readable table.");
+    const headers = (grid[headerIndex] ?? []).map((c, i) => headerLabel(c, i));
+    const body = grid.slice(headerIndex + 1);
+    const mapping = guessMapping(headers);
+    const priceHeader = mapping.unit_price != null ? headers[mapping.unit_price] : undefined;
+    setSheet({
+      ...(parsed ?? {}),
+      file_path: path,
+      file_name: file.name,
+      mime_type: file.type || "application/vnd.ms-excel",
+      sheetNames: names,
+      sheet: chosen,
+      headers,
+      body,
+      mapping,
+      commission: commissionColumns(headers),
+      defaultCurrency: currencyFromHeader(priceHeader) ?? "USD",
+    });
+  }
+
+  const [sheetFile, setSheetFile] = React.useState<File | null>(null);
+
   async function upload(file: File) {
     if (file.size > MAX_BYTES) {
       toast.error("The file is larger than 15MB.");
       return;
     }
+
+    // Spreadsheets are structured — parse them here, no AI reading needed.
+    if (isSheetFile(file)) {
+      setUploading(true);
+      try {
+        const { data: session } = await supabase.auth.getUser();
+        const uid = session.user?.id;
+        if (!uid) throw new Error("Sign in again to upload.");
+        const path = `${uid}/catalog/${crypto.randomUUID()}-${file.name.replace(/[^\w.-]+/g, "_")}`;
+        const { error } = await supabase.storage.from("quote-images").upload(path, file);
+        if (error) throw new Error(error.message);
+        setSheetFile(file);
+        await readSheet(file, path);
+      } catch (e) {
+        toast.error(friendlyError(e));
+      } finally {
+        setUploading(false);
+      }
+      return;
+    }
+
     const mime = file.type || (file.name.toLowerCase().endsWith(".pdf") ? "application/pdf" : "");
     if (!["application/pdf", "image/jpeg", "image/jpg", "image/png", "image/webp"].includes(mime)) {
-      toast.error("Upload a PDF, JPG or PNG.");
+      toast.error("Upload a PDF, image, XLSX or CSV file.");
       return;
     }
     setUploading(true);
