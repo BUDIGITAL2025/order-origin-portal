@@ -145,11 +145,16 @@ export const inviteStaff = createServerFn({ method: "POST" })
     });
     if (!invite.sent) throw new Error(invite.error ?? "Could not send the invitation.");
 
-    // The signup trigger creates the staff row at reader level; honour the
-    // level the owner picked once the account exists.
+    // Create the staff row right away so the team list shows the invitee
+    // before they sign in; the signup trigger then finds it already there.
     const userId = invite.userId ?? existingRow?.user_id ?? null;
-    if (userId && data.level !== "reader") {
-      await admin.from("staff_members").update({ level: data.level }).eq("user_id", userId);
+    if (userId) {
+      await admin
+        .from("staff_members")
+        .upsert(
+          { user_id: userId, email, level: data.level, invited_by: context.userId },
+          { onConflict: "user_id" },
+        );
       await syncAdminRole(admin, userId, data.level, "active");
     }
 
