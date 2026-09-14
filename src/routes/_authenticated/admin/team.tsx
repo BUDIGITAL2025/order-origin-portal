@@ -119,8 +119,8 @@ function AdminTeamPage() {
         }
       />
 
+      <PanelHeader title="Staff" description={`${rows.length} members`} />
       <TableShell>
-        <PanelHeader title="Staff" description={`${rows.length} members`} />
         <TableHeader>
           <TableRow>
             <TableHead>Email</TableHead>
