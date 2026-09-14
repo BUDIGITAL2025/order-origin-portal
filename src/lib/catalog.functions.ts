@@ -31,6 +31,9 @@ const rowPatchSchema = z.object({
     available_qty: z.number().int().min(0).max(100_000_000).nullable().optional(),
     weight_g: z.number().min(0).max(10_000_000).nullable().optional(),
     unit_price: z.number().min(0).max(1_000_000).nullable().optional(),
+    currency: z.enum(["USD", "EUR", "CNY"]).optional(),
+    remark: z.string().trim().max(500).nullable().optional(),
+    unavailable: z.boolean().optional(),
     included: z.boolean().optional(),
     image_urls: z.array(z.string().max(500)).max(5).optional(),
   }),
@@ -181,11 +184,98 @@ export const startCatalogImport = createServerFn({ method: "POST" })
     }
   });
 
+const sheetImportSchema = z.object({
+  file_path: z.string().min(3).max(500),
+  file_name: z.string().min(1).max(200),
+  mime_type: z.string().min(3).max(120),
+  sheet_name: z.string().max(200).optional(),
+  column_mapping: z.record(z.string(), z.number().int().min(0).max(500)),
+  store_id: uuid.optional(),
+  rows: z
+    .array(
+      z.object({
+        row_ref: z.string().max(200).nullable(),
+        item_no: z.string().max(200).nullable(),
+        description: z.string().max(500).nullable(),
+        color: z.string().max(200).nullable(),
+        size_text: z.string().max(200).nullable(),
+        available_qty: z.number().int().min(0).max(100_000_000).nullable(),
+        unit_price: z.number().min(0).max(1_000_000).nullable(),
+        currency: z.enum(["USD", "EUR", "CNY"]),
+        remark: z.string().max(500).nullable(),
+        unavailable: z.boolean(),
+      }),
+    )
+    .min(1, "The sheet has no usable rows")
+    .max(500, "Up to 500 rows per import"),
+});
+
+/**
+ * Admin / sourcing: import an already-parsed supplier spreadsheet.
+ *
+ * Spreadsheets are structured, so the browser parses them and the user maps
+ * the columns — no AI call is made and nothing is charged. Rows land as the
+ * same review drafts an AI-read catalogue produces.
+ */
+export const startSpreadsheetImport = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => sheetImportSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const { requireAdminOrSourcing, getAdminClient } = await import("./admin.server");
+    await requireAdminOrSourcing(context.supabase, context.userId);
+    const admin = await getAdminClient();
+
+    const { data: imp, error } = await admin
+      .from("catalog_imports")
+      .insert({
+        created_by: context.userId,
+        store_id: data.store_id ?? null,
+        file_path: data.file_path,
+        file_name: data.file_name,
+        mime_type: data.mime_type,
+        page_count: 1,
+        status: "ready",
+        source_kind: "spreadsheet",
+        column_mapping: {
+          mapping: data.column_mapping,
+          ...(data.sheet_name ? { sheet: data.sheet_name } : {}),
+        },
+      })
+      .select("id")
+      .single();
+    if (error || !imp) throw new Error(error?.message ?? "Could not start the import.");
+
+    const { error: rowsError } = await admin.from("catalog_import_rows").insert(
+      data.rows.map((r, i) => ({
+        import_id: imp.id,
+        page_no: 1,
+        row_ref: r.row_ref,
+        item_no: r.item_no,
+        description: r.description,
+        color: r.color,
+        size_text: r.size_text,
+        available_qty: r.available_qty,
+        unit_price: r.unit_price,
+        currency: r.currency,
+        remark: r.remark,
+        unavailable: r.unavailable,
+        // Unavailable rows are visible but excluded from conversion by default.
+        included: !r.unavailable,
+        low_confidence: [],
+        sort_order: i,
+      })),
+    );
+    if (rowsError) throw new Error(rowsError.message);
+
+    return { import_id: imp.id, rows: data.rows.length };
+  });
+
 /** Admin: recent imports. */
 export const listCatalogImports = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { requireAdminOrSourcing: requireStaffRead, getAdminClient } = await import("./admin.server");
+    const { requireAdminOrSourcing: requireStaffRead, getAdminClient } =
+      await import("./admin.server");
     await requireStaffRead(context.supabase, context.userId);
     const admin = await getAdminClient();
     const { data, error } = await admin
@@ -430,7 +520,8 @@ export const convertRowsToProducts = createServerFn({ method: "POST" })
 export const listWorkspacesForImport = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { requireAdminOrSourcing: requireStaffRead, getAdminClient } = await import("./admin.server");
+    const { requireAdminOrSourcing: requireStaffRead, getAdminClient } =
+      await import("./admin.server");
     await requireStaffRead(context.supabase, context.userId);
     const admin = await getAdminClient();
     const { data, error } = await admin

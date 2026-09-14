@@ -95,7 +95,9 @@ export function parseNumber(value: unknown): number | null {
   const cleaned = String(value).replace(/[^\d.,-]/g, "");
   if (!cleaned) return null;
   const normalised =
-    cleaned.includes(",") && !cleaned.includes(".") ? cleaned.replace(",", ".") : cleaned.replace(/,/g, "");
+    cleaned.includes(",") && !cleaned.includes(".")
+      ? cleaned.replace(",", ".")
+      : cleaned.replace(/,/g, "");
   const n = Number(normalised);
   return Number.isFinite(n) ? n : null;
 }
