@@ -41,14 +41,16 @@ import { friendlyError } from "@/lib/errors";
 import { formatUSD } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
-const VIEWS = [
+export const VIEWS = [
   { id: "workspaces", label: "By workspace" },
   { id: "ecomflow", label: "Ecomflow (live stock)" },
 ] as const;
 type ViewId = (typeof VIEWS)[number]["id"];
 
 export const Route = createFileRoute("/_authenticated/admin/inventory")({
-  validateSearch: (search: Record<string, unknown>): { state?: string | undefined; view?: ViewId | undefined } => ({
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { state?: string | undefined; view?: ViewId | undefined } => ({
     state: typeof search["state"] === "string" ? search["state"] : undefined,
     view: VIEWS.find((v) => v.id === search["view"])?.id ?? "ecomflow",
   }),
@@ -117,7 +119,6 @@ const ECOMFLOW_TABS = [
   { id: "no_sales", label: "No sales" },
 ] as const;
 
-
 function BucketBadge({ bucket }: { bucket: Bucket }) {
   return (
     <Badge variant="outline" className={cn("font-normal", BUCKET_STYLES[bucket])}>
@@ -126,15 +127,10 @@ function BucketBadge({ bucket }: { bucket: Bucket }) {
   );
 }
 
-function EcomflowStockView({
-  query,
-}: {
-  query: ReturnType<typeof useQuery<EcomflowRow[]>>;
-}) {
+function EcomflowStockView({ query }: { query: ReturnType<typeof useQuery<EcomflowRow[]>> }) {
   const { data, isLoading, error } = query;
   const [growthPercent, setGrowthPercent] = useState(0);
   const [filter, setFilter] = useState<(typeof ECOMFLOW_TABS)[number]["id"]>("all");
-
 
   const adjustedRows = useMemo(() => {
     return (data ?? []).map((row) => {
@@ -180,7 +176,6 @@ function EcomflowStockView({
 
   return (
     <div className="space-y-4">
-
       <div className="flex flex-wrap items-center gap-2">
         <FilterTabs tabs={tabsWithCounts} value={filter} onChange={setFilter} />
         <div className="flex flex-wrap items-center gap-1 rounded-full border border-border bg-card p-1">
@@ -205,13 +200,16 @@ function EcomflowStockView({
       {growthPercent > 0 && (
         <div className="flex items-center gap-2 rounded-xl border border-info/30 bg-info/10 px-4 py-2.5 text-sm text-info">
           <Info className="h-4 w-4 shrink-0" />
-          Showing projection with +{growthPercent}% sales — runway and bucket reflect this scenario, not just Ecomflow's raw numbers.
+          Showing projection with +{growthPercent}% sales — runway and bucket reflect this scenario,
+          not just Ecomflow's raw numbers.
         </div>
       )}
 
       {isLoading ? (
         <Card>
-          <CardContent className="p-6 text-sm text-muted-foreground">Loading Ecomflow stock…</CardContent>
+          <CardContent className="p-6 text-sm text-muted-foreground">
+            Loading Ecomflow stock…
+          </CardContent>
         </Card>
       ) : error ? (
         <Card className="border-destructive/30">
@@ -236,8 +234,13 @@ function EcomflowStockView({
               <TableBody>
                 {rows.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="p-6 text-center text-sm text-muted-foreground">
-                      {filter === "all" ? "No Ecomflow SKUs found." : "No Ecomflow SKUs match this filter."}
+                    <TableCell
+                      colSpan={8}
+                      className="p-6 text-center text-sm text-muted-foreground"
+                    >
+                      {filter === "all"
+                        ? "No Ecomflow SKUs found."
+                        : "No Ecomflow SKUs match this filter."}
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -247,7 +250,9 @@ function EcomflowStockView({
                         <div className="font-medium">{row.title}</div>
                         <div className="text-[12px] text-muted-foreground">{row.sku}</div>
                         {row.shopifySku && row.shopifySku !== row.sku && (
-                          <div className="text-[12px] text-muted-foreground">Shopify: {row.shopifySku}</div>
+                          <div className="text-[12px] text-muted-foreground">
+                            Shopify: {row.shopifySku}
+                          </div>
                         )}
                       </TableCell>
                       <TableCell className="text-right tnum">{row.available}</TableCell>
@@ -411,15 +416,16 @@ function AdminInventoryPage() {
         <>
           {error && (
             <Card className="mb-4 border-destructive/30">
-              <CardContent className="p-4 text-sm text-destructive">{friendlyError(error)}</CardContent>
+              <CardContent className="p-4 text-sm text-destructive">
+                {friendlyError(error)}
+              </CardContent>
             </Card>
           )}
 
           {growthPercent > 0 && (
             <div className="mb-4 flex items-center gap-2 rounded-xl border border-warning/30 bg-warning/10 px-4 py-2.5 text-sm text-warning">
-              <AlertTriangle className="h-4 w-4 shrink-0" />
-              A mostrar projeção com +{growthPercent}% de vendas em todas as workspaces — reflete um
-              cenário, não apenas o histórico real.
+              <AlertTriangle className="h-4 w-4 shrink-0" />A mostrar projeção com +{growthPercent}%
+              de vendas em todas as workspaces — reflete um cenário, não apenas o histórico real.
             </div>
           )}
 
@@ -463,7 +469,9 @@ function AdminInventoryPage() {
 
           {isLoading ? (
             <Card>
-              <CardContent className="p-6 text-sm text-muted-foreground">Loading stock…</CardContent>
+              <CardContent className="p-6 text-sm text-muted-foreground">
+                Loading stock…
+              </CardContent>
             </Card>
           ) : workspaces.length === 0 ? (
             <Card>
@@ -514,7 +522,9 @@ function AdminInventoryPage() {
                       showOrigin
                       planLabel="Planning"
                       planIcon={SlidersHorizontal}
-                      onPlanReorder={(row) => row.product_id && setPlanningProductId(row.product_id)}
+                      onPlanReorder={(row) =>
+                        row.product_id && setPlanningProductId(row.product_id)
+                      }
                     />
                   </section>
                 );
