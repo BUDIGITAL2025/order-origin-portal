@@ -133,7 +133,6 @@ export const getMyContext = createServerFn({ method: "GET" })
       profile: profile ?? null,
       entities: (entities ?? []) as unknown as ContextEntity[],
     };
-
   });
 
 /**

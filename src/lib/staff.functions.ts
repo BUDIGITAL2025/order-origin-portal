@@ -76,9 +76,7 @@ export const setStaffLevel = createServerFn({ method: "POST" })
 export const setStaffStatus = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
-    z
-      .object({ user_id: z.string().uuid(), status: z.enum(["active", "inactive"]) })
-      .parse(input),
+    z.object({ user_id: z.string().uuid(), status: z.enum(["active", "inactive"]) }).parse(input),
   )
   .handler(async ({ data, context }) => {
     const { requireOwner, getAdminClient } = await import("./admin.server");
@@ -116,9 +114,7 @@ export const setStaffStatus = createServerFn({ method: "POST" })
 export const inviteStaff = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
-    z
-      .object({ email: z.string().email(), level: levelSchema.default("reader") })
-      .parse(input),
+    z.object({ email: z.string().email(), level: levelSchema.default("reader") }).parse(input),
   )
   .handler(async ({ data, context }) => {
     const { requireOwner, getAdminClient } = await import("./admin.server");

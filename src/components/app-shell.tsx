@@ -23,7 +23,6 @@ import {
   Plug,
   ShieldAlert,
   ShieldCheck,
-
   Sparkles,
   Megaphone,
   Store,
@@ -446,7 +445,6 @@ export function AppShell({
 
   const alerts = useNavAlerts(role);
 
-
   // Manual active matching so "/sourcing/new" doesn't light up "My quotes".
   const isActive = (to: string) => {
     if (to === "/dashboard" || to === "/admin/quotes") return pathname === to;
@@ -508,7 +506,6 @@ export function AppShell({
                 ? "Sourcing"
                 : "Client"}
           </span>
-
         </div>
         <nav className="flex-1 space-y-0.5 p-3">
           {nav.map((item) => (

@@ -82,7 +82,8 @@ function AdminTeamPage() {
   });
 
   const invite = useMutation({
-    mutationFn: () => callInvite({ data: { email: email.trim().toLowerCase(), level: inviteLevel } }),
+    mutationFn: () =>
+      callInvite({ data: { email: email.trim().toLowerCase(), level: inviteLevel } }),
     onSuccess: async (r) => {
       toast.success(`Invitation sent to ${r.email}.`);
       setInviteOpen(false);
@@ -250,10 +251,7 @@ function AdminTeamPage() {
             <Button variant="outline" onClick={() => setInviteOpen(false)}>
               Cancel
             </Button>
-            <Button
-              disabled={!email.trim() || invite.isPending}
-              onClick={() => invite.mutate()}
-            >
+            <Button disabled={!email.trim() || invite.isPending} onClick={() => invite.mutate()}>
               Send invitation
             </Button>
           </DialogFooter>
