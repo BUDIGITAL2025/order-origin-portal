@@ -772,7 +772,7 @@ export function CatalogImportPanel({
                   <TableHead className="text-xs">Packaging</TableHead>
                   <TableHead className="text-xs">Inner</TableHead>
                   <TableHead className="text-xs">Outer</TableHead>
-                  <TableHead className="text-xs">Available</TableHead>
+                  <TableHead className="text-xs">{qtyLabel}</TableHead>
                   <TableHead className="text-xs">Weight g</TableHead>
                   <TableHead className="text-xs">Price</TableHead>
                   <TableHead className="text-xs">Photo</TableHead>
