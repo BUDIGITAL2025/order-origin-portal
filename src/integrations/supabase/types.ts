@@ -4186,6 +4186,42 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      debug_find_email: {
+        Args: { p_email: string }
+        Returns: {
+          column_name: string
+          row_count: number
+          schema_name: string
+          table_name: string
+        }[]
+      }
+      debug_find_email_v2: {
+        Args: { p_email: string }
+        Returns: {
+          column_name: string
+          row_count: number
+          schema_name: string
+          table_name: string
+        }[]
+      }
+      debug_find_uuid: {
+        Args: { p_id: string }
+        Returns: {
+          column_name: string
+          row_count: number
+          schema_name: string
+          table_name: string
+        }[]
+      }
+      debug_user_data_counts: {
+        Args: { p_user_id: string }
+        Returns: {
+          column_name: string
+          row_count: number
+          schema_name: string
+          table_name: string
+        }[]
+      }
       declare_inbound_shipment: {
         Args: {
           p_cartons?: number
