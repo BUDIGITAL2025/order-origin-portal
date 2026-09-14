@@ -43,7 +43,7 @@ import {
 
 /** House sourcing fee rate, mirrored from the server default. */
 const DEFAULT_FEE_RATE = 0.08;
-import { formatDate, formatUSD } from "@/lib/format";
+import { formatDate, formatUSD, money2 } from "@/lib/format";
 import { fxNote, type SupplierCurrency } from "@/lib/fx";
 import { cn } from "@/lib/utils";
 import { effectiveTier, TIER_LABELS } from "@/lib/plans";
@@ -288,9 +288,9 @@ function AdminQuoteDetailPage() {
         row.cells[l.country_code] = {
           lineId: l.id,
           status: l.status,
-          supplier_cogs: l.supplier_cogs != null ? String(l.supplier_cogs) : "0",
-          supplier_shipping: l.supplier_shipping != null ? String(l.supplier_shipping) : "0",
-          supplier_tax: l.supplier_tax != null ? String(l.supplier_tax) : "0",
+          supplier_cogs: money2(l.supplier_cogs ?? 0),
+          supplier_shipping: money2(l.supplier_shipping ?? 0),
+          supplier_tax: money2(l.supplier_tax ?? 0),
           margin_pct: l.margin_pct != null ? String(l.margin_pct) : "0",
           fee_rate: l.sourcing_fee_rate != null ? Number(l.sourcing_fee_rate) : DEFAULT_FEE_RATE,
           fee_included: l.fee_included === true,
@@ -925,7 +925,7 @@ function AdminQuoteDetailPage() {
                                 disabled={!rowEditable}
                                 placeholder="MOQ"
                                 aria-label="MOQ"
-                                className="h-7 text-xs"
+                                className="h-7 px-1.5 text-xs [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                               />
                               <Input
                                 type="number"
@@ -937,7 +937,7 @@ function AdminQuoteDetailPage() {
                                 disabled={!rowEditable}
                                 placeholder="Lead days"
                                 aria-label="Lead time (days)"
-                                className="h-7 text-xs"
+                                className="h-7 px-1.5 text-xs [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                               />
                             </div>
                             {rowEditable && countries.length > 1 && (
