@@ -4,13 +4,8 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { BrandLogo } from "@/components/brand-logo";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
@@ -36,8 +31,27 @@ function ResetPasswordPage() {
   const [busy, setBusy] = useState(false);
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [linkError, setLinkError] = useState<string | null>(null);
+  const [newLinkEmail, setNewLinkEmail] = useState("");
 
   useEffect(() => {
+    // Supabase reports a dead link through the URL (hash or query) before any
+    // session exists — surface it instead of spinning on "Validating…".
+    const params = new URLSearchParams(
+      (window.location.hash.startsWith("#") ? window.location.hash.slice(1) : "") ||
+        window.location.search.replace(/^\?/, ""),
+    );
+    const code = params.get("error_code");
+    const description = params.get("error_description");
+    if (code || params.get("error")) {
+      setLinkError(
+        code === "otp_expired"
+          ? "This link has expired or was already used. Request a new one below."
+          : (description ?? "").replace(/\+/g, " ") ||
+              "This link is no longer valid. Request a new one below.",
+      );
+    }
+
     // The recovery link carries its token in the URL hash; the Supabase client
     // exchanges it and fires PASSWORD_RECOVERY once the session is established.
     const {
@@ -48,8 +62,40 @@ function ResetPasswordPage() {
     void supabase.auth.getSession().then(({ data }) => {
       if (data.session) setReady(true);
     });
-    return () => subscription.unsubscribe();
+    // No session and no error after the exchange window: the link was invalid.
+    const timer = window.setTimeout(() => {
+      setReady((isReady) => {
+        if (!isReady) {
+          setLinkError(
+            (current) =>
+              current ?? "We couldn't validate this link — it may have expired or been used.",
+          );
+        }
+        return isReady;
+      });
+    }, 4000);
+    return () => {
+      window.clearTimeout(timer);
+      subscription.unsubscribe();
+    };
   }, []);
+
+  const requestNewLink = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(newLinkEmail.trim(), {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      toast.success("New link sent — check your inbox.");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -95,7 +141,9 @@ function ResetPasswordPage() {
           <CardDescription>
             {ready
               ? "Enter and confirm your new password below."
-              : "Validating your reset link…"}
+              : linkError
+                ? "We couldn't open that link."
+                : "Validating your reset link…"}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -129,14 +177,34 @@ function ResetPasswordPage() {
                 {busy ? "Updating…" : "Update password"}
               </Button>
             </form>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              If nothing happens, your reset link may have expired —{" "}
-              <Link to="/auth" className="text-foreground underline underline-offset-4">
-                request a new one
+          ) : linkError ? (
+            <form onSubmit={requestNewLink} className="space-y-3">
+              <p className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-foreground">
+                {linkError}
+              </p>
+              <div className="space-y-1.5">
+                <Label htmlFor="rp-email">Your email</Label>
+                <Input
+                  id="rp-email"
+                  type="email"
+                  required
+                  autoComplete="email"
+                  value={newLinkEmail}
+                  onChange={(e) => setNewLinkEmail(e.target.value)}
+                />
+              </div>
+              <Button type="submit" className="w-full" disabled={busy}>
+                {busy ? "Sending…" : "Send me a new link"}
+              </Button>
+              <Link
+                to="/auth"
+                className="block text-center text-xs text-muted-foreground underline underline-offset-4"
+              >
+                Back to sign in
               </Link>
-              .
-            </p>
+            </form>
+          ) : (
+            <p className="text-sm text-muted-foreground">Validating your link…</p>
           )}
         </CardContent>
       </Card>
