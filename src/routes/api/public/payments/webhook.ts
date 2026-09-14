@@ -34,10 +34,8 @@ export const Route = createFileRoute("/api/public/payments/webhook")({
           // While the project is deliberately in test mode, acknowledge live
           // webhooks without processing them. This prevents any live Stripe
           // event from mutating production state before intentional go-live.
-          const { STRIPE_FORCE_TEST_MODE, verifyWebhook } = await import(
-            "@/lib/stripe.server"
-          );
-          if (env === "live" && STRIPE_FORCE_TEST_MODE) {
+          const { isTestMode, verifyWebhook } = await import("@/lib/stripe.server");
+          if (env === "live" && isTestMode()) {
             return Response.json({ received: true, ignored: "live_disabled" });
           }
 
