@@ -310,7 +310,42 @@ export const adminGetQuote = createServerFn({ method: "GET" })
       .order("created_at", { ascending: true });
     if (linesError) throw new Error(linesError.message);
 
-    return { quote: mappedQuote, lines: lines ?? [], preview };
+    // Tier context for the fee field: the agent who sourced (or is assigned to)
+    // this request, with the rate their next quote would carry.
+    const agentId =
+      (quote as { assigned_sourcer?: string | null }).assigned_sourcer ??
+      (lines ?? []).find((l) => l.sourced_by)?.sourced_by ??
+      null;
+    let agent: {
+      rate: number;
+      count: number;
+      nextAt: number | null;
+      remaining: number | null;
+      nextRate: number | null;
+    } | null = null;
+    if (agentId) {
+      const { parseFeeTiers, tierProgress } = await import("./fee-tiers");
+      const { data: collaborator } = await admin
+        .from("sourcing_collaborators")
+        .select("fee_tiers, paid_transactions")
+        .eq("user_id", agentId)
+        .maybeSingle();
+      if (collaborator) {
+        const p = tierProgress(
+          parseFeeTiers(collaborator.fee_tiers),
+          Number(collaborator.paid_transactions ?? 0),
+        );
+        agent = {
+          rate: p.rate,
+          count: p.count,
+          nextAt: p.nextAt,
+          remaining: p.remaining,
+          nextRate: p.nextRate,
+        };
+      }
+    }
+
+    return { quote: mappedQuote, lines: lines ?? [], preview, agent };
   });
 
 /**
@@ -328,6 +363,11 @@ export const adminSaveQuoteLines = createServerFn({ method: "POST" })
     await requireAdmin(context.supabase, context.userId);
     const admin = await getAdminClient();
 
+    // Supplier-currency lines need today's rates; an unchanged currency keeps
+    // the rate already frozen on the line.
+    const needsFx = data.lines.some((l) => l.supplier_currency && l.supplier_currency !== "USD");
+    const fx = needsFx ? await (await import("./fx.server")).ensureDailyRates(admin) : undefined;
+
     const lines = await writeSourcingLines(admin, {
       quoteId: data.quote_id,
       lines: data.lines.map((l) => ({
@@ -338,10 +378,12 @@ export const adminSaveQuoteLines = createServerFn({ method: "POST" })
         supplier_unit_price: l.supplier_cogs,
         supplier_shipping: l.supplier_shipping,
         supplier_tax: l.supplier_tax,
+        ...(l.supplier_currency ? { supplier_currency: l.supplier_currency } : {}),
         moq: l.moq ?? 1,
         production_lead_days: l.lead_time_days ?? 0,
         ...(l.sourcing_notes ? { sourcing_notes: l.sourcing_notes } : {}),
       })),
+      ...(fx ? { fx } : {}),
       feeRate: DEFAULT_FEE_RATE,
       sourcedBy: null,
       optionId: data.option_id ?? (await ensureDefaultOption(admin, data.quote_id)),

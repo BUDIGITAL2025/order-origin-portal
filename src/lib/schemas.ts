@@ -150,9 +150,12 @@ export const quoteLineInputSchema = z.object({
   id: z.string().uuid().optional(),
   variant_label: z.string().trim().min(1, "Every variant needs a label").max(120),
   country_code: countryCodeSchema,
+  /** Amount as the supplier quotes it, in supplier_currency (USD when absent). */
   supplier_cogs: z.number().min(0).max(1_000_000),
   supplier_shipping: z.number().min(0).max(1_000_000),
+  /** The tax passthrough is always settled in USD. */
   supplier_tax: z.number().min(0).max(1_000_000),
+  supplier_currency: z.enum(["USD", "EUR", "CNY"]).optional(),
   supplier_name: z.string().trim().max(160).optional().or(z.literal("")),
   sourcing_notes: z.string().trim().max(2000).optional().or(z.literal("")),
   moq: z.number().int().min(1).max(1_000_000).nullable().optional(),
