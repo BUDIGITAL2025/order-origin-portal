@@ -44,7 +44,25 @@ import {
 /** House sourcing fee rate, mirrored from the server default. */
 const DEFAULT_FEE_RATE = 0.08;
 import { formatDate, formatUSD, money2 } from "@/lib/format";
-import { fxNote, type SupplierCurrency } from "@/lib/fx";
+import {
+  CURRENCY_LABEL,
+  CURRENCY_SYMBOL,
+  SUPPLIER_CURRENCIES,
+  formatCurrency,
+  rateFor,
+  toUsd,
+  type FxRates,
+  type SupplierCurrency,
+} from "@/lib/fx";
+import { getTodayFxRates } from "@/lib/fx.functions";
+import { pct } from "@/lib/fee-tiers";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { effectiveTier, TIER_LABELS } from "@/lib/plans";
 import {
@@ -82,17 +100,21 @@ const GRID_FIELDS: { key: GridField; label: string; short?: string }[] = [
 interface CellForm {
   lineId: string | null;
   status: string;
+  /** COGS as the SUPPLIER quotes it, in `currency`. USD is computed from it. */
   supplier_cogs: string;
+  /** Supplier shipping per unit, in the same currency as COGS. */
   supplier_shipping: string;
+  /** The import-tax passthrough is always settled in USD. */
   supplier_tax: string;
+  currency: SupplierCurrency;
   margin_pct: string;
   /** Snapshotted sourcing fee rate; the house default until sourcing saves one. */
   fee_rate: number;
   /** True for lines whose entered cost already contains the sourcing fee. */
   fee_included: boolean;
   supplier_name: string;
-  /** Supplier-side currency detail, frozen when the agent saved the line. */
-  fx?: { currency: string; cogs: number; shipping: number; rate: number; date: string | null };
+  /** Rate frozen on the saved line — kept while the currency is unchanged. */
+  fx?: { currency: SupplierCurrency; rate: number; date: string | null };
 }
 
 interface VariantRow {
@@ -110,7 +132,8 @@ function emptyCell(country?: string): CellForm {
     status: "pending",
     supplier_cogs: "0",
     supplier_shipping: "0",
-    supplier_tax: country ? String(defaultImportTax(country)) : "0",
+    supplier_tax: money2(country ? defaultImportTax(country) : 0),
+    currency: "USD",
     margin_pct: "0",
     fee_rate: DEFAULT_FEE_RATE,
     fee_included: false,
@@ -136,35 +159,59 @@ function cellLocked(cell: CellForm): boolean {
   return cell.lineId != null && cell.status !== "pending";
 }
 
-/** COGS + supplier shipping — the base the sourcing fee applies to. */
-function cellBase(c: CellForm): number {
-  return feeBase(num(c.supplier_cogs), num(c.supplier_shipping));
+/**
+ * The rate that applies to this cell: the one frozen on the saved line while
+ * the currency is unchanged, otherwise today's market rate. USD is always 1.
+ */
+function cellRate(c: CellForm, today: FxRates | null): number {
+  if (c.currency === "USD") return 1;
+  if (c.fx && c.fx.currency === c.currency && c.fx.rate > 0) return c.fx.rate;
+  if (!today) return 0;
+  try {
+    return rateFor(c.currency, today);
+  } catch {
+    return 0;
+  }
+}
+
+/** COGS in USD — the supplier amount converted at this cell's rate. */
+function cellCogsUsd(c: CellForm, rate: number): number {
+  return c.currency === "USD" ? num(c.supplier_cogs) : toUsd(num(c.supplier_cogs), rate);
+}
+
+function cellShipUsd(c: CellForm, rate: number): number {
+  return c.currency === "USD" ? num(c.supplier_shipping) : toUsd(num(c.supplier_shipping), rate);
+}
+
+/** COGS + supplier shipping in USD — the base the sourcing fee applies to. */
+function cellBase(c: CellForm, rate: number): number {
+  return feeBase(cellCogsUsd(c, rate), cellShipUsd(c, rate));
 }
 
 /** The sourcing commission on this line — zero when the cost already includes it. */
-function cellFee(c: CellForm): number {
+function cellFee(c: CellForm, rate: number): number {
   if (c.fee_included) return 0;
-  return sourcingFee(num(c.supplier_cogs), num(c.supplier_shipping), c.fee_rate);
+  return sourcingFee(cellCogsUsd(c, rate), cellShipUsd(c, rate), c.fee_rate);
 }
 
 /** Everything the goods cost us before margin. */
-function cellSourcingCost(c: CellForm): number {
+function cellSourcingCost(c: CellForm, rate: number): number {
   return sourcingCostOf({
-    cogs: num(c.supplier_cogs),
-    shipping: num(c.supplier_shipping),
+    cogs: cellCogsUsd(c, rate),
+    shipping: cellShipUsd(c, rate),
     feeRate: c.fee_rate,
     feeIncluded: c.fee_included,
   });
 }
 
 /** Our absolute margin per unit. */
-function cellMargin(c: CellForm): number {
-  return marginAmount(cellSourcingCost(c), num(c.margin_pct));
+function cellMargin(c: CellForm, rate: number): number {
+  return marginAmount(cellSourcingCost(c, rate), num(c.margin_pct));
 }
 
 /** The closed price the client sees: goods + margin + tax passthrough at cost. */
-function cellPrice(c: CellForm): number {
-  return closedPrice(cellSourcingCost(c), num(c.margin_pct), num(c.supplier_tax));
+function cellPrice(c: CellForm, rate: number): number {
+  return closedPrice(cellSourcingCost(c, rate), num(c.margin_pct), num(c.supplier_tax));
 }
 
 function AdminQuoteDetailPage() {
@@ -182,6 +229,16 @@ function AdminQuoteDetailPage() {
     queryFn: () => fetchQuote({ data: { quote_id: id } }),
   });
   const quote = data?.quote;
+  // Today's market rates, for cells priced in a currency with no frozen rate yet.
+  const fetchFx = useServerFn(getTodayFxRates);
+  const { data: fxToday } = useQuery({
+    queryKey: ["fx-today"],
+    queryFn: () => fetchFx({}),
+    staleTime: 60 * 60 * 1000,
+  });
+  const todayFx = (fxToday ?? null) as FxRates | null;
+  /** Tier context for the fee field: the agent this request belongs to. */
+  const agentTier = data?.agent ?? null;
   const client = (quote?.profiles ?? null) as {
     company_name?: string;
     contact_name?: string;
@@ -285,22 +342,30 @@ function AdminQuoteDetailPage() {
           };
           byVariant.set(l.variant_label, row);
         }
+        // The supplier's own amount is the source of truth: a foreign line is
+        // edited in its own currency and read back in USD at the frozen rate.
+        const currency = ((l.supplier_currency as SupplierCurrency | null) ??
+          "USD") as SupplierCurrency;
+        const foreign = currency !== "USD" && l.fx_rate_used != null;
         row.cells[l.country_code] = {
           lineId: l.id,
           status: l.status,
-          supplier_cogs: money2(l.supplier_cogs ?? 0),
-          supplier_shipping: money2(l.supplier_shipping ?? 0),
+          currency,
+          supplier_cogs: money2(
+            foreign ? (l.supplier_cogs_original ?? 0) : (l.supplier_cogs ?? 0),
+          ),
+          supplier_shipping: money2(
+            foreign ? (l.supplier_shipping_original ?? 0) : (l.supplier_shipping ?? 0),
+          ),
           supplier_tax: money2(l.supplier_tax ?? 0),
           margin_pct: l.margin_pct != null ? String(l.margin_pct) : "0",
           fee_rate: l.sourcing_fee_rate != null ? Number(l.sourcing_fee_rate) : DEFAULT_FEE_RATE,
           fee_included: l.fee_included === true,
           supplier_name: "",
-          ...(l.supplier_currency && l.supplier_currency !== "USD" && l.fx_rate_used
+          ...(foreign
             ? {
                 fx: {
-                  currency: l.supplier_currency as string,
-                  cogs: Number(l.supplier_cogs_original ?? 0),
-                  shipping: Number(l.supplier_shipping_original ?? 0),
+                  currency,
                   rate: Number(l.fx_rate_used),
                   date: (l.fx_rate_date as string | null) ?? null,
                 },
@@ -326,7 +391,7 @@ function AdminQuoteDetailPage() {
   const allCells = rows.flatMap((r) =>
     countries.map((c) => r.cells[c]).filter((c): c is CellForm => c != null),
   );
-  const prices = allCells.map(cellPrice);
+  const prices = allCells.map((c) => cellPrice(c, cellRate(c, todayFx)));
   const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
   const maxPrice = prices.length > 0 ? Math.max(...prices) : 0;
 
@@ -385,9 +450,12 @@ function AdminQuoteDetailPage() {
               ...(cell.lineId ? { id: cell.lineId } : {}),
               variant_label: row.label.trim(),
               country_code: country,
+              // Sent in the supplier's own currency — the server converts and
+              // freezes the rate, so the original amount stays the truth.
               supplier_cogs: num(cell.supplier_cogs),
               supplier_shipping: num(cell.supplier_shipping),
               supplier_tax: num(cell.supplier_tax),
+              supplier_currency: cell.currency,
               supplier_name: cell.supplier_name,
               moq: row.moq ? Number(row.moq) : null,
               lead_time_days: row.lead_time_days ? Number(row.lead_time_days) : null,
@@ -884,7 +952,7 @@ function AdminQuoteDetailPage() {
                   <div
                     className="grid min-w-max"
                     style={{
-                      gridTemplateColumns: `220px repeat(${Math.max(countries.length, 1)}, minmax(200px, 1fr))`,
+                      gridTemplateColumns: `220px repeat(${Math.max(countries.length, 1)}, minmax(280px, 1fr))`,
                     }}
                   >
                     <div className="border-b border-border bg-muted/40 p-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -977,115 +1045,206 @@ function AdminQuoteDetailPage() {
                             const cell = row.cells[country] ?? emptyCell(country);
                             const locked = cellLocked(cell);
                             const cellEditable = requestEditable && !locked;
+                            const rate = cellRate(cell, todayFx);
+                            const foreign = cell.currency !== "USD";
+                            const frozen = cell.fx?.currency === cell.currency;
+                            const rateDate = frozen
+                              ? (cell.fx?.date ?? null)
+                              : (todayFx?.rate_date ?? null);
+                            const symbol = CURRENCY_SYMBOL[cell.currency];
+                            const cogsUsd = cellCogsUsd(cell, rate);
+                            const shipUsd = cellShipUsd(cell, rate);
+                            const feeUsd = cellFee(cell, rate);
+                            const feePctLabel = cell.fee_included
+                              ? "0"
+                              : String(Math.round(cell.fee_rate * 1000) / 10);
+                            const conversionLine = (usd: number) =>
+                              rate > 0
+                                ? `→ ${formatUSD(usd)} @ ${rate.toFixed(4)} (${frozen ? "frozen" : "today"}${rateDate ? ` ${rateDate}` : ""})`
+                                : "No exchange rate available yet — save once a rate is published.";
+                            const moneyField = (
+                              key: "supplier_cogs" | "supplier_shipping",
+                              label: string,
+                              usd: number,
+                            ) => (
+                              <div className="space-y-0.5">
+                                <div className="flex items-center gap-1">
+                                  <span className="w-12 shrink-0 text-[10px] leading-tight text-muted-foreground">
+                                    {label}
+                                  </span>
+                                  <Select
+                                    value={cell.currency}
+                                    onValueChange={(v) =>
+                                      updateCell(row.key, country, {
+                                        currency: v as SupplierCurrency,
+                                      })
+                                    }
+                                    disabled={!cellEditable}
+                                  >
+                                    <SelectTrigger
+                                      className="h-7 w-[4.5rem] text-[10px]"
+                                      aria-label={`Currency (${country})`}
+                                    >
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {SUPPLIER_CURRENCIES.map((c) => (
+                                        <SelectItem key={c} value={c} className="text-xs">
+                                          {CURRENCY_LABEL[c]}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                  <Input
+                                    inputMode="decimal"
+                                    value={cell[key]}
+                                    onChange={(e) =>
+                                      updateCell(row.key, country, { [key]: e.target.value })
+                                    }
+                                    onBlur={(e) =>
+                                      updateCell(row.key, country, {
+                                        [key]: money2(e.target.value || 0),
+                                      })
+                                    }
+                                    disabled={!cellEditable}
+                                    aria-label={`${label} in ${cell.currency} (${country})`}
+                                    className="h-7 tnum text-xs"
+                                  />
+                                </div>
+                                {foreign && (
+                                  <p className="tnum pl-[4.25rem] text-[10px] leading-tight text-foreground/70">
+                                    {conversionLine(usd)}
+                                  </p>
+                                )}
+                              </div>
+                            );
                             return (
                               <div
                                 key={country}
-                                className="space-y-1 border-b border-l border-border p-2"
+                                className="space-y-2 border-b border-l border-border p-2"
                               >
-                                {GRID_FIELDS.map((f) => (
-                                  <div key={f.key}>
-                                    <div className="flex items-center gap-1">
-                                      <span
-                                        className={cn(
-                                          "shrink-0 text-[10px] leading-tight text-muted-foreground",
-                                          f.key === "supplier_tax" ? "w-16" : "w-12",
-                                        )}
-                                      >
-                                        {f.label}
+                                {moneyField("supplier_cogs", "COGS", cogsUsd)}
+                                <p className="pl-[4.25rem] text-[9px] leading-tight text-muted-foreground/80">
+                                  Supplier unit price Ex Works — excludes all freight.
+                                </p>
+                                {moneyField("supplier_shipping", "Ship", shipUsd)}
+
+                                <div className="flex items-center gap-1">
+                                  <span className="w-12 shrink-0 text-[10px] leading-tight text-muted-foreground">
+                                    IOSS $
+                                  </span>
+                                  <Input
+                                    inputMode="decimal"
+                                    value={cell.supplier_tax}
+                                    onChange={(e) =>
+                                      updateCell(row.key, country, {
+                                        supplier_tax: e.target.value,
+                                      })
+                                    }
+                                    onBlur={(e) =>
+                                      updateCell(row.key, country, {
+                                        supplier_tax: money2(e.target.value || 0),
+                                      })
+                                    }
+                                    disabled={!cellEditable}
+                                    aria-label={`Import tax per unit in USD (${country})`}
+                                    className="h-7 tnum text-xs"
+                                  />
+                                </div>
+                                <p className="pl-[3.25rem] text-[9px] leading-tight text-muted-foreground/80">
+                                  {isEuCountry(country)
+                                    ? "EU — $3.50/unit passthrough, always USD"
+                                    : "usually 0 — always USD"}
+                                </p>
+
+                                {/* Agent fee — prefilled from the agent's tier, editable per quote. */}
+                                <div className="space-y-1 rounded border border-border/60 bg-muted/20 p-1.5">
+                                  <div className="flex items-center gap-1">
+                                    <span className="shrink-0 text-[10px] font-medium">
+                                      Agent fee %
+                                    </span>
+                                    <Input
+                                      type="number"
+                                      step="0.5"
+                                      min="0"
+                                      max="100"
+                                      value={feePctLabel}
+                                      onChange={(e) =>
+                                        updateCell(row.key, country, {
+                                          fee_rate: (Number(e.target.value) || 0) / 100,
+                                        })
+                                      }
+                                      disabled={!cellEditable || cell.fee_included}
+                                      aria-label={`Agent fee % (${country})`}
+                                      className="h-7 w-16 tnum text-xs"
+                                    />
+                                    {agentTier && (
+                                      <span className="rounded-full border border-border bg-background px-1.5 py-0.5 text-[9px] leading-tight text-muted-foreground">
+                                        Tier: {pct(agentTier.rate)}
+                                        {agentTier.nextAt != null
+                                          ? ` · ${agentTier.count}/${agentTier.nextAt} paid orders to next tier`
+                                          : " · final tier"}
                                       </span>
-                                      <Input
-                                        type="number"
-                                        step="0.01"
-                                        min="0"
-                                        value={cell[f.key]}
-                                        onChange={(e) =>
-                                          updateCell(row.key, country, { [f.key]: e.target.value })
-                                        }
-                                        disabled={!cellEditable}
-                                        aria-label={`${f.label} (${country})`}
-                                        className="h-7 tnum text-xs"
-                                      />
-                                    </div>
-                                    {f.key === "supplier_cogs" && (
-                                      <p className="mt-0.5 pl-[4.25rem] text-[9px] leading-tight text-muted-foreground/80">
-                                        Supplier unit price Ex Works — excludes all freight.
-                                        {cell.fx
-                                          ? ` Quoted ${fxNote(cell.fx.cogs, cell.fx.currency as SupplierCurrency, cell.fx.rate)}${cell.fx.date ? ` (${cell.fx.date})` : ""}.`
-                                          : ""}
-                                      </p>
-                                    )}
-                                    {f.key === "supplier_shipping" && cell.fx && (
-                                      <p className="mt-0.5 pl-[4.25rem] text-[9px] leading-tight text-muted-foreground/80">
-                                        {`Quoted ${fxNote(cell.fx.shipping, cell.fx.currency as SupplierCurrency, cell.fx.rate)}.`}
-                                      </p>
-                                    )}
-                                    {f.key === "supplier_tax" && (
-                                      <p className="mt-0.5 pl-[4.25rem] text-[9px] leading-tight text-muted-foreground/80">
-                                        {isEuCountry(country)
-                                          ? "EU — $3.50/unit passthrough"
-                                          : "usually 0"}
-                                      </p>
                                     )}
                                   </div>
-                                ))}
-                                <div className="mt-1 space-y-0.5 rounded border border-border/60 bg-muted/30 p-1.5 text-[10px] text-muted-foreground">
+                                  <p className="tnum text-[10px] leading-tight text-muted-foreground">
+                                    {cell.fee_included
+                                      ? "Fee already included in the supplier cost — never applied twice."
+                                      : foreign
+                                        ? `${feePctLabel}% of ${formatCurrency(num(cell.supplier_cogs), cell.currency)} = ${symbol}${(num(cell.supplier_cogs) * cell.fee_rate).toFixed(2)} → ${formatUSD(feeUsd)}`
+                                        : `${feePctLabel}% of ${formatUSD(num(cell.supplier_cogs))} = ${formatUSD(feeUsd)}`}
+                                  </p>
+                                </div>
+
+                                {/* Chain summary — always USD, always two decimals. */}
+                                <div className="space-y-0.5 rounded border border-border/60 bg-muted/30 p-1.5 text-[10px] text-muted-foreground">
                                   <div className="flex items-center justify-between">
-                                    <span>COGS + ship</span>
-                                    <span className="tnum">{formatUSD(cellBase(cell))}</span>
+                                    <span>COGS + ship (USD)</span>
+                                    <span className="tnum">{formatUSD(cellBase(cell, rate))}</span>
+                                  </div>
+                                  <div className="flex items-center justify-between">
+                                    <span>Agent fee ({feePctLabel}%)</span>
+                                    <span className="tnum">{formatUSD(feeUsd)}</span>
+                                  </div>
+                                  <div className="flex items-center justify-between font-medium text-foreground">
+                                    <span>Sourcing cost</span>
+                                    <span className="tnum">
+                                      {formatUSD(cellSourcingCost(cell, rate))}
+                                    </span>
                                   </div>
                                   <div className="flex items-center justify-between gap-1">
-                                    <span className="shrink-0">Sourcing fee %</span>
+                                    <span className="shrink-0">FlySales margin</span>
                                     <div className="flex items-center gap-1">
                                       <Input
                                         type="number"
                                         step="0.5"
                                         min="0"
-                                        max="100"
-                                        value={
-                                          cell.fee_included
-                                            ? 0
-                                            : Math.round(cell.fee_rate * 1000) / 10
-                                        }
+                                        value={cell.margin_pct}
                                         onChange={(e) =>
                                           updateCell(row.key, country, {
-                                            fee_rate: (Number(e.target.value) || 0) / 100,
+                                            margin_pct: e.target.value,
                                           })
                                         }
                                         disabled={!cellEditable}
-                                        aria-label={`Sourcing fee % (${country})`}
+                                        aria-label={`Margin % (${country})`}
                                         className="h-6 w-14 tnum text-[10px]"
                                       />
-                                      <span className="tnum">{formatUSD(cellFee(cell))}</span>
+                                      <span className="tnum">
+                                        {formatUSD(cellMargin(cell, rate))}
+                                      </span>
                                     </div>
-                                  </div>
-                                  {cell.fee_included && (
-                                    <p className="text-[9px] leading-tight text-muted-foreground/80">
-                                      Fee included in cost — never applied twice.
-                                    </p>
-                                  )}
-                                  <div className="flex items-center justify-between font-medium text-foreground">
-                                    <span>Sourcing cost</span>
-                                    <span className="tnum">
-                                      {formatUSD(cellSourcingCost(cell))}
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center justify-between">
-                                    <span>Our margin</span>
-                                    <span className="tnum">{formatUSD(cellMargin(cell))}</span>
                                   </div>
                                   <div className="flex items-center justify-between">
                                     <span>Tax passthrough</span>
-                                    <span className="tnum">
-                                      {formatUSD(num(cell.supplier_tax))}
-                                    </span>
+                                    <span className="tnum">{formatUSD(num(cell.supplier_tax))}</span>
                                   </div>
                                 </div>
-                                <div className="flex items-center justify-between pt-1">
-                                  <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                                <div className="flex items-center justify-between border-t border-border pt-1">
+                                  <span className="text-[10px] font-semibold uppercase tracking-wide">
                                     Client price
                                   </span>
-                                  <span className="tnum text-xs font-semibold">
-                                    {formatUSD(cellPrice(cell))}
+                                  <span className="tnum text-sm font-bold">
+                                    {formatUSD(cellPrice(cell, rate))}
                                   </span>
                                 </div>
                                 {locked && (
