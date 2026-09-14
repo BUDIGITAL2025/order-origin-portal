@@ -22,10 +22,7 @@ export const Route = createFileRoute("/api/public/payments/webhook")({
       POST: async ({ request }) => {
         const rawEnv = new URL(request.url).searchParams.get("env");
         if (rawEnv !== "sandbox" && rawEnv !== "live") {
-          console.error(
-            "Webhook received with invalid or missing env query parameter:",
-            rawEnv,
-          );
+          console.error("Webhook received with invalid or missing env query parameter:", rawEnv);
           return Response.json({ received: true, ignored: "invalid env" });
         }
         const env = rawEnv;
@@ -34,32 +31,26 @@ export const Route = createFileRoute("/api/public/payments/webhook")({
           // While the project is deliberately in test mode, acknowledge live
           // webhooks without processing them. This prevents any live Stripe
           // event from mutating production state before intentional go-live.
-          const { STRIPE_FORCE_TEST_MODE, verifyWebhook } = await import(
-            "@/lib/stripe.server"
-          );
-          if (env === "live" && STRIPE_FORCE_TEST_MODE) {
+          const { isTestMode, verifyWebhook } = await import("@/lib/stripe.server");
+          if (env === "live" && isTestMode()) {
             return Response.json({ received: true, ignored: "live_disabled" });
           }
 
           // 1. Signature verification (also reads the raw body).
           const event = await verifyWebhook(request, env);
 
-          const { supabaseAdmin } = await import(
-            "@/integrations/supabase/client.server"
-          );
+          const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
           // 2. Idempotency gate — first writer wins.
-          const { error: insertError } = await supabaseAdmin
-            .from("stripe_events")
-            .insert({
-              stripe_event_id: event.id,
-              event_type: event.type,
-              environment: env,
-              payload: (event.data.object ?? null) as unknown as Exclude<
-                Database["public"]["Tables"]["stripe_events"]["Insert"]["payload"],
-                undefined
-              >,
-            });
+          const { error: insertError } = await supabaseAdmin.from("stripe_events").insert({
+            stripe_event_id: event.id,
+            event_type: event.type,
+            environment: env,
+            payload: (event.data.object ?? null) as unknown as Exclude<
+              Database["public"]["Tables"]["stripe_events"]["Insert"]["payload"],
+              undefined
+            >,
+          });
           if (insertError) {
             if (insertError.code === "23505") {
               return Response.json({ received: true, duplicate: true });
@@ -77,9 +68,7 @@ export const Route = createFileRoute("/api/public/payments/webhook")({
               .eq("stripe_event_id", event.id);
           } catch (processingError) {
             const message =
-              processingError instanceof Error
-                ? processingError.message
-                : String(processingError);
+              processingError instanceof Error ? processingError.message : String(processingError);
             await supabaseAdmin
               .from("stripe_events")
               .update({ error: message.slice(0, 1000) })

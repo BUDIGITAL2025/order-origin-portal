@@ -1060,6 +1060,94 @@ export async function processStripeEvent(event: StripeEvent, env: StripeEnv): Pr
       return;
     }
 
+    // A refund changed state after it was created (bank rejected it, it was
+    // canceled, or it finally settled). Keeps the wallet consistent with the
+    // refund's FINAL state: the debit shares its reference with
+    // charge.refunded so it can never be applied twice, and a failed or
+    // canceled refund gives the money back.
+    case "charge.refund.updated": {
+      const refund = event.data.object;
+      const chargeId = idOf(refund["charge"]);
+      const piId = idOf(refund["payment_intent"]);
+      const status = String(refund["status"] ?? "");
+      const amountUsd = (Number(refund["amount"]) || 0) / 100;
+      if (!piId || !chargeId || amountUsd <= 0) return;
+      const { data: original } = await admin
+        .from("wallet_transactions")
+        .select("entity_id, amount")
+        .eq("reference", piId)
+        .maybeSingle();
+      if (!original) {
+        console.error("refund update for unknown payment intent", piId);
+        return;
+      }
+      if (status === "succeeded") {
+        await debitWalletOnce(admin, {
+          entityId: original.entity_id,
+          amountUsd: Math.min(amountUsd, Number(original.amount)),
+          reference: `refund:${chargeId}`,
+          description: "Card payment refunded",
+        });
+      } else if (status === "failed" || status === "canceled") {
+        const { data: debited } = await admin
+          .from("wallet_transactions")
+          .select("amount")
+          .eq("reference", `refund:${chargeId}`)
+          .maybeSingle();
+        if (!debited) return; // nothing was ever taken back
+        await creditWalletOnce(admin, {
+          entityId: original.entity_id,
+          amountUsd: Number(debited.amount),
+          reference: `refund-reversal:${String(refund["id"])}`,
+          description: "Refund did not go through — amount restored",
+        });
+      }
+      return;
+    }
+
+    // The client opened a checkout and never paid (or abandoned it). Release
+    // the pending batch so those orders can be paid again.
+    case "checkout.session.expired": {
+      const session = event.data.object;
+      const sessionId = String(session["id"] ?? "");
+      if (!sessionId) return;
+      const { error } = await admin
+        .from("order_batch_payments")
+        .update({ status: "expired" })
+        .eq("stripe_session_id", sessionId)
+        .eq("status", "pending");
+      if (error) throw new Error(error.message);
+      return;
+    }
+
+    // An off-session charge failed (fast top-up, cover-the-difference, auto
+    // top-up). Nothing is credited — surface it so admins see it and the
+    // client knows their card was declined.
+    case "payment_intent.payment_failed": {
+      const pi = event.data.object;
+      const kind = meta(pi)["kind"] ?? "";
+      const entityId = meta(pi)["flysales_entity_id"] ?? null;
+      const amountUsd = (Number(pi["amount"]) || 0) / 100;
+      const reason =
+        (pi["last_payment_error"] as { message?: string } | undefined)?.message ??
+        "The card was declined.";
+      const { logAppError } = await import("./ops.server");
+      await logAppError(admin, {
+        job: "stripe:payment_intent.payment_failed",
+        context: { payment_intent: String(pi["id"] ?? ""), kind, entity_id: entityId, amountUsd },
+        error: reason,
+      });
+      if (entityId) {
+        await notify(admin, {
+          entityId,
+          kind: "payment_failed",
+          title: "Card payment failed",
+          body: `We could not charge your card${amountUsd > 0 ? ` for $${amountUsd.toFixed(2)}` : ""}. ${reason} Nothing was credited — update your payment method and try again.`,
+        });
+      }
+      return;
+    }
+
     default:
       // Unhandled types: acknowledged (200) so Stripe stops retrying.
       console.log("Unhandled Stripe event:", event.type);

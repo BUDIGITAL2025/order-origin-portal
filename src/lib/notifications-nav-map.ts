@@ -45,6 +45,7 @@ export const NOTIFICATION_NAV_MAP: Record<string, NavTargets> = {
   subscription_payment_failed: { client: "/billing", admin: "/admin/wallet" },
   auto_topup_failed: { client: "/billing" },
   wallet_topup: { client: "/billing" },
+  payment_failed: { client: "/billing", admin: "/admin/wallet" },
 };
 
 /** Every kind that should light up `to` for this audience. */

@@ -10,11 +10,12 @@ export type StripeEnv = "sandbox" | "live";
 
 // The master switch lives in a browser-safe module so the client bundle and
 // the server share one constant. Re-exported for existing server imports.
-export { STRIPE_FORCE_TEST_MODE } from "./stripe-mode";
-import { STRIPE_FORCE_TEST_MODE } from "./stripe-mode";
+export { STRIPE_FORCE_TEST_MODE, isTestMode } from "./stripe-mode";
+import { isTestMode } from "./stripe-mode";
 
 function effectiveStripeEnv(requestedEnv: StripeEnv): StripeEnv {
-  return STRIPE_FORCE_TEST_MODE ? "sandbox" : requestedEnv;
+  // Test mode (forced, or any non-production build) always wins.
+  return isTestMode() ? "sandbox" : requestedEnv;
 }
 
 const GATEWAY_STRIPE_BASE = "https://connector-gateway.lovable.dev/stripe";
