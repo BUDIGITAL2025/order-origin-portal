@@ -393,6 +393,16 @@ export const convertRowsToQuote = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     if (!rows?.length) throw new Error("No rows selected");
 
+    // Supplier spreadsheets quote a production MOQ in their quantity column —
+    // it is the order minimum, not stock on hand. AI-extracted catalogues keep
+    // the old meaning (available stock), where the carton inner qty is the MOQ.
+    const { data: importRow } = await admin
+      .from("catalog_imports")
+      .select("source_kind")
+      .eq("id", data.import_id)
+      .maybeSingle();
+    const qtyIsMoq = importRow?.source_kind === "spreadsheet";
+
     const groups = data.mode === "single_product" ? [rows] : rows.map((r) => [r] as typeof rows);
     const createdQuoteIds: string[] = [];
 
@@ -427,7 +437,9 @@ export const convertRowsToQuote = createServerFn({ method: "POST" })
           row.packaging ? `Packaging: ${row.packaging}` : null,
           row.inner_qty != null ? `Inner qty: ${row.inner_qty}` : null,
           row.outer_qty != null ? `Outer qty: ${row.outer_qty}` : null,
-          row.available_qty != null ? `Available: ${row.available_qty}` : null,
+          row.available_qty != null
+            ? `${qtyIsMoq ? "MOQ" : "Available"}: ${row.available_qty}`
+            : null,
           row.weight_g != null ? `Weight: ${row.weight_g} g` : null,
           row.unit_price != null ? `Catalogue price: ${row.unit_price}` : null,
         ]
@@ -440,7 +452,7 @@ export const convertRowsToQuote = createServerFn({ method: "POST" })
           status: "pending",
           variant_label: variantLabel(row),
           country_code: data.country_code,
-          moq: row.inner_qty ?? null,
+          moq: (qtyIsMoq ? (row.available_qty ?? row.inner_qty) : row.inner_qty) ?? null,
           sourcing_notes: notes || null,
           sourcing_image_urls: row.image_urls ?? [],
         });
