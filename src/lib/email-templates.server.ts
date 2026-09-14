@@ -549,3 +549,39 @@ export function sourcingInviteEmail(args: {
     note: `This invitation link expires on ${args.expiresLabel}. If it has expired, ask your FlySales contact to send a new one.`,
   });
 }
+
+/** Invitation for a new internal staff member (admin console access). */
+export function staffInviteEmail(args: {
+  inviteUrl: string;
+  email: string;
+  level: string;
+  expiresLabel: string;
+}): BuiltEmail {
+  const levelLabel =
+    args.level === "owner" ? "Owner" : args.level === "collaborator" ? "Collaborator" : "Reader";
+  const levelNote =
+    args.level === "owner"
+      ? "Owners can do everything, including managing the team."
+      : args.level === "collaborator"
+        ? "Collaborators run day-to-day operations, but cannot manage the team or change plans and modules."
+        : "Readers can see the whole console but cannot make changes. Ask an owner for more access when you need it.";
+  return build("You've been added to the FlySales team", {
+    heading: "You've been added to the FlySales team",
+    preheader: "Set your password and open the FlySales admin console.",
+    paragraphs: [
+      "You have been given access to the FlySales internal console.",
+      levelNote,
+      "Use the button below to set your password and sign in.",
+    ],
+    panel: {
+      title: "Your access",
+      rows: [
+        { label: "Account", value: args.email },
+        { label: "Level", value: levelLabel },
+        { label: "Invitation valid until", value: args.expiresLabel },
+      ],
+    },
+    button: { label: "Set your password", url: args.inviteUrl },
+    note: `This invitation link expires on ${args.expiresLabel}. If it has expired, ask an owner to send a new one.`,
+  });
+}
