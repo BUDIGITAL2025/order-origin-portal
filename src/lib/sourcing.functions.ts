@@ -324,9 +324,17 @@ export const adminSaveSourcingLines = createServerFn({ method: "POST" })
       throw new Error("This request can no longer be edited");
     }
 
+    const adminNeedsFx = data.lines.some(
+      (l) => l.supplier_currency && l.supplier_currency !== "USD",
+    );
+    const adminFx = adminNeedsFx
+      ? await (await import("./fx.server")).ensureDailyRates(admin)
+      : undefined;
+
     const saved = await writeSourcingLines(admin, {
       quoteId: data.quote_id,
       lines: data.lines,
+      fx: adminFx,
       feeRate: DEFAULT_FEE_RATE,
       sourcedBy: null,
       optionId: data.option_id ?? (await ensureDefaultOption(admin, data.quote_id)),
