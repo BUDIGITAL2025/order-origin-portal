@@ -88,6 +88,8 @@ function AdminSourcingPage() {
   });
 
   const rows = collaborators?.collaborators ?? [];
+  const visibleRows = rows.filter((c) => (teamView === "active" ? c.active : !c.active));
+  const removedCount = rows.filter((c) => !c.active).length;
   const earningRows = earnings?.rows ?? [];
   const pendingTotal = rows.reduce((s, c) => s + c.pending, 0);
   const settledTotal = rows.reduce((s, c) => s + c.settled_total, 0);
@@ -116,6 +118,19 @@ function AdminSourcingPage() {
       await queryClient.invalidateQueries({ queryKey: ["admin-collaborators"] });
     },
     onError: (e) => toast.error(friendlyError(e, "The invitation was not sent.")),
+  });
+
+  const removeCollaborator = useMutation({
+    mutationFn: (id: string) => callRemove({ data: { id } }),
+    onSuccess: async (r) => {
+      toast.success(
+        r.mode === "deleted"
+          ? "Collaborator removed."
+          : "Collaborator removed — kept under “Removed” so the commission history still shows their name.",
+      );
+      await queryClient.invalidateQueries();
+    },
+    onError: (e) => toast.error(friendlyError(e, "The collaborator was not removed.")),
   });
 
   const pendingIds = earningRows.filter((r) => !r.settled).map((r) => r.id);
