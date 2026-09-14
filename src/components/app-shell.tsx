@@ -417,12 +417,15 @@ function useNavAlerts(role: "client" | "admin" | "sourcing"): Record<string, boo
 
 export function AppShell({
   role,
+  staffLevel,
   email,
   companyName,
   onboardingStores,
   children,
 }: {
   role: "client" | "admin" | "sourcing";
+  /** Internal staff level, when the caller is staff. Owners also get "Team". */
+  staffLevel?: "owner" | "collaborator" | "reader" | null;
   email: string | null;
   companyName: string | null;
   onboardingStores?: OnboardingStore[];
@@ -432,8 +435,14 @@ export function AppShell({
   const router = useRouter();
   const queryClient = useQueryClient();
   const pathname = useRouterState({ select: (r) => r.location.pathname });
-  const nav = role === "admin" ? ADMIN_NAV : role === "sourcing" ? SOURCING_NAV : CLIENT_NAV;
+  const baseNav = role === "admin" ? ADMIN_NAV : role === "sourcing" ? SOURCING_NAV : CLIENT_NAV;
+  // Team management is an owner-only door; the server refuses everyone else.
+  const nav =
+    role === "admin" && staffLevel === "owner"
+      ? [...baseNav, { to: "/admin/team", label: "Team", icon: Users2 }]
+      : baseNav;
   const alerts = useNavAlerts(role);
+
 
   // Manual active matching so "/sourcing/new" doesn't light up "My quotes".
   const isActive = (to: string) => {
@@ -486,8 +495,17 @@ export function AppShell({
             <img src={logoAsset.url} alt="FlySales" className="h-7 w-auto sm:h-8" />
           </a>
           <span className="ml-auto rounded border border-sidebar-border px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-sidebar-foreground">
-            {role === "admin" ? "Admin" : role === "sourcing" ? "Sourcing" : "Client"}
+            {role === "admin"
+              ? staffLevel === "reader"
+                ? "Read only"
+                : staffLevel === "collaborator"
+                  ? "Staff"
+                  : "Admin"
+              : role === "sourcing"
+                ? "Sourcing"
+                : "Client"}
           </span>
+
         </div>
         <nav className="flex-1 space-y-0.5 p-3">
           {nav.map((item) => (
