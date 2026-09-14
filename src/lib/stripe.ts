@@ -32,7 +32,7 @@ export function getPublishableKey(): string {
       testMode
         ? "Stripe test payments are not configured for this build (missing test publishable key)."
         : "Stripe live payments are not configured for this build. " +
-          "Complete Stripe go-live in your Lovable project to enable production checkout.",
+            "Complete Stripe go-live in your Lovable project to enable production checkout.",
     );
   }
   return token;
