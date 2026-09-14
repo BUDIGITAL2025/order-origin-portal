@@ -159,35 +159,59 @@ function cellLocked(cell: CellForm): boolean {
   return cell.lineId != null && cell.status !== "pending";
 }
 
-/** COGS + supplier shipping — the base the sourcing fee applies to. */
-function cellBase(c: CellForm): number {
-  return feeBase(num(c.supplier_cogs), num(c.supplier_shipping));
+/**
+ * The rate that applies to this cell: the one frozen on the saved line while
+ * the currency is unchanged, otherwise today's market rate. USD is always 1.
+ */
+function cellRate(c: CellForm, today: FxRates | null): number {
+  if (c.currency === "USD") return 1;
+  if (c.fx && c.fx.currency === c.currency && c.fx.rate > 0) return c.fx.rate;
+  if (!today) return 0;
+  try {
+    return rateFor(c.currency, today);
+  } catch {
+    return 0;
+  }
+}
+
+/** COGS in USD — the supplier amount converted at this cell's rate. */
+function cellCogsUsd(c: CellForm, rate: number): number {
+  return c.currency === "USD" ? num(c.supplier_cogs) : toUsd(num(c.supplier_cogs), rate);
+}
+
+function cellShipUsd(c: CellForm, rate: number): number {
+  return c.currency === "USD" ? num(c.supplier_shipping) : toUsd(num(c.supplier_shipping), rate);
+}
+
+/** COGS + supplier shipping in USD — the base the sourcing fee applies to. */
+function cellBase(c: CellForm, rate: number): number {
+  return feeBase(cellCogsUsd(c, rate), cellShipUsd(c, rate));
 }
 
 /** The sourcing commission on this line — zero when the cost already includes it. */
-function cellFee(c: CellForm): number {
+function cellFee(c: CellForm, rate: number): number {
   if (c.fee_included) return 0;
-  return sourcingFee(num(c.supplier_cogs), num(c.supplier_shipping), c.fee_rate);
+  return sourcingFee(cellCogsUsd(c, rate), cellShipUsd(c, rate), c.fee_rate);
 }
 
 /** Everything the goods cost us before margin. */
-function cellSourcingCost(c: CellForm): number {
+function cellSourcingCost(c: CellForm, rate: number): number {
   return sourcingCostOf({
-    cogs: num(c.supplier_cogs),
-    shipping: num(c.supplier_shipping),
+    cogs: cellCogsUsd(c, rate),
+    shipping: cellShipUsd(c, rate),
     feeRate: c.fee_rate,
     feeIncluded: c.fee_included,
   });
 }
 
 /** Our absolute margin per unit. */
-function cellMargin(c: CellForm): number {
-  return marginAmount(cellSourcingCost(c), num(c.margin_pct));
+function cellMargin(c: CellForm, rate: number): number {
+  return marginAmount(cellSourcingCost(c, rate), num(c.margin_pct));
 }
 
 /** The closed price the client sees: goods + margin + tax passthrough at cost. */
-function cellPrice(c: CellForm): number {
-  return closedPrice(cellSourcingCost(c), num(c.margin_pct), num(c.supplier_tax));
+function cellPrice(c: CellForm, rate: number): number {
+  return closedPrice(cellSourcingCost(c, rate), num(c.margin_pct), num(c.supplier_tax));
 }
 
 function AdminQuoteDetailPage() {
