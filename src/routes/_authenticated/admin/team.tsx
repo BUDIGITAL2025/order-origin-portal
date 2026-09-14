@@ -120,7 +120,7 @@ function AdminTeamPage() {
       />
 
       <TableShell>
-        <PanelHeader title="Staff" subtitle={`${rows.length} members`} />
+        <PanelHeader title="Staff" description={`${rows.length} members`} />
         <TableHeader>
           <TableRow>
             <TableHead>Email</TableHead>
@@ -170,7 +170,7 @@ function AdminTeamPage() {
                 </Select>
               </TableCell>
               <TableCell>
-                <Chip tone={row.status === "active" ? "success" : "muted"}>
+                <Chip tone={row.status === "active" ? "success" : "neutral"}>
                   {row.status === "active" ? "Active" : "Deactivated"}
                 </Chip>
               </TableCell>
