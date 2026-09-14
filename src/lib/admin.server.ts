@@ -52,7 +52,6 @@ export async function requireOwner(
   }
 }
 
-
 /** Staff with write access and active sourcing collaborators share the catalog import desk. */
 export async function requireAdminOrSourcing(
   supabase: SupabaseClient<Database>,
@@ -67,7 +66,6 @@ export async function requireAdminOrSourcing(
   }
   throw new Error("Forbidden: admin access required");
 }
-
 
 export async function getAdminClient() {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
