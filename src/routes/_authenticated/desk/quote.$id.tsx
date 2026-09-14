@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { friendlyError } from "@/lib/errors";
-import { formatUSD } from "@/lib/format";
+import { formatUSD, money2 } from "@/lib/format";
 import {
   sourcingGetQuote,
   sourcingRequestProductDetails,
@@ -111,17 +111,17 @@ function DeskQuotePage() {
             // Show the amount the supplier actually quoted, in their currency.
             supplier_unit_price:
               l.supplier_cogs_original != null
-                ? String(l.supplier_cogs_original)
+                ? money2(l.supplier_cogs_original)
                 : l.supplier_cogs != null
-                  ? String(l.supplier_cogs)
+                  ? money2(l.supplier_cogs)
                   : l.supplier_unit_price != null
-                    ? String(l.supplier_unit_price)
+                    ? money2(l.supplier_unit_price)
                     : "",
             supplier_shipping:
               l.supplier_shipping_original != null
-                ? String(l.supplier_shipping_original)
+                ? money2(l.supplier_shipping_original)
                 : l.supplier_shipping != null
-                  ? String(l.supplier_shipping)
+                  ? money2(l.supplier_shipping)
                   : "0",
             supplier_currency: ((l.supplier_currency as SupplierCurrency) ?? "USD") satisfies
               SupplierCurrency | undefined,
@@ -133,8 +133,8 @@ function DeskQuotePage() {
               : {}),
             supplier_tax:
               l.supplier_tax != null
-                ? String(l.supplier_tax)
-                : String(defaultImportTax(l.country_code ?? country)),
+                ? money2(l.supplier_tax)
+                : money2(defaultImportTax(l.country_code ?? country)),
             moq: l.moq != null ? String(l.moq) : "",
             production_lead_days:
               l.production_lead_days != null ? String(l.production_lead_days) : "",

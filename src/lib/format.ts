@@ -10,6 +10,16 @@ export function formatUSD(value: number | string | null | undefined): string {
   return `$${usdNumber.format(n)}`;
 }
 
+/**
+ * Money for an input field: always two decimals. Full precision stays in the
+ * stored values (and in the frozen FX original), this is display only.
+ */
+export function money2(value: number | string | null | undefined): string {
+  const n = typeof value === "string" ? Number(value) : (value ?? 0);
+  if (!Number.isFinite(n)) return "0.00";
+  return n.toFixed(2);
+}
+
 function pad2(n: number): string {
   return String(n).padStart(2, "0");
 }
