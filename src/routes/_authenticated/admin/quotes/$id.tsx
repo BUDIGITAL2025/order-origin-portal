@@ -229,6 +229,16 @@ function AdminQuoteDetailPage() {
     queryFn: () => fetchQuote({ data: { quote_id: id } }),
   });
   const quote = data?.quote;
+  // Today's market rates, for cells priced in a currency with no frozen rate yet.
+  const fetchFx = useServerFn(getTodayFxRates);
+  const { data: fxToday } = useQuery({
+    queryKey: ["fx-today"],
+    queryFn: () => fetchFx({}),
+    staleTime: 60 * 60 * 1000,
+  });
+  const todayFx = (fxToday ?? null) as FxRates | null;
+  /** Tier context for the fee field: the agent this request belongs to. */
+  const agentTier = data?.agent ?? null;
   const client = (quote?.profiles ?? null) as {
     company_name?: string;
     contact_name?: string;
