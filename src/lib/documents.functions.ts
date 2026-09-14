@@ -70,9 +70,9 @@ export const adminListDocuments = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => adminDocumentsFilterSchema.parse(input ?? {}))
   .handler(async ({ data, context }) => {
-    const { requireStaffRead } = await import("./admin.server");
-    await requireStaffRead(context.supabase, context.userId);
-    let query = context.supabase
+    const { staffReadClient } = await import("./admin.server");
+    const db = await staffReadClient(context.supabase, context.userId);
+    let query = db
       .from("documents")
       .select(
         "id, entity_id, store_id, document_type, document_number, amount, issued_at, created_at, order_id, orders(external_order_number), entities(legal_name)",

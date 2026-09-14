@@ -110,9 +110,9 @@ export const adminListDisputes = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => adminDisputeFilterSchema.parse(input ?? {}))
   .handler(async ({ data, context }) => {
-    const { requireStaffRead } = await import("./admin.server");
-    await requireStaffRead(context.supabase, context.userId);
-    let query = context.supabase
+    const { staffReadClient } = await import("./admin.server");
+    const db = await staffReadClient(context.supabase, context.userId);
+    let query = db
       .from("disputes")
       .select(
         "id, order_id, reason, description, status, resolution, credit_amount, resolved_at, created_at, orders(external_order_number, status, total_amount, destination_country), stores(store_name, entities(legal_name))",
@@ -129,9 +129,9 @@ export const adminGetDispute = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => disputeIdSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const { requireStaffRead } = await import("./admin.server");
-    await requireStaffRead(context.supabase, context.userId);
-    const { data: dispute, error } = await context.supabase
+    const { staffReadClient } = await import("./admin.server");
+    const db = await staffReadClient(context.supabase, context.userId);
+    const { data: dispute, error } = await db
       .from("disputes")
       .select(
         "id, order_id, store_id, reason, description, evidence_urls, status, resolution, credit_amount, resolved_at, created_at, orders(external_order_number, status, total_amount, destination_country, paid_at, shipped_at, delivered_at, order_items(sku, quantity, unit_price, line_total))",
@@ -140,14 +140,14 @@ export const adminGetDispute = createServerFn({ method: "GET" })
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!dispute) throw new Error("Dispute not found");
-    const { data: messages, error: msgError } = await context.supabase
+    const { data: messages, error: msgError } = await db
       .from("dispute_messages")
       .select("id, author_role, body, created_at")
       .eq("dispute_id", dispute.id)
       .order("created_at", { ascending: true });
     if (msgError) throw new Error(msgError.message);
     // Internal notes live in an admin-only table (RLS: has_role admin).
-    const { data: internal, error: internalError } = await context.supabase
+    const { data: internal, error: internalError } = await db
       .from("dispute_internal_notes")
       .select("admin_notes")
       .eq("dispute_id", dispute.id)
@@ -279,15 +279,15 @@ export const adminResolveDispute = createServerFn({ method: "POST" })
 export const adminDisputeSkuReport = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { requireStaffRead } = await import("./admin.server");
-    await requireStaffRead(context.supabase, context.userId);
-    const { data: disputes, error } = await context.supabase
+    const { staffReadClient } = await import("./admin.server");
+    const db = await staffReadClient(context.supabase, context.userId);
+    const { data: disputes, error } = await db
       .from("disputes")
       .select("order_id, status, reason, created_at");
     if (error) throw new Error(error.message);
     const orderIds = [...new Set((disputes ?? []).map((d) => d.order_id))];
     if (orderIds.length === 0) return [];
-    const { data: items, error: itemError } = await context.supabase
+    const { data: items, error: itemError } = await db
       .from("order_fulfillment_items")
       .select("order_id, sku")
       .in("order_id", orderIds);
