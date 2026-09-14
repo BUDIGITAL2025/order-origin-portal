@@ -794,10 +794,12 @@ export async function processStripeEvent(event: StripeEvent, env: StripeEnv): Pr
   const admin = await getAdminClient();
 
   switch (event.type) {
+    case "checkout.session.async_payment_succeeded":
     case "checkout.session.completed": {
       const session = event.data.object;
-      // Delayed-notification payment methods (SEPA, Bacs, …) fire this when the
-      // payment is submitted, not settled — the async events handle those.
+      // Delayed-notification payment methods (SEPA, Bacs, …) fire `completed`
+      // when the payment is submitted, not settled — `async_payment_succeeded`
+      // handles the actual settlement.
       if (session["payment_status"] === "unpaid") return;
 
       const kind = meta(session)["kind"];
@@ -1105,8 +1107,10 @@ export async function processStripeEvent(event: StripeEvent, env: StripeEnv): Pr
       return;
     }
 
-    // The client opened a checkout and never paid (or abandoned it). Release
-    // the pending batch so those orders can be paid again.
+    // The client opened a checkout and never paid (or abandoned it), or a
+    // delayed payment method ultimately failed. Release the pending batch so
+    // those orders can be paid again.
+    case "checkout.session.async_payment_failed":
     case "checkout.session.expired": {
       const session = event.data.object;
       const sessionId = String(session["id"] ?? "");
