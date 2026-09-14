@@ -22,6 +22,8 @@ import {
   PackageCheck,
   Plug,
   ShieldAlert,
+  ShieldCheck,
+
   Sparkles,
   Megaphone,
   Store,
