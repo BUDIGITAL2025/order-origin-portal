@@ -437,7 +437,9 @@ export const convertRowsToQuote = createServerFn({ method: "POST" })
           row.packaging ? `Packaging: ${row.packaging}` : null,
           row.inner_qty != null ? `Inner qty: ${row.inner_qty}` : null,
           row.outer_qty != null ? `Outer qty: ${row.outer_qty}` : null,
-          row.available_qty != null ? `Available: ${row.available_qty}` : null,
+          row.available_qty != null
+            ? `${qtyIsMoq ? "MOQ" : "Available"}: ${row.available_qty}`
+            : null,
           row.weight_g != null ? `Weight: ${row.weight_g} g` : null,
           row.unit_price != null ? `Catalogue price: ${row.unit_price}` : null,
         ]
