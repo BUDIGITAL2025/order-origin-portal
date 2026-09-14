@@ -113,11 +113,16 @@ export const getMyContext = createServerFn({ method: "GET" })
       isSourcing = sourcing === true;
     }
     if (staffLevel) {
-      void supabase
+      // "Last active" on the Team page. Written with the service role: staff
+      // may read their row but never write to it.
+      const { getAdminClient } = await import("./admin.server");
+      const admin = await getAdminClient();
+      await admin
         .from("staff_members")
         .update({ last_active_at: new Date().toISOString() })
         .eq("user_id", userId);
     }
+
     return {
       userId,
       email: (claims?.email as string | undefined) ?? null,
