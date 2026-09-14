@@ -437,10 +437,11 @@ export function AppShell({
   const pathname = useRouterState({ select: (r) => r.location.pathname });
   const baseNav = role === "admin" ? ADMIN_NAV : role === "sourcing" ? SOURCING_NAV : CLIENT_NAV;
   // Team management is an owner-only door; the server refuses everyone else.
-  const nav =
+  const nav: NavItem[] =
     role === "admin" && staffLevel === "owner"
-      ? [...baseNav, { to: "/admin/team", label: "Team", icon: Users2 }]
+      ? [...baseNav, { to: "/admin/team", label: "Team", icon: ShieldCheck }]
       : baseNav;
+
   const alerts = useNavAlerts(role);
 
 
