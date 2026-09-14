@@ -198,8 +198,8 @@ export const getInboundLabels = createServerFn({ method: "POST" })
 export const adminListInboundShipments = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { requireAdmin, getAdminClient } = await import("./admin.server");
-    await requireAdmin(context.supabase, context.userId);
+    const { requireStaffRead, getAdminClient } = await import("./admin.server");
+    await requireStaffRead(context.supabase, context.userId);
     const admin = await getAdminClient();
 
     const { data: shipments, error } = await admin
@@ -472,6 +472,9 @@ export const adminSetFulfilmentModel = createServerFn({ method: "POST" })
             "MODULE_REQUIRED: this workspace does not hold FlySales Fulfilment ($49/month). Grant it to continue.",
           );
         }
+        // Granting a paid module is an owner decision, not a daily operation.
+        const { requireOwner } = await import("./admin.server");
+        await requireOwner(context.supabase, context.userId);
         const { error: grantError } = await admin.from("workspace_modules").upsert(
           {
             store_id: product.store_id,

@@ -97,8 +97,8 @@ export const adminListDisputes = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => adminDisputeFilterSchema.parse(input ?? {}))
   .handler(async ({ data, context }) => {
-    const { requireAdmin } = await import("./admin.server");
-    await requireAdmin(context.supabase, context.userId);
+    const { requireStaffRead } = await import("./admin.server");
+    await requireStaffRead(context.supabase, context.userId);
     let query = context.supabase
       .from("disputes")
       .select(
@@ -116,8 +116,8 @@ export const adminGetDispute = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => disputeIdSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const { requireAdmin } = await import("./admin.server");
-    await requireAdmin(context.supabase, context.userId);
+    const { requireStaffRead } = await import("./admin.server");
+    await requireStaffRead(context.supabase, context.userId);
     const { data: dispute, error } = await context.supabase
       .from("disputes")
       .select(
@@ -265,8 +265,8 @@ export const adminResolveDispute = createServerFn({ method: "POST" })
 export const adminDisputeSkuReport = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { requireAdmin } = await import("./admin.server");
-    await requireAdmin(context.supabase, context.userId);
+    const { requireStaffRead } = await import("./admin.server");
+    await requireStaffRead(context.supabase, context.userId);
     const { data: disputes, error } = await context.supabase
       .from("disputes")
       .select("order_id, status, reason, created_at");

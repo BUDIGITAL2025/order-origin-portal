@@ -296,8 +296,8 @@ export const getFulfilmentSku = createServerFn({ method: "POST" })
 export const adminListFulfilmentCatalog = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { requireAdmin } = await import("./admin.server");
-    await requireAdmin(context.supabase, context.userId);
+    const { requireStaffRead } = await import("./admin.server");
+    await requireStaffRead(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: stores, error } = await supabaseAdmin
       .from("stores")

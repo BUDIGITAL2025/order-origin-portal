@@ -23,8 +23,8 @@ const domainField = z
 export const seoStudyEstimate = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { requireAdmin } = await import("./admin.server");
-    await requireAdmin(context.supabase, context.userId);
+    const { requireStaffRead } = await import("./admin.server");
+    await requireStaffRead(context.supabase, context.userId);
     const study = await import("./seo-study.server");
     const estimate = await study.estimateStudyCost();
     return { ...estimate, limits: study.STUDY_LIMITS };
@@ -69,8 +69,8 @@ export const startSeoStudy = createServerFn({ method: "POST" })
 export const listSeoStudies = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { requireAdmin } = await import("./admin.server");
-    await requireAdmin(context.supabase, context.userId);
+    const { requireStaffRead } = await import("./admin.server");
+    await requireStaffRead(context.supabase, context.userId);
     const jobs = await import("./jobs.server");
     const study = await import("./seo-study.server");
     return study.listStudies(await jobs.getAdmin(), 50);

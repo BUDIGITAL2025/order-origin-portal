@@ -11,8 +11,8 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 export const adminSimulatorStatus = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { requireAdmin, getAdminClient } = await import("./admin.server");
-    await requireAdmin(context.supabase, context.userId);
+    const { requireStaffRead, getAdminClient } = await import("./admin.server");
+    await requireStaffRead(context.supabase, context.userId);
     const db = await getAdminClient();
     const sim = await import("./simulator.server");
     const { middlewareConfig } = await import("./middleware.server");

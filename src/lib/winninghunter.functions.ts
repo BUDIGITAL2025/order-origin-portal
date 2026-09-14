@@ -66,8 +66,8 @@ export const whSearchAds = createServerFn({ method: "POST" })
 export const getWhRecentCalls = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { requireAdmin } = await import("./admin.server");
-    await requireAdmin(context.supabase, context.userId);
+    const { requireStaffRead } = await import("./admin.server");
+    await requireStaffRead(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data, error } = await supabaseAdmin
       .from("spy_api_calls")
@@ -87,8 +87,8 @@ export const getWhRecentCalls = createServerFn({ method: "GET" })
 // ---------------------------------------------------------------------------
 
 const admin = async (context: { supabase: unknown; userId: string }) => {
-  const { requireAdmin } = await import("./admin.server");
-  await requireAdmin(context.supabase as never, context.userId);
+  const { requireStaffRead } = await import("./admin.server");
+  await requireStaffRead(context.supabase as never, context.userId);
   return import("./winninghunter.server");
 };
 
@@ -255,8 +255,8 @@ export const whTikTokProductDetail = createServerFn({ method: "POST" })
 export const getWhUsage = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { requireAdmin } = await import("./admin.server");
-    await requireAdmin(context.supabase, context.userId);
+    const { requireStaffRead } = await import("./admin.server");
+    await requireStaffRead(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const since = new Date(Date.now() - 30 * 86_400_000).toISOString();

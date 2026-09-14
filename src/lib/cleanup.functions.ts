@@ -35,8 +35,8 @@ export const adminCleanupDelete = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => targetSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const { requireAdmin, getAdminClient } = await import("./admin.server");
-    await requireAdmin(context.supabase, context.userId);
+    const { requireOwner, getAdminClient } = await import("./admin.server");
+    await requireOwner(context.supabase, context.userId);
     const admin = await getAdminClient();
     const { runCleanupCheck, runCleanupDelete, writeAuditLine } = await import("./cleanup.server");
 
@@ -61,8 +61,8 @@ export const adminSetArchived = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => archiveSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const { requireAdmin, getAdminClient } = await import("./admin.server");
-    await requireAdmin(context.supabase, context.userId);
+    const { requireOwner, getAdminClient } = await import("./admin.server");
+    await requireOwner(context.supabase, context.userId);
     const admin = await getAdminClient();
     const { ARCHIVE_TARGET, writeAuditLine } = await import("./cleanup.server");
 
@@ -98,8 +98,8 @@ export const adminSetArchived = createServerFn({ method: "POST" })
 export const adminListAuditLog = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { requireAdmin, getAdminClient } = await import("./admin.server");
-    await requireAdmin(context.supabase, context.userId);
+    const { requireStaffRead, getAdminClient } = await import("./admin.server");
+    await requireStaffRead(context.supabase, context.userId);
     const admin = await getAdminClient();
     const { data, error } = await admin
       .from("admin_audit_log")

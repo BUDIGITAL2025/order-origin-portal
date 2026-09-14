@@ -189,8 +189,8 @@ export const adminListQuotes = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => quoteStatusFilterSchema.parse(input ?? {}))
   .handler(async ({ data, context }) => {
-    const { requireAdmin, getAdminClient } = await import("./admin.server");
-    await requireAdmin(context.supabase, context.userId);
+    const { requireStaffRead, getAdminClient } = await import("./admin.server");
+    await requireStaffRead(context.supabase, context.userId);
     const admin = await getAdminClient();
 
     // Lazily flag requests that breached their 48h target so the admin is
@@ -237,8 +237,8 @@ export const adminGetQuote = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ quote_id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
-    const { requireAdmin, getAdminClient } = await import("./admin.server");
-    await requireAdmin(context.supabase, context.userId);
+    const { requireStaffRead, getAdminClient } = await import("./admin.server");
+    await requireStaffRead(context.supabase, context.userId);
     const admin = await getAdminClient();
 
     const { data: quote, error } = await admin

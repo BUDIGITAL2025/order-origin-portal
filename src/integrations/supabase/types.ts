@@ -2915,6 +2915,39 @@ export type Database = {
           },
         ]
       }
+      staff_members: {
+        Row: {
+          created_at: string
+          email: string
+          invited_by: string | null
+          last_active_at: string | null
+          level: Database["public"]["Enums"]["staff_level"]
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          invited_by?: string | null
+          last_active_at?: string | null
+          level?: Database["public"]["Enums"]["staff_level"]
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          invited_by?: string | null
+          last_active_at?: string | null
+          level?: Database["public"]["Enums"]["staff_level"]
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       stock_in_prices: {
         Row: {
           country_code: string
@@ -4246,7 +4279,10 @@ export type Database = {
         Returns: undefined
       }
       is_assigned_sourcer: { Args: { p_quote: string }; Returns: boolean }
+      is_perpetual_owner: { Args: { p_email: string }; Returns: boolean }
       is_sourcing: { Args: { _user_id: string }; Returns: boolean }
+      is_staff: { Args: { _user_id: string }; Returns: boolean }
+      is_staff_email: { Args: { p_email: string }; Returns: boolean }
       manual_stock_units_sold_since: {
         Args: { p_store_id: string }
         Returns: {
@@ -4452,6 +4488,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      staff_level: {
+        Args: { _user_id: string }
+        Returns: Database["public"]["Enums"]["staff_level"]
+      }
       stock_in_available: {
         Args: { p_sku: string; p_store_id: string }
         Returns: number
@@ -4644,6 +4684,7 @@ export type Database = {
       quote_line_status: "pending" | "accepted" | "rejected"
       quote_status: "submitted" | "sourcing" | "quoted" | "closed" | "expired"
       spymarket_plan: "starter" | "plus" | "max" | "module"
+      staff_level: "owner" | "collaborator" | "reader"
       stock_purchase_path: "flysales" | "direct"
       stock_purchase_status:
         | "requested"
@@ -4847,6 +4888,7 @@ export const Constants = {
       quote_line_status: ["pending", "accepted", "rejected"],
       quote_status: ["submitted", "sourcing", "quoted", "closed", "expired"],
       spymarket_plan: ["starter", "plus", "max", "module"],
+      staff_level: ["owner", "collaborator", "reader"],
       stock_purchase_path: ["flysales", "direct"],
       stock_purchase_status: [
         "requested",

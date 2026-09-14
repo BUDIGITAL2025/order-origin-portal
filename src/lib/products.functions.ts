@@ -119,8 +119,8 @@ export const adminListProducts = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => adminProductFilterSchema.parse(input ?? {}))
   .handler(async ({ data, context }) => {
-    const { requireAdmin, getAdminClient } = await import("./admin.server");
-    await requireAdmin(context.supabase, context.userId);
+    const { requireStaffRead, getAdminClient } = await import("./admin.server");
+    await requireStaffRead(context.supabase, context.userId);
     const admin = await getAdminClient();
 
     let query = admin

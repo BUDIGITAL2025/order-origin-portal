@@ -59,6 +59,9 @@ export interface MyContext {
   isAdmin: boolean;
   /** True for sourcing collaborators — the desk is their entire app. */
   isSourcing: boolean;
+  /** Internal staff level, or null for everyone who is not staff. */
+  staffLevel: "owner" | "collaborator" | "reader" | null;
+
   /** Account identity only — billing, catalogue and quota live on entities/stores. */
   profile: {
     id: string;
@@ -89,7 +92,18 @@ export const getMyContext = createServerFn({ method: "GET" })
       supabase.from("entities").select(ENTITY_SELECT).order("created_at", { ascending: true }),
     ]);
     const roles = (roleRows ?? []).map((r) => r.role);
-    const isAdmin = roles.includes("admin");
+    // Internal staff: the staff row is the source of truth for what they may
+    // do inside the console. Readers still reach the console, read-only.
+    const { data: staffRow } = await supabase
+      .from("staff_members")
+      .select("level, status")
+      .eq("user_id", userId)
+      .maybeSingle();
+    const staffLevel =
+      staffRow && staffRow.status === "active"
+        ? (staffRow.level as "owner" | "collaborator" | "reader")
+        : null;
+    const isAdmin = staffLevel !== null || roles.includes("admin");
     // Sourcing collaborators live entirely on the desk: the role row is the
     // source of truth, with the collaborator record as a fallback for
     // accounts invited before the role existed.
@@ -98,15 +112,28 @@ export const getMyContext = createServerFn({ method: "GET" })
       const { data: sourcing } = await supabase.rpc("is_sourcing", { _user_id: userId });
       isSourcing = sourcing === true;
     }
+    if (staffLevel) {
+      // "Last active" on the Team page. Written with the service role: staff
+      // may read their row but never write to it.
+      const { getAdminClient } = await import("./admin.server");
+      const admin = await getAdminClient();
+      await admin
+        .from("staff_members")
+        .update({ last_active_at: new Date().toISOString() })
+        .eq("user_id", userId);
+    }
+
     return {
       userId,
       email: (claims?.email as string | undefined) ?? null,
       role: isAdmin ? "admin" : isSourcing ? "sourcing" : "client",
       isAdmin,
       isSourcing,
+      staffLevel,
       profile: profile ?? null,
       entities: (entities ?? []) as unknown as ContextEntity[],
     };
+
   });
 
 /**
@@ -434,8 +461,8 @@ export const updateMyProfile = createServerFn({ method: "POST" })
 export const adminListClients = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { requireAdmin, getAdminClient } = await import("./admin.server");
-    await requireAdmin(context.supabase, context.userId);
+    const { requireStaffRead, getAdminClient } = await import("./admin.server");
+    await requireStaffRead(context.supabase, context.userId);
     const admin = await getAdminClient();
     const { data, error } = await admin
       .from("profiles")
@@ -478,8 +505,8 @@ export const adminSetPlan = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => subscriptionPlanSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const { requireAdmin } = await import("./admin.server");
-    await requireAdmin(context.supabase, context.userId);
+    const { requireOwner } = await import("./admin.server");
+    await requireOwner(context.supabase, context.userId);
     const { error } = await context.supabase
       .from("stores")
       .update({ subscription_plan: data.subscription_plan })
@@ -493,8 +520,8 @@ export const adminSetFeeWaived = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => feeWaivedSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const { requireAdmin } = await import("./admin.server");
-    await requireAdmin(context.supabase, context.userId);
+    const { requireOwner } = await import("./admin.server");
+    await requireOwner(context.supabase, context.userId);
     const { error } = await context.supabase
       .from("stores")
       .update({ fee_waived: data.fee_waived })
@@ -529,8 +556,8 @@ export const adminSetTierOverride = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => tierOverrideSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const { requireAdmin } = await import("./admin.server");
-    await requireAdmin(context.supabase, context.userId);
+    const { requireOwner } = await import("./admin.server");
+    await requireOwner(context.supabase, context.userId);
     const { error } = await context.supabase
       .from("stores")
       .update({ tier_override: data.tier_override })

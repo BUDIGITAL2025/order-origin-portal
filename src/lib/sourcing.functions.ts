@@ -418,8 +418,8 @@ export const sourcingRequestProductDetails = createServerFn({ method: "POST" })
 export const adminListCollaborators = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { requireAdmin, getAdminClient } = await import("./admin.server");
-    await requireAdmin(context.supabase, context.userId);
+    const { requireStaffRead, getAdminClient } = await import("./admin.server");
+    await requireStaffRead(context.supabase, context.userId);
     const admin = await getAdminClient();
     const { data, error } = await admin
       .from("sourcing_collaborators")
