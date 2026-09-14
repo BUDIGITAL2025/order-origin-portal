@@ -1042,115 +1042,206 @@ function AdminQuoteDetailPage() {
                             const cell = row.cells[country] ?? emptyCell(country);
                             const locked = cellLocked(cell);
                             const cellEditable = requestEditable && !locked;
+                            const rate = cellRate(cell, todayFx);
+                            const foreign = cell.currency !== "USD";
+                            const frozen = cell.fx?.currency === cell.currency;
+                            const rateDate = frozen
+                              ? (cell.fx?.date ?? null)
+                              : (todayFx?.rate_date ?? null);
+                            const symbol = CURRENCY_SYMBOL[cell.currency];
+                            const cogsUsd = cellCogsUsd(cell, rate);
+                            const shipUsd = cellShipUsd(cell, rate);
+                            const feeUsd = cellFee(cell, rate);
+                            const feePctLabel = cell.fee_included
+                              ? "0"
+                              : String(Math.round(cell.fee_rate * 1000) / 10);
+                            const conversionLine = (usd: number) =>
+                              rate > 0
+                                ? `→ ${formatUSD(usd)} @ ${rate.toFixed(4)} (${frozen ? "frozen" : "today"}${rateDate ? ` ${rateDate}` : ""})`
+                                : "No exchange rate available yet — save once a rate is published.";
+                            const moneyField = (
+                              key: "supplier_cogs" | "supplier_shipping",
+                              label: string,
+                              usd: number,
+                            ) => (
+                              <div className="space-y-0.5">
+                                <div className="flex items-center gap-1">
+                                  <span className="w-12 shrink-0 text-[10px] leading-tight text-muted-foreground">
+                                    {label}
+                                  </span>
+                                  <Select
+                                    value={cell.currency}
+                                    onValueChange={(v) =>
+                                      updateCell(row.key, country, {
+                                        currency: v as SupplierCurrency,
+                                      })
+                                    }
+                                    disabled={!cellEditable}
+                                  >
+                                    <SelectTrigger
+                                      className="h-7 w-[4.5rem] text-[10px]"
+                                      aria-label={`Currency (${country})`}
+                                    >
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {SUPPLIER_CURRENCIES.map((c) => (
+                                        <SelectItem key={c} value={c} className="text-xs">
+                                          {CURRENCY_LABEL[c]}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                  <Input
+                                    inputMode="decimal"
+                                    value={cell[key]}
+                                    onChange={(e) =>
+                                      updateCell(row.key, country, { [key]: e.target.value })
+                                    }
+                                    onBlur={(e) =>
+                                      updateCell(row.key, country, {
+                                        [key]: money2(e.target.value || 0),
+                                      })
+                                    }
+                                    disabled={!cellEditable}
+                                    aria-label={`${label} in ${cell.currency} (${country})`}
+                                    className="h-7 tnum text-xs"
+                                  />
+                                </div>
+                                {foreign && (
+                                  <p className="tnum pl-[4.25rem] text-[10px] leading-tight text-foreground/70">
+                                    {conversionLine(usd)}
+                                  </p>
+                                )}
+                              </div>
+                            );
                             return (
                               <div
                                 key={country}
-                                className="space-y-1 border-b border-l border-border p-2"
+                                className="space-y-2 border-b border-l border-border p-2"
                               >
-                                {GRID_FIELDS.map((f) => (
-                                  <div key={f.key}>
-                                    <div className="flex items-center gap-1">
-                                      <span
-                                        className={cn(
-                                          "shrink-0 text-[10px] leading-tight text-muted-foreground",
-                                          f.key === "supplier_tax" ? "w-16" : "w-12",
-                                        )}
-                                      >
-                                        {f.label}
+                                {moneyField("supplier_cogs", "COGS", cogsUsd)}
+                                <p className="pl-[4.25rem] text-[9px] leading-tight text-muted-foreground/80">
+                                  Supplier unit price Ex Works — excludes all freight.
+                                </p>
+                                {moneyField("supplier_shipping", "Ship", shipUsd)}
+
+                                <div className="flex items-center gap-1">
+                                  <span className="w-12 shrink-0 text-[10px] leading-tight text-muted-foreground">
+                                    IOSS $
+                                  </span>
+                                  <Input
+                                    inputMode="decimal"
+                                    value={cell.supplier_tax}
+                                    onChange={(e) =>
+                                      updateCell(row.key, country, {
+                                        supplier_tax: e.target.value,
+                                      })
+                                    }
+                                    onBlur={(e) =>
+                                      updateCell(row.key, country, {
+                                        supplier_tax: money2(e.target.value || 0),
+                                      })
+                                    }
+                                    disabled={!cellEditable}
+                                    aria-label={`Import tax per unit in USD (${country})`}
+                                    className="h-7 tnum text-xs"
+                                  />
+                                </div>
+                                <p className="pl-[3.25rem] text-[9px] leading-tight text-muted-foreground/80">
+                                  {isEuCountry(country)
+                                    ? "EU — $3.50/unit passthrough, always USD"
+                                    : "usually 0 — always USD"}
+                                </p>
+
+                                {/* Agent fee — prefilled from the agent's tier, editable per quote. */}
+                                <div className="space-y-1 rounded border border-border/60 bg-muted/20 p-1.5">
+                                  <div className="flex items-center gap-1">
+                                    <span className="shrink-0 text-[10px] font-medium">
+                                      Agent fee %
+                                    </span>
+                                    <Input
+                                      type="number"
+                                      step="0.5"
+                                      min="0"
+                                      max="100"
+                                      value={feePctLabel}
+                                      onChange={(e) =>
+                                        updateCell(row.key, country, {
+                                          fee_rate: (Number(e.target.value) || 0) / 100,
+                                        })
+                                      }
+                                      disabled={!cellEditable || cell.fee_included}
+                                      aria-label={`Agent fee % (${country})`}
+                                      className="h-7 w-16 tnum text-xs"
+                                    />
+                                    {agentTier && (
+                                      <span className="rounded-full border border-border bg-background px-1.5 py-0.5 text-[9px] leading-tight text-muted-foreground">
+                                        Tier: {pct(agentTier.rate)}
+                                        {agentTier.nextAt != null
+                                          ? ` · ${agentTier.count}/${agentTier.nextAt} paid orders to next tier`
+                                          : " · final tier"}
                                       </span>
-                                      <Input
-                                        type="number"
-                                        step="0.01"
-                                        min="0"
-                                        value={cell[f.key]}
-                                        onChange={(e) =>
-                                          updateCell(row.key, country, { [f.key]: e.target.value })
-                                        }
-                                        disabled={!cellEditable}
-                                        aria-label={`${f.label} (${country})`}
-                                        className="h-7 tnum text-xs"
-                                      />
-                                    </div>
-                                    {f.key === "supplier_cogs" && (
-                                      <p className="mt-0.5 pl-[4.25rem] text-[9px] leading-tight text-muted-foreground/80">
-                                        Supplier unit price Ex Works — excludes all freight.
-                                        {cell.fx
-                                          ? ` Quoted ${fxNote(cell.fx.cogs, cell.fx.currency as SupplierCurrency, cell.fx.rate)}${cell.fx.date ? ` (${cell.fx.date})` : ""}.`
-                                          : ""}
-                                      </p>
-                                    )}
-                                    {f.key === "supplier_shipping" && cell.fx && (
-                                      <p className="mt-0.5 pl-[4.25rem] text-[9px] leading-tight text-muted-foreground/80">
-                                        {`Quoted ${fxNote(cell.fx.shipping, cell.fx.currency as SupplierCurrency, cell.fx.rate)}.`}
-                                      </p>
-                                    )}
-                                    {f.key === "supplier_tax" && (
-                                      <p className="mt-0.5 pl-[4.25rem] text-[9px] leading-tight text-muted-foreground/80">
-                                        {isEuCountry(country)
-                                          ? "EU — $3.50/unit passthrough"
-                                          : "usually 0"}
-                                      </p>
                                     )}
                                   </div>
-                                ))}
-                                <div className="mt-1 space-y-0.5 rounded border border-border/60 bg-muted/30 p-1.5 text-[10px] text-muted-foreground">
+                                  <p className="tnum text-[10px] leading-tight text-muted-foreground">
+                                    {cell.fee_included
+                                      ? "Fee already included in the supplier cost — never applied twice."
+                                      : foreign
+                                        ? `${feePctLabel}% of ${formatCurrency(num(cell.supplier_cogs), cell.currency)} = ${symbol}${(num(cell.supplier_cogs) * cell.fee_rate).toFixed(2)} → ${formatUSD(feeUsd)}`
+                                        : `${feePctLabel}% of ${formatUSD(num(cell.supplier_cogs))} = ${formatUSD(feeUsd)}`}
+                                  </p>
+                                </div>
+
+                                {/* Chain summary — always USD, always two decimals. */}
+                                <div className="space-y-0.5 rounded border border-border/60 bg-muted/30 p-1.5 text-[10px] text-muted-foreground">
                                   <div className="flex items-center justify-between">
-                                    <span>COGS + ship</span>
-                                    <span className="tnum">{formatUSD(cellBase(cell))}</span>
+                                    <span>COGS + ship (USD)</span>
+                                    <span className="tnum">{formatUSD(cellBase(cell, rate))}</span>
+                                  </div>
+                                  <div className="flex items-center justify-between">
+                                    <span>Agent fee ({feePctLabel}%)</span>
+                                    <span className="tnum">{formatUSD(feeUsd)}</span>
+                                  </div>
+                                  <div className="flex items-center justify-between font-medium text-foreground">
+                                    <span>Sourcing cost</span>
+                                    <span className="tnum">
+                                      {formatUSD(cellSourcingCost(cell, rate))}
+                                    </span>
                                   </div>
                                   <div className="flex items-center justify-between gap-1">
-                                    <span className="shrink-0">Sourcing fee %</span>
+                                    <span className="shrink-0">FlySales margin</span>
                                     <div className="flex items-center gap-1">
                                       <Input
                                         type="number"
                                         step="0.5"
                                         min="0"
-                                        max="100"
-                                        value={
-                                          cell.fee_included
-                                            ? 0
-                                            : Math.round(cell.fee_rate * 1000) / 10
-                                        }
+                                        value={cell.margin_pct}
                                         onChange={(e) =>
                                           updateCell(row.key, country, {
-                                            fee_rate: (Number(e.target.value) || 0) / 100,
+                                            margin_pct: e.target.value,
                                           })
                                         }
                                         disabled={!cellEditable}
-                                        aria-label={`Sourcing fee % (${country})`}
+                                        aria-label={`Margin % (${country})`}
                                         className="h-6 w-14 tnum text-[10px]"
                                       />
-                                      <span className="tnum">{formatUSD(cellFee(cell))}</span>
+                                      <span className="tnum">
+                                        {formatUSD(cellMargin(cell, rate))}
+                                      </span>
                                     </div>
-                                  </div>
-                                  {cell.fee_included && (
-                                    <p className="text-[9px] leading-tight text-muted-foreground/80">
-                                      Fee included in cost — never applied twice.
-                                    </p>
-                                  )}
-                                  <div className="flex items-center justify-between font-medium text-foreground">
-                                    <span>Sourcing cost</span>
-                                    <span className="tnum">
-                                      {formatUSD(cellSourcingCost(cell))}
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center justify-between">
-                                    <span>Our margin</span>
-                                    <span className="tnum">{formatUSD(cellMargin(cell))}</span>
                                   </div>
                                   <div className="flex items-center justify-between">
                                     <span>Tax passthrough</span>
-                                    <span className="tnum">
-                                      {formatUSD(num(cell.supplier_tax))}
-                                    </span>
+                                    <span className="tnum">{formatUSD(num(cell.supplier_tax))}</span>
                                   </div>
                                 </div>
-                                <div className="flex items-center justify-between pt-1">
-                                  <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                                <div className="flex items-center justify-between border-t border-border pt-1">
+                                  <span className="text-[10px] font-semibold uppercase tracking-wide">
                                     Client price
                                   </span>
-                                  <span className="tnum text-xs font-semibold">
-                                    {formatUSD(cellPrice(cell))}
+                                  <span className="tnum text-sm font-bold">
+                                    {formatUSD(cellPrice(cell, rate))}
                                   </span>
                                 </div>
                                 {locked && (
