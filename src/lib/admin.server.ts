@@ -53,17 +53,21 @@ export async function requireOwner(
 }
 
 
-/** Admins and active sourcing collaborators share the catalog import desk. */
+/** Staff with write access and active sourcing collaborators share the catalog import desk. */
 export async function requireAdminOrSourcing(
   supabase: SupabaseClient<Database>,
   userId: string,
 ): Promise<void> {
-  const { data: admin } = await supabase.rpc("has_role", { _user_id: userId, _role: "admin" });
-  if (admin === true) return;
+  const level = await getStaffLevel(supabase, userId);
+  if (level === "owner" || level === "collaborator") return;
   const { data: sourcing } = await supabase.rpc("is_sourcing", { _user_id: userId });
   if (sourcing === true) return;
+  if (level === "reader") {
+    throw new Error("Your role is read-only — ask an owner for collaborator access.");
+  }
   throw new Error("Forbidden: admin access required");
 }
+
 
 export async function getAdminClient() {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
