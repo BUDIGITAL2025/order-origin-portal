@@ -240,7 +240,8 @@ export const adminResolveDispute = createServerFn({ method: "POST" })
           : data.resolution === "reshipped"
             ? "approved — a reshipment is on the way"
             : "rejected";
-      const body = `Your dispute for order ${orderNumber} was ${label}.` +
+      const body =
+        `Your dispute for order ${orderNumber} was ${label}.` +
         (data.client_message ? ` ${data.client_message}` : "");
       await notify(admin, {
         entityId,
@@ -303,8 +304,13 @@ export const adminDisputeSkuReport = createServerFn({ method: "GET" })
     >();
     for (const dispute of disputes ?? []) {
       for (const sku of skusByOrder.get(dispute.order_id) ?? []) {
-        const row =
-          bySku.get(sku) ?? { sku, disputes: 0, open: 0, approved: 0, last_dispute_at: dispute.created_at };
+        const row = bySku.get(sku) ?? {
+          sku,
+          disputes: 0,
+          open: 0,
+          approved: 0,
+          last_dispute_at: dispute.created_at,
+        };
         row.disputes += 1;
         if (dispute.status === "open" || dispute.status === "investigating") row.open += 1;
         if (dispute.status === "approved") row.approved += 1;

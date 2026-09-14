@@ -85,9 +85,7 @@ export function mapQuoteForAdmin(row: unknown, internal?: QuoteInternal | null):
  * quote_breach_notified_at and records a notification (visible to admins via
  * the notifications admin policy). Idempotent — already-stamped rows skip.
  */
-export async function flagBreachedQuotes(
-  admin: SupabaseClient<Database>,
-): Promise<number> {
+export async function flagBreachedQuotes(admin: SupabaseClient<Database>): Promise<number> {
   const nowIso = new Date().toISOString();
   const { data: breached, error } = await admin
     .from("quote_requests")
@@ -105,10 +103,7 @@ export async function flagBreachedQuotes(
       title: "Quote request past its 48h target",
       body: `A quote request (${q.product_name ?? q.product_url}) is still awaiting a quote past its 48-hour sourcing target.`,
     });
-    await admin
-      .from("quote_requests")
-      .update({ quote_breach_notified_at: nowIso })
-      .eq("id", q.id);
+    await admin.from("quote_requests").update({ quote_breach_notified_at: nowIso }).eq("id", q.id);
   }
   return breached.length;
 }

@@ -49,13 +49,19 @@ export const listMyCatalogue = createServerFn({ method: "GET" })
     const { data: countryPrices, error: pricesError } = await context.supabase
       .from("product_country_prices")
       .select("product_id, country_code, unit_price, lead_time_days")
-      .in("product_id", (products ?? []).map((p) => p.id));
+      .in(
+        "product_id",
+        (products ?? []).map((p) => p.id),
+      );
     if (pricesError) throw new Error(pricesError.message);
 
     const { data: bundlePrices, error: bundleError } = await context.supabase
       .from("bundle_prices")
       .select("bundle_product_id, country_code, effective_price, max_lead_time_days")
-      .in("bundle_product_id", (products ?? []).map((p) => p.id));
+      .in(
+        "bundle_product_id",
+        (products ?? []).map((p) => p.id),
+      );
     if (bundleError) throw new Error(bundleError.message);
 
     return {
@@ -177,7 +183,6 @@ export const adminSetOrderTracking = createServerFn({ method: "POST" })
         console.error("order shipped notification failed", e);
       }
     }
-
 
     // Email the client at most once — the first time tracking appears.
     // Claim the notification atomically BEFORE sending: only the request that

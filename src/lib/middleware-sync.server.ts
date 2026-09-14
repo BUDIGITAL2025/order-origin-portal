@@ -160,7 +160,8 @@ export function mapMiddlewareOrder(input: unknown): MappedOrder {
   const name =
     pickString(customerRaw, ["name", "full_name", "customer_name"]) ??
     pickString(shipping, ["name", "full_name", "recipient"]);
-  const city = pickString(shipping, ["city", "town", "locality"]) ?? pickString(customerRaw, ["city"]);
+  const city =
+    pickString(shipping, ["city", "town", "locality"]) ?? pickString(customerRaw, ["city"]);
   const postal =
     pickString(shipping, ["postal_code", "postcode", "zip", "zip_code", "postalCode"]) ??
     pickString(customerRaw, ["postal_code", "zip"]);
@@ -180,7 +181,10 @@ export function mapMiddlewareOrder(input: unknown): MappedOrder {
     destination_country: country,
     customer,
     status,
-    tracking: trackingNumber && trackingCarrier ? { number: trackingNumber, carrier: trackingCarrier } : null,
+    tracking:
+      trackingNumber && trackingCarrier
+        ? { number: trackingNumber, carrier: trackingCarrier }
+        : null,
     missing,
   };
 }
@@ -188,7 +192,8 @@ export function mapMiddlewareOrder(input: unknown): MappedOrder {
 /** Strips buyer PII before a raw sample is stored for mapping inspection. */
 export function redactRawOrder(input: unknown): unknown {
   const seen = new WeakSet<object>();
-  const SENSITIVE = /^(email|phone|tel|mobile|address|address1|address2|street|line1|line2|name|full_name|customer_name|recipient|company|vat|tax_id|note|notes)$/i;
+  const SENSITIVE =
+    /^(email|phone|tel|mobile|address|address1|address2|street|line1|line2|name|full_name|customer_name|recipient|company|vat|tax_id|note|notes)$/i;
   const walk = (value: unknown, depth: number): unknown => {
     if (depth > 6) return "[depth]";
     if (Array.isArray(value)) return value.slice(0, 10).map((v) => walk(v, depth + 1));
@@ -379,9 +384,8 @@ export async function syncTenant(
     .maybeSingle();
   const state = stateRow as SyncState | null;
 
-  const { callMiddleware, MIDDLEWARE_PATHS, tenantSelector, processIntegrationEvent } = await import(
-    "./middleware.server"
-  );
+  const { callMiddleware, MIDDLEWARE_PATHS, tenantSelector, processIntegrationEvent } =
+    await import("./middleware.server");
   const selector = tenantSelector(tenantId);
 
   const outcome = await callMiddleware(admin, {

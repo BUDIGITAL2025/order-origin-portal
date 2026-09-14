@@ -40,11 +40,7 @@ import { getMyWallet } from "@/lib/wallet.functions";
 import { adminListQuotes } from "@/lib/quotes.functions";
 import { sourcingListQueue } from "@/lib/sourcing.functions";
 import { listUnreadNavKinds, markNavKindsRead } from "@/lib/notifications.functions";
-import {
-  kindsForNav,
-  navPathsWithAlerts,
-  type NavAudience,
-} from "@/lib/notifications-nav-map";
+import { kindsForNav, navPathsWithAlerts, type NavAudience } from "@/lib/notifications-nav-map";
 import { cn } from "@/lib/utils";
 import { SUPPORT_EMAIL, supportMailto } from "@/lib/support";
 import { PaymentTestModeBanner } from "@/components/PaymentTestModeBanner";
@@ -515,8 +511,6 @@ export function AppShell({
     if (activePath && alerts[activePath]) markRead(activePath);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activePath]);
-
-
 
   const handleSignOut = async () => {
     // Sign-out hygiene: tear down queries first so none refetch against a
