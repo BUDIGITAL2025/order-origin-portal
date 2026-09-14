@@ -17,6 +17,7 @@ import { loginSchema, signupSchema } from "@/lib/schemas";
 import { getSignupSource } from "@/lib/acquisition";
 import { TERMS_VERSION } from "@/lib/terms";
 import { completeSignup, getMyContext } from "@/lib/profiles.functions";
+import { checkEmailStatus, resendSourcingInvite } from "@/lib/invites.functions";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -37,7 +38,10 @@ function AuthPage() {
   const navigate = useNavigate();
   const callGetMyContext = useServerFn(getMyContext);
   const callCompleteSignup = useServerFn(completeSignup);
+  const callCheckEmailStatus = useServerFn(checkEmailStatus);
+  const callResendInvite = useServerFn(resendSourcingInvite);
   const [busy, setBusy] = useState(false);
+  const [pendingInviteEmail, setPendingInviteEmail] = useState<string | null>(null);
 
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
@@ -133,6 +137,21 @@ function AuthPage() {
     }
     setBusy(true);
     try {
+      // Supabase deliberately hides "user already registered", so signUp would
+      // report a cheerful "confirm your email" for an address that will never
+      // receive one. Ask the server first and say exactly what is going on.
+      const { status } = await callCheckEmailStatus({ data: { email: parsed.data.email } });
+      if (status === "sourcing_invite_pending") {
+        setPendingInviteEmail(parsed.data.email);
+        toast.error("You already have a pending invitation — use the link we emailed you.");
+        return;
+      }
+      if (status === "account_exists") {
+        toast.error(
+          "This email already has an account. Sign in, or use “Forgot password?” to set a new password.",
+        );
+        return;
+      }
       const { data, error } = await supabase.auth.signUp({
         email: parsed.data.email,
         password: parsed.data.password,
@@ -362,6 +381,35 @@ function AuthPage() {
                     </a>
                   </Label>
                 </div>
+                {pendingInviteEmail ? (
+                  <div className="space-y-2 rounded-md border border-primary/30 bg-primary/5 p-3 text-xs">
+                    <p className="text-foreground">
+                      <strong>{pendingInviteEmail}</strong> has a pending sourcing invitation. Open
+                      the link in that email to set your password — signing up again won't work.
+                    </p>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={busy}
+                      onClick={async () => {
+                        setBusy(true);
+                        try {
+                          await callResendInvite({ data: { email: pendingInviteEmail } });
+                          toast.success("Invitation re-sent — check your inbox.");
+                        } catch (err) {
+                          toast.error(
+                            err instanceof Error ? err.message : "Could not resend the invitation",
+                          );
+                        } finally {
+                          setBusy(false);
+                        }
+                      }}
+                    >
+                      Resend the invitation link
+                    </Button>
+                  </div>
+                ) : null}
                 <Button type="submit" className="w-full" disabled={busy || !signup.terms}>
                   {busy ? "Creating account…" : "Create account"}
                 </Button>

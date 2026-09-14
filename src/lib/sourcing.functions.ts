@@ -492,6 +492,17 @@ export const adminInviteCollaborator = createServerFn({ method: "POST" })
       userId = created.user.id;
     }
 
+    // Collision: the address already signed up as a client. The invitation
+    // wins — the client artifacts come off so the account cannot land back on
+    // the client dashboard, and the sourcing role is attached explicitly
+    // (belt and braces next to the collaborator trigger).
+    if (existingUser) {
+      await admin.from("user_roles").delete().eq("user_id", userId).eq("role", "client");
+      await admin
+        .from("user_roles")
+        .upsert({ user_id: userId, role: "sourcing" }, { onConflict: "user_id,role" });
+    }
+
     const now = new Date().toISOString();
     const { data: row, error: insertError } = await admin
       .from("sourcing_collaborators")

@@ -323,8 +323,12 @@ export async function sendCollaboratorInvite(
   const { sendLoggedEmail } = await import("./email.server");
 
   const redirectTo = `${appBaseUrl()}/reset-password`;
+  // A recovery link is the right instrument for "set your password": it lands
+  // on /reset-password, fires PASSWORD_RECOVERY, and the invitee can always
+  // mint a fresh one from "Forgot password?" if this one expires or gets
+  // consumed by an inbox link scanner (the failure mode magic links have).
   const { data, error } = await admin.auth.admin.generateLink({
-    type: args.existing ? "magiclink" : "invite",
+    type: args.existing ? "recovery" : "invite",
     email: args.email,
     options: { redirectTo },
   });
