@@ -21,6 +21,23 @@ import {
   sourcingSaveLines,
 } from "@/lib/sourcing.functions";
 import { sourcingSaveLinesSchema } from "@/lib/schemas";
+import { getTodayFxRates } from "@/lib/fx.functions";
+import {
+  CURRENCY_LABEL,
+  SUPPLIER_CURRENCIES,
+  fxNote,
+  rateFor,
+  toUsd,
+  type FxRates,
+  type SupplierCurrency,
+} from "@/lib/fx";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export const Route = createFileRoute("/_authenticated/desk/quote/$id")({
   head: () => ({
@@ -43,6 +60,10 @@ type LineDraft = {
   supplier_name: string;
   supplier_unit_price: string;
   supplier_shipping: string;
+  supplier_currency: SupplierCurrency;
+  /** Rate frozen on an already-saved line, kept while the currency is unchanged. */
+  frozen_rate?: number;
+  frozen_currency?: SupplierCurrency;
   supplier_tax: string;
   moq: string;
   production_lead_days: string;
@@ -55,6 +76,7 @@ const emptyLine = (country: string): LineDraft => ({
   supplier_name: "",
   supplier_unit_price: "",
   supplier_shipping: "",
+  supplier_currency: "USD",
   supplier_tax: String(defaultImportTax(country)),
   moq: "",
   production_lead_days: "",
@@ -86,13 +108,29 @@ function DeskQuotePage() {
             variant_label: l.variant_label ?? "",
             country_code: l.country_code ?? country,
             supplier_name: l.supplier_name ?? "",
+            // Show the amount the supplier actually quoted, in their currency.
             supplier_unit_price:
-              l.supplier_cogs != null
-                ? String(l.supplier_cogs)
-                : l.supplier_unit_price != null
-                  ? String(l.supplier_unit_price)
-                  : "",
-            supplier_shipping: l.supplier_shipping != null ? String(l.supplier_shipping) : "0",
+              l.supplier_cogs_original != null
+                ? String(l.supplier_cogs_original)
+                : l.supplier_cogs != null
+                  ? String(l.supplier_cogs)
+                  : l.supplier_unit_price != null
+                    ? String(l.supplier_unit_price)
+                    : "",
+            supplier_shipping:
+              l.supplier_shipping_original != null
+                ? String(l.supplier_shipping_original)
+                : l.supplier_shipping != null
+                  ? String(l.supplier_shipping)
+                  : "0",
+            supplier_currency: ((l.supplier_currency as SupplierCurrency) ?? "USD") satisfies
+              SupplierCurrency | undefined,
+            ...(l.fx_rate_used != null
+              ? {
+                  frozen_rate: Number(l.fx_rate_used),
+                  frozen_currency: (l.supplier_currency as SupplierCurrency) ?? "USD",
+                }
+              : {}),
             supplier_tax:
               l.supplier_tax != null
                 ? String(l.supplier_tax)
@@ -114,6 +152,31 @@ function DeskQuotePage() {
   const setField = (index: number, key: keyof LineDraft, value: string) =>
     setLines((prev) => prev.map((l, i) => (i === index ? { ...l, [key]: value } : l)));
 
+  // Supplier prices can be entered in USD, EUR or RMB; the chain always runs
+  // in USD. The rate freezes onto the line once it is saved.
+  const fetchFx = useServerFn(getTodayFxRates);
+  const { data: fx } = useQuery({
+    queryKey: ["fx-today"],
+    queryFn: () => fetchFx({}) as Promise<FxRates>,
+    staleTime: 60 * 60 * 1000,
+  });
+  const lineRate = (l: LineDraft): number => {
+    if (l.supplier_currency === "USD") return 1;
+    if (l.frozen_rate && l.frozen_currency === l.supplier_currency) return l.frozen_rate;
+    if (!fx) return 0;
+    try {
+      return rateFor(l.supplier_currency, fx);
+    } catch {
+      return 0;
+    }
+  };
+  const usdOf = (l: LineDraft, raw: string): number => {
+    const amount = Number(raw) || 0;
+    if (l.supplier_currency === "USD") return amount;
+    const rate = lineRate(l);
+    return rate ? toUsd(amount, rate) : 0;
+  };
+
   const save = useMutation({
     mutationFn: async () => {
       const payload = {
@@ -125,6 +188,7 @@ function DeskQuotePage() {
           supplier_name: l.supplier_name,
           supplier_unit_price: Number(l.supplier_unit_price),
           supplier_shipping: Number(l.supplier_shipping || 0),
+          supplier_currency: l.supplier_currency,
           supplier_tax: Number(l.supplier_tax || 0),
           moq: Number(l.moq),
           production_lead_days: Number(l.production_lead_days),
@@ -159,8 +223,7 @@ function DeskQuotePage() {
 
   const totalFee = lines.reduce(
     (sum, l) =>
-      sum +
-      sourcingFee(Number(l.supplier_unit_price) || 0, Number(l.supplier_shipping) || 0, feeRate),
+      sum + sourcingFee(usdOf(l, l.supplier_unit_price), usdOf(l, l.supplier_shipping), feeRate),
     0,
   );
 
@@ -182,10 +245,12 @@ function DeskQuotePage() {
         <div className="space-y-3">
           {lines.map((line, index) => {
             const fee = sourcingFee(
-              Number(line.supplier_unit_price) || 0,
-              Number(line.supplier_shipping) || 0,
+              usdOf(line, line.supplier_unit_price),
+              usdOf(line, line.supplier_shipping),
               feeRate,
             );
+            const rate = lineRate(line);
+            const showFx = line.supplier_currency !== "USD" && rate > 0;
             return (
               <Card key={line.id ?? `new-${index}`}>
                 <CardContent className="space-y-3 pt-5">
@@ -231,26 +296,73 @@ function DeskQuotePage() {
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label>COGS (EXW) — supplier unit price (USD)</Label>
+                      <Label>Supplier currency</Label>
+                      <Select
+                        value={line.supplier_currency}
+                        onValueChange={(v) => setField(index, "supplier_currency", v)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {SUPPLIER_CURRENCIES.map((c) => (
+                            <SelectItem key={c} value={c}>
+                              {CURRENCY_LABEL[c]}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        {showFx
+                          ? `Converted at ${rate.toFixed(4)} per $1${
+                              line.frozen_currency === line.supplier_currency && line.frozen_rate
+                                ? " (frozen on this quote)"
+                                : fx
+                                  ? ` (${fx.rate_date})`
+                                  : ""
+                            }. The client only ever sees USD.`
+                          : "Enter the supplier's own currency — the client only ever sees USD."}
+                      </p>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>COGS (EXW) — supplier unit price</Label>
                       <Input
                         inputMode="decimal"
                         value={line.supplier_unit_price}
                         placeholder="4.20"
                         onChange={(e) => setField(index, "supplier_unit_price", e.target.value)}
                       />
+                      {showFx && line.supplier_unit_price ? (
+                        <p className="text-xs font-medium">
+                          {fxNote(
+                            Number(line.supplier_unit_price) || 0,
+                            line.supplier_currency,
+                            rate,
+                          )}
+                        </p>
+                      ) : null}
                       <p className="text-xs text-muted-foreground">
                         Supplier unit price Ex Works — excludes all freight. Per-order shipping goes
                         in Ship; bulk freight is quoted on the purchase.
                       </p>
                     </div>
                     <div className="space-y-1.5">
-                      <Label>Supplier shipping per unit (USD)</Label>
+                      <Label>Supplier shipping per unit</Label>
                       <Input
                         inputMode="decimal"
                         value={line.supplier_shipping}
                         placeholder="0.00"
                         onChange={(e) => setField(index, "supplier_shipping", e.target.value)}
                       />
+                      {showFx && line.supplier_shipping ? (
+                        <p className="text-xs font-medium">
+                          {fxNote(
+                            Number(line.supplier_shipping) || 0,
+                            line.supplier_currency,
+                            rate,
+                          )}
+                        </p>
+                      ) : null}
                     </div>
                     <div className="space-y-1.5">
                       <Label>IOSS / import per unit (USD)</Label>

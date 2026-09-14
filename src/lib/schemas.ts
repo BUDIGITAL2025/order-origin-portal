@@ -526,6 +526,8 @@ export const sourcingLineInputSchema = z.object({
   variant_label: z.string().trim().min(1, "Every variant needs a label").max(120),
   country_code: countryCodeSchema,
   supplier_name: z.string().trim().min(2, "Supplier is required").max(160),
+  /** Currency of the supplier amounts below; converted to USD server-side. */
+  supplier_currency: z.enum(["USD", "EUR", "CNY"]).default("USD"),
   supplier_unit_price: z.number().min(0.01, "Enter the supplier unit price").max(1_000_000),
   /** Supplier shipping per unit — the fee applies to this too. */
   supplier_shipping: z.number().min(0).max(1_000_000).default(0),

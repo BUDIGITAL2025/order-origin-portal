@@ -14,6 +14,7 @@ import type { Database } from "@/integrations/supabase/types";
 import { round2 } from "./admin.server";
 import { closedPrice, sourcingCostOf } from "./pricing";
 import { parseFeeTiers, rateForCount, tierProgress, type TierProgress } from "./fee-tiers";
+import { rateFor, toUsd, type FxRates, type SupplierCurrency } from "./fx";
 
 type Admin = SupabaseClient<Database>;
 
@@ -112,8 +113,11 @@ export type SourcingLineInput = {
   variant_label: string;
   country_code: string;
   supplier_name: string;
+  /** Amount as the supplier quotes it, in supplier_currency. */
   supplier_unit_price: number;
   supplier_shipping?: number | undefined;
+  /** USD unless the supplier prices in EUR or RMB. Converted at save time. */
+  supplier_currency?: SupplierCurrency | undefined;
   supplier_tax?: number | undefined;
   moq: number;
   production_lead_days: number;
@@ -142,13 +146,15 @@ export async function writeSourcingLines(
     lines: SourcingLineInput[];
     feeRate: number;
     sourcedBy: string | null;
+    /** Today's rates; only needed when a line is priced in EUR or CNY. */
+    fx?: FxRates | undefined;
     /** When set, only this option's lines are written and pruned. */
     optionId?: string | null;
   },
 ): Promise<SavedSourcingLine[]> {
   let existingQuery = admin
     .from("quote_lines")
-    .select("id, status, fee_included")
+    .select("id, status, fee_included, supplier_currency, fx_rate_used, fx_rate_date")
     .eq("quote_request_id", args.quoteId);
   if (args.optionId) existingQuery = existingQuery.eq("option_id", args.optionId);
   const { data: existing } = await existingQuery;
@@ -156,6 +162,18 @@ export async function writeSourcingLines(
   // A line whose entered cost already contains the sourcing fee keeps that
   // flag across re-saves, so the fee is never applied a second time.
   const feeIncludedById = new Map((existing ?? []).map((l) => [l.id, l.fee_included === true]));
+  // A rate already frozen onto a line stays frozen: re-saving the same
+  // currency never reprices it at today's market.
+  const frozenFxById = new Map(
+    (existing ?? []).map((l) => [
+      l.id,
+      {
+        currency: (l.supplier_currency ?? "USD") as SupplierCurrency,
+        rate: l.fx_rate_used == null ? null : Number(l.fx_rate_used),
+        date: l.fx_rate_date as string | null,
+      },
+    ]),
+  );
 
   const now = new Date().toISOString();
   const saved: SavedSourcingLine[] = [];
@@ -166,8 +184,24 @@ export async function writeSourcingLines(
       line.supplier_name,
       line.production_lead_days,
     );
-    const cogs = line.supplier_unit_price;
-    const shipping = line.supplier_shipping ?? 0;
+    const currency: SupplierCurrency = line.supplier_currency ?? "USD";
+    const originalCogs = line.supplier_unit_price;
+    const originalShipping = line.supplier_shipping ?? 0;
+    const frozen = line.id ? frozenFxById.get(line.id) : undefined;
+    let rate = 1;
+    let rateDate: string | null = null;
+    if (currency !== "USD") {
+      if (frozen && frozen.currency === currency && frozen.rate) {
+        rate = frozen.rate;
+        rateDate = frozen.date;
+      } else {
+        if (!args.fx) throw new Error("No exchange rate available to price in " + currency + ".");
+        rate = rateFor(currency, args.fx);
+        rateDate = args.fx.rate_date;
+      }
+    }
+    const cogs = currency === "USD" ? originalCogs : toUsd(originalCogs, rate);
+    const shipping = currency === "USD" ? originalShipping : toUsd(originalShipping, rate);
     const feeIncluded = line.id ? (feeIncludedById.get(line.id) ?? false) : false;
     const cost = sourcingCostOf({ cogs, shipping, feeRate: args.feeRate, feeIncluded });
     const payload = {
@@ -176,6 +210,11 @@ export async function writeSourcingLines(
       supplier_cogs: cogs,
       supplier_shipping: shipping,
       supplier_tax: line.supplier_tax ?? 0,
+      supplier_currency: currency,
+      supplier_cogs_original: originalCogs,
+      supplier_shipping_original: originalShipping,
+      fx_rate_used: currency === "USD" ? 1 : rate,
+      fx_rate_date: rateDate,
       fee_included: feeIncluded,
       moq: line.moq,
       production_lead_days: line.production_lead_days,

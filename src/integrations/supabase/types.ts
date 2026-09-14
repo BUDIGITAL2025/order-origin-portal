@@ -346,6 +346,7 @@ export type Database = {
           converted_product_id: string | null
           converted_quote_id: string | null
           created_at: string
+          currency: string
           description: string | null
           id: string
           image_urls: string[]
@@ -357,9 +358,11 @@ export type Database = {
           outer_qty: number | null
           packaging: string | null
           page_no: number
+          remark: string | null
           row_ref: string | null
           size_text: string | null
           sort_order: number
+          unavailable: boolean
           unit_price: number | null
           weight_g: number | null
         }
@@ -370,6 +373,7 @@ export type Database = {
           converted_product_id?: string | null
           converted_quote_id?: string | null
           created_at?: string
+          currency?: string
           description?: string | null
           id?: string
           image_urls?: string[]
@@ -381,9 +385,11 @@ export type Database = {
           outer_qty?: number | null
           packaging?: string | null
           page_no?: number
+          remark?: string | null
           row_ref?: string | null
           size_text?: string | null
           sort_order?: number
+          unavailable?: boolean
           unit_price?: number | null
           weight_g?: number | null
         }
@@ -394,6 +400,7 @@ export type Database = {
           converted_product_id?: string | null
           converted_quote_id?: string | null
           created_at?: string
+          currency?: string
           description?: string | null
           id?: string
           image_urls?: string[]
@@ -405,9 +412,11 @@ export type Database = {
           outer_qty?: number | null
           packaging?: string | null
           page_no?: number
+          remark?: string | null
           row_ref?: string | null
           size_text?: string | null
           sort_order?: number
+          unavailable?: boolean
           unit_price?: number | null
           weight_g?: number | null
         }
@@ -444,6 +453,7 @@ export type Database = {
       }
       catalog_imports: {
         Row: {
+          column_mapping: Json | null
           created_at: string
           created_by: string | null
           duration_ms: number | null
@@ -455,10 +465,12 @@ export type Database = {
           model: string | null
           page_count: number
           raw_response: string | null
+          source_kind: string
           status: string
           store_id: string | null
         }
         Insert: {
+          column_mapping?: Json | null
           created_at?: string
           created_by?: string | null
           duration_ms?: number | null
@@ -470,10 +482,12 @@ export type Database = {
           model?: string | null
           page_count?: number
           raw_response?: string | null
+          source_kind?: string
           status?: string
           store_id?: string | null
         }
         Update: {
+          column_mapping?: Json | null
           created_at?: string
           created_by?: string | null
           duration_ms?: number | null
@@ -485,6 +499,7 @@ export type Database = {
           model?: string | null
           page_count?: number
           raw_response?: string | null
+          source_kind?: string
           status?: string
           store_id?: string | null
         }
@@ -902,6 +917,78 @@ export type Database = {
           error?: string
           id?: string
           job?: string
+        }
+        Relationships: []
+      }
+      fx_fetch_log: {
+        Row: {
+          created_at: string
+          duration_ms: number | null
+          error: string | null
+          id: string
+          payload: Json | null
+          rate_date: string | null
+          source: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          duration_ms?: number | null
+          error?: string | null
+          id?: string
+          payload?: Json | null
+          rate_date?: string | null
+          source: string
+          status: string
+        }
+        Update: {
+          created_at?: string
+          duration_ms?: number | null
+          error?: string | null
+          id?: string
+          payload?: Json | null
+          rate_date?: string | null
+          source?: string
+          status?: string
+        }
+        Relationships: []
+      }
+      fx_rates: {
+        Row: {
+          base: string
+          cny: number
+          created_at: string
+          eur: number
+          id: string
+          manual: boolean
+          rate_date: string
+          set_by: string | null
+          source: string
+          updated_at: string
+        }
+        Insert: {
+          base?: string
+          cny: number
+          created_at?: string
+          eur: number
+          id?: string
+          manual?: boolean
+          rate_date: string
+          set_by?: string | null
+          source?: string
+          updated_at?: string
+        }
+        Update: {
+          base?: string
+          cny?: number
+          created_at?: string
+          eur?: number
+          id?: string
+          manual?: boolean
+          rate_date?: string
+          set_by?: string | null
+          source?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -2027,6 +2114,8 @@ export type Database = {
           country_code: string
           created_at: string
           fee_included: boolean
+          fx_rate_date: string | null
+          fx_rate_used: number | null
           id: string
           lead_time_days: number | null
           margin_pct: number
@@ -2044,8 +2133,11 @@ export type Database = {
           sourcing_notes: string | null
           status: Database["public"]["Enums"]["quote_line_status"]
           supplier_cogs: number | null
+          supplier_cogs_original: number | null
+          supplier_currency: string
           supplier_id: string | null
           supplier_shipping: number | null
+          supplier_shipping_original: number | null
           supplier_tax: number | null
           supplier_unit_price: number | null
           unit_price: number | null
@@ -2055,6 +2147,8 @@ export type Database = {
           country_code: string
           created_at?: string
           fee_included?: boolean
+          fx_rate_date?: string | null
+          fx_rate_used?: number | null
           id?: string
           lead_time_days?: number | null
           margin_pct?: number
@@ -2072,8 +2166,11 @@ export type Database = {
           sourcing_notes?: string | null
           status?: Database["public"]["Enums"]["quote_line_status"]
           supplier_cogs?: number | null
+          supplier_cogs_original?: number | null
+          supplier_currency?: string
           supplier_id?: string | null
           supplier_shipping?: number | null
+          supplier_shipping_original?: number | null
           supplier_tax?: number | null
           supplier_unit_price?: number | null
           unit_price?: number | null
@@ -2083,6 +2180,8 @@ export type Database = {
           country_code?: string
           created_at?: string
           fee_included?: boolean
+          fx_rate_date?: string | null
+          fx_rate_used?: number | null
           id?: string
           lead_time_days?: number | null
           margin_pct?: number
@@ -2100,8 +2199,11 @@ export type Database = {
           sourcing_notes?: string | null
           status?: Database["public"]["Enums"]["quote_line_status"]
           supplier_cogs?: number | null
+          supplier_cogs_original?: number | null
+          supplier_currency?: string
           supplier_id?: string | null
           supplier_shipping?: number | null
+          supplier_shipping_original?: number | null
           supplier_tax?: number | null
           supplier_unit_price?: number | null
           unit_price?: number | null

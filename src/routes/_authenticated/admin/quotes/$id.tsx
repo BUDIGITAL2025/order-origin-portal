@@ -44,6 +44,7 @@ import {
 /** House sourcing fee rate, mirrored from the server default. */
 const DEFAULT_FEE_RATE = 0.08;
 import { formatDate, formatUSD } from "@/lib/format";
+import { fxNote, type SupplierCurrency } from "@/lib/fx";
 import { cn } from "@/lib/utils";
 import { effectiveTier, TIER_LABELS } from "@/lib/plans";
 import {
@@ -90,6 +91,8 @@ interface CellForm {
   /** True for lines whose entered cost already contains the sourcing fee. */
   fee_included: boolean;
   supplier_name: string;
+  /** Supplier-side currency detail, frozen when the agent saved the line. */
+  fx?: { currency: string; cogs: number; shipping: number; rate: number; date: string | null };
 }
 
 interface VariantRow {
@@ -292,6 +295,17 @@ function AdminQuoteDetailPage() {
           fee_rate: l.sourcing_fee_rate != null ? Number(l.sourcing_fee_rate) : DEFAULT_FEE_RATE,
           fee_included: l.fee_included === true,
           supplier_name: "",
+          ...(l.supplier_currency && l.supplier_currency !== "USD" && l.fx_rate_used
+            ? {
+                fx: {
+                  currency: l.supplier_currency as string,
+                  cogs: Number(l.supplier_cogs_original ?? 0),
+                  shipping: Number(l.supplier_shipping_original ?? 0),
+                  rate: Number(l.fx_rate_used),
+                  date: (l.fx_rate_date as string | null) ?? null,
+                },
+              }
+            : {}),
         };
       }
       for (const row of byVariant.values()) {
@@ -995,6 +1009,14 @@ function AdminQuoteDetailPage() {
                                     {f.key === "supplier_cogs" && (
                                       <p className="mt-0.5 pl-[4.25rem] text-[9px] leading-tight text-muted-foreground/80">
                                         Supplier unit price Ex Works — excludes all freight.
+                                        {cell.fx
+                                          ? ` Quoted ${fxNote(cell.fx.cogs, cell.fx.currency as SupplierCurrency, cell.fx.rate)}${cell.fx.date ? ` (${cell.fx.date})` : ""}.`
+                                          : ""}
+                                      </p>
+                                    )}
+                                    {f.key === "supplier_shipping" && cell.fx && (
+                                      <p className="mt-0.5 pl-[4.25rem] text-[9px] leading-tight text-muted-foreground/80">
+                                        {`Quoted ${fxNote(cell.fx.shipping, cell.fx.currency as SupplierCurrency, cell.fx.rate)}.`}
                                       </p>
                                     )}
                                     {f.key === "supplier_tax" && (
