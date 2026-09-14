@@ -59,6 +59,9 @@ export interface MyContext {
   isAdmin: boolean;
   /** True for sourcing collaborators — the desk is their entire app. */
   isSourcing: boolean;
+  /** Internal staff level, or null for everyone who is not staff. */
+  staffLevel: "owner" | "collaborator" | "reader" | null;
+
   /** Account identity only — billing, catalogue and quota live on entities/stores. */
   profile: {
     id: string;
