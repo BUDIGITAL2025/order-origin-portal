@@ -794,10 +794,12 @@ export async function processStripeEvent(event: StripeEvent, env: StripeEnv): Pr
   const admin = await getAdminClient();
 
   switch (event.type) {
+    case "checkout.session.async_payment_succeeded":
     case "checkout.session.completed": {
       const session = event.data.object;
-      // Delayed-notification payment methods (SEPA, Bacs, …) fire this when the
-      // payment is submitted, not settled — the async events handle those.
+      // Delayed-notification payment methods (SEPA, Bacs, …) fire `completed`
+      // when the payment is submitted, not settled — `async_payment_succeeded`
+      // handles the actual settlement.
       if (session["payment_status"] === "unpaid") return;
 
       const kind = meta(session)["kind"];
