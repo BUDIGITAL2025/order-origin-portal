@@ -12,8 +12,27 @@ export async function getStaffLevel(
   supabase: SupabaseClient<Database>,
   userId: string,
 ): Promise<StaffLevel | null> {
-  const { data } = await supabase.rpc("staff_level", { _user_id: userId });
+  const { data, error } = await supabase.rpc("staff_level", { _user_id: userId });
+  // A failing check must never be mistaken for "not staff" — that silently
+  // locks the whole console out. Surface it instead.
+  if (error) throw new Error(`Could not verify your admin access: ${error.message}`);
   return (data as StaffLevel | null) ?? null;
+}
+
+/**
+ * Read client for admin pages. Readers do not hold the admin role at the data
+ * level (has_role returns false for them), so RLS would filter every row out;
+ * they read through the service-role client instead. Access is already
+ * authorised here, and every mutation still goes through requireAdmin/requireOwner.
+ */
+export async function staffReadClient(
+  supabase: SupabaseClient<Database>,
+  userId: string,
+): Promise<SupabaseClient<Database>> {
+  const level = await requireStaffRead(supabase, userId);
+  if (level !== "reader") return supabase;
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  return supabaseAdmin as unknown as SupabaseClient<Database>;
 }
 
 /** Read access to the admin console — any active staff level. */
