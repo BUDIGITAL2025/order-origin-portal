@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Lock, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/app-shell";
@@ -28,6 +28,7 @@ import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/compon
 import { friendlyError } from "@/lib/errors";
 import { formatDate } from "@/lib/format";
 import { inviteStaff, listStaff, setStaffLevel, setStaffStatus } from "@/lib/staff.functions";
+import { getDefaultMarginPct, setDefaultMarginPct } from "@/lib/pricing-settings.functions";
 
 const LEVELS = [
   { value: "owner", label: "Owner", hint: "Everything, including the team and pricing config." },
