@@ -94,7 +94,7 @@ function num(value: string): number {
 
 /** Shared column track for the compact variant table and its rows. */
 const COMPACT_COLS =
-  "grid-cols-[minmax(140px,1.6fr)_48px_repeat(4,minmax(76px,1fr))_16px] sm:gap-x-3";
+  "grid-cols-[minmax(150px,1.6fr)_44px_52px_56px_repeat(5,minmax(66px,1fr))_16px] sm:gap-x-3";
 
 type GridField = "supplier_cogs" | "supplier_shipping" | "supplier_tax" | "margin_pct";
 
