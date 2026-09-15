@@ -160,6 +160,10 @@ export const quoteLineInputSchema = z.object({
   sourcing_notes: z.string().trim().max(2000).optional().or(z.literal("")),
   moq: z.number().int().min(1).max(1_000_000).nullable().optional(),
   lead_time_days: z.number().int().min(0).max(365).nullable().optional(),
+  /** Draft margin saved with the line — publishing is what shows it to the client. */
+  margin_pct: z.number().min(0).max(500).optional(),
+  /** Draft sourcing fee for this line, in percent. */
+  fee_rate_pct: z.number().min(0).max(100).optional(),
 });
 
 export const adminQuoteLinesSchema = z.object({
