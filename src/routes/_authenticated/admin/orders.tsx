@@ -49,6 +49,7 @@ import {
   ALL_WORKSPACES,
   WorkspacePicker,
   useFulfilmentIsAdmin,
+  useFulfilmentWorkspaces,
   useWorkspaceScope,
 } from "@/components/workspace-scope";
 import { formatDateTime, formatUSD } from "@/lib/format";
@@ -108,7 +109,12 @@ function AdminOrdersPage() {
   const fetchAnalytics = useServerFn(getEcomflowAnalytics);
   const isAdmin = useFulfilmentIsAdmin();
   const [workspace] = useWorkspaceScope();
-  const isOwnStore = workspace === BUDIGITAL_USA_STORE_ID;
+  const { data: workspaceData } = useFulfilmentWorkspaces();
+  const isOwnStore =
+    workspace !== ALL_WORKSPACES &&
+    (workspaceData?.workspaces ?? []).some(
+      (w) => w.id === workspace && w.middlewareTenantId === ECOMFLOW_TENANT_ID,
+    );
   // Ecomflow only has data for our own store — never fetch it for clients or "All".
   const { data: analytics } = useQuery<EcomflowAnalytics>({
     queryKey: ["ecomflow-analytics"],
