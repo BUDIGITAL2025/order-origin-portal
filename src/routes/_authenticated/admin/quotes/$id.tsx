@@ -120,7 +120,7 @@ const GRID_FIELDS: { key: GridField; label: string; short?: string }[] = [
   { key: "supplier_cogs", label: "COGS (EXW)", short: "COGS" },
   { key: "supplier_shipping", label: "Ship" },
   { key: "supplier_tax", label: "IOSS / import per unit", short: "IOSS" },
-  { key: "margin_pct", label: "Margin %", short: "Margin" },
+  { key: "margin_pct", label: "Markup %", short: "Markup" },
 ];
 
 interface CellForm {
@@ -511,7 +511,7 @@ function AdminQuoteDetailPage() {
         ),
       })),
     );
-    toast.success(`Margin ${value}% applied to all variants`);
+    toast.success(`Markup ${value}% applied to all variants`);
   };
 
   /** Everything the draft save needs, validated the same way for both actions. */
@@ -1069,10 +1069,10 @@ function AdminQuoteDetailPage() {
                     </PopoverTrigger>
                     <PopoverContent align="end" className="w-80 text-xs leading-relaxed">
                       Rows are variants, columns are the requested countries — each cell is a priced
-                      variant × country line. All amounts in USD. The chain is COGS → + ship → +
-                      sourcing fee → sourcing cost, then one FlySales margin % applied to the COGS.
-                      Supplier tax (IOSS / duties) passes through at exact cost — it is never marked
-                      up. {PASSTHROUGH_NOTE} Cost and margin are never visible to the client.
+                       variant × country line. All amounts in USD. The chain is COGS → + ship → +
+                       sourcing fee → sourcing cost, then one FlySales markup % applied to the COGS.
+                       Supplier tax (IOSS / duties) passes through at exact cost — it is never marked
+                       up. {PASSTHROUGH_NOTE} Cost and markup are never visible to the client.
                       Publishing moves the request to &quot;quoted&quot; and generates one SKU per
                       variant, shared across its country rows.
                     </PopoverContent>
@@ -1190,7 +1190,7 @@ function AdminQuoteDetailPage() {
                 )}
                 <p className="text-xs text-muted-foreground">
                   Clients see these as anonymous Option A/B/C — never the supplier, the cost chain
-                  or the margin. Publishing the grid below publishes the selected option.
+                  or the markup. Publishing the grid below publishes the selected option.
                 </p>
               </div>
               <form
@@ -1247,7 +1247,7 @@ function AdminQuoteDetailPage() {
                       <span className="text-right">Cost</span>
                       <span className="text-right">Ship</span>
                       <span className="text-right">Fee %</span>
-                      <span className="text-right">Margin %</span>
+                      <span className="text-right">Markup %</span>
                       <span className="text-right">Client price</span>
                       <span />
                     </div>
@@ -1553,7 +1553,7 @@ function AdminQuoteDetailPage() {
                                         </div>
                                         <div className="space-y-1 rounded-lg border border-border/60 bg-background p-2">
                                           <Label className="text-[11px] font-medium">
-                                            Margin %
+                                            Markup %
                                           </Label>
                                           <div className="flex items-center justify-between gap-1.5">
                                             <Input
@@ -1572,7 +1572,7 @@ function AdminQuoteDetailPage() {
                                                 })
                                               }
                                               disabled={!cellEditable}
-                                              aria-label={`Margin % (${country})`}
+                                              aria-label={`Markup % (${country})`}
                                               className="h-8 w-[4.5rem] tnum text-[13px]"
                                             />
                                             <span className="tnum text-[13px] font-medium">
@@ -1625,7 +1625,7 @@ function AdminQuoteDetailPage() {
                                         </div>
                                         <div className="grid min-h-6 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3">
                                           <span>
-                                            FlySales margin ({marginPctLabel}% of{" "}
+                                            FlySales markup ({marginPctLabel}% of{" "}
                                             {formatUSD(cogsUsd)} COGS)
                                           </span>
                                           <span className="tnum text-right">

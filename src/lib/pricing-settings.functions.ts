@@ -46,7 +46,7 @@ export const setDefaultMarginPct = createServerFn({ method: "POST" })
       action: "pricing_default_margin_changed",
       entityType: "internal_settings",
       entityId: null,
-      summary: `Default FlySales margin set to ${value}%`,
+      summary: `Default FlySales markup set to ${value}%`,
       detail: { margin_pct: value },
     });
     return { ok: true, margin_pct: Number(value) };
