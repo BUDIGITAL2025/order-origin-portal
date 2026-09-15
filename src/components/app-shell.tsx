@@ -524,6 +524,29 @@ export function AppShell({
   }, [role, staffLevel]);
   const nav: NavItem[] = React.useMemo(() => groups.flatMap((g) => g.items), [groups]);
 
+  // Collapsed nav groups, remembered between visits. Read after mount so the
+  // server and the first client render agree.
+  const [closedGroups, setClosedGroups] = React.useState<Record<string, boolean>>({});
+  React.useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem("fs-nav-closed-groups");
+      if (raw) setClosedGroups(JSON.parse(raw) as Record<string, boolean>);
+    } catch {
+      /* ignore unreadable storage */
+    }
+  }, []);
+  const toggleGroup = React.useCallback((label: string) => {
+    setClosedGroups((prev) => {
+      const next = { ...prev, [label]: !prev[label] };
+      try {
+        window.localStorage.setItem("fs-nav-closed-groups", JSON.stringify(next));
+      } catch {
+        /* ignore unwritable storage */
+      }
+      return next;
+    });
+  }, []);
+
   const { alerts, markRead } = useNavAlerts(role);
 
   // Manual active matching so "/sourcing/new" doesn't light up "My quotes".
