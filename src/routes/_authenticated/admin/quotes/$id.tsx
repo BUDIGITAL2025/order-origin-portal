@@ -851,13 +851,18 @@ function AdminQuoteDetailPage() {
       {/* Work on the left (~70%), context and conversation on the right. */}
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,2.3fr)_minmax(0,1fr)]">
         <div className="space-y-6 lg:order-2">
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base">Request</CardTitle>
-                <QuoteStatusBadge status={quote.status} validUntil={quote.quote_valid_until} />
-              </div>
-            </CardHeader>
+          <Collapsible>
+            <Card>
+              <CollapsibleTrigger asChild>
+                <button
+                  type="button"
+                  className="group flex w-full items-center justify-between gap-2 px-6 py-4 text-left transition-colors hover:bg-muted/40"
+                >
+                  <span className="text-base font-semibold">Request details</span>
+                  <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-150 group-data-[state=open]:rotate-180" />
+                </button>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
             <CardContent className="space-y-3 text-sm">
               <div>
                 <div className="text-xs uppercase tracking-wide text-muted-foreground">
