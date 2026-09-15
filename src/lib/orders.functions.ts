@@ -231,7 +231,26 @@ export const listMyOrders = createServerFn({ method: "GET" })
       .order("created_at", { ascending: false })
       .limit(200);
     if (error) throw new Error(error.message);
-    return data ?? [];
+    const rows = data ?? [];
+
+    // The raw review reason is internal text; the client sees a mapped message.
+    const { getAdminClient } = await import("./admin.server");
+    const { clientReviewMessage } = await import("./order-review");
+    const admin = await getAdminClient();
+    const { data: reviews } = rows.length
+      ? await admin
+          .from("orders")
+          .select("id, needs_review_reason")
+          .in(
+            "id",
+            rows.map((o) => o.id),
+          )
+          .not("needs_review_reason", "is", null)
+      : { data: [] };
+    const messageById = new Map(
+      (reviews ?? []).map((r) => [r.id, clientReviewMessage(r.needs_review_reason)]),
+    );
+    return rows.map((o) => ({ ...o, review_message: messageById.get(o.id) ?? null }));
   });
 
 /**
