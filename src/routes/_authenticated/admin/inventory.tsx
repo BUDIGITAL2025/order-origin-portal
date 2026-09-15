@@ -504,21 +504,23 @@ function AdminInventoryPage() {
                       title={ws.store_name ?? "Unnamed workspace"}
                       description={`Tenant ${ws.tenant_id ?? "—"} · defaults ${ws.defaults.production}d production / ${ws.defaults.transit}d transit / ${ws.defaults.safety}d safety`}
                       actions={
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="rounded-full"
-                          onClick={() =>
-                            setDefaultsFor({
-                              storeId: ws.store_id,
-                              production: ws.defaults.production ?? 0,
-                              transit: ws.defaults.transit ?? 0,
-                              safety: ws.defaults.safety ?? 0,
-                            })
-                          }
-                        >
-                          Edit defaults
-                        </Button>
+                        isAdmin ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="rounded-full"
+                            onClick={() =>
+                              setDefaultsFor({
+                                storeId: ws.store_id,
+                                production: ws.defaults.production ?? 0,
+                                transit: ws.defaults.transit ?? 0,
+                                safety: ws.defaults.safety ?? 0,
+                              })
+                            }
+                          >
+                            Edit defaults
+                          </Button>
+                        ) : null
                       }
                     />
                     {ws.stale && (
