@@ -403,22 +403,22 @@ function AdminOrdersPage() {
                         </TableCell>
                         <TableCell className="py-2.5">
                           {!isAdmin ? null : (
-                          <RowActions>
-                            <CleanupRowActions
-                              type="order"
-                              id={order.id}
-                              name={order.external_order_number ?? order.id.slice(0, 8)}
-                              archived={!!(order as { archived_at?: string | null }).archived_at}
-                              invalidateKeys={[["admin-orders"]]}
-                              deletable={false}
-                            />
-                            <RowAction
-                              label={order.tracking_number ? "Edit tracking" : "Add tracking"}
-                              icon={Truck}
-                              tone={order.tracking_number ? undefined : "primary"}
-                              onClick={() => setTrackingOrder(order)}
-                            />
-                          </RowActions>
+                            <RowActions>
+                              <CleanupRowActions
+                                type="order"
+                                id={order.id}
+                                name={order.external_order_number ?? order.id.slice(0, 8)}
+                                archived={!!(order as { archived_at?: string | null }).archived_at}
+                                invalidateKeys={[["admin-orders"]]}
+                                deletable={false}
+                              />
+                              <RowAction
+                                label={order.tracking_number ? "Edit tracking" : "Add tracking"}
+                                icon={Truck}
+                                tone={order.tracking_number ? undefined : "primary"}
+                                onClick={() => setTrackingOrder(order)}
+                              />
+                            </RowActions>
                           )}
                         </TableCell>
                       </TableRow>

@@ -77,7 +77,6 @@ export function WorkspacePicker() {
   const [value, setValue] = useWorkspaceScope();
   const { data } = useFulfilmentWorkspaces();
 
-
   const workspaces = data?.workspaces ?? [];
   const isAdmin = data?.isAdmin ?? true;
 
