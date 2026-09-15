@@ -437,10 +437,15 @@ export const adminGetQuote = createServerFn({ method: "GET" })
         .eq("user_id", agentId)
         .maybeSingle();
       if (collaborator) {
-        const p = tierProgress(
-          parseFeeTiers(collaborator.fee_tiers),
-          Number(collaborator.paid_transactions ?? 0),
-        );
+        // Tiers are per agent AND per client account.
+        const { entityForQuote, clientTierProgress } = await import("./client-tiers.server");
+        const entityId = await entityForQuote(admin, data.quote_id);
+        const p = entityId
+          ? await clientTierProgress(admin, agentId, entityId, collaborator.fee_tiers)
+          : tierProgress(
+              parseFeeTiers(collaborator.fee_tiers),
+              Number(collaborator.paid_transactions ?? 0),
+            );
         agent = {
           rate: p.rate,
           count: p.count,
