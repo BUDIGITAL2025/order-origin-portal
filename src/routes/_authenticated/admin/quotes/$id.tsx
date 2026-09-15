@@ -1,15 +1,7 @@
 import { createFileRoute, Link, useBlocker, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  ArrowLeft,
-  ChevronDown,
-  Copy,
-  MessageCircle,
-  Plus,
-  RefreshCw,
-  Trash2,
-} from "lucide-react";
+import { ArrowLeft, ChevronDown, Copy, MessageCircle, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/app-shell";
@@ -946,650 +938,667 @@ function AdminQuoteDetailPage() {
         </div>
 
         <div className="space-y-6 lg:order-1">
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Deal view</CardTitle>
-            <CardDescription>Every stage of this product, and who acted.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <LifecycleTimeline quoteId={id} hideHeading />
-          </CardContent>
-        </Card>
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Deal view</CardTitle>
+              <CardDescription>Every stage of this product, and who acted.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <LifecycleTimeline quoteId={id} hideHeading />
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base">Variants & pricing</CardTitle>
-              <span className="text-xs text-muted-foreground">
-                Client tier: <TierBadge tier={clientTier} />
-              </span>
-            </div>
-            <CardDescription>
-              Rows are variants, columns are the requested countries — each cell is a priced variant
-              × country line. All amounts in USD. The chain is COGS → + ship → + sourcing fee →
-              sourcing cost, then one FlySales margin %. Supplier tax (IOSS / duties) passes through
-              at exact cost — it is never marked up. {PASSTHROUGH_NOTE} Cost and margin are never
-              visible to the client. Publishing moves the request to "quoted" and generates one SKU
-              per variant, shared across its country rows.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="mb-4 space-y-3 rounded-lg border border-border p-3">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs uppercase tracking-wide text-muted-foreground">
-                  Offers
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base">Variants & pricing</CardTitle>
+                <span className="text-xs text-muted-foreground">
+                  Client tier: <TierBadge tier={clientTier} />
                 </span>
-                {options.map((o) => (
-                  <button
-                    key={o.id}
-                    type="button"
-                    onClick={() => setOptionId(o.id)}
-                    className={cn(
-                      "rounded-full border border-border px-3 py-1 text-xs font-medium",
-                      o.id === activeOption?.id
-                        ? "bg-primary text-primary-foreground"
-                        : "hover:bg-muted",
-                    )}
-                  >
-                    Option {o.letter}
-                    {o.recommended ? " ★" : ""}
-                    {o.published ? "" : " · draft"}
-                  </button>
-                ))}
-                {options.length < 3 && (
+              </div>
+              <CardDescription>
+                Rows are variants, columns are the requested countries — each cell is a priced
+                variant × country line. All amounts in USD. The chain is COGS → + ship → + sourcing
+                fee → sourcing cost, then one FlySales margin %. Supplier tax (IOSS / duties) passes
+                through at exact cost — it is never marked up. {PASSTHROUGH_NOTE} Cost and margin
+                are never visible to the client. Publishing moves the request to "quoted" and
+                generates one SKU per variant, shared across its country rows.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="mb-4 space-y-3 rounded-lg border border-border p-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Offers
+                  </span>
+                  {options.map((o) => (
+                    <button
+                      key={o.id}
+                      type="button"
+                      onClick={() => setOptionId(o.id)}
+                      className={cn(
+                        "rounded-full border border-border px-3 py-1 text-xs font-medium",
+                        o.id === activeOption?.id
+                          ? "bg-primary text-primary-foreground"
+                          : "hover:bg-muted",
+                      )}
+                    >
+                      Option {o.letter}
+                      {o.recommended ? " ★" : ""}
+                      {o.published ? "" : " · draft"}
+                    </button>
+                  ))}
+                  {options.length < 3 && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="gap-1"
+                      disabled={saveOption.isPending}
+                      onClick={() => {
+                        setOptionId(null);
+                        saveOption.mutate({});
+                      }}
+                    >
+                      <Plus className="h-3.5 w-3.5" /> Add option
+                    </Button>
+                  )}
+                </div>
+                {activeOption && (
+                  <div className="grid gap-3 sm:grid-cols-4">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Supplier (internal)</Label>
+                      <Input
+                        defaultValue={activeOption.supplier_name}
+                        placeholder="Supplier name"
+                        onBlur={(e) => {
+                          if (e.target.value.trim() !== activeOption.supplier_name) {
+                            saveOption.mutate({ supplier_name: e.target.value.trim() });
+                          }
+                        }}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Quality</Label>
+                      <div className="grid grid-cols-3 gap-1">
+                        {[1, 2, 3].map((q) => (
+                          <Button
+                            key={q}
+                            type="button"
+                            size="sm"
+                            className="px-0"
+                            variant={activeOption.quality === q ? "default" : "outline"}
+                            onClick={() => saveOption.mutate({ quality: q })}
+                          >
+                            {q === 1 ? "Low" : q === 2 ? "Med" : "High"}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Shipping lead (days)</Label>
+                      <Input
+                        type="number"
+                        step="0.1"
+                        defaultValue={activeOption.shipping_lead_days ?? ""}
+                        onBlur={(e) =>
+                          saveOption.mutate({
+                            shipping_lead_days:
+                              e.target.value === "" ? null : Number(e.target.value),
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="flex items-end gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={activeOption.recommended ? "default" : "outline"}
+                        onClick={() =>
+                          saveOption.mutate({ recommended: !activeOption.recommended })
+                        }
+                      >
+                        {activeOption.recommended ? "Recommended" : "Mark recommended"}
+                      </Button>
+                      {!activeOption.accepted_at && options.length > 1 && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => deleteOption.mutate(activeOption.id)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Clients see these as anonymous Option A/B/C — never the supplier, the cost chain
+                  or the margin. Publishing the grid below publishes the selected option.
+                </p>
+              </div>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (dirty) {
+                    toast.error("Save your changes first");
+                    return;
+                  }
+                  publish.mutate();
+                }}
+                className="space-y-4"
+              >
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="aq-ref">Internal reference</Label>
+                    <Input
+                      id="aq-ref"
+                      value={internalReference}
+                      onChange={(e) => setInternalReference(e.target.value)}
+                      placeholder="e.g. Alibaba #4471"
+                      disabled={!requestEditable}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="aq-valid">Valid until</Label>
+                    <p className="text-[11px] text-muted-foreground">default: 7 days</p>
+                    <Input
+                      id="aq-valid"
+                      type="date"
+                      placeholder="default: 7 days"
+                      title="Leave empty and the quote stays valid for 7 days from publish."
+                      value={validUntil}
+                      onChange={(e) => setValidUntil(e.target.value)}
+                      disabled={!requestEditable}
+                    />
+                  </div>
+                </div>
+
+                {rows.length > 0 && (
+                  <div className="overflow-hidden rounded-lg border border-border">
+                    {/* Comparison first: one compact line per variant × destination,
+                      with the full editor one click away. */}
+                    <div
+                      className={cn(
+                        COMPACT_COLS,
+                        "grid items-center gap-x-2 border-b border-border bg-muted/40 px-3 py-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground",
+                      )}
+                    >
+                      <span>Variant</span>
+                      <span>Dest.</span>
+                      <span className="text-right">COGS</span>
+                      <span className="text-right">Fee</span>
+                      <span className="text-right">Margin</span>
+                      <span className="text-right">Client price</span>
+                      <span />
+                    </div>
+                    {rows.map((row) => {
+                      const rowLocked = Object.values(row.cells).some(cellLocked);
+                      const rowEditable = requestEditable && !rowLocked;
+                      return (
+                        <div key={row.key}>
+                          {countries.map((country) => {
+                            const cell = row.cells[country] ?? emptyCell(country);
+                            const locked = cellLocked(cell);
+                            const cellEditable = requestEditable && !locked;
+                            const rate = cellRate(cell, todayFx);
+                            const foreign = cell.currency !== "USD";
+                            const frozen = cell.fx?.currency === cell.currency;
+                            const rateDate = frozen
+                              ? (cell.fx?.date ?? null)
+                              : (todayFx?.rate_date ?? null);
+                            const symbol = CURRENCY_SYMBOL[cell.currency];
+                            const cogsUsd = cellCogsUsd(cell, rate);
+                            const shipUsd = cellShipUsd(cell, rate);
+                            const feeUsd = cellFee(cell, rate);
+                            const feePctLabel = cell.fee_included
+                              ? "0.00"
+                              : money2(cell.fee_rate * 100);
+                            const marginPctLabel = money2(cell.margin_pct);
+                            const cellKey = `${row.key}::${country}`;
+                            const expanded = openCell === cellKey;
+                            const conversionLine = (usd: number) =>
+                              rate > 0
+                                ? `→ ${formatUSD(usd)} @ ${rate.toFixed(4)} (${frozen ? "frozen" : "today"}${rateDate ? ` ${rateDate}` : ""})`
+                                : "No exchange rate available yet — save once a rate is published.";
+                            const moneyField = (
+                              key: "supplier_cogs" | "supplier_shipping",
+                              label: string,
+                              usd: number,
+                            ) => (
+                              <div className="space-y-0.5">
+                                <div className="flex items-center gap-1">
+                                  <span className="w-12 shrink-0 text-[11px] leading-tight text-muted-foreground">
+                                    {label}
+                                  </span>
+                                  <Select
+                                    value={cell.currency}
+                                    onValueChange={(v) =>
+                                      updateCell(row.key, country, {
+                                        currency: v as SupplierCurrency,
+                                      })
+                                    }
+                                    disabled={!cellEditable}
+                                  >
+                                    <SelectTrigger
+                                      className="h-8 w-[4.5rem] text-xs"
+                                      aria-label={`Currency (${country})`}
+                                    >
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {SUPPLIER_CURRENCIES.map((c) => (
+                                        <SelectItem key={c} value={c} className="text-xs">
+                                          {CURRENCY_LABEL[c]}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                  <Input
+                                    inputMode="decimal"
+                                    value={cell[key]}
+                                    onChange={(e) =>
+                                      updateCell(row.key, country, { [key]: e.target.value })
+                                    }
+                                    onBlur={(e) =>
+                                      updateCell(row.key, country, {
+                                        [key]: money2(e.target.value || 0),
+                                      })
+                                    }
+                                    disabled={!cellEditable}
+                                    aria-label={`${label} in ${cell.currency} (${country})`}
+                                    className="h-8 tnum text-[13px]"
+                                  />
+                                </div>
+                                {foreign && (
+                                  <p className="tnum pl-[4.25rem] text-[11px] leading-tight text-muted-foreground">
+                                    {conversionLine(usd)}
+                                  </p>
+                                )}
+                              </div>
+                            );
+                            return (
+                              <div key={country} className="border-b border-border last:border-b-0">
+                                <button
+                                  type="button"
+                                  aria-expanded={expanded}
+                                  onClick={() => setOpenCell(expanded ? null : cellKey)}
+                                  className={cn(
+                                    COMPACT_COLS,
+                                    "grid w-full items-center gap-x-2 px-3 py-2 text-left text-[13px] transition-colors hover:bg-muted/40",
+                                    expanded && "bg-muted/40",
+                                  )}
+                                >
+                                  <span className="min-w-0 truncate">
+                                    <span className="font-medium">
+                                      {row.label || "Untitled variant"}
+                                    </span>
+                                    <span className="ml-1.5 font-mono text-[11px] text-muted-foreground">
+                                      {row.sku ?? "SKU on save"}
+                                    </span>
+                                  </span>
+                                  <span className="text-xs text-muted-foreground">{country}</span>
+                                  <span className="tnum text-right">{formatUSD(cogsUsd)}</span>
+                                  <span className="tnum text-right">{formatUSD(feeUsd)}</span>
+                                  <span className="tnum text-right">
+                                    {formatUSD(cellMargin(cell, rate))}
+                                  </span>
+                                  <span className="tnum text-right font-semibold">
+                                    {formatUSD(cellPrice(cell, rate))}
+                                  </span>
+                                  <ChevronDown
+                                    className={cn(
+                                      "h-3.5 w-3.5 text-muted-foreground transition-transform duration-150",
+                                      expanded && "rotate-180",
+                                    )}
+                                  />
+                                </button>
+
+                                {expanded && (
+                                  <div className="grid gap-4 border-t border-border bg-muted/15 p-3 lg:grid-cols-2">
+                                    {/* Variant identity and terms. */}
+                                    <div className="space-y-2">
+                                      <Input
+                                        value={row.label}
+                                        onChange={(e) =>
+                                          updateRow(row.key, { label: e.target.value })
+                                        }
+                                        placeholder='e.g. "20cm", "Red / L"'
+                                        disabled={!rowEditable}
+                                        aria-label="Variant label"
+                                        className="h-8 text-[13px]"
+                                      />
+                                      <div className="grid grid-cols-2 gap-2">
+                                        <Input
+                                          type="number"
+                                          min={1}
+                                          value={row.moq}
+                                          onChange={(e) =>
+                                            updateRow(row.key, { moq: e.target.value })
+                                          }
+                                          disabled={!rowEditable}
+                                          placeholder="MOQ"
+                                          aria-label="MOQ"
+                                          className="h-8 tnum text-[13px] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                                        />
+                                        <Input
+                                          type="number"
+                                          min={0}
+                                          value={row.lead_time_days}
+                                          onChange={(e) =>
+                                            updateRow(row.key, { lead_time_days: e.target.value })
+                                          }
+                                          disabled={!rowEditable}
+                                          placeholder="Lead days"
+                                          aria-label="Lead time (days)"
+                                          className="h-8 tnum text-[13px] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                                        />
+                                      </div>
+                                      {rowEditable && countries.length > 1 && (
+                                        <div className="space-y-1">
+                                          <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                                            Copy {countries[0]} → all
+                                          </div>
+                                          <div className="flex flex-wrap gap-1">
+                                            {GRID_FIELDS.map((f) => (
+                                              <button
+                                                key={f.key}
+                                                type="button"
+                                                onClick={() => copyAcross(row.key, f.key)}
+                                                className="rounded-md border border-border px-2 py-0.5 text-[11px] text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                                              >
+                                                {f.short ?? f.label}
+                                              </button>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      )}
+                                      {moneyField("supplier_cogs", "COGS", cogsUsd)}
+                                      <p className="pl-[4.25rem] text-[11px] leading-tight text-muted-foreground">
+                                        Supplier unit price Ex Works — excludes all freight.
+                                      </p>
+                                      {moneyField("supplier_shipping", "Ship", shipUsd)}
+                                      <div className="flex items-center gap-1">
+                                        <span className="w-12 shrink-0 text-[11px] leading-tight text-muted-foreground">
+                                          IOSS $
+                                        </span>
+                                        <Input
+                                          inputMode="decimal"
+                                          value={cell.supplier_tax}
+                                          onChange={(e) =>
+                                            updateCell(row.key, country, {
+                                              supplier_tax: e.target.value,
+                                            })
+                                          }
+                                          onBlur={(e) =>
+                                            updateCell(row.key, country, {
+                                              supplier_tax: money2(e.target.value || 0),
+                                            })
+                                          }
+                                          disabled={!cellEditable}
+                                          aria-label={`Import tax per unit in USD (${country})`}
+                                          className="h-8 tnum text-[13px]"
+                                        />
+                                      </div>
+                                      <p className="pl-[3.25rem] text-[11px] leading-tight text-muted-foreground">
+                                        {isEuCountry(country)
+                                          ? "EU — $3.50/unit passthrough, always USD"
+                                          : "usually 0 — always USD"}
+                                      </p>
+                                      {rowEditable && rows.length > 1 && (
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-7 gap-1 px-1.5 text-[11px] text-muted-foreground"
+                                          onClick={() =>
+                                            setRows((prev) => prev.filter((r) => r.key !== row.key))
+                                          }
+                                        >
+                                          <Trash2 className="h-3 w-3" /> Remove variant
+                                        </Button>
+                                      )}
+                                    </div>
+
+                                    {/* Percentages and the USD chain. */}
+                                    <div className="space-y-2">
+                                      <div className="grid gap-2 sm:grid-cols-2">
+                                        <div className="space-y-1 rounded-lg border border-border/60 bg-background p-2">
+                                          <Label className="text-[11px] font-medium">
+                                            Agent fee %
+                                          </Label>
+                                          <div className="flex items-center justify-between gap-1.5">
+                                            <Input
+                                              type="number"
+                                              step="0.01"
+                                              min="0"
+                                              max="100"
+                                              value={feePctLabel}
+                                              onChange={(e) =>
+                                                updateCell(row.key, country, {
+                                                  fee_rate: (Number(e.target.value) || 0) / 100,
+                                                })
+                                              }
+                                              disabled={!cellEditable || cell.fee_included}
+                                              aria-label={`Agent fee % (${country})`}
+                                              className="h-8 w-[4.5rem] tnum text-[13px]"
+                                            />
+                                            <span className="tnum text-[13px] font-medium">
+                                              {formatUSD(feeUsd)}
+                                            </span>
+                                          </div>
+                                          {agentTier && (
+                                            <p className="text-[11px] leading-tight text-muted-foreground">
+                                              Tier: {pct(agentTier.rate)}
+                                              {agentTier.nextAt != null
+                                                ? ` · ${agentTier.count}/${agentTier.nextAt} paid orders to next tier`
+                                                : " · final tier"}
+                                            </p>
+                                          )}
+                                        </div>
+                                        <div className="space-y-1 rounded-lg border border-border/60 bg-background p-2">
+                                          <Label className="text-[11px] font-medium">
+                                            Margin %
+                                          </Label>
+                                          <div className="flex items-center justify-between gap-1.5">
+                                            <Input
+                                              type="number"
+                                              step="0.01"
+                                              min="0"
+                                              value={cell.margin_pct}
+                                              onChange={(e) =>
+                                                updateCell(row.key, country, {
+                                                  margin_pct: e.target.value,
+                                                })
+                                              }
+                                              onBlur={(e) =>
+                                                updateCell(row.key, country, {
+                                                  margin_pct: money2(e.target.value || 0),
+                                                })
+                                              }
+                                              disabled={!cellEditable}
+                                              aria-label={`Margin % (${country})`}
+                                              className="h-8 w-[4.5rem] tnum text-[13px]"
+                                            />
+                                            <span className="tnum text-[13px] font-medium">
+                                              {formatUSD(cellMargin(cell, rate))}
+                                            </span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                      {cell.fee_included && (
+                                        <p className="text-[11px] leading-tight text-muted-foreground">
+                                          Fee already included in the supplier cost — never applied
+                                          twice.
+                                        </p>
+                                      )}
+                                      {foreign && !cell.fee_included && (
+                                        <p className="tnum text-[11px] leading-tight text-muted-foreground">
+                                          Agent fee in supplier currency: {symbol}
+                                          {(num(cell.supplier_cogs) * cell.fee_rate).toFixed(2)}
+                                        </p>
+                                      )}
+                                      <div className="rounded-lg border border-border/60 bg-background p-2 text-[12px] text-muted-foreground">
+                                        <div className="grid min-h-6 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3">
+                                          <span>COGS (USD)</span>
+                                          <span className="tnum text-right">
+                                            {formatUSD(cogsUsd)}
+                                          </span>
+                                        </div>
+                                        {shipUsd > 0 && (
+                                          <div className="grid min-h-6 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3">
+                                            <span>Ship</span>
+                                            <span className="tnum text-right">
+                                              {formatUSD(shipUsd)}
+                                            </span>
+                                          </div>
+                                        )}
+                                        <div className="grid min-h-6 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3">
+                                          <span>
+                                            Agent fee ({feePctLabel}% of {symbol}
+                                            {num(cell.supplier_cogs).toFixed(2)})
+                                          </span>
+                                          <span className="tnum text-right">
+                                            {formatUSD(feeUsd)}
+                                          </span>
+                                        </div>
+                                        <div className="grid min-h-6 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 font-medium text-foreground">
+                                          <span>Sourcing cost</span>
+                                          <span className="tnum text-right">
+                                            {formatUSD(cellSourcingCost(cell, rate))}
+                                          </span>
+                                        </div>
+                                        <div className="grid min-h-6 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3">
+                                          <span>
+                                            FlySales margin ({marginPctLabel}% of{" "}
+                                            {formatUSD(cogsUsd)} COGS)
+                                          </span>
+                                          <span className="tnum text-right">
+                                            {formatUSD(cellMargin(cell, rate))}
+                                          </span>
+                                        </div>
+                                        {num(cell.supplier_tax) > 0 && (
+                                          <div className="grid min-h-6 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3">
+                                            <span>Tax passthrough</span>
+                                            <span className="tnum text-right">
+                                              {formatUSD(num(cell.supplier_tax))}
+                                            </span>
+                                          </div>
+                                        )}
+                                        <div className="mt-1 grid min-h-8 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 border-t border-border pt-1">
+                                          <span className="font-semibold uppercase text-foreground">
+                                            Client price
+                                          </span>
+                                          <span className="tnum text-right text-sm font-bold text-foreground">
+                                            {formatUSD(cellPrice(cell, rate))}
+                                          </span>
+                                        </div>
+                                      </div>
+                                      {locked && (
+                                        <LineStatusBadge
+                                          status={cell.status as "accepted" | "rejected"}
+                                        />
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {requestEditable && (
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="gap-1"
-                    disabled={saveOption.isPending}
-                    onClick={() => {
-                      setOptionId(null);
-                      saveOption.mutate({});
-                    }}
+                    className="gap-1.5"
+                    onClick={() =>
+                      setRows((prev) => [...prev, emptyVariant(countries, defaultMargin)])
+                    }
                   >
-                    <Plus className="h-3.5 w-3.5" /> Add option
+                    <Plus className="h-3.5 w-3.5" /> Add variant (all {countries.length}{" "}
+                    {countries.length === 1 ? "country" : "countries"})
                   </Button>
                 )}
-              </div>
-              {activeOption && (
-                <div className="grid gap-3 sm:grid-cols-4">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">Supplier (internal)</Label>
-                    <Input
-                      defaultValue={activeOption.supplier_name}
-                      placeholder="Supplier name"
-                      onBlur={(e) => {
-                        if (e.target.value.trim() !== activeOption.supplier_name) {
-                          saveOption.mutate({ supplier_name: e.target.value.trim() });
-                        }
-                      }}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">Quality</Label>
-                    <div className="grid grid-cols-3 gap-1">
-                      {[1, 2, 3].map((q) => (
-                        <Button
-                          key={q}
-                          type="button"
-                          size="sm"
-                          className="px-0"
-                          variant={activeOption.quality === q ? "default" : "outline"}
-                          onClick={() => saveOption.mutate({ quality: q })}
-                        >
-                          {q === 1 ? "Low" : q === 2 ? "Med" : "High"}
-                        </Button>
-                      ))}
+
+                {rows.length > 0 && (
+                  <div className="grid grid-cols-3 gap-px overflow-hidden rounded-md border border-border bg-border text-sm">
+                    <div className="bg-muted/40 p-3">
+                      <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                        Grid
+                      </div>
+                      <div className="tnum font-medium">
+                        {rows.length} variant{rows.length === 1 ? "" : "s"} × {countries.length}{" "}
+                        {countries.length === 1 ? "country" : "countries"}
+                      </div>
+                    </div>
+                    <div className="bg-muted/40 p-3">
+                      <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                        Lowest unit price
+                      </div>
+                      <div className="tnum font-medium">{formatUSD(minPrice)}</div>
+                    </div>
+                    <div className="bg-muted/40 p-3">
+                      <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                        Highest unit price
+                      </div>
+                      <div className="tnum font-semibold">{formatUSD(maxPrice)}</div>
                     </div>
                   </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">Shipping lead (days)</Label>
-                    <Input
-                      type="number"
-                      step="0.1"
-                      defaultValue={activeOption.shipping_lead_days ?? ""}
-                      onBlur={(e) =>
-                        saveOption.mutate({
-                          shipping_lead_days: e.target.value === "" ? null : Number(e.target.value),
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="flex items-end gap-2">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant={activeOption.recommended ? "default" : "outline"}
-                      onClick={() => saveOption.mutate({ recommended: !activeOption.recommended })}
-                    >
-                      {activeOption.recommended ? "Recommended" : "Mark recommended"}
-                    </Button>
-                    {!activeOption.accepted_at && options.length > 1 && (
+                )}
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="aq-notes">Internal notes (admin only)</Label>
+                  <Textarea
+                    id="aq-notes"
+                    rows={3}
+                    value={adminNotes}
+                    onChange={(e) => setAdminNotes(e.target.value)}
+                  />
+                </div>
+                {requestEditable && (
+                  <div className="sticky bottom-0 -mx-6 flex flex-wrap items-center gap-3 border-t border-border bg-card/95 px-6 py-3 backdrop-blur">
+                    {dirty ? (
+                      <span className="text-sm font-medium text-amber-600 dark:text-amber-400">
+                        Unsaved changes
+                      </span>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">All changes saved</span>
+                    )}
+                    <div className="ml-auto flex items-center gap-2">
                       <Button
                         type="button"
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => deleteOption.mutate(activeOption.id)}
+                        variant={dirty ? "default" : "outline"}
+                        disabled={save.isPending || publish.isPending || !dirty}
+                        onClick={() => save.mutate()}
                       >
-                        <Trash2 className="h-3.5 w-3.5" />
+                        {save.isPending ? "Saving…" : "Save changes"}
                       </Button>
+                      <Button
+                        type="submit"
+                        variant={dirty ? "outline" : "default"}
+                        disabled={dirty || save.isPending || publish.isPending}
+                        title={dirty ? "Save your changes first" : undefined}
+                      >
+                        {publish.isPending ? "Publishing…" : "Publish quote to client"}
+                      </Button>
+                    </div>
+                    {dirty && (
+                      <p className="w-full text-xs text-muted-foreground">
+                        Save your changes first
+                      </p>
                     )}
                   </div>
-                </div>
-              )}
-              <p className="text-xs text-muted-foreground">
-                Clients see these as anonymous Option A/B/C — never the supplier, the cost chain or
-                the margin. Publishing the grid below publishes the selected option.
-              </p>
-            </div>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (dirty) {
-                  toast.error("Save your changes first");
-                  return;
-                }
-                publish.mutate();
-              }}
-              className="space-y-4"
-            >
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="aq-ref">Internal reference</Label>
-                  <Input
-                    id="aq-ref"
-                    value={internalReference}
-                    onChange={(e) => setInternalReference(e.target.value)}
-                    placeholder="e.g. Alibaba #4471"
-                    disabled={!requestEditable}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="aq-valid">Valid until</Label>
-                  <p className="text-[11px] text-muted-foreground">default: 7 days</p>
-                  <Input
-                    id="aq-valid"
-                    type="date"
-                    placeholder="default: 7 days"
-                    title="Leave empty and the quote stays valid for 7 days from publish."
-                    value={validUntil}
-                    onChange={(e) => setValidUntil(e.target.value)}
-                    disabled={!requestEditable}
-                  />
-                </div>
-              </div>
-
-              {rows.length > 0 && (
-                <div className="overflow-hidden rounded-lg border border-border">
-                  {/* Comparison first: one compact line per variant × destination,
-                      with the full editor one click away. */}
-                  <div
-                    className={cn(
-                      COMPACT_COLS,
-                      "grid items-center gap-x-2 border-b border-border bg-muted/40 px-3 py-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground",
-                    )}
-                  >
-                    <span>Variant</span>
-                    <span>Dest.</span>
-                    <span className="text-right">COGS</span>
-                    <span className="text-right">Fee</span>
-                    <span className="text-right">Margin</span>
-                    <span className="text-right">Client price</span>
-                    <span />
-                  </div>
-                  {rows.map((row) => {
-                    const rowLocked = Object.values(row.cells).some(cellLocked);
-                    const rowEditable = requestEditable && !rowLocked;
-                    return (
-                      <div key={row.key}>
-                        {countries.map((country) => {
-                          const cell = row.cells[country] ?? emptyCell(country);
-                          const locked = cellLocked(cell);
-                          const cellEditable = requestEditable && !locked;
-                          const rate = cellRate(cell, todayFx);
-                          const foreign = cell.currency !== "USD";
-                          const frozen = cell.fx?.currency === cell.currency;
-                          const rateDate = frozen
-                            ? (cell.fx?.date ?? null)
-                            : (todayFx?.rate_date ?? null);
-                          const symbol = CURRENCY_SYMBOL[cell.currency];
-                          const cogsUsd = cellCogsUsd(cell, rate);
-                          const shipUsd = cellShipUsd(cell, rate);
-                          const feeUsd = cellFee(cell, rate);
-                          const feePctLabel = cell.fee_included ? "0.00" : money2(cell.fee_rate * 100);
-                          const marginPctLabel = money2(cell.margin_pct);
-                          const cellKey = `${row.key}::${country}`;
-                          const expanded = openCell === cellKey;
-                          const conversionLine = (usd: number) =>
-                            rate > 0
-                              ? `→ ${formatUSD(usd)} @ ${rate.toFixed(4)} (${frozen ? "frozen" : "today"}${rateDate ? ` ${rateDate}` : ""})`
-                              : "No exchange rate available yet — save once a rate is published.";
-                          const moneyField = (
-                            key: "supplier_cogs" | "supplier_shipping",
-                            label: string,
-                            usd: number,
-                          ) => (
-                            <div className="space-y-0.5">
-                              <div className="flex items-center gap-1">
-                                <span className="w-12 shrink-0 text-[11px] leading-tight text-muted-foreground">
-                                  {label}
-                                </span>
-                                <Select
-                                  value={cell.currency}
-                                  onValueChange={(v) =>
-                                    updateCell(row.key, country, {
-                                      currency: v as SupplierCurrency,
-                                    })
-                                  }
-                                  disabled={!cellEditable}
-                                >
-                                  <SelectTrigger
-                                    className="h-8 w-[4.5rem] text-xs"
-                                    aria-label={`Currency (${country})`}
-                                  >
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {SUPPLIER_CURRENCIES.map((c) => (
-                                      <SelectItem key={c} value={c} className="text-xs">
-                                        {CURRENCY_LABEL[c]}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                                <Input
-                                  inputMode="decimal"
-                                  value={cell[key]}
-                                  onChange={(e) =>
-                                    updateCell(row.key, country, { [key]: e.target.value })
-                                  }
-                                  onBlur={(e) =>
-                                    updateCell(row.key, country, {
-                                      [key]: money2(e.target.value || 0),
-                                    })
-                                  }
-                                  disabled={!cellEditable}
-                                  aria-label={`${label} in ${cell.currency} (${country})`}
-                                  className="h-8 tnum text-[13px]"
-                                />
-                              </div>
-                              {foreign && (
-                                <p className="tnum pl-[4.25rem] text-[11px] leading-tight text-muted-foreground">
-                                  {conversionLine(usd)}
-                                </p>
-                              )}
-                            </div>
-                          );
-                          return (
-                            <div key={country} className="border-b border-border last:border-b-0">
-                              <button
-                                type="button"
-                                aria-expanded={expanded}
-                                onClick={() => setOpenCell(expanded ? null : cellKey)}
-                                className={cn(
-                                  COMPACT_COLS,
-                                  "grid w-full items-center gap-x-2 px-3 py-2 text-left text-[13px] transition-colors hover:bg-muted/40",
-                                  expanded && "bg-muted/40",
-                                )}
-                              >
-                                <span className="min-w-0 truncate">
-                                  <span className="font-medium">
-                                    {row.label || "Untitled variant"}
-                                  </span>
-                                  <span className="ml-1.5 font-mono text-[11px] text-muted-foreground">
-                                    {row.sku ?? "SKU on save"}
-                                  </span>
-                                </span>
-                                <span className="text-xs text-muted-foreground">{country}</span>
-                                <span className="tnum text-right">{formatUSD(cogsUsd)}</span>
-                                <span className="tnum text-right">{formatUSD(feeUsd)}</span>
-                                <span className="tnum text-right">
-                                  {formatUSD(cellMargin(cell, rate))}
-                                </span>
-                                <span className="tnum text-right font-semibold">
-                                  {formatUSD(cellPrice(cell, rate))}
-                                </span>
-                                <ChevronDown
-                                  className={cn(
-                                    "h-3.5 w-3.5 text-muted-foreground transition-transform duration-150",
-                                    expanded && "rotate-180",
-                                  )}
-                                />
-                              </button>
-
-                              {expanded && (
-                                <div className="grid gap-4 border-t border-border bg-muted/15 p-3 lg:grid-cols-2">
-                                  {/* Variant identity and terms. */}
-                                  <div className="space-y-2">
-                                    <Input
-                                      value={row.label}
-                                      onChange={(e) =>
-                                        updateRow(row.key, { label: e.target.value })
-                                      }
-                                      placeholder='e.g. "20cm", "Red / L"'
-                                      disabled={!rowEditable}
-                                      aria-label="Variant label"
-                                      className="h-8 text-[13px]"
-                                    />
-                                    <div className="grid grid-cols-2 gap-2">
-                                      <Input
-                                        type="number"
-                                        min={1}
-                                        value={row.moq}
-                                        onChange={(e) => updateRow(row.key, { moq: e.target.value })}
-                                        disabled={!rowEditable}
-                                        placeholder="MOQ"
-                                        aria-label="MOQ"
-                                        className="h-8 tnum text-[13px] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                                      />
-                                      <Input
-                                        type="number"
-                                        min={0}
-                                        value={row.lead_time_days}
-                                        onChange={(e) =>
-                                          updateRow(row.key, { lead_time_days: e.target.value })
-                                        }
-                                        disabled={!rowEditable}
-                                        placeholder="Lead days"
-                                        aria-label="Lead time (days)"
-                                        className="h-8 tnum text-[13px] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                                      />
-                                    </div>
-                                    {rowEditable && countries.length > 1 && (
-                                      <div className="space-y-1">
-                                        <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                                          Copy {countries[0]} → all
-                                        </div>
-                                        <div className="flex flex-wrap gap-1">
-                                          {GRID_FIELDS.map((f) => (
-                                            <button
-                                              key={f.key}
-                                              type="button"
-                                              onClick={() => copyAcross(row.key, f.key)}
-                                              className="rounded-md border border-border px-2 py-0.5 text-[11px] text-muted-foreground hover:border-primary/50 hover:text-foreground"
-                                            >
-                                              {f.short ?? f.label}
-                                            </button>
-                                          ))}
-                                        </div>
-                                      </div>
-                                    )}
-                                    {moneyField("supplier_cogs", "COGS", cogsUsd)}
-                                    <p className="pl-[4.25rem] text-[11px] leading-tight text-muted-foreground">
-                                      Supplier unit price Ex Works — excludes all freight.
-                                    </p>
-                                    {moneyField("supplier_shipping", "Ship", shipUsd)}
-                                    <div className="flex items-center gap-1">
-                                      <span className="w-12 shrink-0 text-[11px] leading-tight text-muted-foreground">
-                                        IOSS $
-                                      </span>
-                                      <Input
-                                        inputMode="decimal"
-                                        value={cell.supplier_tax}
-                                        onChange={(e) =>
-                                          updateCell(row.key, country, {
-                                            supplier_tax: e.target.value,
-                                          })
-                                        }
-                                        onBlur={(e) =>
-                                          updateCell(row.key, country, {
-                                            supplier_tax: money2(e.target.value || 0),
-                                          })
-                                        }
-                                        disabled={!cellEditable}
-                                        aria-label={`Import tax per unit in USD (${country})`}
-                                        className="h-8 tnum text-[13px]"
-                                      />
-                                    </div>
-                                    <p className="pl-[3.25rem] text-[11px] leading-tight text-muted-foreground">
-                                      {isEuCountry(country)
-                                        ? "EU — $3.50/unit passthrough, always USD"
-                                        : "usually 0 — always USD"}
-                                    </p>
-                                    {rowEditable && rows.length > 1 && (
-                                      <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-7 gap-1 px-1.5 text-[11px] text-muted-foreground"
-                                        onClick={() =>
-                                          setRows((prev) => prev.filter((r) => r.key !== row.key))
-                                        }
-                                      >
-                                        <Trash2 className="h-3 w-3" /> Remove variant
-                                      </Button>
-                                    )}
-                                  </div>
-
-                                  {/* Percentages and the USD chain. */}
-                                  <div className="space-y-2">
-                                    <div className="grid gap-2 sm:grid-cols-2">
-                                      <div className="space-y-1 rounded-lg border border-border/60 bg-background p-2">
-                                        <Label className="text-[11px] font-medium">Agent fee %</Label>
-                                        <div className="flex items-center justify-between gap-1.5">
-                                          <Input
-                                            type="number"
-                                            step="0.01"
-                                            min="0"
-                                            max="100"
-                                            value={feePctLabel}
-                                            onChange={(e) =>
-                                              updateCell(row.key, country, {
-                                                fee_rate: (Number(e.target.value) || 0) / 100,
-                                              })
-                                            }
-                                            disabled={!cellEditable || cell.fee_included}
-                                            aria-label={`Agent fee % (${country})`}
-                                            className="h-8 w-[4.5rem] tnum text-[13px]"
-                                          />
-                                          <span className="tnum text-[13px] font-medium">
-                                            {formatUSD(feeUsd)}
-                                          </span>
-                                        </div>
-                                        {agentTier && (
-                                          <p className="text-[11px] leading-tight text-muted-foreground">
-                                            Tier: {pct(agentTier.rate)}
-                                            {agentTier.nextAt != null
-                                              ? ` · ${agentTier.count}/${agentTier.nextAt} paid orders to next tier`
-                                              : " · final tier"}
-                                          </p>
-                                        )}
-                                      </div>
-                                      <div className="space-y-1 rounded-lg border border-border/60 bg-background p-2">
-                                        <Label className="text-[11px] font-medium">Margin %</Label>
-                                        <div className="flex items-center justify-between gap-1.5">
-                                          <Input
-                                            type="number"
-                                            step="0.01"
-                                            min="0"
-                                            value={cell.margin_pct}
-                                            onChange={(e) =>
-                                              updateCell(row.key, country, {
-                                                margin_pct: e.target.value,
-                                              })
-                                            }
-                                            onBlur={(e) =>
-                                              updateCell(row.key, country, {
-                                                margin_pct: money2(e.target.value || 0),
-                                              })
-                                            }
-                                            disabled={!cellEditable}
-                                            aria-label={`Margin % (${country})`}
-                                            className="h-8 w-[4.5rem] tnum text-[13px]"
-                                          />
-                                          <span className="tnum text-[13px] font-medium">
-                                            {formatUSD(cellMargin(cell, rate))}
-                                          </span>
-                                        </div>
-                                      </div>
-                                    </div>
-                                    {cell.fee_included && (
-                                      <p className="text-[11px] leading-tight text-muted-foreground">
-                                        Fee already included in the supplier cost — never applied
-                                        twice.
-                                      </p>
-                                    )}
-                                    {foreign && !cell.fee_included && (
-                                      <p className="tnum text-[11px] leading-tight text-muted-foreground">
-                                        Agent fee in supplier currency: {symbol}
-                                        {(num(cell.supplier_cogs) * cell.fee_rate).toFixed(2)}
-                                      </p>
-                                    )}
-                                    <div className="rounded-lg border border-border/60 bg-background p-2 text-[12px] text-muted-foreground">
-                                      <div className="grid min-h-6 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3">
-                                        <span>COGS (USD)</span>
-                                        <span className="tnum text-right">
-                                          {formatUSD(cogsUsd)}
-                                        </span>
-                                      </div>
-                                      {shipUsd > 0 && (
-                                        <div className="grid min-h-6 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3">
-                                          <span>Ship</span>
-                                          <span className="tnum text-right">
-                                            {formatUSD(shipUsd)}
-                                          </span>
-                                        </div>
-                                      )}
-                                      <div className="grid min-h-6 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3">
-                                        <span>
-                                          Agent fee ({feePctLabel}% of {symbol}
-                                          {num(cell.supplier_cogs).toFixed(2)})
-                                        </span>
-                                        <span className="tnum text-right">{formatUSD(feeUsd)}</span>
-                                      </div>
-                                      <div className="grid min-h-6 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 font-medium text-foreground">
-                                        <span>Sourcing cost</span>
-                                        <span className="tnum text-right">
-                                          {formatUSD(cellSourcingCost(cell, rate))}
-                                        </span>
-                                      </div>
-                                      <div className="grid min-h-6 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3">
-                                        <span>
-                                          FlySales margin ({marginPctLabel}% of {formatUSD(cogsUsd)}{" "}
-                                          COGS)
-                                        </span>
-                                        <span className="tnum text-right">
-                                          {formatUSD(cellMargin(cell, rate))}
-                                        </span>
-                                      </div>
-                                      {num(cell.supplier_tax) > 0 && (
-                                        <div className="grid min-h-6 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3">
-                                          <span>Tax passthrough</span>
-                                          <span className="tnum text-right">
-                                            {formatUSD(num(cell.supplier_tax))}
-                                          </span>
-                                        </div>
-                                      )}
-                                      <div className="mt-1 grid min-h-8 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 border-t border-border pt-1">
-                                        <span className="font-semibold uppercase text-foreground">
-                                          Client price
-                                        </span>
-                                        <span className="tnum text-right text-sm font-bold text-foreground">
-                                          {formatUSD(cellPrice(cell, rate))}
-                                        </span>
-                                      </div>
-                                    </div>
-                                    {locked && (
-                                      <LineStatusBadge status={cell.status as "accepted" | "rejected"} />
-                                    )}
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              {requestEditable && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="gap-1.5"
-                  onClick={() =>
-                    setRows((prev) => [...prev, emptyVariant(countries, defaultMargin)])
-                  }
-                >
-                  <Plus className="h-3.5 w-3.5" /> Add variant (all {countries.length}{" "}
-                  {countries.length === 1 ? "country" : "countries"})
-                </Button>
-              )}
-
-              {rows.length > 0 && (
-                <div className="grid grid-cols-3 gap-px overflow-hidden rounded-md border border-border bg-border text-sm">
-                  <div className="bg-muted/40 p-3">
-                    <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                      Grid
-                    </div>
-                    <div className="tnum font-medium">
-                      {rows.length} variant{rows.length === 1 ? "" : "s"} × {countries.length}{" "}
-                      {countries.length === 1 ? "country" : "countries"}
-                    </div>
-                  </div>
-                  <div className="bg-muted/40 p-3">
-                    <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                      Lowest unit price
-                    </div>
-                    <div className="tnum font-medium">{formatUSD(minPrice)}</div>
-                  </div>
-                  <div className="bg-muted/40 p-3">
-                    <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                      Highest unit price
-                    </div>
-                    <div className="tnum font-semibold">{formatUSD(maxPrice)}</div>
-                  </div>
-                </div>
-              )}
-
-              <div className="space-y-1.5">
-                <Label htmlFor="aq-notes">Internal notes (admin only)</Label>
-                <Textarea
-                  id="aq-notes"
-                  rows={3}
-                  value={adminNotes}
-                  onChange={(e) => setAdminNotes(e.target.value)}
-                />
-              </div>
-              {requestEditable && (
-                <div className="sticky bottom-0 -mx-6 flex flex-wrap items-center gap-3 border-t border-border bg-card/95 px-6 py-3 backdrop-blur">
-                  {dirty ? (
-                    <span className="text-sm font-medium text-amber-600 dark:text-amber-400">
-                      Unsaved changes
-                    </span>
-                  ) : (
-                    <span className="text-sm text-muted-foreground">All changes saved</span>
-                  )}
-                  <div className="ml-auto flex items-center gap-2">
-                    <Button
-                      type="button"
-                      variant={dirty ? "default" : "outline"}
-                      disabled={save.isPending || publish.isPending || !dirty}
-                      onClick={() => save.mutate()}
-                    >
-                      {save.isPending ? "Saving…" : "Save changes"}
-                    </Button>
-                    <Button
-                      type="submit"
-                      variant={dirty ? "outline" : "default"}
-                      disabled={dirty || save.isPending || publish.isPending}
-                      title={dirty ? "Save your changes first" : undefined}
-                    >
-                      {publish.isPending ? "Publishing…" : "Publish quote to client"}
-                    </Button>
-                  </div>
-                  {dirty && (
-                    <p className="w-full text-xs text-muted-foreground">Save your changes first</p>
-                  )}
-                </div>
-              )}
-            </form>
-          </CardContent>
-        </Card>
+                )}
+              </form>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>
