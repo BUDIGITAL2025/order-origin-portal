@@ -89,7 +89,8 @@
   --surface-alt: #fafbf9;
   --hover: #eef0ea;
   --text: #1a1d20;
-  --text-muted: #6b7280;
+  /* Secondary text still has to be readable at 12–13px. */
+  --text-muted: #5b6270;
   --border: #e5e7e3;
 
   /* Canonical brand accent — one exact value in both themes. */
