@@ -397,6 +397,7 @@ export const adminListStockPurchases = createServerFn({ method: "POST" })
       .object({
         status: z
           .enum([
+            "awaiting_payment",
             "requested",
             "freight_quoted",
             "paid",

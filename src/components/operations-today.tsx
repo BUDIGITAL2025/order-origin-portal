@@ -68,6 +68,27 @@ export function OperationsToday() {
       critical: false,
     },
     {
+      key: "awaiting-payment",
+      label: "Awaiting payment",
+      value: data?.awaiting_payment ?? 0,
+      hint:
+        data?.awaiting_payment_days != null
+          ? `oldest ${data.awaiting_payment_days}d waiting`
+          : undefined,
+      to: "/admin/stock-purchases",
+      search: {},
+      // From day 3 an unpaid purchase needs a phone call, not patience.
+      critical: (data?.awaiting_payment_days ?? 0) >= 3 && (data?.awaiting_payment ?? 0) > 0,
+    },
+    {
+      key: "supplier-payments",
+      label: "Supplier payments due",
+      value: data?.supplier_payments_due ?? 0,
+      to: "/admin/supplier-payments",
+      search: {},
+      critical: false,
+    },
+    {
       key: "claims",
       label: "Claims open",
       value: data?.claims_open ?? 0,
@@ -78,7 +99,7 @@ export function OperationsToday() {
   ] as const;
 
   return (
-    <div className="mb-4 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-border bg-border sm:grid-cols-4 xl:grid-cols-7">
+    <div className="mb-4 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-border bg-border sm:grid-cols-4 xl:grid-cols-9">
       {cards.map((c) => {
         const alert = c.critical && c.value > 0;
         const warn = !c.critical && c.value > 0 && c.key === "low";

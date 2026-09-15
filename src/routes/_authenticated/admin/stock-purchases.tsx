@@ -28,9 +28,10 @@ import {
   adminQuoteFreight,
 } from "@/lib/purchases.functions";
 
-type StatusFilter = "all" | "requested" | "paid" | "in_production" | "shipped" | "delivered";
+type StatusFilter = "all" | "awaiting_payment" | "requested" | "paid" | "in_production" | "shipped" | "delivered";
 
 const STATUS_TONE: Record<string, "neutral" | "primary" | "success" | "warning" | "danger"> = {
+  awaiting_payment: "warning",
   requested: "warning",
   freight_quoted: "warning",
   paid: "primary",
