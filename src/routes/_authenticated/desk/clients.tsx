@@ -115,7 +115,9 @@ function DeskClientsPage() {
                 <ul className="mt-3 space-y-1 border-t border-border pt-3">
                   {c.quotes.map((q) => (
                     <li key={q.id} className="flex items-center justify-between gap-2">
-                      <span className="truncate text-sm">{q.product_name || "Product request"}</span>
+                      <span className="truncate text-sm">
+                        {q.product_name || "Product request"}
+                      </span>
                       <span className="flex shrink-0 items-center gap-2">
                         {q.unread > 0 ? <Chip tone="warning">{q.unread}</Chip> : null}
                         <Button asChild size="sm" variant="outline">

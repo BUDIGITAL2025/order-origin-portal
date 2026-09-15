@@ -2,7 +2,8 @@
  * One conversation per quote. Three viewpoints share it, each anonymized:
  *
  *  - client    → sees "FlySales Team" / "FlySales Sourcing Team", never a person
- *  - sourcing  → sees "Client #XXXXXXXX", never a name, company or workspace
+ *  - sourcing  → sees the client's company and contact first name, never a
+ *                contact channel, and always posts as FlySales Sourcing Team
  *  - admin     → sees every role, and can reply in any thread as FlySales
  *
  * The real author id is always stored server-side, so the thread stays

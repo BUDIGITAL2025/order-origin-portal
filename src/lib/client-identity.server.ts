@@ -49,7 +49,9 @@ export async function clientIdentityByStore(
     .select("id, store_name, entity_id")
     .in("id", ids);
 
-  const entityIds = [...new Set((stores ?? []).map((s) => s.entity_id).filter(Boolean))] as string[];
+  const entityIds = [
+    ...new Set((stores ?? []).map((s) => s.entity_id).filter(Boolean)),
+  ] as string[];
   const { data: entities } = entityIds.length
     ? await admin.from("entities").select("id, legal_name, account_id").in("id", entityIds)
     : { data: [] as Array<{ id: string; legal_name: string | null; account_id: string | null }> };
