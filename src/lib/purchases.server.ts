@@ -43,14 +43,16 @@ export function purchaseTotal(p: {
 }
 
 export function isPayable(p: StockPurchase): boolean {
-  if (p.status !== "requested" && p.status !== "freight_quoted") return false;
+  if (p.status !== "awaiting_payment" && p.status !== "requested" && p.status !== "freight_quoted") {
+    return false;
+  }
   return purchaseTotal(p) != null;
 }
 
 /** Human-readable timeline steps, in order, for the client view. */
 export const PURCHASE_STEPS: Record<string, string[]> = {
-  flysales: ["requested", "freight_quoted", "paid", "in_production", "shipped", "delivered"],
-  direct: ["requested", "freight_quoted", "paid", "in_production", "shipped", "delivered"],
+  flysales: ["awaiting_payment", "freight_quoted", "paid", "in_production", "shipped", "delivered"],
+  direct: ["awaiting_payment", "freight_quoted", "paid", "in_production", "shipped", "delivered"],
 };
 
 /**
@@ -71,6 +73,7 @@ export function publicPurchaseStatus(status: string): string {
 }
 
 export const PURCHASE_STATUS_LABELS: Record<string, string> = {
+  awaiting_payment: "Awaiting payment",
   requested: "Requested",
   freight_quoted: "Freight quoted",
   paid: "Paid",
@@ -85,6 +88,123 @@ export const PURCHASE_STATUS_LABELS: Record<string, string> = {
   cancelled: "Cancelled",
 };
 
+
+/** Unpaid purchases die after this many days; the quote itself stays valid. */
+export const PURCHASE_PAYMENT_DAYS = 7;
+
+/**
+ * Acceptance creates the work: one purchase per accepted variant, sitting in
+ * `awaiting_payment` until the client pays from the wallet. Payment is the
+ * only trigger — nothing reaches the sourcing agent before it settles.
+ *
+ * Freight is not quoted again here: the published client price already
+ * carries the shipping the delivery mode requires, so the payable total is
+ * known the moment the client accepts.
+ *
+ * Idempotent: a variant that already has a live purchase is skipped.
+ */
+export async function createPurchasesForAcceptance(
+  admin: Admin,
+  quoteRequestId: string,
+  createdBy: string,
+): Promise<string[]> {
+  const { data: quote } = await admin
+    .from("quote_requests")
+    .select("id, store_id, product_name, delivery_mode, delivery_address, stores(entity_id)")
+    .eq("id", quoteRequestId)
+    .maybeSingle();
+  const chain = quote as unknown as
+    | {
+        id: string;
+        store_id: string;
+        product_name: string | null;
+        delivery_mode: string | null;
+        delivery_address: string | null;
+        stores: { entity_id: string } | null;
+      }
+    | null;
+  if (!chain?.stores?.entity_id) return [];
+
+  const mode = chain.delivery_mode ?? "warehouse";
+  // FlySales fulfilment is the only mode that stocks our warehouse.
+  const path = mode === "fulfilment" ? "flysales" : "direct";
+
+  const { data: lines } = await admin
+    .from("quote_lines")
+    .select(
+      "id, variant_label, sku, unit_price, moq, accepted_quantity, supplier_unit_price, sourcing_fee_rate, sourced_by",
+    )
+    .eq("quote_request_id", quoteRequestId)
+    .eq("status", "accepted")
+    .not("unit_price", "is", null);
+  if (!lines?.length) return [];
+
+  const { data: existing } = await admin
+    .from("stock_purchases")
+    .select("id, quote_line_id, status")
+    .in(
+      "quote_line_id",
+      lines.map((l) => l.id),
+    );
+  const live = new Set(
+    (existing ?? [])
+      .filter((p) => p.status !== "cancelled")
+      .map((p) => p.quote_line_id)
+      .filter(Boolean) as string[],
+  );
+
+  const created: string[] = [];
+  for (const line of lines) {
+    if (live.has(line.id)) continue;
+    const quantity = Number(line.accepted_quantity ?? line.moq ?? 1);
+    if (!(quantity > 0)) continue;
+
+    const { data: product } = await admin
+      .from("products")
+      .select("id, product_name, sku")
+      .eq("quote_line_id", line.id)
+      .maybeSingle();
+
+    const unitPrice = Number(line.unit_price);
+    const goodsTotal = round2(unitPrice * quantity);
+    const { data: row, error } = await admin
+      .from("stock_purchases")
+      .insert({
+        store_id: chain.store_id,
+        entity_id: chain.stores.entity_id,
+        quote_request_id: chain.id,
+        quote_line_id: line.id,
+        product_id: product?.id ?? null,
+        path,
+        status: "awaiting_payment",
+        product_name: product?.product_name ?? chain.product_name ?? "Product",
+        variant_label: line.variant_label,
+        sku: product?.sku ?? line.sku,
+        quantity,
+        unit_price: unitPrice,
+        goods_total: goodsTotal,
+        // Shipping already sits inside the published client price, so the
+        // total is payable immediately; EXW carries no freight at all.
+        freight_cost: 0,
+        import_cost: 0,
+        total_amount: goodsTotal,
+        // The PO carries the address only — never the client's company name.
+        delivery_address: mode === "warehouse" ? (chain.delivery_address ?? null) : null,
+        supplier_unit_price: line.supplier_unit_price,
+        sourcing_fee_rate: line.sourcing_fee_rate,
+        sourced_by: line.sourced_by,
+        created_by: createdBy,
+      })
+      .select("id")
+      .single();
+    if (error) {
+      console.error("purchase creation failed for line", line.id, error.message);
+      continue;
+    }
+    created.push(row.id);
+  }
+  return created;
+}
 
 /**
  * PATH A only: create the inbound shipment for a paid purchase. Marked
