@@ -285,6 +285,12 @@ export const feeWaivedSchema = z.object({
   fee_waived: z.boolean(),
 });
 
+/** Admin rename of a workspace (store). */
+export const storeNameSchema = z.object({
+  store_id: z.string().uuid(),
+  store_name: z.string().trim().min(1, "Enter a workspace name").max(120),
+});
+
 export const integrationModeSchema = z.object({
   store_id: z.string().uuid(),
   integration_mode: z.enum(["automatic", "manual"]),
