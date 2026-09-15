@@ -46,10 +46,22 @@ export function SummaryBar({
   items: StatItem[];
   className?: string | undefined;
 }) {
+  // The track follows the real number of metrics, so the strip never ends in
+  // an empty grey cell.
+  const wideCols =
+    [
+      "lg:grid-cols-1",
+      "lg:grid-cols-2",
+      "lg:grid-cols-3",
+      "lg:grid-cols-4",
+      "lg:grid-cols-5",
+      "lg:grid-cols-6",
+    ][Math.min(Math.max(items.length, 1), 6) - 1] ?? "lg:grid-cols-5";
   return (
     <div
       className={cn(
-        "mb-4 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-border bg-border sm:grid-cols-3 lg:grid-cols-5",
+        "mb-4 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-border bg-border sm:grid-cols-3",
+        wideCols,
         className,
       )}
     >
