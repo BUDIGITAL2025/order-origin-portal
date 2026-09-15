@@ -395,23 +395,25 @@ function AdminInventoryPage() {
         title="Inventory"
         description="Every connected workspace, sorted by reorder urgency."
         actions={
-          <Button
-            size="sm"
-            variant="outline"
-            className="rounded-full"
-            disabled={sync.isPending}
-            onClick={() => sync.mutate()}
-          >
-            <RefreshCw
-              className={sync.isPending ? "mr-2 h-3.5 w-3.5 animate-spin" : "mr-2 h-3.5 w-3.5"}
-            />
-            Sync now
-          </Button>
+          isAdmin ? (
+            <Button
+              size="sm"
+              variant="outline"
+              className="rounded-full"
+              disabled={sync.isPending}
+              onClick={() => sync.mutate()}
+            >
+              <RefreshCw
+                className={sync.isPending ? "mr-2 h-3.5 w-3.5 animate-spin" : "mr-2 h-3.5 w-3.5"}
+              />
+              Sync now
+            </Button>
+          ) : null
         }
       />
       <WorkspacePicker />
       <SectionTabs tabs={ADMIN_FULFILMENT_TABS} />
-      <OperationsToday />
+      {isAdmin ? <OperationsToday /> : null}
 
       <div className="mb-4">
         <FilterTabs tabs={VIEWS} value={view} onChange={setView} />
