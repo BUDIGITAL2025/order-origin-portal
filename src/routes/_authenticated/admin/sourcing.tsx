@@ -168,7 +168,15 @@ function AdminSourcingPage() {
             value: String(rows.filter((c) => c.active).length),
             tone: "success",
           },
-          { key: "pending", label: "Owed", value: formatUSD(pendingTotal), tone: "warning" },
+          {
+            key: "pending",
+            label: "Owed",
+            value: formatUSD(owedInLedger),
+            tone: "warning",
+            ...(unassignedOwed > 0.01
+              ? { hint: `incl. ${formatUSD(unassignedOwed)} from collaborators no longer listed` }
+              : {}),
+          },
           { key: "paid", label: "Paid out", value: formatUSD(settledTotal) },
         ]}
       />
