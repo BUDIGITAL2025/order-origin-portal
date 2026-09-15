@@ -182,6 +182,13 @@ export async function buildLifecycle(
       entities?: { legal_name?: string | null } | null;
     } | null;
 
+    // A quote line is one variant × country, so counting rows double-counts a
+    // variant quoted to several destinations. Variants are counted by SKU.
+    const variantCount = new Set(myLines.map((l) => (l.sku as string | null) ?? (l.id as string)))
+      .size;
+    const acceptedVariants = new Set(
+      accepted.map((l) => (l.sku as string | null) ?? (l.id as string)),
+    ).size;
     const sourcedAt = latest(myLines.map((l) => l.sourced_at as string | null));
     const sourcerId = (myLines.find((l) => l.sourced_by)?.sourced_by ?? q.assigned_sourcer) as
       string | null;
@@ -200,7 +207,7 @@ export async function buildLifecycle(
       stage("priced", null, {
         done: pricedDone,
         by: q.quoted_by ? (names.get(q.quoted_by as string) ?? "FlySales admin") : null,
-        detail: pricedDone ? `${myLines.length} variant${myLines.length === 1 ? "" : "s"}` : null,
+        detail: pricedDone ? `${variantCount} variant${variantCount === 1 ? "" : "s"}` : null,
       }),
       stage("published", q.quoted_at as string | null, {
         by: q.quoted_by ? (names.get(q.quoted_by as string) ?? "FlySales admin") : null,
@@ -208,8 +215,8 @@ export async function buildLifecycle(
       stage("accepted", latest(accepted.map((l) => l.responded_at as string | null)), {
         done: accepted.length > 0,
         by: chain?.entities?.legal_name ?? null,
-        detail: accepted.length
-          ? `${accepted.length} variant${accepted.length === 1 ? "" : "s"}, ${units} units`
+        detail: acceptedVariants
+          ? `${acceptedVariants} variant${acceptedVariants === 1 ? "" : "s"}, ${units} units`
           : null,
       }),
       stage("paid", paidAt, {

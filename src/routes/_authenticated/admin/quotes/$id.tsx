@@ -1,10 +1,19 @@
 import { createFileRoute, Link, useBlocker, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ChevronDown, Copy, MessageCircle, Plus, RefreshCw, Trash2 } from "lucide-react";
+import {
+  ArrowLeft,
+  ChevronDown,
+  Copy,
+  Info,
+  MessageCircle,
+  MoreHorizontal,
+  Plus,
+  RefreshCw,
+  Trash2,
+} from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { PageHeader } from "@/components/app-shell";
 import { LineStatusBadge, QuoteStatusBadge, TierBadge } from "@/components/status-badges";
 import { UrlPreviewCard } from "@/components/url-preview-card";
 import {
@@ -19,7 +28,16 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -94,7 +112,7 @@ function num(value: string): number {
 
 /** Shared column track for the compact variant table and its rows. */
 const COMPACT_COLS =
-  "grid-cols-[minmax(140px,1.6fr)_48px_repeat(4,minmax(76px,1fr))_16px] sm:gap-x-3";
+  "grid-cols-[minmax(150px,1.6fr)_44px_52px_56px_repeat(5,minmax(66px,1fr))_16px] sm:gap-x-3";
 
 type GridField = "supplier_cogs" | "supplier_shipping" | "supplier_tax" | "margin_pct";
 
@@ -715,255 +733,352 @@ function AdminQuoteDetailPage() {
   const revisable = quote.status === "quoted" || quote.status === "closed";
   const quoteRef = quoteRefFromSkus(rows.map((r) => r.sku));
 
+  /** Already sent once: the primary action updates prices instead of first publish. */
+  const alreadyPublished = quote.status === "quoted" || !!quote.quoted_at;
+  const summaryLine = [
+    client?.company_name,
+    countries.map((c) => countryName(c)).join(", ") || null,
+    deliveryLabel(quote.delivery_mode),
+    `${rows.length} variant${rows.length === 1 ? "" : "s"}`,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
   return (
     <div>
-      <PageHeader
-        title={quote.product_name || "Quote request"}
-        description={`Submitted ${formatDate(quote.created_at)}${countries.length > 0 ? ` · Ships to: ${countries.map((c) => countryName(c)).join(", ")}` : ""}${quote.internal_reference ? ` · Ref: ${quote.internal_reference}` : ""}${quote.supersedes_quote_id ? " · requote of an earlier request" : ""} · Delivery: ${deliveryLabel(quote.delivery_mode)}${Number(quote.revision_number ?? 1) > 1 ? ` · revision ${quote.revision_number}` : ""}${quoteRef ? ` · Ref ${quoteRef}` : ""}`}
-        actions={
-          <>
-            <Button asChild variant="ghost" size="sm" className="gap-1">
-              <Link to="/admin/quotes">
-                <ArrowLeft className="h-3.5 w-3.5" /> Queue
-              </Link>
-            </Button>
-            {revisable && (
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="outline" size="sm" className="gap-1.5">
-                    <RefreshCw className="h-3.5 w-3.5" /> Create revision
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Create a revision of this quote?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Clones the current pricing into a new editable revision where quantity,
-                      delivery, shipping and supplier fields can change. The client keeps the terms
-                      they already agreed until they approve the revision.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                      disabled={revision.isPending}
-                      onClick={() => revision.mutate()}
-                    >
-                      Create revision
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            )}
-            {requotable && (
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="outline" size="sm" className="gap-1.5">
-                    <RefreshCw className="h-3.5 w-3.5" /> Requote
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Requote this request?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Creates a new quote request (status: sourcing) with the same product, URL and
-                      notes. The original is never edited and the client's monthly quota is not
-                      affected.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                      disabled={requote.isPending}
-                      onClick={() => requote.mutate()}
-                    >
-                      Create requote
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            )}
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-1.5"
-              onClick={() => void copyBrief()}
-            >
-              <Copy className="h-3.5 w-3.5" /> Copy sourcing brief
-            </Button>
-            <Button variant="outline" size="sm" className="gap-1.5" onClick={sendWhatsApp}>
-              <MessageCircle className="h-3.5 w-3.5" /> Send via WhatsApp
-            </Button>
-          </>
-        }
-      />
+      {/* A short orientation line, then straight into pricing. */}
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="truncate text-2xl font-semibold tracking-tight">
+              {quote.product_name || "Quote request"}
+            </h1>
+            <QuoteStatusBadge status={quote.status} validUntil={quote.quote_valid_until} />
+          </div>
+          <p className="mt-1 text-sm text-muted-foreground">{summaryLine}</p>
+          <p className="text-[13px] text-muted-foreground">
+            {quote.quote_valid_until
+              ? `Valid until ${formatDate(quote.quote_valid_until)}`
+              : "Validity set on publish (7 days)"}
+            {Number(quote.revision_number ?? 1) > 1 ? ` · revision ${quote.revision_number}` : ""}
+            {quoteRef ? (
+              <>
+                {" · "}
+                <span className="font-mono">Ref {quoteRef}</span>
+              </>
+            ) : null}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button asChild variant="ghost" size="sm" className="gap-1">
+            <Link to="/admin/quotes">
+              <ArrowLeft className="h-3.5 w-3.5" /> Queue
+            </Link>
+          </Button>
+          {revisable && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-1.5">
+                  <RefreshCw className="h-3.5 w-3.5" /> Create revision
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Create a revision of this quote?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Clones the current pricing into a new editable revision where quantity,
+                    delivery, shipping and supplier fields can change. The client keeps the terms
+                    they already agreed until they approve the revision.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    disabled={revision.isPending}
+                    onClick={() => revision.mutate()}
+                  >
+                    Create revision
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
+          {requotable && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-1.5">
+                  <RefreshCw className="h-3.5 w-3.5" /> Requote
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Requote this request?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Creates a new quote request (status: sourcing) with the same product, URL and
+                    notes. The original is never edited and the client's monthly quota is not
+                    affected.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction disabled={requote.isPending} onClick={() => requote.mutate()}>
+                    Create requote
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-1.5" aria-label="More actions">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onSelect={() => void copyBrief()}>
+                <Copy className="h-3.5 w-3.5" /> Copy sourcing brief
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={sendWhatsApp}>
+                <MessageCircle className="h-3.5 w-3.5" /> Send via WhatsApp
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
 
       {/* Work on the left (~70%), context and conversation on the right. */}
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,2.3fr)_minmax(0,1fr)]">
         <div className="space-y-6 lg:order-2">
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base">Request</CardTitle>
-                <QuoteStatusBadge status={quote.status} validUntil={quote.quote_valid_until} />
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm">
-              <div>
-                <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                  Product URL
-                </div>
-                <a
-                  href={quote.product_url ?? "#"}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="break-all underline-offset-2 hover:underline"
+          <Collapsible>
+            <Card>
+              <CollapsibleTrigger asChild>
+                <button
+                  type="button"
+                  className="group flex w-full items-center justify-between gap-2 px-6 py-4 text-left transition-colors hover:bg-muted/40"
                 >
-                  {quote.product_url}
-                </a>
-              </div>
-              <div>
-                <div className="text-xs uppercase tracking-wide text-muted-foreground">Notes</div>
-                <p className="whitespace-pre-wrap">{quote.notes || "—"}</p>
-              </div>
-              <div>
-                <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                  Target countries
-                </div>
-                <p>{countries.map((c) => `${countryName(c)} (${c})`).join(", ") || "—"}</p>
-              </div>
-              {(data?.preview?.variants ?? []).length > 0 ? (
-                <div>
-                  <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                    Variants seen on page
-                  </div>
-                  <p>
-                    {(data?.preview?.variants ?? []).join(", ")}{" "}
-                    <span className="text-muted-foreground">— confirm which to quote</span>
-                  </p>
-                </div>
-              ) : (
-                <p className="text-xs text-muted-foreground">
-                  Client pasted a single-variant URL — confirm available variants before quoting.
-                </p>
-              )}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                    Volume / month
-                  </div>
-                  <div className="tnum">{quote.target_monthly_volume ?? "—"}</div>
-                </div>
-                <div>
-                  <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                    Client
+                  <span className="text-base font-semibold">Request details</span>
+                  <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-150 group-data-[state=open]:rotate-180" />
+                </button>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <CardContent className="space-y-3 text-sm">
+                  <div>
+                    <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                      Product URL
+                    </div>
+                    <a
+                      href={quote.product_url ?? "#"}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="break-all underline-offset-2 hover:underline"
+                    >
+                      {quote.product_url}
+                    </a>
                   </div>
                   <div>
-                    {client?.company_name ?? "—"} <TierBadge tier={clientTier} />
+                    <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                      Notes
+                    </div>
+                    <p className="whitespace-pre-wrap">{quote.notes || "—"}</p>
                   </div>
-                  <div className="text-xs text-muted-foreground">
-                    {client?.store_url ?? ""}
-                    {client?.tier_override
-                      ? ` · override (auto: ${TIER_LABELS[client?.pricing_tier ?? "starter"] ?? client?.pricing_tier})`
-                      : ` · auto · ${Number(client?.avg_daily_units_30d ?? 0).toFixed(1)} units/day`}
+                  <div>
+                    <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                      Target countries
+                    </div>
+                    <p>{countries.map((c) => `${countryName(c)} (${c})`).join(", ") || "—"}</p>
                   </div>
-                </div>
-              </div>
-              {((images && images.urls.length > 0) || externalImages.length > 0) && (
-                <div>
-                  <div className="mb-1.5 text-xs uppercase tracking-wide text-muted-foreground">
-                    Images
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {(images?.urls ?? []).map((img) => (
-                      <a key={img.path} href={img.url} target="_blank" rel="noreferrer">
-                        <img
-                          src={img.url}
-                          alt="Quote attachment"
-                          className="h-16 w-16 rounded-md border border-border object-cover"
-                        />
-                      </a>
-                    ))}
-                    {externalImages.map((src) => (
-                      <a key={src} href={src} target="_blank" rel="noreferrer">
-                        <img
-                          src={src}
-                          alt="Scraped product image"
-                          className="h-16 w-16 rounded-md border border-border object-cover"
-                        />
-                      </a>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {(quote.status === "submitted" || quote.status === "sourcing") && (
-                <div className="flex gap-2 pt-1">
-                  {quote.status === "submitted" && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={setStatus.isPending}
-                      onClick={() => setStatus.mutate("sourcing")}
-                    >
-                      Mark as sourcing
-                    </Button>
+                  {(data?.preview?.variants ?? []).length > 0 ? (
+                    <div>
+                      <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                        Variants seen on page
+                      </div>
+                      <p>
+                        {(data?.preview?.variants ?? []).join(", ")}{" "}
+                        <span className="text-muted-foreground">— confirm which to quote</span>
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      Client pasted a single-variant URL — confirm available variants before
+                      quoting.
+                    </p>
                   )}
-                  {quote.status === "sourcing" && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={setStatus.isPending}
-                      onClick={() => setStatus.mutate("submitted")}
-                    >
-                      Back to submitted
-                    </Button>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                        Volume / month
+                      </div>
+                      <div className="tnum">{quote.target_monthly_volume ?? "—"}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                        Client
+                      </div>
+                      <div>
+                        {client?.company_name ?? "—"} <TierBadge tier={clientTier} />
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {client?.store_url ?? ""}
+                        {client?.tier_override
+                          ? ` · override (auto: ${TIER_LABELS[client?.pricing_tier ?? "starter"] ?? client?.pricing_tier})`
+                          : ` · auto · ${Number(client?.avg_daily_units_30d ?? 0).toFixed(1)} units/day`}
+                      </div>
+                    </div>
+                  </div>
+                  {((images && images.urls.length > 0) || externalImages.length > 0) && (
+                    <div>
+                      <div className="mb-1.5 text-xs uppercase tracking-wide text-muted-foreground">
+                        Images
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {(images?.urls ?? []).map((img) => (
+                          <a key={img.path} href={img.url} target="_blank" rel="noreferrer">
+                            <img
+                              src={img.url}
+                              alt="Quote attachment"
+                              className="h-16 w-16 rounded-md border border-border object-cover"
+                            />
+                          </a>
+                        ))}
+                        {externalImages.map((src) => (
+                          <a key={src} href={src} target="_blank" rel="noreferrer">
+                            <img
+                              src={src}
+                              alt="Scraped product image"
+                              className="h-16 w-16 rounded-md border border-border object-cover"
+                            />
+                          </a>
+                        ))}
+                      </div>
+                    </div>
                   )}
-                </div>
-              )}
+                  {(quote.status === "submitted" || quote.status === "sourcing") && (
+                    <div className="flex gap-2 pt-1">
+                      {quote.status === "submitted" && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={setStatus.isPending}
+                          onClick={() => setStatus.mutate("sourcing")}
+                        >
+                          Mark as sourcing
+                        </Button>
+                      )}
+                      {quote.status === "sourcing" && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={setStatus.isPending}
+                          onClick={() => setStatus.mutate("submitted")}
+                        >
+                          Back to submitted
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                  {data?.preview && (
+                    <UrlPreviewCard
+                      url={data.preview.url_normalized}
+                      preview={{
+                        status: "ok",
+                        title: data.preview.title,
+                        description: data.preview.description,
+                        imageUrls: data.preview.image_urls ?? [],
+                        priceHint: data.preview.price_hint,
+                      }}
+                    />
+                  )}
+                </CardContent>
+              </CollapsibleContent>
+            </Card>
+          </Collapsible>
+
+          {/* Support panel: talk, history, and the short summary. */}
+          <Card>
+            <CardContent className="pt-6">
+              <Tabs defaultValue="conversation">
+                <TabsList className="w-full">
+                  <TabsTrigger value="conversation" className="flex-1">
+                    Conversation
+                  </TabsTrigger>
+                  <TabsTrigger value="activity" className="flex-1">
+                    Activity
+                  </TabsTrigger>
+                  <TabsTrigger value="summary" className="flex-1">
+                    Summary
+                  </TabsTrigger>
+                </TabsList>
+                <TabsContent value="conversation" className="mt-4">
+                  <QuoteThread quoteId={id} mode="admin" quoteRef={quoteRef} />
+                </TabsContent>
+                <TabsContent value="activity" className="mt-4">
+                  <LifecycleTimeline quoteId={id} hideHeading collapsible />
+                </TabsContent>
+                <TabsContent value="summary" className="mt-4 space-y-2 text-sm">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-muted-foreground">Selected option</span>
+                    <span className="font-medium">
+                      {activeOption
+                        ? `Option ${activeOption.letter}${activeOption.recommended ? " ★" : ""}${activeOption.published ? "" : " · draft"}`
+                        : "—"}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-muted-foreground">Valid until</span>
+                    <span className="tnum font-medium">
+                      {quote.quote_valid_until ? formatDate(quote.quote_valid_until) : "On publish"}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-muted-foreground">Client price range</span>
+                    <span className="tnum font-medium">
+                      {rows.length === 0
+                        ? "—"
+                        : minPrice === maxPrice
+                          ? formatUSD(minPrice)
+                          : `${formatUSD(minPrice)} – ${formatUSD(maxPrice)}`}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-muted-foreground">Grid</span>
+                    <span className="tnum font-medium">
+                      {rows.length} × {countries.length}
+                    </span>
+                  </div>
+                </TabsContent>
+              </Tabs>
             </CardContent>
           </Card>
-          <QuoteThread quoteId={id} mode="admin" quoteRef={quoteRef} />
-          {data?.preview && (
-            <UrlPreviewCard
-              url={data.preview.url_normalized}
-              preview={{
-                status: "ok",
-                title: data.preview.title,
-                description: data.preview.description,
-                imageUrls: data.preview.image_urls ?? [],
-                priceHint: data.preview.price_hint,
-              }}
-            />
-          )}
         </div>
 
         <div className="space-y-6 lg:order-1">
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">Deal view</CardTitle>
-              <CardDescription>Every stage of this product, and who acted.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <LifecycleTimeline quoteId={id} hideHeading />
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base">Variants & pricing</CardTitle>
-                <span className="text-xs text-muted-foreground">
-                  Client tier: <TierBadge tier={clientTier} />
-                </span>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <CardTitle className="text-base">Variants &amp; pricing</CardTitle>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">
+                    Client tier: <TierBadge tier={clientTier} />
+                  </span>
+                  {/* The long explanation lives one click away, next to the table. */}
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button type="button" variant="ghost" size="sm" className="gap-1.5">
+                        <Info className="h-3.5 w-3.5" /> Pricing rules
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent align="end" className="w-80 text-xs leading-relaxed">
+                      Rows are variants, columns are the requested countries — each cell is a priced
+                      variant × country line. All amounts in USD. The chain is COGS → + ship → +
+                      sourcing fee → sourcing cost, then one FlySales margin % applied to the COGS.
+                      Supplier tax (IOSS / duties) passes through at exact cost — it is never marked
+                      up. {PASSTHROUGH_NOTE} Cost and margin are never visible to the client.
+                      Publishing moves the request to &quot;quoted&quot; and generates one SKU per
+                      variant, shared across its country rows.
+                    </PopoverContent>
+                  </Popover>
+                </div>
               </div>
-              <CardDescription>
-                Rows are variants, columns are the requested countries — each cell is a priced
-                variant × country line. All amounts in USD. The chain is COGS → + ship → + sourcing
-                fee → sourcing cost, then one FlySales margin %. Supplier tax (IOSS / duties) passes
-                through at exact cost — it is never marked up. {PASSTHROUGH_NOTE} Cost and margin
-                are never visible to the client. Publishing moves the request to "quoted" and
-                generates one SKU per variant, shared across its country rows.
-              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="mb-4 space-y-3 rounded-lg border border-border p-3">
@@ -1125,11 +1240,14 @@ function AdminQuoteDetailPage() {
                         "grid items-center gap-x-2 border-b border-border bg-muted/40 px-3 py-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground",
                       )}
                     >
-                      <span>Variant</span>
+                      <span>Variant · SKU</span>
                       <span>Dest.</span>
-                      <span className="text-right">COGS</span>
-                      <span className="text-right">Fee</span>
-                      <span className="text-right">Margin</span>
+                      <span className="text-right">MOQ</span>
+                      <span className="text-right">Lead</span>
+                      <span className="text-right">Cost</span>
+                      <span className="text-right">Ship</span>
+                      <span className="text-right">Fee %</span>
+                      <span className="text-right">Margin %</span>
                       <span className="text-right">Client price</span>
                       <span />
                     </div>
@@ -1239,10 +1357,19 @@ function AdminQuoteDetailPage() {
                                     </span>
                                   </span>
                                   <span className="text-xs text-muted-foreground">{country}</span>
+                                  <span className="tnum text-right text-muted-foreground">
+                                    {row.moq === "" ? "—" : row.moq}
+                                  </span>
+                                  <span className="tnum text-right text-muted-foreground">
+                                    {row.lead_time_days === "" ? "—" : `${row.lead_time_days} d`}
+                                  </span>
                                   <span className="tnum text-right">{formatUSD(cogsUsd)}</span>
-                                  <span className="tnum text-right">{formatUSD(feeUsd)}</span>
-                                  <span className="tnum text-right">
-                                    {formatUSD(cellMargin(cell, rate))}
+                                  <span className="tnum text-right">{formatUSD(shipUsd)}</span>
+                                  <span className="tnum text-right text-muted-foreground">
+                                    {feePctLabel}%
+                                  </span>
+                                  <span className="tnum text-right text-muted-foreground">
+                                    {marginPctLabel}%
                                   </span>
                                   <span className="tnum text-right font-semibold">
                                     {formatUSD(cellPrice(cell, rate))}
@@ -1259,41 +1386,68 @@ function AdminQuoteDetailPage() {
                                   <div className="grid gap-4 border-t border-border bg-muted/15 p-3 lg:grid-cols-2">
                                     {/* Variant identity and terms. */}
                                     <div className="space-y-2">
-                                      <Input
-                                        value={row.label}
-                                        onChange={(e) =>
-                                          updateRow(row.key, { label: e.target.value })
-                                        }
-                                        placeholder='e.g. "20cm", "Red / L"'
-                                        disabled={!rowEditable}
-                                        aria-label="Variant label"
-                                        className="h-8 text-[13px]"
-                                      />
+                                      <div className="space-y-1">
+                                        <Label
+                                          htmlFor={`v-label-${row.key}`}
+                                          className="text-[11px] text-muted-foreground"
+                                        >
+                                          Variant name
+                                        </Label>
+                                        <Input
+                                          id={`v-label-${row.key}`}
+                                          value={row.label}
+                                          onChange={(e) =>
+                                            updateRow(row.key, { label: e.target.value })
+                                          }
+                                          placeholder='e.g. "20cm", "Red / L"'
+                                          disabled={!rowEditable}
+                                          className="h-8 text-[13px]"
+                                        />
+                                      </div>
                                       <div className="grid grid-cols-2 gap-2">
-                                        <Input
-                                          type="number"
-                                          min={1}
-                                          value={row.moq}
-                                          onChange={(e) =>
-                                            updateRow(row.key, { moq: e.target.value })
-                                          }
-                                          disabled={!rowEditable}
-                                          placeholder="MOQ"
-                                          aria-label="MOQ"
-                                          className="h-8 tnum text-[13px] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                                        />
-                                        <Input
-                                          type="number"
-                                          min={0}
-                                          value={row.lead_time_days}
-                                          onChange={(e) =>
-                                            updateRow(row.key, { lead_time_days: e.target.value })
-                                          }
-                                          disabled={!rowEditable}
-                                          placeholder="Lead days"
-                                          aria-label="Lead time (days)"
-                                          className="h-8 tnum text-[13px] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                                        />
+                                        <div className="space-y-1">
+                                          <Label
+                                            htmlFor={`v-moq-${row.key}`}
+                                            className="text-[11px] text-muted-foreground"
+                                          >
+                                            MOQ (units)
+                                          </Label>
+                                          <Input
+                                            id={`v-moq-${row.key}`}
+                                            type="number"
+                                            min={1}
+                                            value={row.moq}
+                                            onChange={(e) =>
+                                              updateRow(row.key, { moq: e.target.value })
+                                            }
+                                            disabled={!rowEditable}
+                                            placeholder="Not set"
+                                            className="h-8 tnum text-[13px] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                                          />
+                                        </div>
+                                        <div className="space-y-1">
+                                          <Label
+                                            htmlFor={`v-lead-${row.key}`}
+                                            className="text-[11px] text-muted-foreground"
+                                          >
+                                            Lead time (days)
+                                          </Label>
+                                          <Input
+                                            id={`v-lead-${row.key}`}
+                                            type="number"
+                                            min={0}
+                                            value={row.lead_time_days}
+                                            onChange={(e) =>
+                                              updateRow(row.key, { lead_time_days: e.target.value })
+                                            }
+                                            disabled={!rowEditable}
+                                            placeholder="Not set"
+                                            className="h-8 tnum text-[13px] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                                          />
+                                          <p className="text-[11px] leading-tight text-muted-foreground">
+                                            Empty means not filled in yet; 0 means same-day.
+                                          </p>
+                                        </div>
                                       </div>
                                       {rowEditable && countries.length > 1 && (
                                         <div className="space-y-1">
@@ -1586,14 +1740,20 @@ function AdminQuoteDetailPage() {
                         disabled={dirty || save.isPending || publish.isPending}
                         title={dirty ? "Save your changes first" : undefined}
                       >
-                        {publish.isPending ? "Publishing…" : "Publish quote to client"}
+                        {publish.isPending
+                          ? "Publishing…"
+                          : alreadyPublished
+                            ? "Send updated prices to client"
+                            : "Publish quote to client"}
                       </Button>
                     </div>
-                    {dirty && (
-                      <p className="w-full text-xs text-muted-foreground">
-                        Save your changes first
-                      </p>
-                    )}
+                    <p className="w-full text-xs text-muted-foreground">
+                      {dirty
+                        ? "Save your changes first"
+                        : alreadyPublished
+                          ? "Updates the prices on this same quote and notifies the client. Terms already agreed need a revision instead."
+                          : "Publishes the selected option and notifies the client."}
+                    </p>
                   </div>
                 )}
               </form>
