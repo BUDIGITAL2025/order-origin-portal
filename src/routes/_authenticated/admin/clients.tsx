@@ -372,7 +372,6 @@ function AdminClientsPage() {
                                   <React.Fragment key={s.id}>
                                     <TableRow className="hover:bg-accent/60">
                                       <TableCell className="max-w-56 py-2.5">
-                                      <TableCell className="max-w-56 py-2.5">
                                         <div className="flex items-center gap-1">
                                           <span className="truncate font-medium">
                                             {s.store_name ?? s.store_url}
