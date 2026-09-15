@@ -19,9 +19,18 @@ interface Props {
   storeId?: string;
   /** Hide the product heading when the surrounding page already shows it. */
   hideHeading?: boolean;
+  /** Lead with where the deal stands now; the full history opens on demand. */
+  collapsible?: boolean;
 }
 
-export function LifecycleTimeline({ quoteId, purchaseId, storeId, hideHeading }: Props) {
+export function LifecycleTimeline({
+  quoteId,
+  purchaseId,
+  storeId,
+  hideHeading,
+  collapsible,
+}: Props) {
+  const [openDeal, setOpenDeal] = useState<string | null>(null);
   const fetchLifecycle = useServerFn(adminLifecycle);
   const { data, isPending } = useQuery({
     queryKey: ["admin-lifecycle", quoteId ?? purchaseId ?? storeId ?? "none"],
