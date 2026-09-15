@@ -1241,12 +1241,23 @@ function AdminQuoteDetailPage() {
                                       {row.sku ?? "SKU on save"}
                                     </span>
                                   </span>
-                                  <span className="text-xs text-muted-foreground">{country}</span>
-                                  <span className="tnum text-right">{formatUSD(cogsUsd)}</span>
-                                  <span className="tnum text-right">{formatUSD(feeUsd)}</span>
-                                  <span className="tnum text-right">
-                                    {formatUSD(cellMargin(cell, rate))}
-                                  </span>
+                                   <span className="text-xs text-muted-foreground">{country}</span>
+                                   <span className="tnum text-right text-muted-foreground">
+                                     {row.moq === "" ? "—" : row.moq}
+                                   </span>
+                                   <span className="tnum text-right text-muted-foreground">
+                                     {row.lead_time_days === ""
+                                       ? "—"
+                                       : `${row.lead_time_days} d`}
+                                   </span>
+                                   <span className="tnum text-right">{formatUSD(cogsUsd)}</span>
+                                   <span className="tnum text-right">{formatUSD(shipUsd)}</span>
+                                   <span className="tnum text-right text-muted-foreground">
+                                     {feePctLabel}%
+                                   </span>
+                                   <span className="tnum text-right text-muted-foreground">
+                                     {marginPctLabel}%
+                                   </span>
                                   <span className="tnum text-right font-semibold">
                                     {formatUSD(cellPrice(cell, rate))}
                                   </span>
