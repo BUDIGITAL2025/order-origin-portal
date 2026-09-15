@@ -542,10 +542,10 @@ function tierRows(tiers: import("./fee-tiers").FeeTier[]) {
     const rate = `${Math.round(tier.rate * 1000) / 10}%`;
     const label =
       tier.upto == null
-        ? `Fee from transaction ${floor + 1} onward`
+        ? `Fee from unit ${floor + 1} onward, per client`
         : i === 0
-          ? `Fee on your first ${tier.upto} paid transactions`
-          : `Fee on transactions ${floor + 1}–${tier.upto}`;
+          ? `Fee on your first ${tier.upto} paid units, per client`
+          : `Fee on units ${floor + 1}–${tier.upto}, per client`;
     floor = tier.upto ?? floor;
     return { label, value: rate, strong: i === 0 };
   });
@@ -565,7 +565,7 @@ export function sourcingInviteEmail(args: {
     paragraphs: [
       "You have been invited to join the FlySales sourcing team as a collaborator.",
       "As a collaborator you get your own desk: the sourcing queue with the requests assigned to you, where you find suppliers and enter supplier prices, plus your own earnings page. Client identities and client prices are never shown to you — by design.",
-      "Your service fee is volume-based: it starts higher and drops as you deliver. The rate is locked onto each quote when you price it, so a quote you already sent never changes.",
+      "Your service fee is volume-based and counted per client: 8% on your first 500 units for a client, 5% up to 1000, 3% thereafter. Each new client starts back at 8%. The rate is locked onto each quote when you price it, so a quote you already sent never changes.",
       "Use the button below to set your password and open your desk.",
     ],
     panel: {
