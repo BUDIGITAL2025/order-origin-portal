@@ -194,11 +194,21 @@ export const adminRetryPush = createServerFn({ method: "POST" })
     await requireAdmin(context.supabase, context.userId);
     // TODO: call the middleware to push the product to the supplier Shopify store,
     // then set push_status = 'pushed' + middleware_product_id, or 'failed' + push_error.
+    // push_status is internal-only and no longer readable by the authenticated
+    // role, so the current state is read with the service-role client; the
+    // write still runs as the admin user (the products guard trigger needs it).
+    const { getAdminClient } = await import("./admin.server");
+    const admin = await getAdminClient();
+    const { data: current } = await admin
+      .from("products")
+      .select("push_status")
+      .eq("id", data.product_id)
+      .maybeSingle();
+    if (current?.push_status !== "failed") return { ok: true };
     const { error } = await context.supabase
       .from("products")
       .update({ push_status: "pending", push_error: null })
-      .eq("id", data.product_id)
-      .eq("push_status", "failed");
+      .eq("id", data.product_id);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
