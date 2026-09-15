@@ -795,7 +795,7 @@ export const adminPublishQuote = createServerFn({ method: "POST" })
     try {
       const { quoteOwner } = await import("./quote-thread.server");
       const { quotePublishedEmail } = await import("./email-templates.server");
-      const { sendClientEmail } = await import("./client-email.server");
+      const { sendClientEmail } = await import("./email.server");
       const { quoteRefFromSkus } = await import("./quote-ref");
       const owner = await quoteOwner(admin, data.quote_id);
       const { data: meta } = await admin
