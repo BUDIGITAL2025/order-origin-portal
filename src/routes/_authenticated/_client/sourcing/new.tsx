@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { COUNTRIES } from "@/lib/countries";
+import { DELIVERY_HINTS, DELIVERY_LABELS, type DeliveryMode } from "@/lib/quote-ref";
 import { getPlanHint } from "@/lib/acquisition";
 import { PLANS, planQuota, quotaResetDate } from "@/lib/plans";
 import { quoteRequestSchema } from "@/lib/schemas";
@@ -52,7 +53,11 @@ export const Route = createFileRoute("/_authenticated/_client/sourcing/new")({
 
 const MAX_PRODUCTS = 5;
 
-type EntryPreview = { kind: "idle" } | { kind: "loading" } | ({ kind: "ok"; id: string } & UrlPreviewData) | { kind: "unavailable" };
+type EntryPreview =
+  | { kind: "idle" }
+  | { kind: "loading" }
+  | ({ kind: "ok"; id: string } & UrlPreviewData)
+  | { kind: "unavailable" };
 
 interface Entry {
   key: string;
@@ -97,6 +102,8 @@ function NewQuotePageInner() {
   const [notes, setNotes] = useState("");
   const [volume, setVolume] = useState("");
   const [countries, setCountries] = useState<string[]>([]);
+  const [delivery, setDelivery] = useState<DeliveryMode>("warehouse");
+  const [deliveryAddress, setDeliveryAddress] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [quotaBlocked, setQuotaBlocked] = useState(false);
@@ -291,12 +298,17 @@ function NewQuotePageInner() {
       // Unreachable in practice — the paywall replaces the form — but the
       // server enforces the same gate, so keep the guard as a backstop.
       if (needsSubscription) {
-        throw new Error("Pick a plan to send quote requests — your request has not been submitted.");
+        throw new Error(
+          "Pick a plan to send quote requests — your request has not been submitted.",
+        );
       }
       const filled = entries.filter((e) => e.url.trim() !== "");
       if (filled.length === 0) throw new Error("Add at least one product URL");
       if (countries.length === 0) {
         throw new Error("Pick at least one destination country — shipping cost depends on it.");
+      }
+      if (delivery === "warehouse" && deliveryAddress.trim().length < 5) {
+        throw new Error("Add the delivery address so we can quote the freight.");
       }
 
       // Upload shared reference images once to the private bucket under the
@@ -331,6 +343,8 @@ function NewQuotePageInner() {
           notes,
           target_monthly_volume: volume ? Number(volume) : null,
           target_countries: countries,
+          delivery_mode: delivery,
+          delivery_address: deliveryAddress,
           store_id: currentStore?.id ?? undefined,
           image_urls: [...uploadedPaths, ...entry.attachedImages].slice(0, 10),
           preview_id: entry.preview.kind === "ok" ? entry.preview.id : undefined,
@@ -414,8 +428,8 @@ function NewQuotePageInner() {
             </p>
             <p className="text-sm text-muted-foreground">
               Upgrade to {PLANS.unlimited.label} for ${PLANS.unlimited.priceUsd}/month and send
-              unlimited quote requests. Your plan changes as soon as the payment confirms.
-              This request was not submitted, so send it again after upgrading.
+              unlimited quote requests. Your plan changes as soon as the payment confirms. This
+              request was not submitted, so send it again after upgrading.
             </p>
             <div className="flex gap-2">
               <Button asChild size="sm">
@@ -449,8 +463,8 @@ function NewQuotePageInner() {
               Quote requests need an active plan
             </CardTitle>
             <CardDescription>
-              Pick one and send your first request in minutes. No shop connection needed,
-              and you land back here once the payment confirms.
+              Pick one and send your first request in minutes. No shop connection needed, and you
+              land back here once the payment confirms.
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3 sm:grid-cols-2">
@@ -497,8 +511,8 @@ function NewQuotePageInner() {
             ))}
             {subscribeError && (
               <p className="text-sm text-destructive sm:col-span-2">
-                Checkout could not be opened ({subscribeError}). Nothing was charged. Try
-                again, or contact support if it keeps happening.
+                Checkout could not be opened ({subscribeError}). Nothing was charged. Try again, or
+                contact support if it keeps happening.
               </p>
             )}
           </CardContent>
@@ -627,6 +641,41 @@ function NewQuotePageInner() {
                       ? "Pick every country you sell into."
                       : `${countries.length} ${countries.length === 1 ? "country" : "countries"} selected — each country adds its own priced line per variant.`}
                   </p>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Delivery *</Label>
+                  <div className="grid gap-2">
+                    {(["exw", "warehouse", "fulfilment"] as const).map((mode) => (
+                      <button
+                        key={mode}
+                        type="button"
+                        aria-pressed={delivery === mode}
+                        onClick={() => setDelivery(mode)}
+                        className={`rounded-lg border p-3 text-left transition-colors ${
+                          delivery === mode
+                            ? "border-primary bg-primary/5"
+                            : "border-border hover:border-primary/50"
+                        }`}
+                      >
+                        <div className="text-sm font-medium">{DELIVERY_LABELS[mode]}</div>
+                        <div className="text-xs text-muted-foreground">{DELIVERY_HINTS[mode]}</div>
+                      </button>
+                    ))}
+                  </div>
+                  {delivery === "warehouse" && (
+                    <Textarea
+                      rows={3}
+                      placeholder="Delivery address"
+                      value={deliveryAddress}
+                      onChange={(e) => setDeliveryAddress(e.target.value)}
+                    />
+                  )}
+                  {delivery === "fulfilment" && (
+                    <p className="text-xs text-muted-foreground">
+                      Storing and fulfilling from our warehouse needs the Fulfilment module on your
+                      workspace — we confirm it with you before the goods ship.
+                    </p>
+                  )}
                 </div>
                 <div className="space-y-2 rounded-xl border border-primary/30 bg-primary/5 p-4">
                   <Label htmlFor="q-volume" className="text-sm font-semibold">

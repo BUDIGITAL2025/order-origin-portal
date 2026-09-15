@@ -5,12 +5,15 @@ import { z } from "zod";
 import {
   adminQuoteLinesSchema,
   adminQuoteStatusSchema,
+  createRevisionSchema,
+  quoteDeliverySchema,
   quoteRequestSchema,
   respondLinesSchema,
   requoteSchema,
   signedUrlsSchema,
 } from "./schemas";
 import { flagBreachedQuotes, mapQuoteForAdmin } from "./quotes.server";
+import { quoteRefFromSkus } from "./quote-ref";
 import { closedPrice, sourcingCostOf } from "./pricing";
 
 export class QuotaExceededError extends Error {
@@ -68,6 +71,8 @@ export const createQuoteRequest = createServerFn({ method: "POST" })
       p_target_countries: data.target_countries,
       ...(data.store_id ? { p_store_id: data.store_id } : {}),
       ...(data.preview_id ? { p_preview_id: data.preview_id } : {}),
+      p_delivery_mode: data.delivery_mode,
+      ...(data.delivery_address ? { p_delivery_address: data.delivery_address } : {}),
     });
     if (error) throw toSubmitError(error.message);
 
@@ -96,12 +101,31 @@ export const listMyQuotes = createServerFn({ method: "GET" })
     const { data, error } = await context.supabase
       .from("quote_requests")
       .select(
-        "id, product_url, product_name, notes, target_monthly_volume, target_countries, image_urls, status, quote_valid_until, quoted_at, created_at, supersedes_quote_id",
+        "id, product_url, product_name, notes, target_monthly_volume, target_countries, image_urls, status, quote_valid_until, quoted_at, created_at, supersedes_quote_id, delivery_mode, delivery_address, revision_number",
       )
       .is("archived_at", null)
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
-    return { quotes: data ?? [] };
+    const quotes = data ?? [];
+    // Item references live on quote_lines, which clients cannot read directly.
+    // RLS already limited the ids above to this client's own quotes.
+    const ids = quotes.map((q) => q.id);
+    const refs = new Map<string, string[]>();
+    if (ids.length) {
+      const { getAdminClient } = await import("./admin.server");
+      const admin = await getAdminClient();
+      const { data: skuRows } = await admin
+        .from("quote_lines")
+        .select("quote_request_id, sku")
+        .in("quote_request_id", ids);
+      for (const row of skuRows ?? []) {
+        if (!row.sku) continue;
+        refs.set(row.quote_request_id, [...(refs.get(row.quote_request_id) ?? []), row.sku]);
+      }
+    }
+    return {
+      quotes: quotes.map((q) => ({ ...q, quote_ref: quoteRefFromSkus(refs.get(q.id) ?? []) })),
+    };
   });
 
 /**
@@ -158,7 +182,7 @@ export const getMyQuote = createServerFn({ method: "GET" })
     const { data: quote, error } = await context.supabase
       .from("quote_requests")
       .select(
-        "id, product_url, product_name, notes, target_monthly_volume, target_countries, image_urls, status, quote_valid_until, quoted_at, created_at, supersedes_quote_id, quote_due_at",
+        "id, product_url, product_name, notes, target_monthly_volume, target_countries, image_urls, status, quote_valid_until, quoted_at, created_at, supersedes_quote_id, quote_due_at, delivery_mode, delivery_address, revision_number",
       )
       .eq("id", data.quote_id)
       .maybeSingle();
@@ -172,7 +196,25 @@ export const getMyQuote = createServerFn({ method: "GET" })
     );
     if (linesError) throw new Error(linesError.message);
 
-    return { quote, lines: lines ?? [] };
+    // The revision this one replaces, kept read-only in the client's history
+    // so they can see what changed before approving again.
+    let previous: {
+      id: string;
+      revision_number: number;
+      delivery_mode: string;
+      quoted_at: string | null;
+    } | null = null;
+    const supersedes = (quote as { supersedes_quote_id?: string | null }).supersedes_quote_id;
+    if (supersedes) {
+      const { data: prev } = await context.supabase
+        .from("quote_requests")
+        .select("id, revision_number, delivery_mode, quoted_at")
+        .eq("id", supersedes)
+        .maybeSingle();
+      previous = prev ?? null;
+    }
+
+    return { quote, lines: lines ?? [], previous };
   });
 
 /** Client: accept/reject individual lines. Accepted lines become catalogue products (DB-enforced). */
@@ -252,7 +294,7 @@ export const adminListQuotes = createServerFn({ method: "GET" })
       ? await admin
           .from("quote_lines")
           .select(
-            "quote_request_id, supplier_cogs, supplier_shipping, sourcing_fee_rate, fee_included, sourcing_cost, supplier_tax, margin_pct",
+            "quote_request_id, sku, supplier_cogs, supplier_shipping, sourcing_fee_rate, fee_included, sourcing_cost, supplier_tax, margin_pct",
           )
           .in("quote_request_id", ids)
       : { data: [], error: null };
@@ -260,7 +302,7 @@ export const adminListQuotes = createServerFn({ method: "GET" })
 
     const pricingByQuote = new Map<
       string,
-      { cogs: number[]; clientPrices: number[]; hasUnpricedMargin: boolean }
+      { cogs: number[]; clientPrices: number[]; hasUnpricedMargin: boolean; skus: string[] }
     >();
     for (const line of pricingLines ?? []) {
       const quoteId = line.quote_request_id;
@@ -268,7 +310,9 @@ export const adminListQuotes = createServerFn({ method: "GET" })
         cogs: [],
         clientPrices: [],
         hasUnpricedMargin: false,
+        skus: [],
       };
+      if (line.sku) aggregate.skus.push(line.sku);
       const cogs = Number(line.supplier_cogs ?? 0);
       const marginPct = Number(line.margin_pct ?? 0);
       if (cogs > 0) {
@@ -304,6 +348,7 @@ export const adminListQuotes = createServerFn({ method: "GET" })
           client_price_min: pricing?.clientPrices.length ? Math.min(...pricing.clientPrices) : null,
           client_price_max: pricing?.clientPrices.length ? Math.max(...pricing.clientPrices) : null,
           awaiting_pricing: pricing?.hasUnpricedMargin ?? false,
+          quote_ref: quoteRefFromSkus(pricing?.skus ?? []),
         };
       }),
     };
@@ -573,4 +618,149 @@ export const adminGetQuoteImageUrls = createServerFn({ method: "POST" })
         .filter((s) => s.signedUrl)
         .map((s) => ({ path: s.path ?? "", url: s.signedUrl! })),
     };
+  });
+
+/** Admin: set the delivery mode (and address) on a quote — drives freight. */
+export const adminSetQuoteDelivery = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => quoteDeliverySchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const { requireAdmin, getAdminClient } = await import("./admin.server");
+    await requireAdmin(context.supabase, context.userId);
+    const admin = await getAdminClient();
+    const { error } = await admin
+      .from("quote_requests")
+      .update({
+        delivery_mode: data.delivery_mode,
+        delivery_address: data.delivery_address || null,
+      })
+      .eq("id", data.quote_id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+/**
+ * Admin: open a revision of a published or accepted quote.
+ *
+ * The current pricing is cloned into a new editable request (revision N+1):
+ * quantity, delivery mode, shipping and every supplier field can change there.
+ * Frozen FX and the agent fee tier carry over untouched, and the previous
+ * revision stays read-only — a price the client already agreed to never
+ * changes silently.
+ */
+export const adminCreateQuoteRevision = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => createRevisionSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const { requireAdmin, getAdminClient } = await import("./admin.server");
+    const { writeAuditLine } = await import("./cleanup.server");
+    const { postSystemEvent } = await import("./quote-thread.server");
+    await requireAdmin(context.supabase, context.userId);
+    const admin = await getAdminClient();
+
+    const { data: quote, error } = await admin
+      .from("quote_requests")
+      .select("*")
+      .eq("id", data.quote_id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!quote) throw new Error("Quote request not found");
+
+    const { data: existing } = await admin
+      .from("quote_requests")
+      .select("id")
+      .eq("supersedes_quote_id", data.quote_id)
+      .in("status", ["submitted", "sourcing"])
+      .maybeSingle();
+    if (existing) {
+      return { ok: true, quote_id: existing.id, existing: true };
+    }
+
+    const q = quote as Record<string, unknown>;
+    const { data: created, error: insertError } = await admin
+      .from("quote_requests")
+      .insert({
+        store_id: q["store_id"] as string,
+        product_url: (q["product_url"] as string | null) ?? "",
+        product_name: q["product_name"] as string | null,
+        notes: q["notes"] as string | null,
+        target_monthly_volume: q["target_monthly_volume"] as number | null,
+        image_urls: (q["image_urls"] as string[] | null) ?? [],
+        target_countries: (q["target_countries"] as string[] | null) ?? [],
+        preview_id: q["preview_id"] as string | null,
+        assigned_sourcer: q["assigned_sourcer"] as string | null,
+        delivery_mode: q["delivery_mode"] as never,
+        delivery_address: q["delivery_address"] as string | null,
+        supersedes_quote_id: data.quote_id,
+        revision_number: Number(q["revision_number"] ?? 1) + 1,
+        status: "sourcing",
+      })
+      .select("id, revision_number")
+      .single();
+    if (insertError) throw new Error(insertError.message);
+
+    // Clone the options, then the lines that hang off them, so the revision
+    // opens with exactly today's chain and stays editable end to end.
+    const { data: options } = await admin
+      .from("quote_options")
+      .select("*")
+      .eq("quote_request_id", data.quote_id)
+      .is("archived_at", null);
+    const optionMap = new Map<string, string>();
+    for (const o of options ?? []) {
+      const src = o as Record<string, unknown>;
+      const { data: newOption } = await admin
+        .from("quote_options")
+        .insert({
+          quote_request_id: created.id,
+          letter: src["letter"] as string,
+          supplier_id: src["supplier_id"] as string | null,
+          quality: src["quality"] as never,
+          recommended: src["recommended"] as boolean,
+          moq: src["moq"] as number | null,
+          production_lead_days: src["production_lead_days"] as number | null,
+          shipping_lead_days: src["shipping_lead_days"] as number | null,
+          internal_notes: src["internal_notes"] as string | null,
+          published: false,
+        })
+        .select("id")
+        .single();
+      if (newOption) optionMap.set(o.id, newOption.id);
+    }
+
+    const { data: lines } = await admin
+      .from("quote_lines")
+      .select("*")
+      .eq("quote_request_id", data.quote_id)
+      .order("created_at", { ascending: true });
+    for (const l of lines ?? []) {
+      const src = l as Record<string, unknown>;
+      const copy: Record<string, unknown> = { ...src };
+      delete copy["id"];
+      delete copy["created_at"];
+      delete copy["responded_at"];
+      copy["quote_request_id"] = created.id;
+      copy["status"] = "pending";
+      copy["accepted_quantity"] = src["accepted_quantity"] ?? null;
+      copy["option_id"] = src["option_id"]
+        ? (optionMap.get(src["option_id"] as string) ?? null)
+        : null;
+      await admin.from("quote_lines").insert(copy as never);
+    }
+
+    await postSystemEvent(
+      admin,
+      data.quote_id,
+      "revision_opened",
+      `Revision ${created.revision_number} is being prepared. Your current terms stay in force until you approve it.`,
+    );
+    await writeAuditLine(admin, {
+      actorId: context.userId,
+      action: "quote_revision_created",
+      entityType: "quote_request",
+      entityId: created.id,
+      summary: `Revision ${created.revision_number} opened from quote ${data.quote_id}`,
+    });
+
+    return { ok: true, quote_id: created.id, existing: false };
   });

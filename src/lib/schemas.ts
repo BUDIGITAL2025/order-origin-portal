@@ -144,6 +144,33 @@ export const quoteRequestSchema = z.object({
   store_id: z.string().uuid().optional(),
   // Scraped url_previews row the client saw, so the admin gets the same card.
   preview_id: z.string().uuid().optional(),
+  /** How the goods leave the supplier — drives whether freight is quoted. */
+  delivery_mode: z.enum(["exw", "warehouse", "fulfilment"]),
+  delivery_address: z.string().trim().max(500).optional().or(z.literal("")),
+});
+
+export const quoteDeliverySchema = z.object({
+  quote_id: z.string().uuid(),
+  delivery_mode: z.enum(["exw", "warehouse", "fulfilment"]),
+  delivery_address: z.string().trim().max(500).optional().or(z.literal("")),
+});
+
+export const createRevisionSchema = z.object({
+  quote_id: z.string().uuid(),
+});
+
+export const acceptSelectionSchema = z.object({
+  option_id: z.string().uuid(),
+  product_name: z.string().trim().min(2, "Name the product").max(200),
+  selections: z
+    .array(
+      z.object({
+        line_id: z.string().uuid(),
+        quantity: z.number().int().min(1).max(10_000_000),
+      }),
+    )
+    .min(1, "Select at least one variant")
+    .max(200),
 });
 
 export const quoteLineInputSchema = z.object({
@@ -593,6 +620,7 @@ export const quoteIntentSchema = z.object({
     "materials_list",
     "new_variant",
     "stop_quoting",
+    "change_quantity_or_delivery",
   ]),
   /** Up to three extra destinations for "add a country"; free note otherwise. */
   countries: z.array(countryCodeSchema).max(3).optional(),

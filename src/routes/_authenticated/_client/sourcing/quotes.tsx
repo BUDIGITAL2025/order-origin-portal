@@ -139,6 +139,7 @@ function MyQuotesPageInner() {
                     <ProductCell
                       imageUrls={(q as { image_urls?: string[] | null }).image_urls ?? []}
                       name={q.product_name || q.product_url}
+                      {...(q.quote_ref ? { secondary: `Ref ${q.quote_ref}` } : {})}
                     />
                   </TableCell>
                   <TableCell className="text-right tnum text-sm">

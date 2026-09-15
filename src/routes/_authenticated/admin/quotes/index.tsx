@@ -355,7 +355,9 @@ function AdminQuotesPage() {
                         name={q.product_name || q.product_url}
                         {...((q as { archived_at?: string | null }).archived_at
                           ? { secondary: "Archived" }
-                          : {})}
+                          : q.quote_ref
+                            ? { secondary: `Ref ${q.quote_ref}` }
+                            : {})}
                       />
                     </TableCell>
                     <TableCell className="tnum py-2.5 text-right">

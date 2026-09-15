@@ -65,10 +65,13 @@ export function QuoteThread({
   quoteId,
   mode,
   className,
+  quoteRef,
 }: {
   quoteId: string;
   mode: ThreadMode;
   className?: string;
+  /** Item reference shown next to the title so both sides name the same item. */
+  quoteRef?: string | null;
 }) {
   const queryClient = useQueryClient();
   const isAdmin = mode === "admin";
@@ -159,7 +162,14 @@ export function QuoteThread({
     <Card className={cn("flex flex-col", className)}>
       <CardHeader className="shrink-0 pb-3">
         <div className="flex items-center justify-between gap-2">
-          <CardTitle className="text-base">Conversation</CardTitle>
+          <CardTitle className="flex items-baseline gap-2 text-base">
+            Conversation
+            {quoteRef && (
+              <span className="font-mono text-xs font-normal text-muted-foreground">
+                Ref {quoteRef}
+              </span>
+            )}
+          </CardTitle>
           {isSourcing && (
             <Badge variant="secondary" className="font-mono text-[11px]">
               {clientLabel}

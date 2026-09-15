@@ -791,6 +791,42 @@ export const adminPublishQuote = createServerFn({ method: "POST" })
       .eq("id", data.quote_id);
     if (quoteError) throw new Error(quoteError.message);
 
+    // Publishing is the only moment the client is emailed; a revision says so.
+    try {
+      const { quoteOwner } = await import("./quote-thread.server");
+      const { quotePublishedEmail } = await import("./email-templates.server");
+      const { sendClientEmail } = await import("./email.server");
+      const { quoteRefFromSkus } = await import("./quote-ref");
+      const owner = await quoteOwner(admin, data.quote_id);
+      const { data: meta } = await admin
+        .from("quote_requests")
+        .select("revision_number")
+        .eq("id", data.quote_id)
+        .maybeSingle();
+      const { data: skuRows } = await admin
+        .from("quote_lines")
+        .select("sku")
+        .eq("quote_request_id", data.quote_id);
+      if (owner.accountId) {
+        const email = quotePublishedEmail({
+          quoteId: data.quote_id,
+          productName: owner.productName ?? "your quote request",
+          quoteRef: quoteRefFromSkus(
+            (skuRows ?? []).map((r) => r.sku).filter((v): v is string => !!v),
+          ),
+          revisionNumber: Number(meta?.revision_number ?? 1),
+        });
+        await sendClientEmail(admin, {
+          clientId: owner.accountId,
+          subject: email.subject,
+          text: email.text,
+          html: email.html,
+        });
+      }
+    } catch (e) {
+      console.error("quote published email failed", e);
+    }
+
     if (data.admin_notes) {
       await admin
         .from("quote_request_internal")
