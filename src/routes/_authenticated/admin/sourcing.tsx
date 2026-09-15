@@ -93,6 +93,16 @@ function AdminSourcingPage() {
   const earningRows = earnings?.rows ?? [];
   const pendingTotal = rows.reduce((s, c) => s + c.pending, 0);
   const settledTotal = rows.reduce((s, c) => s + c.settled_total, 0);
+  // The ledger is the source of truth for what we owe. Commission accrued by a
+  // collaborator who is no longer listed (removed, archived) still counts, so
+  // the headline reads from the ledger and names the difference instead of
+  // silently showing a smaller number than the table below.
+  const { data: owedLedger } = useQuery({
+    queryKey: ["admin-earnings", "pending", "total"],
+    queryFn: () => fetchEarnings({ data: { settled: "pending" as const } }),
+  });
+  const owedInLedger = (owedLedger?.rows ?? []).reduce((s, r) => s + Number(r.amount), 0);
+  const unassignedOwed = Math.round((owedInLedger - pendingTotal) * 100) / 100;
 
   const toggleActive = useMutation({
     mutationFn: (input: { id: string; active: boolean }) => callUpdate({ data: input }),
