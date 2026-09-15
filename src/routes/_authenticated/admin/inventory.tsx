@@ -313,6 +313,8 @@ function AdminInventoryPage() {
   const [search, setSearch] = useState("");
   const [workspace] = useWorkspaceScope();
   const isAdmin = useFulfilmentIsAdmin();
+  // Live-stock view calls an admin-only integration; agents stay on workspaces.
+  const view: ViewId = isAdmin ? requestedView : "workspaces";
   const [growthPercent, setGrowthPercent] = useState(0);
   const [planningProductId, setPlanningProductId] = useState<string | null>(null);
   const [defaultsFor, setDefaultsFor] = useState<{
