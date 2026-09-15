@@ -303,6 +303,8 @@ function AdminQuoteDetailPage() {
   });
   const options = optionsData?.options ?? [];
   const [optionId, setOptionId] = useState<string | null>(null);
+  /** Which variant × country line has its full editor open, if any. */
+  const [openCell, setOpenCell] = useState<string | null>(null);
   const activeOption = options.find((o) => o.id === optionId) ?? options[0] ?? null;
 
   useEffect(() => {
