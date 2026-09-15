@@ -453,29 +453,41 @@ export const adminSaveQuoteLines = createServerFn({ method: "POST" })
     // Saving a draft persists the owner's margin and fee on the line, but never
     // writes unit_price and never publishes — only publishing reaches the client.
     const byKey = new Map(
-      (lines ?? []).map((l) => [`${l.variant_label}::${l.country_code}`, l] as const),
+      lines.map((l) => [`${l.variant_label}::${l.country_code}`, l.id] as const),
     );
-    for (const input of data.lines) {
-      if (input.margin_pct == null && input.fee_rate_pct == null) continue;
-      const saved = byKey.get(`${input.variant_label}::${input.country_code}`);
-      if (!saved) continue;
-      const patch: { margin_pct?: number; sourcing_fee_rate?: number; sourcing_cost?: number } = {};
-      if (input.margin_pct != null) patch.margin_pct = input.margin_pct;
-      if (input.fee_rate_pct != null) {
-        const feeRate = input.fee_rate_pct / 100;
-        patch.sourcing_fee_rate = feeRate;
-        patch.sourcing_cost = sourcingCostOf({
-          cogs: Number(saved.supplier_cogs ?? 0),
-          shipping: Number(saved.supplier_shipping ?? 0),
-          feeRate,
-          feeIncluded: saved.fee_included === true,
-        });
-      }
-      const { error: patchError } = await admin
+    const drafts = data.lines.filter((l) => l.margin_pct != null || l.fee_rate_pct != null);
+    if (drafts.length > 0) {
+      const { data: stored } = await admin
         .from("quote_lines")
-        .update(patch)
-        .eq("id", saved.id);
-      if (patchError) throw new Error(patchError.message);
+        .select("id, supplier_cogs, supplier_shipping, fee_included")
+        .eq("quote_request_id", data.quote_id);
+      const storedById = new Map((stored ?? []).map((l) => [l.id, l] as const));
+      for (const input of drafts) {
+        const lineId = byKey.get(`${input.variant_label}::${input.country_code}`);
+        const saved = lineId ? storedById.get(lineId) : undefined;
+        if (!lineId || !saved) continue;
+        const patch: {
+          margin_pct?: number;
+          sourcing_fee_rate?: number;
+          sourcing_cost?: number;
+        } = {};
+        if (input.margin_pct != null) patch.margin_pct = input.margin_pct;
+        if (input.fee_rate_pct != null) {
+          const feeRate = input.fee_rate_pct / 100;
+          patch.sourcing_fee_rate = feeRate;
+          patch.sourcing_cost = sourcingCostOf({
+            cogs: Number(saved.supplier_cogs ?? 0),
+            shipping: Number(saved.supplier_shipping ?? 0),
+            feeRate,
+            feeIncluded: saved.fee_included === true,
+          });
+        }
+        const { error: patchError } = await admin
+          .from("quote_lines")
+          .update(patch)
+          .eq("id", lineId);
+        if (patchError) throw new Error(patchError.message);
+      }
     }
 
     if (data.quote_valid_until !== undefined) {
