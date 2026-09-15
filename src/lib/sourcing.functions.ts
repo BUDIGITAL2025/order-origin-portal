@@ -811,7 +811,9 @@ export const adminPublishQuote = createServerFn({ method: "POST" })
         const email = quotePublishedEmail({
           quoteId: data.quote_id,
           productName: owner.productName ?? "your quote request",
-          quoteRef: quoteRefFromSkus((skuRows ?? []).map((r) => r.sku)),
+          quoteRef: quoteRefFromSkus(
+            (skuRows ?? []).map((r) => r.sku).filter((v): v is string => !!v),
+          ),
           revisionNumber: Number(meta?.revision_number ?? 1),
         });
         await sendClientEmail(admin, {
