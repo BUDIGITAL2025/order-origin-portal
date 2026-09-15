@@ -88,6 +88,9 @@ type EcomflowAnalytics = {
   orderSeries: { period: string; activeOrders: number }[];
 };
 
+/** Our own store (entity "BUDIGITAL USA LLC") — the only workspace Ecomflow has data for. */
+const BUDIGITAL_USA_STORE_ID = "b7cdecab-074e-4071-9496-258b0718c994";
+
 function workspaceOf(order: AdminOrder) {
   return order.stores as {
     store_name?: string | null;
