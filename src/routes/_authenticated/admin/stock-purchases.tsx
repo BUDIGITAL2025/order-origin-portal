@@ -1,11 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/app-shell";
 import { SectionTabs, ADMIN_SOURCING_TABS } from "@/components/section-tabs";
 import { Chip, FilterTabs, RowActions, SummaryBar, TableShell } from "@/components/admin-ui";
+import { LifecycleTimeline } from "@/components/lifecycle-timeline";
 import { CleanupRowActions, ShowArchivedToggle } from "@/components/cleanup-actions";
 import { ProductCell } from "@/components/product-thumb";
 import { Button } from "@/components/ui/button";
@@ -70,6 +71,8 @@ function AdminStockPurchasesPage() {
   });
 
   const [showArchived, setShowArchived] = useState(false);
+  // Same deal view as the quote page, from the purchase end of the chain.
+  const [dealFor, setDealFor] = useState<string | null>(null);
   const purchases = (rows ?? []).filter(
     (p) => showArchived || !(p as { archived_at?: string | null }).archived_at,
   );
@@ -161,7 +164,8 @@ function AdminStockPurchasesPage() {
         </TableHeader>
         <TableBody>
           {purchases.map((p) => (
-            <TableRow key={p.id}>
+            <React.Fragment key={p.id}>
+            <TableRow>
               <TableCell className="whitespace-nowrap font-mono text-xs">{p.ref}</TableCell>
               <TableCell className="max-w-40">
                 <div className="truncate text-sm">{p.client_name ?? "—"}</div>
@@ -248,9 +252,24 @@ function AdminStockPurchasesPage() {
                       Delivered
                     </Button>
                   ) : null}
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setDealFor(dealFor === p.id ? null : p.id)}
+                  >
+                    {dealFor === p.id ? "Hide deal view" : "Deal view"}
+                  </Button>
                 </RowActions>
               </TableCell>
             </TableRow>
+            {dealFor === p.id && (
+              <TableRow>
+                <TableCell colSpan={9} className="bg-muted/30 p-4">
+                  <LifecycleTimeline purchaseId={p.id} />
+                </TableCell>
+              </TableRow>
+            )}
+            </React.Fragment>
           ))}
           {purchases.length === 0 && (
             <TableRow>
