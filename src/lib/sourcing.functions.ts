@@ -263,10 +263,15 @@ export const sourcingGetQuote = createServerFn({ method: "POST" })
       ? await tiers.clientTierProgress(admin, context.userId, entityId, me.fee_tiers)
       : null;
 
+    const { clientIdentityForStore, clientDisplay } = await import("./client-identity.server");
+    const identity = await clientIdentityForStore(admin, quote.store_id);
+
     return {
       feeRate: clientFeeRate,
-      client: entityId ? { handle: tiers.clientHandle(entityId), tier: clientTier } : null,
-      quote: maskClientSiteUrl(quote),
+      client: entityId
+        ? { handle: clientDisplay(identity), identity, tier: clientTier }
+        : { handle: clientDisplay(identity), identity, tier: null },
+      quote: withoutStoreId(maskClientSiteUrl(quote)),
       essentialsOnly: quote.client_site === true,
       preview,
       lines: (lines ?? []).map((l) => ({
