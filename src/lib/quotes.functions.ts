@@ -11,6 +11,7 @@ import {
   signedUrlsSchema,
 } from "./schemas";
 import { flagBreachedQuotes, mapQuoteForAdmin } from "./quotes.server";
+import { closedPrice } from "./pricing";
 
 export class QuotaExceededError extends Error {
   constructor(message: string) {
@@ -243,8 +244,57 @@ export const adminListQuotes = createServerFn({ method: "GET" })
           }>,
         };
     const internalByQuote = new Map((internals ?? []).map((r) => [r.quote_request_id, r]));
+
+    // Quote-level ranges keep the queue dense while still exposing every
+    // variant's saved economics. supplier_cogs is already the frozen USD
+    // conversion; client price is computed only after a positive margin exists.
+    const { data: pricingLines, error: pricingError } = ids.length
+      ? await admin
+          .from("quote_lines")
+          .select("quote_request_id, supplier_cogs, sourcing_cost, supplier_tax, margin_pct")
+          .in("quote_request_id", ids)
+      : { data: [], error: null };
+    if (pricingError) throw new Error(pricingError.message);
+
+    const pricingByQuote = new Map<
+      string,
+      { cogs: number[]; clientPrices: number[]; hasUnpricedMargin: boolean }
+    >();
+    for (const line of pricingLines ?? []) {
+      const quoteId = line.quote_request_id;
+      const aggregate = pricingByQuote.get(quoteId) ?? {
+        cogs: [],
+        clientPrices: [],
+        hasUnpricedMargin: false,
+      };
+      const cogs = Number(line.supplier_cogs ?? 0);
+      const marginPct = Number(line.margin_pct ?? 0);
+      if (cogs > 0) {
+        aggregate.cogs.push(cogs);
+        if (marginPct > 0) {
+          aggregate.clientPrices.push(
+            closedPrice(Number(line.sourcing_cost ?? 0), marginPct, Number(line.supplier_tax ?? 0)),
+          );
+        } else {
+          aggregate.hasUnpricedMargin = true;
+        }
+      }
+      pricingByQuote.set(quoteId, aggregate);
+    }
+
     return {
-      quotes: (quotes ?? []).map((q) => mapQuoteForAdmin(q, internalByQuote.get(q.id as string))),
+      quotes: (quotes ?? []).map((q) => {
+        const mapped = mapQuoteForAdmin(q, internalByQuote.get(q.id as string));
+        const pricing = pricingByQuote.get(q.id as string);
+        return {
+          ...mapped,
+          cogs_min: pricing?.cogs.length ? Math.min(...pricing.cogs) : null,
+          cogs_max: pricing?.cogs.length ? Math.max(...pricing.cogs) : null,
+          client_price_min: pricing?.clientPrices.length ? Math.min(...pricing.clientPrices) : null,
+          client_price_max: pricing?.clientPrices.length ? Math.max(...pricing.clientPrices) : null,
+          awaiting_pricing: pricing?.hasUnpricedMargin ?? false,
+        };
+      }),
     };
   });
 

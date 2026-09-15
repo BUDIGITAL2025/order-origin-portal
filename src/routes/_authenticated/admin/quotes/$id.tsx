@@ -351,9 +351,7 @@ function AdminQuoteDetailPage() {
           lineId: l.id,
           status: l.status,
           currency,
-          supplier_cogs: money2(
-            foreign ? (l.supplier_cogs_original ?? 0) : (l.supplier_cogs ?? 0),
-          ),
+          supplier_cogs: money2(foreign ? (l.supplier_cogs_original ?? 0) : (l.supplier_cogs ?? 0)),
           supplier_shipping: money2(
             foreign ? (l.supplier_shipping_original ?? 0) : (l.supplier_shipping ?? 0),
           ),
@@ -1056,8 +1054,9 @@ function AdminQuoteDetailPage() {
                             const shipUsd = cellShipUsd(cell, rate);
                             const feeUsd = cellFee(cell, rate);
                             const feePctLabel = cell.fee_included
-                              ? "0"
-                              : String(Math.round(cell.fee_rate * 1000) / 10);
+                              ? "0.00"
+                              : money2(cell.fee_rate * 100);
+                            const marginPctLabel = money2(cell.margin_pct);
                             const conversionLine = (usd: number) =>
                               rate > 0
                                 ? `→ ${formatUSD(usd)} @ ${rate.toFixed(4)} (${frozen ? "frozen" : "today"}${rateDate ? ` ${rateDate}` : ""})`
@@ -1157,67 +1156,45 @@ function AdminQuoteDetailPage() {
                                     : "usually 0 — always USD"}
                                 </p>
 
-                                {/* Agent fee — prefilled from the agent's tier, editable per quote. */}
-                                <div className="space-y-1 rounded border border-border/60 bg-muted/20 p-1.5">
-                                  <div className="flex items-center gap-1">
-                                    <span className="shrink-0 text-[10px] font-medium">
-                                      Agent fee %
-                                    </span>
-                                    <Input
-                                      type="number"
-                                      step="0.5"
-                                      min="0"
-                                      max="100"
-                                      value={feePctLabel}
-                                      onChange={(e) =>
-                                        updateCell(row.key, country, {
-                                          fee_rate: (Number(e.target.value) || 0) / 100,
-                                        })
-                                      }
-                                      disabled={!cellEditable || cell.fee_included}
-                                      aria-label={`Agent fee % (${country})`}
-                                      className="h-7 w-16 tnum text-xs"
-                                    />
+                                {/* Matching percentage controls above the USD chain. */}
+                                <div className="grid gap-2 sm:grid-cols-2">
+                                  <div className="space-y-1 rounded border border-border/60 bg-muted/20 p-1.5">
+                                    <Label className="text-[10px] font-medium">Agent fee %</Label>
+                                    <div className="flex items-center justify-between gap-1.5">
+                                      <Input
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        max="100"
+                                        value={feePctLabel}
+                                        onChange={(e) =>
+                                          updateCell(row.key, country, {
+                                            fee_rate: (Number(e.target.value) || 0) / 100,
+                                          })
+                                        }
+                                        disabled={!cellEditable || cell.fee_included}
+                                        aria-label={`Agent fee % (${country})`}
+                                        className="h-7 w-[4.5rem] tnum text-xs"
+                                      />
+                                      <span className="tnum text-xs font-medium">
+                                        {formatUSD(feeUsd)}
+                                      </span>
+                                    </div>
                                     {agentTier && (
-                                      <span className="rounded-full border border-border bg-background px-1.5 py-0.5 text-[9px] leading-tight text-muted-foreground">
+                                      <p className="text-[9px] leading-tight text-muted-foreground">
                                         Tier: {pct(agentTier.rate)}
                                         {agentTier.nextAt != null
                                           ? ` · ${agentTier.count}/${agentTier.nextAt} paid orders to next tier`
                                           : " · final tier"}
-                                      </span>
+                                      </p>
                                     )}
                                   </div>
-                                  <p className="tnum text-[10px] leading-tight text-muted-foreground">
-                                    {cell.fee_included
-                                      ? "Fee already included in the supplier cost — never applied twice."
-                                      : foreign
-                                        ? `${feePctLabel}% of ${formatCurrency(num(cell.supplier_cogs), cell.currency)} = ${symbol}${(num(cell.supplier_cogs) * cell.fee_rate).toFixed(2)} → ${formatUSD(feeUsd)}`
-                                        : `${feePctLabel}% of ${formatUSD(num(cell.supplier_cogs))} = ${formatUSD(feeUsd)}`}
-                                  </p>
-                                </div>
-
-                                {/* Chain summary — always USD, always two decimals. */}
-                                <div className="space-y-0.5 rounded border border-border/60 bg-muted/30 p-1.5 text-[10px] text-muted-foreground">
-                                  <div className="flex items-center justify-between">
-                                    <span>COGS + ship (USD)</span>
-                                    <span className="tnum">{formatUSD(cellBase(cell, rate))}</span>
-                                  </div>
-                                  <div className="flex items-center justify-between">
-                                    <span>Agent fee ({feePctLabel}%)</span>
-                                    <span className="tnum">{formatUSD(feeUsd)}</span>
-                                  </div>
-                                  <div className="flex items-center justify-between font-medium text-foreground">
-                                    <span>Sourcing cost</span>
-                                    <span className="tnum">
-                                      {formatUSD(cellSourcingCost(cell, rate))}
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center justify-between gap-1">
-                                    <span className="shrink-0">FlySales margin</span>
-                                    <div className="flex items-center gap-1">
+                                  <div className="space-y-1 rounded border border-border/60 bg-muted/20 p-1.5">
+                                    <Label className="text-[10px] font-medium">Margin %</Label>
+                                    <div className="flex items-center justify-between gap-1.5">
                                       <Input
                                         type="number"
-                                        step="0.5"
+                                        step="0.01"
                                         min="0"
                                         value={cell.margin_pct}
                                         onChange={(e) =>
@@ -1225,27 +1202,69 @@ function AdminQuoteDetailPage() {
                                             margin_pct: e.target.value,
                                           })
                                         }
+                                        onBlur={(e) =>
+                                          updateCell(row.key, country, {
+                                            margin_pct: money2(e.target.value || 0),
+                                          })
+                                        }
                                         disabled={!cellEditable}
                                         aria-label={`Margin % (${country})`}
-                                        className="h-6 w-14 tnum text-[10px]"
+                                        className="h-7 w-[4.5rem] tnum text-xs"
                                       />
-                                      <span className="tnum">
+                                      <span className="tnum text-xs font-medium">
                                         {formatUSD(cellMargin(cell, rate))}
                                       </span>
                                     </div>
                                   </div>
-                                  <div className="flex items-center justify-between">
-                                    <span>Tax passthrough</span>
-                                    <span className="tnum">{formatUSD(num(cell.supplier_tax))}</span>
-                                  </div>
                                 </div>
-                                <div className="flex items-center justify-between border-t border-border pt-1">
-                                  <span className="text-[10px] font-semibold uppercase tracking-wide">
-                                    Client price
-                                  </span>
-                                  <span className="tnum text-sm font-bold">
-                                    {formatUSD(cellPrice(cell, rate))}
-                                  </span>
+                                {cell.fee_included && (
+                                  <p className="text-[10px] leading-tight text-muted-foreground">
+                                    Fee already included in the supplier cost — never applied twice.
+                                  </p>
+                                )}
+                                {foreign && !cell.fee_included && (
+                                  <p className="tnum text-[10px] leading-tight text-muted-foreground">
+                                    Agent fee in supplier currency: {symbol}
+                                    {(num(cell.supplier_cogs) * cell.fee_rate).toFixed(2)}
+                                  </p>
+                                )}
+
+                                {/* Chain summary — always USD, always two decimals. */}
+                                <div className="rounded border border-border/60 bg-muted/30 p-1.5 text-[10px] text-muted-foreground">
+                                  <div className="grid min-h-6 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3">
+                                    <span>COGS + ship (USD)</span>
+                                    <span className="tnum text-right">
+                                      {formatUSD(cellBase(cell, rate))}
+                                    </span>
+                                  </div>
+                                  <div className="grid min-h-6 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3">
+                                    <span>Agent fee ({feePctLabel}%)</span>
+                                    <span className="tnum text-right">{formatUSD(feeUsd)}</span>
+                                  </div>
+                                  <div className="grid min-h-6 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 font-medium text-foreground">
+                                    <span>Sourcing cost</span>
+                                    <span className="tnum text-right">
+                                      {formatUSD(cellSourcingCost(cell, rate))}
+                                    </span>
+                                  </div>
+                                  <div className="grid min-h-6 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3">
+                                    <span>FlySales margin ({marginPctLabel}%)</span>
+                                    <span className="tnum text-right">
+                                      {formatUSD(cellMargin(cell, rate))}
+                                    </span>
+                                  </div>
+                                  <div className="grid min-h-6 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3">
+                                    <span>Tax passthrough</span>
+                                    <span className="tnum text-right">
+                                      {formatUSD(num(cell.supplier_tax))}
+                                    </span>
+                                  </div>
+                                  <div className="mt-1 grid min-h-8 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 border-t border-border pt-1">
+                                    <span className="font-semibold uppercase">Client price</span>
+                                    <span className="tnum text-right text-sm font-bold text-foreground">
+                                      {formatUSD(cellPrice(cell, rate))}
+                                    </span>
+                                  </div>
                                 </div>
                                 {locked && (
                                   <LineStatusBadge

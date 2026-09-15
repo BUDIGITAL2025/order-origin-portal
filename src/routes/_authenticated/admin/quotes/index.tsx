@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, ArrowUpRight } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { EmptyState, PageHeader } from "@/components/app-shell";
@@ -32,7 +32,7 @@ import { CleanupRowActions, ShowArchivedToggle } from "@/components/cleanup-acti
 import { ProductCell } from "@/components/product-thumb";
 import { PhotoManagerDialog } from "@/components/photo-manager";
 import { ImagePlus } from "lucide-react";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatUSD } from "@/lib/format";
 import { effectiveTier } from "@/lib/plans";
 import { adminCleanupDelete } from "@/lib/cleanup.functions";
 import { adminListQuotes } from "@/lib/quotes.functions";
@@ -63,6 +63,12 @@ const TABS = [
 type TabId = (typeof TABS)[number]["id"];
 
 const HOUR = 3600_000;
+type PriceSort = "default" | "asc" | "desc";
+
+function priceRange(min: number | null | undefined, max: number | null | undefined): string {
+  if (min == null || max == null) return "—";
+  return min === max ? formatUSD(min) : `${formatUSD(min)}–${formatUSD(max)}`;
+}
 
 /** Countdown to the 48h sourcing target, rendered in mono. */
 function countdown(dueAt: string): string {
@@ -79,6 +85,7 @@ function AdminQuotesPage() {
   const navigate = useNavigate({ from: Route.fullPath });
   const fetchQuotes = useServerFn(adminListQuotes);
   const [search, setSearch] = useState("");
+  const [priceSort, setPriceSort] = useState<PriceSort>("default");
   const [showArchived, setShowArchived] = useState(false);
   const [photoFor, setPhotoFor] = useState<{ id: string; name: string; urls: string[] } | null>(
     null,
@@ -147,6 +154,15 @@ function AdminQuotesPage() {
         .includes(term);
     });
     return [...list].sort((a, b) => {
+      if (priceSort !== "default") {
+        const aPrice = a.client_price_min;
+        const bPrice = b.client_price_min;
+        if (aPrice == null && bPrice != null) return 1;
+        if (aPrice != null && bPrice == null) return -1;
+        if (aPrice != null && bPrice != null && aPrice !== bPrice) {
+          return priceSort === "asc" ? aPrice - bPrice : bPrice - aPrice;
+        }
+      }
       const aOpen = isOpen(a.status);
       const bOpen = isOpen(b.status);
       if (aOpen && bOpen) {
@@ -156,7 +172,7 @@ function AdminQuotesPage() {
       if (bOpen) return 1;
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     });
-  }, [quotes, search, showArchived]);
+  }, [quotes, search, showArchived, priceSort]);
 
   const now = Date.now();
   const openQuotes = quotes.filter((q) => isOpen(q.status));
@@ -169,18 +185,25 @@ function AdminQuotesPage() {
     (q) =>
       q.status === "quoted" && new Date(q.created_at).toDateString() === new Date().toDateString(),
   ).length;
+  const awaitingPricing = quotes.filter((q) => q.awaiting_pricing).length;
 
   return (
     <div>
       <PageHeader title="Quote queue" description="Open requests first, most urgent at the top." />
 
       <SummaryBar
-        className="lg:grid-cols-4"
+        className="lg:grid-cols-5"
         items={[
           { key: "open", label: "Open", value: openQuotes.length, tone: "primary" },
           { key: "soon", label: "Due < 12h", value: dueSoonCount, tone: "warning" },
           { key: "overdue", label: "Overdue", value: overdueCount, tone: "danger" },
           { key: "today", label: "Quoted today", value: quotedToday, tone: "success" },
+          {
+            key: "awaiting-pricing",
+            label: "Awaiting pricing",
+            value: awaitingPricing,
+            tone: "warning",
+          },
         ]}
       />
 
@@ -248,6 +271,31 @@ function AdminQuotesPage() {
                 <TableHead className="h-9">Client</TableHead>
                 <TableHead className="h-9">Product</TableHead>
                 <TableHead className="h-9 text-right">Vol./mo</TableHead>
+                <TableHead className="h-9 text-right">COGS (USD)</TableHead>
+                <TableHead className="h-9 text-right">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 gap-1 px-1.5 text-xs font-medium uppercase text-muted-foreground"
+                    onClick={() =>
+                      setPriceSort((current) =>
+                        current === "default" ? "asc" : current === "asc" ? "desc" : "default",
+                      )
+                    }
+                    aria-label={`Sort by client price${priceSort === "default" ? " ascending" : priceSort === "asc" ? " descending" : " by default order"}`}
+                    title="Sort by client price"
+                  >
+                    Client price
+                    {priceSort === "asc" ? (
+                      <ArrowUp className="h-3 w-3" />
+                    ) : priceSort === "desc" ? (
+                      <ArrowDown className="h-3 w-3" />
+                    ) : (
+                      <ArrowUpDown className="h-3 w-3" />
+                    )}
+                  </Button>
+                </TableHead>
                 <TableHead className="h-9">Status</TableHead>
                 <TableHead className="h-9">48h target</TableHead>
                 <TableHead className="h-9">Ref</TableHead>
@@ -268,8 +316,17 @@ function AdminQuotesPage() {
                 return (
                   <TableRow
                     key={q.id}
+                    role="link"
+                    tabIndex={0}
+                    onClick={() => void navigate({ to: "/admin/quotes/$id", params: { id: q.id } })}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        void navigate({ to: "/admin/quotes/$id", params: { id: q.id } });
+                      }
+                    }}
                     className={cn(
-                      "hover:bg-accent/60",
+                      "cursor-pointer hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
                       overdue && "border-l-2 border-l-destructive bg-destructive/5",
                       dueSoon && "border-l-2 border-l-warning bg-warning/5",
                     )}
@@ -284,7 +341,7 @@ function AdminQuotesPage() {
                     <TableCell className="whitespace-nowrap py-2.5 text-xs text-muted-foreground">
                       {formatDate(q.created_at)}
                     </TableCell>
-                    <TableCell className="py-2.5">
+                    <TableCell className="py-2.5" onClick={(e) => e.stopPropagation()}>
                       <div className="max-w-[180px] truncate font-medium">
                         <Value>{client?.company_name}</Value>
                       </div>
@@ -303,6 +360,23 @@ function AdminQuotesPage() {
                     </TableCell>
                     <TableCell className="tnum py-2.5 text-right">
                       <Value>{q.target_monthly_volume}</Value>
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap py-2.5 text-right font-medium">
+                      {priceRange(q.cogs_min, q.cogs_max)}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap py-2.5 text-right">
+                      {q.client_price_min == null ? (
+                        <div>
+                          <div>—</div>
+                          <div className="text-[10px] font-normal text-muted-foreground">
+                            not priced
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="font-semibold">
+                          {priceRange(q.client_price_min, q.client_price_max)}
+                        </span>
+                      )}
                     </TableCell>
                     <TableCell className="py-2.5">
                       <QuoteStatusBadge status={q.status} validUntil={q.quote_valid_until} />
