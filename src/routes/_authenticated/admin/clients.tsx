@@ -372,8 +372,16 @@ function AdminClientsPage() {
                                   <React.Fragment key={s.id}>
                                     <TableRow className="hover:bg-accent/60">
                                       <TableCell className="max-w-56 py-2.5">
-                                        <div className="truncate font-medium">
-                                          {s.store_name ?? s.store_url}
+                                      <TableCell className="max-w-56 py-2.5">
+                                        <div className="flex items-center gap-1">
+                                          <span className="truncate font-medium">
+                                            {s.store_name ?? s.store_url}
+                                          </span>
+                                          <RenameWorkspace
+                                            storeId={s.id}
+                                            currentName={s.store_name ?? ""}
+                                            onRenamed={invalidate}
+                                          />
                                         </div>
                                         <div className="truncate text-xs text-muted-foreground">
                                           {s.store_url}
