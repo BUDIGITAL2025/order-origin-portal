@@ -480,7 +480,8 @@ function AdminQuoteDetailPage() {
     return lines;
   };
 
-  const rekeyRows = (saved: { lines: SavedLine[] }) => {
+  type RekeyLine = { id: string; variant_label: string; country_code: string; sku: string | null; status: string };
+  const rekeyRows = (saved: { lines: RekeyLine[] }) => {
     const byKey = new Map(saved.lines.map((l) => [`${l.variant_label}::${l.country_code}`, l]));
     setRows((prev) =>
       prev.map((row) => ({
