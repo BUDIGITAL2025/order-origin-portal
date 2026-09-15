@@ -806,8 +806,9 @@ function AdminQuoteDetailPage() {
         }
       />
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <div className="space-y-6">
+      {/* Work on the left (~70%), context and conversation on the right. */}
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,2.3fr)_minmax(0,1fr)]">
+        <div className="space-y-6 lg:order-2">
           <Card>
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
@@ -944,6 +945,7 @@ function AdminQuoteDetailPage() {
           )}
         </div>
 
+        <div className="space-y-6 lg:order-1">
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Deal view</CardTitle>
@@ -1588,6 +1590,7 @@ function AdminQuoteDetailPage() {
             </form>
           </CardContent>
         </Card>
+        </div>
       </div>
     </div>
   );
