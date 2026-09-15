@@ -207,7 +207,7 @@ export async function buildLifecycle(
       stage("priced", null, {
         done: pricedDone,
         by: q.quoted_by ? (names.get(q.quoted_by as string) ?? "FlySales admin") : null,
-        detail: pricedDone ? `${myLines.length} variant${myLines.length === 1 ? "" : "s"}` : null,
+        detail: pricedDone ? `${variantCount} variant${variantCount === 1 ? "" : "s"}` : null,
       }),
       stage("published", q.quoted_at as string | null, {
         by: q.quoted_by ? (names.get(q.quoted_by as string) ?? "FlySales admin") : null,
