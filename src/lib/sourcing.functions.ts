@@ -21,9 +21,20 @@ import {
 
 const uuid = z.string().uuid();
 
-/** Columns of a quote request a collaborator may see — no store, no client. */
+/**
+ * Columns of a quote request a collaborator may see. `store_id` is read so we
+ * can resolve the client's NAME, and stripped from every payload: the agent
+ * gets a company and a first name, never an identifier they could use to
+ * query anything else.
+ */
 const DESK_QUOTE_COLUMNS =
-  "id, product_url, product_name, notes, target_monthly_volume, target_countries, image_urls, status, created_at, quote_due_at, sourcing_submitted_at, assigned_sourcer, client_site";
+  "id, store_id, product_url, product_name, notes, target_monthly_volume, target_countries, image_urls, status, created_at, quote_due_at, sourcing_submitted_at, assigned_sourcer, client_site";
+
+/** Drop the store id from anything that leaves a desk endpoint. */
+function withoutStoreId<T extends { store_id?: string | null }>(quote: T): Omit<T, "store_id"> {
+  const { store_id: _drop, ...rest } = quote;
+  return rest;
+}
 
 /**
  * A product URL that points at the client's own site identifies the client, so
