@@ -13,6 +13,7 @@ import {
   signedUrlsSchema,
 } from "./schemas";
 import { flagBreachedQuotes, mapQuoteForAdmin } from "./quotes.server";
+import { quoteRefFromSkus } from "./quote-ref";
 import { closedPrice, sourcingCostOf } from "./pricing";
 
 export class QuotaExceededError extends Error {
@@ -274,7 +275,7 @@ export const adminListQuotes = createServerFn({ method: "GET" })
       ? await admin
           .from("quote_lines")
           .select(
-            "quote_request_id, supplier_cogs, supplier_shipping, sourcing_fee_rate, fee_included, sourcing_cost, supplier_tax, margin_pct",
+            "quote_request_id, sku, supplier_cogs, supplier_shipping, sourcing_fee_rate, fee_included, sourcing_cost, supplier_tax, margin_pct",
           )
           .in("quote_request_id", ids)
       : { data: [], error: null };
@@ -282,7 +283,7 @@ export const adminListQuotes = createServerFn({ method: "GET" })
 
     const pricingByQuote = new Map<
       string,
-      { cogs: number[]; clientPrices: number[]; hasUnpricedMargin: boolean }
+      { cogs: number[]; clientPrices: number[]; hasUnpricedMargin: boolean; skus: string[] }
     >();
     for (const line of pricingLines ?? []) {
       const quoteId = line.quote_request_id;
@@ -290,7 +291,9 @@ export const adminListQuotes = createServerFn({ method: "GET" })
         cogs: [],
         clientPrices: [],
         hasUnpricedMargin: false,
+        skus: [],
       };
+      if (line.sku) aggregate.skus.push(line.sku);
       const cogs = Number(line.supplier_cogs ?? 0);
       const marginPct = Number(line.margin_pct ?? 0);
       if (cogs > 0) {
@@ -326,6 +329,7 @@ export const adminListQuotes = createServerFn({ method: "GET" })
           client_price_min: pricing?.clientPrices.length ? Math.min(...pricing.clientPrices) : null,
           client_price_max: pricing?.clientPrices.length ? Math.max(...pricing.clientPrices) : null,
           awaiting_pricing: pricing?.hasUnpricedMargin ?? false,
+          quote_ref: quoteRefFromSkus(pricing?.skus ?? []),
         };
       }),
     };
