@@ -106,7 +106,26 @@ export const listMyQuotes = createServerFn({ method: "GET" })
       .is("archived_at", null)
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
-    return { quotes: data ?? [] };
+    const quotes = data ?? [];
+    // Item references live on quote_lines, which clients cannot read directly.
+    // RLS already limited the ids above to this client's own quotes.
+    const ids = quotes.map((q) => q.id);
+    const refs = new Map<string, string[]>();
+    if (ids.length) {
+      const { getAdminClient } = await import("./admin.server");
+      const admin = await getAdminClient();
+      const { data: skuRows } = await admin
+        .from("quote_lines")
+        .select("quote_request_id, sku")
+        .in("quote_request_id", ids);
+      for (const row of skuRows ?? []) {
+        if (!row.sku) continue;
+        refs.set(row.quote_request_id, [...(refs.get(row.quote_request_id) ?? []), row.sku]);
+      }
+    }
+    return {
+      quotes: quotes.map((q) => ({ ...q, quote_ref: quoteRefFromSkus(refs.get(q.id) ?? []) })),
+    };
   });
 
 /**
