@@ -645,3 +645,82 @@ function AdminClientsPage() {
     </div>
   );
 }
+
+/**
+ * Pencil next to a workspace name: renames `stores.store_name` only. The
+ * legal entity name (invoices, fiscal records) is a separate field and stays
+ * untouched. Every screen reading the workspace name — including the
+ * Fulfilment client dropdown — picks the new name up on the next fetch.
+ */
+function RenameWorkspace({
+  storeId,
+  currentName,
+  onRenamed,
+}: {
+  storeId: string;
+  currentName: string;
+  onRenamed: () => void;
+}) {
+  const callRename = useServerFn(adminSetStoreName);
+  const queryClient = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState(currentName);
+
+  const rename = useMutation({
+    mutationFn: () => callRename({ data: { store_id: storeId, store_name: name.trim() } }),
+    onSuccess: () => {
+      toast.success("Workspace renamed");
+      setOpen(false);
+      onRenamed();
+      void queryClient.invalidateQueries({ queryKey: ["fulfilment-workspaces"] });
+      void queryClient.invalidateQueries({ queryKey: ["my-context"] });
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  return (
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (next) setName(currentName);
+      }}
+    >
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          aria-label="Rename workspace"
+          className="shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+        >
+          <Pencil className="h-3.5 w-3.5" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-64 space-y-2">
+        <Label htmlFor={`ws-name-${storeId}`} className="text-xs">
+          Workspace name
+        </Label>
+        <Input
+          id={`ws-name-${storeId}`}
+          value={name}
+          autoFocus
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && name.trim()) rename.mutate();
+          }}
+        />
+        <div className="flex justify-end gap-2">
+          <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>
+            Cancel
+          </Button>
+          <Button
+            size="sm"
+            disabled={!name.trim() || name.trim() === currentName || rename.isPending}
+            onClick={() => rename.mutate()}
+          >
+            {rename.isPending ? "Saving…" : "Save"}
+          </Button>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
