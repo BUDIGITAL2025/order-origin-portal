@@ -14,6 +14,7 @@ import {
   subscriptionPlanSchema,
   profileUpdateSchema,
   storeIdSchema,
+  storeNameSchema,
   tierOverrideSchema,
 } from "./schemas";
 import { TERMS_VERSION } from "./terms";
