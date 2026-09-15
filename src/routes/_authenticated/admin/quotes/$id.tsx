@@ -811,20 +811,23 @@ function AdminQuoteDetailPage() {
                 </AlertDialogContent>
               </AlertDialog>
             )}
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-1.5"
-              onClick={() => void copyBrief()}
-            >
-              <Copy className="h-3.5 w-3.5" /> Copy sourcing brief
-            </Button>
-            <Button variant="outline" size="sm" className="gap-1.5" onClick={sendWhatsApp}>
-              <MessageCircle className="h-3.5 w-3.5" /> Send via WhatsApp
-            </Button>
-          </>
-        }
-      />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-1.5" aria-label="More actions">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onSelect={() => void copyBrief()}>
+                <Copy className="h-3.5 w-3.5" /> Copy sourcing brief
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={sendWhatsApp}>
+                <MessageCircle className="h-3.5 w-3.5" /> Send via WhatsApp
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
 
       {/* Work on the left (~70%), context and conversation on the right. */}
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,2.3fr)_minmax(0,1fr)]">
