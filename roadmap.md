@@ -8,7 +8,7 @@
 - [x] Matching Agent fee / Margin controls and aligned USD pricing chain.
 
 ## Security: EXPOSED_SENSITIVE_DATA (quote_options.internal_notes)
-- [ ] Remove internal_notes (and all cost/fee/margin/supplier fields) from client-readable paths; clients read published options via SECURITY DEFINER function/view with client-safe columns only
-- [ ] Audit every quote_options column: which are client-exposed
-- [ ] Sweep sibling client-readable tables (quote_requests/quote_lines, products, orders/order_items) for internal-only columns
-- [ ] Re-run security scan, confirm cleared, confirm publish safe
+- [x] Remove internal_notes (and all cost/fee/margin/supplier fields) from client-readable paths; clients read published options via SECURITY DEFINER function/view with client-safe columns only
+- [x] Audit every quote_options column: which are client-exposed
+- [x] Sweep sibling client-readable tables (quote_requests/quote_lines, products, orders/order_items) for internal-only columns
+- [x] Re-run security scan, confirm cleared, confirm publish safe
