@@ -299,5 +299,19 @@ export const getMyOrder = createServerFn({ method: "GET" })
       .order("created_at", { ascending: false });
     if (disputeError) throw new Error(disputeError.message);
 
-    return { order, maxLeadTimeDays, disputes: disputes ?? [] };
+    // Internal review text never leaves the server — only the mapped message.
+    const { getAdminClient } = await import("./admin.server");
+    const { clientReviewMessage } = await import("./order-review");
+    const admin = await getAdminClient();
+    const { data: review } = await admin
+      .from("orders")
+      .select("needs_review_reason")
+      .eq("id", order.id)
+      .maybeSingle();
+
+    return {
+      order: { ...order, review_message: clientReviewMessage(review?.needs_review_reason) },
+      maxLeadTimeDays,
+      disputes: disputes ?? [],
+    };
   });
