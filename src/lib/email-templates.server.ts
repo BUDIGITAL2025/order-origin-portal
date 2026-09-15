@@ -449,6 +449,36 @@ export function adsActivationRequestedEmail(args: {
   });
 }
 
+/** A quote (or a revision of it) was published to the client. */
+export function quotePublishedEmail(args: {
+  quoteId: string;
+  productName: string;
+  quoteRef: string;
+  revisionNumber: number;
+}): BuiltEmail {
+  const ref = args.quoteRef ? ` (Ref ${args.quoteRef})` : "";
+  const revised = args.revisionNumber > 1;
+  return build(
+    revised
+      ? `Quote updated: revision ${args.revisionNumber} — ${args.productName}${ref}`
+      : `Your quote is ready: ${args.productName}${ref}`,
+    {
+      heading: revised ? `Quote updated: revision ${args.revisionNumber}` : "Your quote is ready",
+      preheader: `${args.productName}${ref}`,
+      paragraphs: revised
+        ? [
+            `We published revision ${args.revisionNumber} of your quote for ${args.productName}${ref}.`,
+            "Quantity, delivery, shipping or price may have changed, so this revision needs your approval. The terms you already accepted stay in force until you approve it.",
+          ]
+        : [
+            `Your pricing for ${args.productName}${ref} is published.`,
+            "Open the quote to pick the variants you want and the quantity for each.",
+          ],
+      button: { label: "Review the quote", url: portalUrl(`/quotes/${args.quoteId}`) },
+    },
+  );
+}
+
 /** The FlySales team replied in a quote conversation. */
 export function quoteMessageEmail(args: {
   quoteId: string;
