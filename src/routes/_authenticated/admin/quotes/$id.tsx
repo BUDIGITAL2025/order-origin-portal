@@ -70,6 +70,7 @@ import { effectiveTier, TIER_LABELS } from "@/lib/plans";
 import {
   adminGetQuote,
   adminGetQuoteImageUrls,
+  adminCreateQuoteRevision,
   adminRequote,
   adminSaveQuoteLines,
   adminSetQuoteStatus,
@@ -280,6 +281,7 @@ function AdminQuoteDetailPage() {
   const [validUntil, setValidUntil] = useState("");
   const [adminNotes, setAdminNotes] = useState("");
   const [rows, setRows] = useState<VariantRow[]>([]);
+  const navigate = useNavigate();
   const [hydrated, setHydrated] = useState(false);
   /** Explicit-save bookkeeping: the serialized form as last persisted. */
   const [savedSnapshot, setSavedSnapshot] = useState<string | null>(null);
