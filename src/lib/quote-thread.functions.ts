@@ -122,7 +122,7 @@ export const sourcingListQuoteMessages = createServerFn({ method: "POST" })
       .is("read_by_sourcer_at", null);
 
     return {
-      client_label: clientShortLabel(quote.store_id),
+      client_label: clientDisplay(await clientIdentityForStore(admin, quote.store_id)),
       messages: (rows ?? []).map((m) => ({ ...m, pinned: m.pinned })) as ThreadMessage[],
     };
   });
