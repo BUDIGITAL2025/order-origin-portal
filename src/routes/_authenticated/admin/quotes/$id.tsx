@@ -238,6 +238,14 @@ function AdminQuoteDetailPage() {
     staleTime: 60 * 60 * 1000,
   });
   const todayFx = (fxToday ?? null) as FxRates | null;
+  // Platform default margin — prefills every new variant cell.
+  const fetchDefaultMargin = useServerFn(getDefaultMarginPct);
+  const { data: marginSetting, isSuccess: marginReady } = useQuery({
+    queryKey: ["default-margin-pct"],
+    queryFn: fetchDefaultMargin,
+    staleTime: 10 * 60 * 1000,
+  });
+  const defaultMargin = marginSetting?.margin_pct ?? 10;
   /** Tier context for the fee field: the agent this request belongs to. */
   const agentTier = data?.agent ?? null;
   const client = (quote?.profiles ?? null) as {
@@ -271,6 +279,9 @@ function AdminQuoteDetailPage() {
   const [adminNotes, setAdminNotes] = useState("");
   const [rows, setRows] = useState<VariantRow[]>([]);
   const [hydrated, setHydrated] = useState(false);
+  /** Explicit-save bookkeeping: the serialized form as last persisted. */
+  const [savedSnapshot, setSavedSnapshot] = useState<string | null>(null);
+  const [needsSnapshot, setNeedsSnapshot] = useState(false);
 
   // ===== Offers: a quote holds up to three publishable options =====
   const fetchOptions = useServerFn(adminListQuoteOptions);
@@ -320,7 +331,7 @@ function AdminQuoteDetailPage() {
   );
 
   useEffect(() => {
-    if (!data || hydrated) return;
+    if (!data || hydrated || !marginReady) return;
     setInternalReference(data.quote.internal_reference ?? "");
     setValidUntil(data.quote.quote_valid_until ?? "");
     setAdminNotes(data.quote.admin_notes ?? "");
@@ -374,15 +385,16 @@ function AdminQuoteDetailPage() {
       }
       for (const row of byVariant.values()) {
         for (const c of targetCountries) {
-          if (!row.cells[c]) row.cells[c] = emptyCell(c);
+          if (!row.cells[c]) row.cells[c] = emptyCell(c, defaultMargin);
         }
       }
       setRows([...byVariant.values()]);
     } else {
-      setRows([emptyVariant(targetCountries)]);
+      setRows([emptyVariant(targetCountries, defaultMargin)]);
     }
     setHydrated(true);
-  }, [data, hydrated, optionId]);
+    setNeedsSnapshot(true);
+  }, [data, hydrated, optionId, marginReady, defaultMargin]);
 
   const requestEditable =
     quote != null && ["submitted", "sourcing", "quoted"].includes(quote.status);
@@ -1288,7 +1300,9 @@ function AdminQuoteDetailPage() {
                   variant="outline"
                   size="sm"
                   className="gap-1.5"
-                  onClick={() => setRows((prev) => [...prev, emptyVariant(countries)])}
+                  onClick={() =>
+                    setRows((prev) => [...prev, emptyVariant(countries, defaultMargin)])
+                  }
                 >
                   <Plus className="h-3.5 w-3.5" /> Add variant (all {countries.length}{" "}
                   {countries.length === 1 ? "country" : "countries"})
