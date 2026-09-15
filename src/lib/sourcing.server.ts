@@ -287,6 +287,8 @@ export async function accrueSourcingEarning(
     quoteLineId?: string | null;
     stockPurchaseId?: string | null;
     orderId?: string | null;
+    /** Client account the units were delivered to — drives the per-client tier. */
+    entityId?: string | null;
   },
 ): Promise<boolean> {
   if (args.units <= 0 || args.supplierUnitPrice <= 0 || args.feeRate <= 0) return false;
@@ -306,9 +308,14 @@ export async function accrueSourcingEarning(
     if (error.code === "23505") return false;
     throw new Error(error.message);
   }
-  // Same anchor as the money: one settled transaction, one step towards the
-  // next fee tier. Replays hit the unique reference above and never count.
+  // Same anchor as the money: settled units move the agent's counter towards
+  // the next fee tier. Replays hit the unique reference above and never count.
   await admin.rpc("bump_sourcing_transactions", { p_user_id: args.collaboratorUserId });
+  if (args.entityId) {
+    const { bumpClientUnits } = await import("./client-tiers.server");
+    // The tier counter is per agent AND per client account.
+    await bumpClientUnits(admin, args.collaboratorUserId, args.entityId, args.units);
+  }
   return true;
 }
 
@@ -317,6 +324,14 @@ export async function accrueSourcingEarning(
  * from a sourced quote line pays its collaborator on the units shipped.
  */
 export async function accrueEarningsForOrder(admin: Admin, orderId: string): Promise<number> {
+  const { data: order } = await admin
+    .from("orders")
+    .select("id, store_id, stores(entity_id)")
+    .eq("id", orderId)
+    .maybeSingle();
+  const entityId =
+    (order as unknown as { stores?: { entity_id: string } | null } | null)?.stores?.entity_id ??
+    null;
   const { data: items } = await admin
     .from("order_items")
     .select("id, quantity, products(quote_line_id)")
@@ -340,6 +355,7 @@ export async function accrueEarningsForOrder(admin: Admin, orderId: string): Pro
       supplierUnitPrice: Number(line.supplier_unit_price),
       quoteLineId: line.id,
       orderId,
+      entityId,
     });
     if (ok) accrued += 1;
   }
