@@ -158,8 +158,13 @@ export const deskListPurchases = createServerFn({ method: "POST" })
       .limit(200);
     if (error) throw new Error(error.message);
     const { purchaseRef } = await import("./purchases.server");
+    const { clientIdentityByStore, clientDisplay } = await import("./client-identity.server");
+    const identities = await clientIdentityByStore(
+      admin,
+      (data ?? []).map((p) => p.store_id),
+    );
     return (data ?? []).map((p) => ({
-      ...agentView(p as unknown as PurchaseRow),
+      ...agentView(p as unknown as PurchaseRow, clientDisplay(identities.get(p.store_id))),
       ref: purchaseRef(p.id),
     }));
   });
