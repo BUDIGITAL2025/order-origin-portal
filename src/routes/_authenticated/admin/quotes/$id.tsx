@@ -444,38 +444,87 @@ function AdminQuoteDetailPage() {
     );
   };
 
+  /** Everything the draft save needs, validated the same way for both actions. */
+  const buildLines = () => {
+    if (rows.length === 0) throw new Error("Add at least one variant");
+    const labels = rows.map((r) => r.label.trim());
+    if (labels.some((l) => !l)) throw new Error("Every variant needs a label");
+    if (new Set(labels).size !== labels.length) {
+      throw new Error("Variant labels must be unique");
+    }
+    const lines = rows.flatMap((row) =>
+      countries.flatMap((country) => {
+        const cell = row.cells[country] ?? emptyCell(country, defaultMargin);
+        if (cellLocked(cell)) return [];
+        return [
+          {
+            ...(cell.lineId ? { id: cell.lineId } : {}),
+            variant_label: row.label.trim(),
+            country_code: country,
+            // Sent in the supplier's own currency — the server converts and
+            // freezes the rate, so the original amount stays the truth.
+            supplier_cogs: num(cell.supplier_cogs),
+            supplier_shipping: num(cell.supplier_shipping),
+            supplier_tax: num(cell.supplier_tax),
+            supplier_currency: cell.currency,
+            supplier_name: cell.supplier_name,
+            moq: row.moq ? Number(row.moq) : null,
+            lead_time_days: row.lead_time_days ? Number(row.lead_time_days) : null,
+            margin_pct: num(cell.margin_pct),
+            fee_rate_pct: cell.fee_rate * 100,
+          },
+        ];
+      }),
+    );
+    if (lines.length === 0) throw new Error("No editable lines to save");
+    return lines;
+  };
+
+  const rekeyRows = (saved: { lines: SavedLine[] }) => {
+    const byKey = new Map(saved.lines.map((l) => [`${l.variant_label}::${l.country_code}`, l]));
+    setRows((prev) =>
+      prev.map((row) => ({
+        ...row,
+        sku: byKey.get(`${row.label.trim()}::${countries[0]}`)?.sku ?? row.sku,
+        cells: Object.fromEntries(
+          Object.entries(row.cells).map(([country, cell]) => {
+            const saved2 = byKey.get(`${row.label.trim()}::${country}`);
+            return [country, saved2 ? { ...cell, lineId: saved2.id, status: saved2.status } : cell];
+          }),
+        ),
+      })),
+    );
+  };
+
+  /** Saves the draft only — costs, fees, margins, MOQ, leads, valid-until. No email. */
   const save = useMutation({
     mutationFn: async () => {
-      if (rows.length === 0) throw new Error("Add at least one variant");
-      const labels = rows.map((r) => r.label.trim());
-      if (labels.some((l) => !l)) throw new Error("Every variant needs a label");
-      if (new Set(labels).size !== labels.length) {
-        throw new Error("Variant labels must be unique");
-      }
-      const lines = rows.flatMap((row) =>
-        countries.flatMap((country) => {
-          const cell = row.cells[country] ?? emptyCell(country);
-          if (cellLocked(cell)) return [];
-          return [
-            {
-              ...(cell.lineId ? { id: cell.lineId } : {}),
-              variant_label: row.label.trim(),
-              country_code: country,
-              // Sent in the supplier's own currency — the server converts and
-              // freezes the rate, so the original amount stays the truth.
-              supplier_cogs: num(cell.supplier_cogs),
-              supplier_shipping: num(cell.supplier_shipping),
-              supplier_tax: num(cell.supplier_tax),
-              supplier_currency: cell.currency,
-              supplier_name: cell.supplier_name,
-              moq: row.moq ? Number(row.moq) : null,
-              lead_time_days: row.lead_time_days ? Number(row.lead_time_days) : null,
-            },
-          ];
-        }),
-      );
+      const lines = buildLines();
+      return callSave({
+        data: {
+          quote_id: id,
+          ...(optionId ? { option_id: optionId } : {}),
+          lines,
+          internal_reference: internalReference,
+          quote_valid_until: validUntil || null,
+          admin_notes: adminNotes,
+        },
+      });
+    },
+    onSuccess: (r) => {
+      rekeyRows(r);
+      setNeedsSnapshot(true);
+      toast.success("Changes saved — the client was not notified");
+      void queryClient.invalidateQueries({ queryKey: ["admin-quote", id] });
+      void queryClient.invalidateQueries({ queryKey: ["admin-quotes"] });
+    },
+    onError: (err) => toast.error(err.message),
+  });
 
-      if (lines.length === 0) throw new Error("No editable lines to save");
+  /** Publishes the saved draft to the client — this is the action that emails them. */
+  const publish = useMutation({
+    mutationFn: async () => {
+      const lines = buildLines();
       const saved = await callSave({
         data: {
           quote_id: id,
@@ -487,8 +536,6 @@ function AdminQuoteDetailPage() {
         },
       });
 
-      // Second step: the margin. Publishing writes the client price from the
-      // saved sourcing cost, so it always uses the numbers the server stored.
       const marginByKey = new Map<string, number>();
       const feeByKey = new Map<string, number>();
       for (const row of rows) {
@@ -517,21 +564,8 @@ function AdminQuoteDetailPage() {
       return saved;
     },
     onSuccess: (r) => {
-      // Re-key local cells with the persisted line ids / SKUs so a second save
-      // updates the same rows instead of inserting duplicates.
-      const byKey = new Map(r.lines.map((l) => [`${l.variant_label}::${l.country_code}`, l]));
-      setRows((prev) =>
-        prev.map((row) => ({
-          ...row,
-          sku: byKey.get(`${row.label.trim()}::${countries[0]}`)?.sku ?? row.sku,
-          cells: Object.fromEntries(
-            Object.entries(row.cells).map(([country, cell]) => {
-              const saved = byKey.get(`${row.label.trim()}::${country}`);
-              return [country, saved ? { ...cell, lineId: saved.id, status: saved.status } : cell];
-            }),
-          ),
-        })),
-      );
+      rekeyRows(r);
+      setNeedsSnapshot(true);
       toast.success(`Quote published — ${r.lines.length} line(s), request is now "quoted"`);
       void queryClient.invalidateQueries({ queryKey: ["admin-quote", id] });
       void queryClient.invalidateQueries({ queryKey: ["admin-quote-options", id] });
