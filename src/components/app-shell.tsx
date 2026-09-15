@@ -598,28 +598,61 @@ export function AppShell({
                 : "Client"}
           </span>
         </div>
-        <nav className="flex-1 space-y-0.5 p-3">
-          {nav.map((item) => (
-            <Link
-              key={item.to}
-              to={item.to}
-              className={cn(
-                "flex items-center gap-2.5 rounded-md border-l-[3px] border-transparent px-3 py-2 text-sm text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                isActive(item.to) &&
-                  "border-primary bg-sidebar-accent text-sidebar-accent-foreground font-medium",
-              )}
-            >
-              <item.icon className="h-4 w-4" />
-              {item.label}
-              {alerts[item.to] && (
-                <span
-                  aria-label="New items"
-                  title="New items"
-                  className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary"
-                />
-              )}
-            </Link>
-          ))}
+        <nav className="flex-1 overflow-y-auto p-3">
+          {groups.map((group, gi) => {
+            const hasActive = group.items.some((i) => isActive(i.to));
+            // The active section always stays open; the rest follow the stored
+            // preference (open by default).
+            const open = hasActive || !closedGroups[group.label ?? ""];
+            return (
+              <div key={group.label ?? `g-${gi}`} className={gi > 0 ? "mt-3" : undefined}>
+                {group.label && (
+                  <button
+                    type="button"
+                    onClick={() => toggleGroup(group.label!)}
+                    aria-expanded={open}
+                    className="flex w-full items-center gap-1.5 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-sidebar-foreground/55 transition-colors hover:text-sidebar-foreground"
+                  >
+                    <ChevronDown
+                      className={cn(
+                        "h-3 w-3 transition-transform duration-150",
+                        !open && "-rotate-90",
+                      )}
+                    />
+                    <span className="flex-1 text-left">{group.label}</span>
+                    {!open && group.items.some((i) => alerts[i.to]) && (
+                      <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
+                    )}
+                  </button>
+                )}
+                {open && (
+                  <div className="space-y-0.5">
+                    {group.items.map((item) => (
+                      <Link
+                        key={item.to}
+                        to={item.to}
+                        className={cn(
+                          "flex items-center gap-2.5 rounded-md border-l-[3px] border-transparent px-3 py-2 text-sm text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                          isActive(item.to) &&
+                            "border-primary bg-sidebar-accent font-medium text-sidebar-accent-foreground",
+                        )}
+                      >
+                        <item.icon className="h-4 w-4" />
+                        {item.label}
+                        {alerts[item.to] && (
+                          <span
+                            aria-label="New items"
+                            title="New items"
+                            className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary"
+                          />
+                        )}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </nav>
         {role === "client" && <GetStartedSection stores={onboardingStores ?? []} />}
         {(role === "client" || role === "sourcing") && (
