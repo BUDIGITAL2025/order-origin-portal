@@ -744,7 +744,12 @@ export const adminPublishQuote = createServerFn({ method: "POST" })
         feeFields.sourcing_cost = cost;
       }
 
-      const price = clientPrice(cost, input.margin_pct, Number(line.supplier_tax ?? 0));
+      const price = clientPrice(
+        cost,
+        Number(line.supplier_cogs ?? 0),
+        input.margin_pct,
+        Number(line.supplier_tax ?? 0),
+      );
       const { error: updateError } = await admin
         .from("quote_lines")
         .update({

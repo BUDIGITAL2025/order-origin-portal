@@ -209,12 +209,17 @@ function cellSourcingCost(c: CellForm, rate: number): number {
 
 /** Our absolute margin per unit. */
 function cellMargin(c: CellForm, rate: number): number {
-  return marginAmount(cellSourcingCost(c, rate), num(c.margin_pct));
+  return marginAmount(cellCogsUsd(c, rate), num(c.margin_pct));
 }
 
 /** The closed price the client sees: goods + margin + tax passthrough at cost. */
 function cellPrice(c: CellForm, rate: number): number {
-  return closedPrice(cellSourcingCost(c, rate), num(c.margin_pct), num(c.supplier_tax));
+  return closedPrice(
+    cellSourcingCost(c, rate),
+    cellCogsUsd(c, rate),
+    num(c.margin_pct),
+    num(c.supplier_tax),
+  );
 }
 
 function AdminQuoteDetailPage() {

@@ -50,8 +50,13 @@ export function sourcingCost(
 }
 
 /** what the client pays per unit: goods + margin + the tax passthrough at cost. */
-export function clientPrice(cost: number, marginPct: number, importTax = 0): number {
-  return closedPrice(cost, marginPct, importTax);
+export function clientPrice(
+  cost: number,
+  cogsUsd: number,
+  marginPct: number,
+  importTax = 0,
+): number {
+  return closedPrice(cost, cogsUsd, marginPct, importTax);
 }
 
 /** the collaborator's commission on a number of units. */

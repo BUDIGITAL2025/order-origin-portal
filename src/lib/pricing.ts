@@ -5,7 +5,8 @@
  *   base          = COGS + supplier shipping        (what the fee applies to)
  *   sourcing fee  = base × fee_rate                 (0 when fee_included)
  *   sourcing cost = base + sourcing fee
- *   client price  = sourcing cost × (1 + margin%)
+ *   margin        = COGS (USD) × margin%            (never on shipping or fee)
+ *   client price  = sourcing cost + margin
  *   closed price  = client price + import tax       (passthrough, never marked up)
  */
 import { isEuCountry } from "./countries";
@@ -49,17 +50,27 @@ export function sourcingCostOf(args: {
   return round2(base + sourcingFee(args.cogs, args.shipping, args.feeRate));
 }
 
-/** Owner margin in absolute dollars per unit. */
-export function marginAmount(sourcingCost: number, marginPct: number): number {
-  return round2(sourcingCost * (marginPct / 100));
+/**
+ * Owner margin in absolute dollars per unit.
+ *
+ * The base is the COGS in USD ONLY — shipping and the agent fee are passed
+ * through at cost, never marked up.
+ */
+export function marginAmount(cogsUsd: number, marginPct: number): number {
+  return round2(cogsUsd * (marginPct / 100));
 }
 
 /** Sell price of the goods, before the tax passthrough. */
-export function sellPrice(sourcingCost: number, marginPct: number): number {
-  return round2(sourcingCost * (1 + marginPct / 100));
+export function sellPrice(sourcingCost: number, cogsUsd: number, marginPct: number): number {
+  return round2(sourcingCost + marginAmount(cogsUsd, marginPct));
 }
 
-/** One closed number for the client: goods + margin + tax at cost. */
-export function closedPrice(sourcingCost: number, marginPct: number, importTax: number): number {
-  return round2(sellPrice(sourcingCost, marginPct) + importTax);
+/** One closed number for the client: goods + ship + fee + margin + tax at cost. */
+export function closedPrice(
+  sourcingCost: number,
+  cogsUsd: number,
+  marginPct: number,
+  importTax: number,
+): number {
+  return round2(sellPrice(sourcingCost, cogsUsd, marginPct) + importTax);
 }

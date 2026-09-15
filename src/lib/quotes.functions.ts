@@ -328,7 +328,7 @@ export const adminListQuotes = createServerFn({ method: "GET" })
                   feeIncluded: line.fee_included === true,
                 });
           aggregate.clientPrices.push(
-            closedPrice(sourcingCost, marginPct, Number(line.supplier_tax ?? 0)),
+            closedPrice(sourcingCost, cogs, marginPct, Number(line.supplier_tax ?? 0)),
           );
         } else {
           aggregate.hasUnpricedMargin = true;
