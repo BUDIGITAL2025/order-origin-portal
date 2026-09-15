@@ -108,26 +108,60 @@ function PastDueBanner() {
   );
 }
 
-const ADMIN_NAV: NavItem[] = [
-  { to: "/admin", label: "Home", icon: LayoutDashboard },
-  { to: "/admin/quotes", label: "Quote queue", icon: ClipboardList },
-  { to: "/admin/requests", label: "Client requests", icon: MessageSquare },
-  { to: "/admin/catalog-import", label: "Catalog import", icon: FileUp },
-  { to: "/admin/sourcing", label: "Sourcing team", icon: Handshake },
-  { to: "/admin/stock-purchases", label: "Stock purchases", icon: PackageCheck },
-  { to: "/admin/supplier-payments", label: "Supplier payments", icon: Wallet },
-  { to: "/admin/products", label: "Products", icon: Package },
-  { to: "/admin/orders", label: "Fulfilment", icon: Truck },
-  { to: "/admin/suppliers", label: "Suppliers", icon: Factory },
-  { to: "/admin/disputes", label: "Disputes", icon: ShieldAlert },
-  { to: "/admin/clients", label: "Clients", icon: Users },
-  { to: "/admin/entities", label: "Entities & workspaces", icon: Building2 },
-  { to: "/admin/wallet", label: "Billing", icon: Wallet },
-  { to: "/admin/integration", label: "Integration", icon: Plug },
-  { to: "/admin/spymarket", label: "SpyMarket waitlist", icon: Telescope },
-  { to: "/admin/spymarket-tools", label: "SpyMarket tools", icon: FlaskConical },
-  { to: "/admin/seo-tools", label: "FlySales SEO", icon: LineChart },
-  { to: "/admin/ads", label: "Ads", icon: Megaphone },
+/**
+ * Navigation groups. Grouping is presentation only — permissions and routes are
+ * unchanged. A group with a null label renders as a flat block with no header.
+ */
+interface NavGroup {
+  label: string | null;
+  items: NavItem[];
+}
+
+const ADMIN_NAV_GROUPS: NavGroup[] = [
+  { label: null, items: [{ to: "/admin", label: "Home", icon: LayoutDashboard }] },
+  {
+    label: "Sourcing",
+    items: [
+      { to: "/admin/quotes", label: "Quote queue", icon: ClipboardList },
+      { to: "/admin/requests", label: "Client requests", icon: MessageSquare },
+      { to: "/admin/catalog-import", label: "Catalog import", icon: FileUp },
+      { to: "/admin/sourcing", label: "Sourcing team", icon: Handshake },
+    ],
+  },
+  {
+    label: "Operations",
+    items: [
+      { to: "/admin/stock-purchases", label: "Stock purchases", icon: PackageCheck },
+      { to: "/admin/products", label: "Products", icon: Package },
+      { to: "/admin/orders", label: "Fulfilment", icon: Truck },
+      { to: "/admin/suppliers", label: "Suppliers", icon: Factory },
+      { to: "/admin/disputes", label: "Disputes", icon: ShieldAlert },
+    ],
+  },
+  {
+    label: "Finance",
+    items: [
+      { to: "/admin/supplier-payments", label: "Supplier payments", icon: Wallet },
+      { to: "/admin/wallet", label: "Billing", icon: Wallet },
+    ],
+  },
+  {
+    label: "Growth tools",
+    items: [
+      { to: "/admin/spymarket", label: "SpyMarket waitlist", icon: Telescope },
+      { to: "/admin/spymarket-tools", label: "SpyMarket tools", icon: FlaskConical },
+      { to: "/admin/seo-tools", label: "FlySales SEO", icon: LineChart },
+      { to: "/admin/ads", label: "Ads", icon: Megaphone },
+    ],
+  },
+  {
+    label: "Administration",
+    items: [
+      { to: "/admin/clients", label: "Clients", icon: Users },
+      { to: "/admin/entities", label: "Entities & workspaces", icon: Building2 },
+      { to: "/admin/integration", label: "Integration", icon: Plug },
+    ],
+  },
 ];
 
 /** The collaborator desk stays tiny: their queue, purchases and earnings. */
