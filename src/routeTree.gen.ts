@@ -88,6 +88,7 @@ import { Route as ApiPublicCronDocumentsSweepRouteImport } from './routes/api/pu
 import { Route as ApiPublicCronMiddlewareOrderSyncRouteImport } from './routes/api/public/cron/middleware-order-sync'
 import { Route as ApiPublicCronMiddlewareRetryRouteImport } from './routes/api/public/cron/middleware-retry'
 import { Route as ApiPublicCronOrderExpiryRouteImport } from './routes/api/public/cron/order-expiry'
+import { Route as ApiPublicCronPurchaseExpiryRouteImport } from './routes/api/public/cron/purchase-expiry'
 import { Route as ApiPublicCronSeoStudyTickRouteImport } from './routes/api/public/cron/seo-study-tick'
 import { Route as ApiPublicMiddlewareWebhookRouteImport } from './routes/api/public/middleware/webhook'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
@@ -549,6 +550,12 @@ const ApiPublicCronOrderExpiryRoute =
     path: '/api/public/cron/order-expiry',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicCronPurchaseExpiryRoute =
+  ApiPublicCronPurchaseExpiryRouteImport.update({
+    id: '/api/public/cron/purchase-expiry',
+    path: '/api/public/cron/purchase-expiry',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicCronSeoStudyTickRoute =
   ApiPublicCronSeoStudyTickRouteImport.update({
     id: '/api/public/cron/seo-study-tick',
@@ -646,6 +653,7 @@ export interface FileRoutesByFullPath {
   '/api/public/cron/middleware-order-sync': typeof ApiPublicCronMiddlewareOrderSyncRoute
   '/api/public/cron/middleware-retry': typeof ApiPublicCronMiddlewareRetryRoute
   '/api/public/cron/order-expiry': typeof ApiPublicCronOrderExpiryRoute
+  '/api/public/cron/purchase-expiry': typeof ApiPublicCronPurchaseExpiryRoute
   '/api/public/cron/seo-study-tick': typeof ApiPublicCronSeoStudyTickRoute
   '/api/public/middleware/webhook': typeof ApiPublicMiddlewareWebhookRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
@@ -728,6 +736,7 @@ export interface FileRoutesByTo {
   '/api/public/cron/middleware-order-sync': typeof ApiPublicCronMiddlewareOrderSyncRoute
   '/api/public/cron/middleware-retry': typeof ApiPublicCronMiddlewareRetryRoute
   '/api/public/cron/order-expiry': typeof ApiPublicCronOrderExpiryRoute
+  '/api/public/cron/purchase-expiry': typeof ApiPublicCronPurchaseExpiryRoute
   '/api/public/cron/seo-study-tick': typeof ApiPublicCronSeoStudyTickRoute
   '/api/public/middleware/webhook': typeof ApiPublicMiddlewareWebhookRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
@@ -814,6 +823,7 @@ export interface FileRoutesById {
   '/api/public/cron/middleware-order-sync': typeof ApiPublicCronMiddlewareOrderSyncRoute
   '/api/public/cron/middleware-retry': typeof ApiPublicCronMiddlewareRetryRoute
   '/api/public/cron/order-expiry': typeof ApiPublicCronOrderExpiryRoute
+  '/api/public/cron/purchase-expiry': typeof ApiPublicCronPurchaseExpiryRoute
   '/api/public/cron/seo-study-tick': typeof ApiPublicCronSeoStudyTickRoute
   '/api/public/middleware/webhook': typeof ApiPublicMiddlewareWebhookRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
@@ -899,6 +909,7 @@ export interface FileRouteTypes {
     | '/api/public/cron/middleware-order-sync'
     | '/api/public/cron/middleware-retry'
     | '/api/public/cron/order-expiry'
+    | '/api/public/cron/purchase-expiry'
     | '/api/public/cron/seo-study-tick'
     | '/api/public/middleware/webhook'
     | '/api/public/payments/webhook'
@@ -981,6 +992,7 @@ export interface FileRouteTypes {
     | '/api/public/cron/middleware-order-sync'
     | '/api/public/cron/middleware-retry'
     | '/api/public/cron/order-expiry'
+    | '/api/public/cron/purchase-expiry'
     | '/api/public/cron/seo-study-tick'
     | '/api/public/middleware/webhook'
     | '/api/public/payments/webhook'
@@ -1066,6 +1078,7 @@ export interface FileRouteTypes {
     | '/api/public/cron/middleware-order-sync'
     | '/api/public/cron/middleware-retry'
     | '/api/public/cron/order-expiry'
+    | '/api/public/cron/purchase-expiry'
     | '/api/public/cron/seo-study-tick'
     | '/api/public/middleware/webhook'
     | '/api/public/payments/webhook'
@@ -1091,6 +1104,7 @@ export interface RootRouteChildren {
   ApiPublicCronMiddlewareOrderSyncRoute: typeof ApiPublicCronMiddlewareOrderSyncRoute
   ApiPublicCronMiddlewareRetryRoute: typeof ApiPublicCronMiddlewareRetryRoute
   ApiPublicCronOrderExpiryRoute: typeof ApiPublicCronOrderExpiryRoute
+  ApiPublicCronPurchaseExpiryRoute: typeof ApiPublicCronPurchaseExpiryRoute
   ApiPublicCronSeoStudyTickRoute: typeof ApiPublicCronSeoStudyTickRoute
   ApiPublicMiddlewareWebhookRoute: typeof ApiPublicMiddlewareWebhookRoute
   ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
@@ -1652,6 +1666,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCronOrderExpiryRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/cron/purchase-expiry': {
+      id: '/api/public/cron/purchase-expiry'
+      path: '/api/public/cron/purchase-expiry'
+      fullPath: '/api/public/cron/purchase-expiry'
+      preLoaderRoute: typeof ApiPublicCronPurchaseExpiryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/cron/seo-study-tick': {
       id: '/api/public/cron/seo-study-tick'
       path: '/api/public/cron/seo-study-tick'
@@ -1917,6 +1938,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicCronMiddlewareOrderSyncRoute: ApiPublicCronMiddlewareOrderSyncRoute,
   ApiPublicCronMiddlewareRetryRoute: ApiPublicCronMiddlewareRetryRoute,
   ApiPublicCronOrderExpiryRoute: ApiPublicCronOrderExpiryRoute,
+  ApiPublicCronPurchaseExpiryRoute: ApiPublicCronPurchaseExpiryRoute,
   ApiPublicCronSeoStudyTickRoute: ApiPublicCronSeoStudyTickRoute,
   ApiPublicMiddlewareWebhookRoute: ApiPublicMiddlewareWebhookRoute,
   ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,

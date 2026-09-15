@@ -61,16 +61,35 @@ function EarningsPage() {
             />
           </div>
           <p className="mt-2 text-xs text-muted-foreground">
-            {data.tier.nextAt != null
-              ? `${data.tier.count} / ${data.tier.nextAt} paid transactions — ${
-                  data.tier.nextRate != null ? pct(data.tier.nextRate) : "the next rate"
-                } after ${data.tier.nextAt}`
-              : `${data.tier.count} paid transactions — you are on your final rate.`}
+            Your fee is counted per client: each client has its own units counter, and a new client
+            starts you back at the opening rate.
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
             The rate is locked onto every quote the moment you price it, so crossing a tier never
             changes a price you already gave.
           </p>
+
+          {data.clients?.length ? (
+            <ul className="mt-3 space-y-1 border-t border-border pt-3">
+              {data.clients.map((c) => (
+                <li key={c.entity_id} className="flex items-baseline justify-between gap-2 text-xs">
+                  <span className="font-medium">{c.handle}</span>
+                  <span className="tnum text-muted-foreground">
+                    {pct(c.tier.rate)} ·{" "}
+                    {c.tier.nextAt != null
+                      ? `${c.units}/${c.tier.nextAt} units to ${
+                          c.tier.nextRate != null ? pct(c.tier.nextRate) : "the next rate"
+                        }`
+                      : `${c.units} units · final rate`}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-3 border-t border-border pt-3 text-xs text-muted-foreground">
+              No paid units yet — your first client starts at {pct(data.tier.rate)}.
+            </p>
+          )}
         </div>
       ) : null}
 

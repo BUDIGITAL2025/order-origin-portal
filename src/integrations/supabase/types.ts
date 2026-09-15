@@ -2684,6 +2684,44 @@ export type Database = {
           },
         ]
       }
+      sourcing_client_tiers: {
+        Row: {
+          collaborator_user_id: string
+          created_at: string
+          entity_id: string
+          fee_tiers: Json | null
+          id: string
+          paid_units: number
+          updated_at: string
+        }
+        Insert: {
+          collaborator_user_id: string
+          created_at?: string
+          entity_id: string
+          fee_tiers?: Json | null
+          id?: string
+          paid_units?: number
+          updated_at?: string
+        }
+        Update: {
+          collaborator_user_id?: string
+          created_at?: string
+          entity_id?: string
+          fee_tiers?: Json | null
+          id?: string
+          paid_units?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sourcing_client_tiers_entity_id_fkey"
+            columns: ["entity_id"]
+            isOneToOne: false
+            referencedRelation: "entities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sourcing_collaborators: {
         Row: {
           active: boolean
@@ -4866,6 +4904,7 @@ export type Database = {
       staff_level: "owner" | "collaborator" | "reader"
       stock_purchase_path: "flysales" | "direct"
       stock_purchase_status:
+        | "awaiting_payment"
         | "requested"
         | "freight_quoted"
         | "paid"
@@ -5072,6 +5111,7 @@ export const Constants = {
       staff_level: ["owner", "collaborator", "reader"],
       stock_purchase_path: ["flysales", "direct"],
       stock_purchase_status: [
+        "awaiting_payment",
         "requested",
         "freight_quoted",
         "paid",

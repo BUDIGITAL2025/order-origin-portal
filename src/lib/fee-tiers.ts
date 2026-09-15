@@ -1,14 +1,14 @@
 /**
  * Volume-based sourcing agent fee.
  *
- * An agent's service fee falls as they deliver: 8% on their first 500 paid
- * transactions, 5% on the next 500, 3% from there on. The tiers live on the
- * agent's own row so admin can negotiate exceptions per person.
+ * An agent's service fee falls as they deliver TO ONE CLIENT ACCOUNT: 8% on
+ * the first 500 paid units for that client, 5% for units 501–1000, 3% from
+ * there on, forever for that client. A new client starts the agent at 8%
+ * again. The tiers live on the agent's row (and can be overridden per
+ * agent-client pair) so admin can negotiate exceptions.
  *
- * A "paid transaction" is one settled money event the agent sourced — a stock
- * purchase whose supplier payment went out, or a per-order sale that was paid.
- * It is exactly the same anchor as the earnings ledger, so the counter and the
- * commission list always agree.
+ * The counter moves when a payment settles — exactly the same anchor as the
+ * earnings ledger, so the counter and the commission list always agree.
  *
  * The rate is read at QUOTING time and frozen onto the quote line, so an
  * accepted price never moves when the agent later crosses a tier.
@@ -92,7 +92,7 @@ export function pct(rate: number): string {
   return `${Number.isInteger(n) ? n : Math.round(n * 10) / 10}%`;
 }
 
-/** "8% first 500 orders, 5% next 500, 3% thereafter" */
+/** "8% on your first 500 units per client, 5% up to 1000, 3% thereafter" */
 export function tierTermsSentence(tiers: FeeTier[]): string {
   const list = tiers.length ? tiers : DEFAULT_FEE_TIERS;
   const parts: string[] = [];
@@ -104,7 +104,9 @@ export function tierTermsSentence(tiers: FeeTier[]): string {
     }
     const span = tier.upto - floor;
     parts.push(
-      i === 0 ? `${pct(tier.rate)} first ${span} orders` : `${pct(tier.rate)} next ${span}`,
+      i === 0
+        ? `${pct(tier.rate)} on your first ${span} units per client`
+        : `${pct(tier.rate)} up to ${tier.upto}`,
     );
     floor = tier.upto;
   });

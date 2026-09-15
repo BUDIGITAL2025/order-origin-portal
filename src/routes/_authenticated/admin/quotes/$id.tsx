@@ -209,12 +209,17 @@ function cellSourcingCost(c: CellForm, rate: number): number {
 
 /** Our absolute margin per unit. */
 function cellMargin(c: CellForm, rate: number): number {
-  return marginAmount(cellSourcingCost(c, rate), num(c.margin_pct));
+  return marginAmount(cellCogsUsd(c, rate), num(c.margin_pct));
 }
 
 /** The closed price the client sees: goods + margin + tax passthrough at cost. */
 function cellPrice(c: CellForm, rate: number): number {
-  return closedPrice(cellSourcingCost(c, rate), num(c.margin_pct), num(c.supplier_tax));
+  return closedPrice(
+    cellSourcingCost(c, rate),
+    cellCogsUsd(c, rate),
+    num(c.margin_pct),
+    num(c.supplier_tax),
+  );
 }
 
 function AdminQuoteDetailPage() {
@@ -1374,13 +1379,20 @@ function AdminQuoteDetailPage() {
                                 {/* Chain summary — always USD, always two decimals. */}
                                 <div className="rounded border border-border/60 bg-muted/30 p-1.5 text-[10px] text-muted-foreground">
                                   <div className="grid min-h-6 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3">
-                                    <span>COGS + ship (USD)</span>
-                                    <span className="tnum text-right">
-                                      {formatUSD(cellBase(cell, rate))}
-                                    </span>
+                                    <span>COGS (USD)</span>
+                                    <span className="tnum text-right">{formatUSD(cogsUsd)}</span>
                                   </div>
+                                  {shipUsd > 0 && (
+                                    <div className="grid min-h-6 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3">
+                                      <span>Ship</span>
+                                      <span className="tnum text-right">{formatUSD(shipUsd)}</span>
+                                    </div>
+                                  )}
                                   <div className="grid min-h-6 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3">
-                                    <span>Agent fee ({feePctLabel}%)</span>
+                                    <span>
+                                      Agent fee ({feePctLabel}% of {symbol}
+                                      {num(cell.supplier_cogs).toFixed(2)})
+                                    </span>
                                     <span className="tnum text-right">{formatUSD(feeUsd)}</span>
                                   </div>
                                   <div className="grid min-h-6 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 font-medium text-foreground">
@@ -1390,17 +1402,22 @@ function AdminQuoteDetailPage() {
                                     </span>
                                   </div>
                                   <div className="grid min-h-6 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3">
-                                    <span>FlySales margin ({marginPctLabel}%)</span>
+                                    <span>
+                                      FlySales margin ({marginPctLabel}% of {formatUSD(cogsUsd)}{" "}
+                                      COGS)
+                                    </span>
                                     <span className="tnum text-right">
                                       {formatUSD(cellMargin(cell, rate))}
                                     </span>
                                   </div>
-                                  <div className="grid min-h-6 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3">
-                                    <span>Tax passthrough</span>
-                                    <span className="tnum text-right">
-                                      {formatUSD(num(cell.supplier_tax))}
-                                    </span>
-                                  </div>
+                                  {num(cell.supplier_tax) > 0 && (
+                                    <div className="grid min-h-6 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3">
+                                      <span>Tax passthrough</span>
+                                      <span className="tnum text-right">
+                                        {formatUSD(num(cell.supplier_tax))}
+                                      </span>
+                                    </div>
+                                  )}
                                   <div className="mt-1 grid min-h-8 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 border-t border-border pt-1">
                                     <span className="font-semibold uppercase">Client price</span>
                                     <span className="tnum text-right text-sm font-bold text-foreground">

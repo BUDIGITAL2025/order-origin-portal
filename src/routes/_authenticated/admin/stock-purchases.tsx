@@ -28,9 +28,11 @@ import {
   adminQuoteFreight,
 } from "@/lib/purchases.functions";
 
-type StatusFilter = "all" | "requested" | "paid" | "in_production" | "shipped" | "delivered";
+type StatusFilter =
+  "all" | "awaiting_payment" | "requested" | "paid" | "in_production" | "shipped" | "delivered";
 
 const STATUS_TONE: Record<string, "neutral" | "primary" | "success" | "warning" | "danger"> = {
+  awaiting_payment: "warning",
   requested: "warning",
   freight_quoted: "warning",
   paid: "primary",
@@ -103,6 +105,12 @@ function AdminStockPurchasesPage() {
         items={[
           { key: "total", label: "Purchases", value: String(purchases.length) },
           {
+            key: "unpaid",
+            label: "Awaiting payment",
+            value: String(purchases.filter((p) => p.status === "awaiting_payment").length),
+            tone: "warning",
+          },
+          {
             key: "freight",
             label: "Need a freight quote",
             value: String(awaitingFreight.length),
@@ -124,7 +132,8 @@ function AdminStockPurchasesPage() {
           onChange={setFilter}
           tabs={[
             { id: "all", label: "All" },
-            { id: "requested", label: "Awaiting payment" },
+            { id: "awaiting_payment", label: "Awaiting payment" },
+            { id: "requested", label: "Awaiting freight" },
             { id: "paid", label: "Paid" },
             { id: "in_production", label: "In production" },
             { id: "shipped", label: "Shipped" },

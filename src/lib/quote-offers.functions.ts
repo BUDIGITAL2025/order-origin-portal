@@ -129,7 +129,27 @@ export const acceptQuoteSelection = createServerFn({ method: "POST" })
       }
       throw new Error(message);
     }
-    return { ok: true, accepted: accepted ?? 0 };
+    // Acceptance creates the purchases: one per accepted variant, awaiting
+    // payment. The agent sees nothing until the wallet payment settles.
+    let purchases = 0;
+    try {
+      const { getAdminClient } = await import("./admin.server");
+      const { createPurchasesForAcceptance } = await import("./purchases.server");
+      const admin = await getAdminClient();
+      const { data: option } = await admin
+        .from("quote_options")
+        .select("quote_request_id")
+        .eq("id", data.option_id)
+        .maybeSingle();
+      if (option?.quote_request_id) {
+        purchases = (
+          await createPurchasesForAcceptance(admin, option.quote_request_id, context.userId)
+        ).length;
+      }
+    } catch (e) {
+      console.error("purchase creation after acceptance failed", data.option_id, e);
+    }
+    return { ok: true, accepted: accepted ?? 0, purchases };
   });
 
 /** Client: accept one option. Its lines become catalogue products; the rest archive. */

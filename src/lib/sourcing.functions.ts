@@ -58,8 +58,11 @@ export const getSourcingDeskContext = createServerFn({ method: "GET" })
       .select("*")
       .eq("user_id", context.userId)
       .maybeSingle();
-    if (!data?.active) return { collaborator: null, tier: null };
-    return { collaborator: data, tier: collaboratorTier(data) };
+    if (!data?.active) return { collaborator: null, tier: null, clients: [] };
+    const { listAgentClientTiers } = await import("./client-tiers.server");
+    // Tiers are per client account, so the desk shows one line per client.
+    const clients = await listAgentClientTiers(admin, context.userId, data.fee_tiers);
+    return { collaborator: data, tier: collaboratorTier(data), clients };
   });
 
 /** The queue: requests assigned to me, plus anything still unassigned. */
@@ -178,6 +181,7 @@ export const sourcingGetQuote = createServerFn({ method: "POST" })
     const { getAdminClient } = await import("./admin.server");
     const { requireCollaborator, feeAmount, collaboratorFeeRate } =
       await import("./sourcing.server");
+    const tiers = await import("./client-tiers.server");
     const admin = await getAdminClient();
     const me = await requireCollaborator(admin, context.userId);
 
@@ -228,8 +232,18 @@ export const sourcingGetQuote = createServerFn({ method: "POST" })
       preview = { ...preview, title: null, description: null, price_hint: null };
     }
 
+    // The rate this quote would freeze: this agent's tier WITH THIS CLIENT.
+    const entityId = await tiers.entityForQuote(admin, data.quote_id);
+    const clientFeeRate = entityId
+      ? await tiers.clientFeeRate(admin, context.userId, entityId, me.fee_tiers)
+      : collaboratorFeeRate(me);
+    const clientTier = entityId
+      ? await tiers.clientTierProgress(admin, context.userId, entityId, me.fee_tiers)
+      : null;
+
     return {
-      feeRate: collaboratorFeeRate(me),
+      feeRate: clientFeeRate,
+      client: entityId ? { handle: tiers.clientHandle(entityId), tier: clientTier } : null,
       quote: maskClientSiteUrl(quote),
       essentialsOnly: quote.client_site === true,
       preview,
@@ -241,7 +255,7 @@ export const sourcingGetQuote = createServerFn({ method: "POST" })
           : sourcingFee(
               Number(l.supplier_cogs ?? l.supplier_unit_price ?? 0),
               Number(l.supplier_shipping ?? 0),
-              Number(l.sourcing_fee_rate ?? collaboratorFeeRate(me)),
+              Number(l.sourcing_fee_rate ?? clientFeeRate),
             ),
       })),
     };
@@ -262,8 +276,6 @@ export const sourcingSaveLines = createServerFn({ method: "POST" })
     const { ensureDefaultOption } = await import("./quote-offers.server");
     const admin = await getAdminClient();
     const me = await sourcing.requireCollaborator(admin, context.userId);
-    // Frozen onto the lines at save time — later tier crossings never reprice.
-    const feeRate = sourcing.collaboratorFeeRate(me);
 
     const { data: quote } = await admin
       .from("quote_requests")
@@ -274,6 +286,18 @@ export const sourcingSaveLines = createServerFn({ method: "POST" })
     if (quote.assigned_sourcer && quote.assigned_sourcer !== context.userId) {
       throw new Error("This request is assigned to another collaborator");
     }
+
+    // Frozen onto the lines at save time — later tier crossings never reprice.
+    // The tier is this agent's tier WITH THIS CLIENT ACCOUNT.
+    const { clientFeeRate } = await import("./client-tiers.server");
+    const { data: storeRow } = await admin
+      .from("stores")
+      .select("entity_id")
+      .eq("id", quote.store_id)
+      .maybeSingle();
+    const feeRate = storeRow?.entity_id
+      ? await clientFeeRate(admin, context.userId, storeRow.entity_id, me.fee_tiers)
+      : sourcing.collaboratorFeeRate(me);
 
     const needsFx = data.lines.some((l) => l.supplier_currency && l.supplier_currency !== "USD");
     const fx = needsFx ? await (await import("./fx.server")).ensureDailyRates(admin) : undefined;
@@ -353,6 +377,7 @@ export const sourcingMyEarnings = createServerFn({ method: "GET" })
     const { getAdminClient } = await import("./admin.server");
     const { requireCollaborator, collaboratorTier } = await import("./sourcing.server");
     const { parseFeeTiers } = await import("./fee-tiers");
+    const { listAgentClientTiers } = await import("./client-tiers.server");
     const admin = await getAdminClient();
     const me = await requireCollaborator(admin, context.userId);
 
@@ -374,6 +399,8 @@ export const sourcingMyEarnings = createServerFn({ method: "GET" })
       settled: total(true),
       tier: collaboratorTier(me),
       tiers: parseFeeTiers(me.fee_tiers),
+      // The tier that actually matters is per client account.
+      clients: await listAgentClientTiers(admin, context.userId, me.fee_tiers),
     };
   });
 
@@ -456,6 +483,11 @@ export const adminListCollaborators = createServerFn({ method: "GET" })
     );
 
     const { parseFeeTiers, tierProgress } = await import("./fee-tiers");
+    const { listAgentClientTiers } = await import("./client-tiers.server");
+    const clientsByAgent = new Map<string, Awaited<ReturnType<typeof listAgentClientTiers>>>();
+    for (const c of data ?? []) {
+      clientsByAgent.set(c.user_id, await listAgentClientTiers(admin, c.user_id, c.fee_tiers));
+    }
 
     return {
       collaborators: (data ?? []).map((c) => ({
@@ -465,6 +497,8 @@ export const adminListCollaborators = createServerFn({ method: "GET" })
         pending: Math.round((totals.get(c.user_id)?.pending ?? 0) * 100) / 100,
         settled_total: Math.round((totals.get(c.user_id)?.settled ?? 0) * 100) / 100,
         invite_pending: !(signedIn.get(c.user_id) ?? false),
+        // Tiers run per agent AND per client account.
+        clients: clientsByAgent.get(c.user_id) ?? [],
       })),
     };
   });
@@ -744,7 +778,12 @@ export const adminPublishQuote = createServerFn({ method: "POST" })
         feeFields.sourcing_cost = cost;
       }
 
-      const price = clientPrice(cost, input.margin_pct, Number(line.supplier_tax ?? 0));
+      const price = clientPrice(
+        cost,
+        Number(line.supplier_cogs ?? 0),
+        input.margin_pct,
+        Number(line.supplier_tax ?? 0),
+      );
       const { error: updateError } = await admin
         .from("quote_lines")
         .update({
