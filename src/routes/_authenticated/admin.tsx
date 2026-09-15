@@ -39,7 +39,7 @@ function AdminLayout() {
 
   // Non-owners never see the Team door, and /admin/team refuses them anyway.
   if (pathname.startsWith("/admin/team") && ctx.staffLevel !== "owner") {
-    return <Navigate to="/admin/quotes" />;
+    return <Navigate to="/admin" />;
   }
 
   return (

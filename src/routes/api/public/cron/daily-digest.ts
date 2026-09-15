@@ -125,10 +125,42 @@ export const Route = createFileRoute("/api/public/cron/daily-digest")({
             ads_call_failures: adsFailures.count ?? 0,
           };
 
+          // One digest line per conversation with unread client messages —
+          // never one email per message.
+          const { data: unreadMsgs } = await supabaseAdmin
+            .from("quote_messages")
+            .select("quote_request_id, created_at")
+            .eq("author_role", "client")
+            .is("read_by_admin_at", null)
+            .order("created_at", { ascending: false })
+            .limit(500);
+          const unreadByQuote = new Map<string, { count: number; last: string }>();
+          for (const m of unreadMsgs ?? []) {
+            const prev = unreadByQuote.get(m.quote_request_id);
+            unreadByQuote.set(m.quote_request_id, {
+              count: (prev?.count ?? 0) + 1,
+              last: prev?.last ?? (m.created_at as string),
+            });
+          }
+          const unreadQuoteIds = [...unreadByQuote.keys()];
+          const { data: unreadQuotes } = unreadQuoteIds.length
+            ? await supabaseAdmin
+                .from("quote_requests")
+                .select("id, product_name")
+                .in("id", unreadQuoteIds)
+            : { data: [] as Array<{ id: string; product_name: string | null }> };
+          const unreadLines = (unreadQuotes ?? []).map((q) => {
+            const info = unreadByQuote.get(q.id as string)!;
+            return `  • ${q.product_name ?? q.id}: ${info.count} unread (last ${info.last}) — https://app.flysales.app/admin/quotes/${q.id}`;
+          });
+
           const { STRIPE_FORCE_TEST_MODE } = await import("@/lib/stripe-mode");
           const lines: string[] = [
             `FlySales daily ops digest — ${new Date().toISOString().slice(0, 10)}`,
             `Payments mode: ${STRIPE_FORCE_TEST_MODE ? "TEST (forced) — no real money moves" : "LIVE — real cards are charged"}`,
+            "",
+            `Unread client messages: ${unreadMsgs?.length ?? 0} in ${unreadQuoteIds.length} conversation(s)`,
+            ...unreadLines,
             "",
             `Failed Stripe webhooks (24h): ${summary.failed_webhooks}`,
             ...(webhooks.data ?? []).map(

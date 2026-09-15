@@ -61,7 +61,7 @@ function AuthPage() {
   const routeAfterSignIn = async () => {
     const ctx = await callGetMyContext();
     if (ctx.isAdmin) {
-      await navigate({ to: "/admin/quotes" });
+      await navigate({ to: "/admin" });
     } else if (ctx.isSourcing) {
       await navigate({ to: "/desk/queue" });
     } else if (ctx.profile && ctx.profile.status !== "active") {

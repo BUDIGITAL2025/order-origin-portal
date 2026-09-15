@@ -42,6 +42,8 @@ const STATUSES = ["submitted", "sourcing", "quoted", "closed", "expired"] as con
 
 const searchSchema = z.object({
   status: z.enum(STATUSES).optional(),
+  /** Command centre deep link: only conversations with unread client messages. */
+  unread: z.boolean().optional(),
 });
 
 export const Route = createFileRoute("/_authenticated/admin/quotes/")({
@@ -81,7 +83,7 @@ function countdown(dueAt: string): string {
 }
 
 function AdminQuotesPage() {
-  const { status } = Route.useSearch();
+  const { status, unread: unreadOnly } = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const fetchQuotes = useServerFn(adminListQuotes);
   const [search, setSearch] = useState("");
@@ -141,6 +143,8 @@ function AdminQuotesPage() {
     const term = search.trim().toLowerCase();
     const list = quotes.filter((q) => {
       if (!showArchived && (q as { archived_at?: string | null }).archived_at) return false;
+      if (unreadOnly && ((q as { unread_messages?: number }).unread_messages ?? 0) === 0)
+        return false;
       if (!term) return true;
       const client = q.profiles as { company_name?: string } | null;
       return [
@@ -172,7 +176,7 @@ function AdminQuotesPage() {
       if (bOpen) return 1;
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     });
-  }, [quotes, search, showArchived, priceSort]);
+  }, [quotes, search, showArchived, priceSort, unreadOnly]);
 
   const now = Date.now();
   const openQuotes = quotes.filter((q) => isOpen(q.status));
@@ -192,8 +196,16 @@ function AdminQuotesPage() {
       <PageHeader title="Quote queue" description="Open requests first, most urgent at the top." />
 
       <SummaryBar
-        className="lg:grid-cols-5"
+        className="lg:grid-cols-6"
         items={[
+          {
+            key: "unread",
+            label: "Unread messages",
+            value: quotes.filter(
+              (q) => ((q as { unread_messages?: number }).unread_messages ?? 0) > 0,
+            ).length,
+            tone: "danger",
+          },
           { key: "open", label: "Open", value: openQuotes.length, tone: "primary" },
           { key: "soon", label: "Due < 12h", value: dueSoonCount, tone: "warning" },
           { key: "overdue", label: "Overdue", value: overdueCount, tone: "danger" },
@@ -359,6 +371,12 @@ function AdminQuotesPage() {
                             ? { secondary: `Ref ${q.quote_ref}` }
                             : {})}
                       />
+                      {((q as { unread_messages?: number }).unread_messages ?? 0) > 0 && (
+                        <span className="mt-1 inline-flex items-center rounded-full bg-destructive px-1.5 py-0.5 text-[10px] font-medium text-destructive-foreground">
+                          {(q as { unread_messages?: number }).unread_messages} new message
+                          {(q as { unread_messages?: number }).unread_messages === 1 ? "" : "s"}
+                        </span>
+                      )}
                     </TableCell>
                     <TableCell className="tnum py-2.5 text-right">
                       <Value>{q.target_monthly_volume}</Value>

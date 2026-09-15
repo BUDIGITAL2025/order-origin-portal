@@ -55,9 +55,13 @@ export const postQuoteMessage = createServerFn({ method: "POST" })
     const admin = await getAdminClient();
     const { data: quote } = await admin
       .from("quote_requests")
-      .select("product_name, product_url")
+      .select("product_name, product_url, sourcing_submitted_at, quoted_at")
       .eq("id", data.quote_id)
       .maybeSingle();
+    const label = quote?.product_name ?? quote?.product_url ?? data.quote_id;
+    // Quotes already sitting on the admin's desk get an immediate email; every
+    // other message only shows up in the daily unread digest.
+    const awaitingAdmin = !!quote?.sourcing_submitted_at && !quote?.quoted_at;
 
     // The assigned collaborator owns the conversation on their own quotes; the
     // admin is only pulled in when nobody is sourcing it yet, so ordinary
@@ -70,9 +74,10 @@ export const postQuoteMessage = createServerFn({ method: "POST" })
         "New client message",
         body || "(image only)",
       );
-    } else {
+    }
+    if (!sourcerId || awaitingAdmin) {
       await sendAdminEmail({
-        subject: `New client message on a quote: ${quote?.product_name ?? quote?.product_url ?? data.quote_id}`,
+        subject: `New client message on a quote: ${label}`,
         text: `${body || "(image only)"}\n\nQuote: ${data.quote_id}`,
       });
     }
@@ -174,6 +179,13 @@ export const adminListQuoteMessages = createServerFn({ method: "POST" })
       .eq("quote_request_id", data.quote_id)
       .order("created_at", { ascending: true });
     if (error) throw new Error(error.message);
+    // Opening the thread clears the admin unread badge for this conversation.
+    await admin
+      .from("quote_messages")
+      .update({ read_by_admin_at: new Date().toISOString() })
+      .eq("quote_request_id", data.quote_id)
+      .eq("author_role", "client")
+      .is("read_by_admin_at", null);
     return { messages: (rows ?? []) as ThreadMessage[] };
   });
 

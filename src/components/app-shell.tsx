@@ -109,6 +109,7 @@ function PastDueBanner() {
 }
 
 const ADMIN_NAV: NavItem[] = [
+  { to: "/admin", label: "Home", icon: LayoutDashboard },
   { to: "/admin/quotes", label: "Quote queue", icon: ClipboardList },
   { to: "/admin/requests", label: "Client requests", icon: MessageSquare },
   { to: "/admin/catalog-import", label: "Catalog import", icon: FileUp },
@@ -422,8 +423,13 @@ function useNavAlerts(role: "client" | "admin" | "sourcing"): {
   }
   // Pending-work exceptions win over the notifications table.
   if (role === "admin") {
+    // Unread client messages count as pending work too, so the badge stays on
+    // until the conversation is actually opened.
     alerts["/admin/quotes"] = (adminQuotes?.quotes ?? []).some(
-      (q) => q.status === "submitted" || q.status === "sourcing",
+      (q) =>
+        q.status === "submitted" ||
+        q.status === "sourcing" ||
+        ((q as { unread_messages?: number }).unread_messages ?? 0) > 0,
     );
   }
   if (role === "sourcing") {
@@ -500,6 +506,9 @@ export function AppShell({
         pathname.startsWith("/admin/inventory") ||
         pathname.startsWith("/admin/inbound")
       );
+    // Admin home is only active on the exact path; every other admin page has
+    // its own entry.
+    if (to === "/admin") return pathname === "/admin";
     if (to === "/admin/wallet")
       return pathname.startsWith("/admin/wallet") || pathname.startsWith("/admin/documents");
     return pathname === to || pathname.startsWith(to + "/");

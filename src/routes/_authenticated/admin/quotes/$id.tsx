@@ -36,6 +36,7 @@ import {
 import { adminPublishQuote } from "@/lib/sourcing.functions";
 import { deliveryLabel, quoteRefFromSkus } from "@/lib/quote-ref";
 import { QuoteThread } from "@/components/quote-thread";
+import { LifecycleTimeline } from "@/components/lifecycle-timeline";
 import {
   adminDeleteQuoteOption,
   adminListQuoteOptions,
@@ -927,6 +928,16 @@ function AdminQuoteDetailPage() {
             />
           )}
         </div>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Deal view</CardTitle>
+            <CardDescription>Every stage of this product, and who acted.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <LifecycleTimeline quoteId={id} hideHeading />
+          </CardContent>
+        </Card>
 
         <Card>
           <CardHeader className="pb-3">

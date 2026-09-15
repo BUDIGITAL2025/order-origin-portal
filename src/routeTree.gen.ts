@@ -28,6 +28,7 @@ import { Route as AuthenticatedClientProductsRouteImport } from './routes/_authe
 import { Route as AuthenticatedClientSpymarketRouteImport } from './routes/_authenticated/_client/spymarket'
 import { Route as AuthenticatedClientWalletRouteImport } from './routes/_authenticated/_client/wallet'
 import { Route as AuthenticatedClientWorkspacesRouteImport } from './routes/_authenticated/_client/workspaces'
+import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin/index'
 import { Route as AuthenticatedAdminAdsRouteImport } from './routes/_authenticated/admin/ads'
 import { Route as AuthenticatedAdminCatalogImportRouteImport } from './routes/_authenticated/admin/catalog-import'
 import { Route as AuthenticatedAdminClientsRouteImport } from './routes/_authenticated/admin/clients'
@@ -195,6 +196,11 @@ const AuthenticatedClientWorkspacesRoute =
     path: '/workspaces',
     getParentRoute: () => AuthenticatedClientRoute,
   } as any)
+const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthenticatedAdminRoute,
+} as any)
 const AuthenticatedAdminAdsRoute = AuthenticatedAdminAdsRouteImport.update({
   id: '/ads',
   path: '/ads',
@@ -623,6 +629,7 @@ export interface FileRoutesByFullPath {
   '/desk/earnings': typeof AuthenticatedDeskEarningsRoute
   '/desk/purchases': typeof AuthenticatedDeskPurchasesRoute
   '/desk/queue': typeof AuthenticatedDeskQueueRoute
+  '/admin/': typeof AuthenticatedAdminIndexRoute
   '/desk/': typeof AuthenticatedDeskIndexRoute
   '/billing/receipts': typeof AuthenticatedClientBillingReceiptsRoute
   '/billing/subscription': typeof AuthenticatedClientBillingSubscriptionRoute
@@ -671,7 +678,6 @@ export interface FileRoutesByTo {
   '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
   '/terms': typeof TermsRoute
-  '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/pending': typeof AuthenticatedPendingRoute
   '/ads': typeof AuthenticatedClientAdsRoute
   '/dashboard': typeof AuthenticatedClientDashboardRoute
@@ -706,6 +712,7 @@ export interface FileRoutesByTo {
   '/desk/earnings': typeof AuthenticatedDeskEarningsRoute
   '/desk/purchases': typeof AuthenticatedDeskPurchasesRoute
   '/desk/queue': typeof AuthenticatedDeskQueueRoute
+  '/admin': typeof AuthenticatedAdminIndexRoute
   '/desk': typeof AuthenticatedDeskIndexRoute
   '/billing/receipts': typeof AuthenticatedClientBillingReceiptsRoute
   '/billing/subscription': typeof AuthenticatedClientBillingSubscriptionRoute
@@ -793,6 +800,7 @@ export interface FileRoutesById {
   '/_authenticated/desk/earnings': typeof AuthenticatedDeskEarningsRoute
   '/_authenticated/desk/purchases': typeof AuthenticatedDeskPurchasesRoute
   '/_authenticated/desk/queue': typeof AuthenticatedDeskQueueRoute
+  '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/desk/': typeof AuthenticatedDeskIndexRoute
   '/_authenticated/_client/billing/receipts': typeof AuthenticatedClientBillingReceiptsRoute
   '/_authenticated/_client/billing/subscription': typeof AuthenticatedClientBillingSubscriptionRoute
@@ -879,6 +887,7 @@ export interface FileRouteTypes {
     | '/desk/earnings'
     | '/desk/purchases'
     | '/desk/queue'
+    | '/admin/'
     | '/desk/'
     | '/billing/receipts'
     | '/billing/subscription'
@@ -927,7 +936,6 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/reset-password'
     | '/terms'
-    | '/admin'
     | '/pending'
     | '/ads'
     | '/dashboard'
@@ -962,6 +970,7 @@ export interface FileRouteTypes {
     | '/desk/earnings'
     | '/desk/purchases'
     | '/desk/queue'
+    | '/admin'
     | '/desk'
     | '/billing/receipts'
     | '/billing/subscription'
@@ -1048,6 +1057,7 @@ export interface FileRouteTypes {
     | '/_authenticated/desk/earnings'
     | '/_authenticated/desk/purchases'
     | '/_authenticated/desk/queue'
+    | '/_authenticated/admin/'
     | '/_authenticated/desk/'
     | '/_authenticated/_client/billing/receipts'
     | '/_authenticated/_client/billing/subscription'
@@ -1245,6 +1255,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/workspaces'
       preLoaderRoute: typeof AuthenticatedClientWorkspacesRouteImport
       parentRoute: typeof AuthenticatedClientRoute
+    }
+    '/_authenticated/admin/': {
+      id: '/_authenticated/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/admin/ads': {
       id: '/_authenticated/admin/ads'
@@ -1850,6 +1867,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminSuppliersRoute: typeof AuthenticatedAdminSuppliersRoute
   AuthenticatedAdminTeamRoute: typeof AuthenticatedAdminTeamRoute
   AuthenticatedAdminWalletRoute: typeof AuthenticatedAdminWalletRoute
+  AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
   AuthenticatedAdminFulfilmentProductsRoute: typeof AuthenticatedAdminFulfilmentProductsRoute
   AuthenticatedAdminQuotesIdRoute: typeof AuthenticatedAdminQuotesIdRoute
   AuthenticatedAdminQuotesIndexRoute: typeof AuthenticatedAdminQuotesIndexRoute
@@ -1878,6 +1896,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminSuppliersRoute: AuthenticatedAdminSuppliersRoute,
   AuthenticatedAdminTeamRoute: AuthenticatedAdminTeamRoute,
   AuthenticatedAdminWalletRoute: AuthenticatedAdminWalletRoute,
+  AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
   AuthenticatedAdminFulfilmentProductsRoute:
     AuthenticatedAdminFulfilmentProductsRoute,
   AuthenticatedAdminQuotesIdRoute: AuthenticatedAdminQuotesIdRoute,

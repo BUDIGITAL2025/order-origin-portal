@@ -1,8 +1,18 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, Pencil, Plus, RefreshCw, Settings2, UserCheck, UserX } from "lucide-react";
+import {
+  CheckCircle2,
+  GitBranch,
+  Pencil,
+  Plus,
+  RefreshCw,
+  Settings2,
+  UserCheck,
+  UserX,
+} from "lucide-react";
+import { LifecycleTimeline } from "@/components/lifecycle-timeline";
 import { toast } from "sonner";
 import { EmptyState, PageHeader } from "@/components/app-shell";
 import { ProfileStatusBadge, ProvisioningBadge, TierBadge } from "@/components/status-badges";
@@ -79,6 +89,8 @@ function AdminClientsPage() {
   const [showArchived, setShowArchived] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [fiscalEntity, setFiscalEntity] = useState<FiscalEntity | null>(null);
+  // Deal view: the lifecycle of every quote in one workspace, inline.
+  const [dealStore, setDealStore] = useState<string | null>(null);
   const fetchClients = useServerFn(adminListClients);
   const callSetStatus = useServerFn(adminSetClientStatus);
   const callSetPlan = useServerFn(adminSetPlan);
@@ -356,7 +368,8 @@ function AdminClientsPage() {
                               {entity.stores.map((s) => {
                                 const effTier = effectiveTier(s.pricing_tier, s.tier_override);
                                 return (
-                                  <TableRow key={s.id} className="hover:bg-accent/60">
+                                  <React.Fragment key={s.id}>
+                                  <TableRow className="hover:bg-accent/60">
                                     <TableCell className="max-w-56 py-2.5">
                                       <div className="truncate font-medium">
                                         {s.store_name ?? s.store_url}
@@ -439,6 +452,15 @@ function AdminClientsPage() {
                                     </TableCell>
                                     <TableCell className="py-2.5">
                                       <RowActions>
+                                        <RowAction
+                                          label={
+                                            dealStore === s.id ? "Hide deal view" : "Deal view"
+                                          }
+                                          icon={GitBranch}
+                                          onClick={() =>
+                                            setDealStore(dealStore === s.id ? null : s.id)
+                                          }
+                                        />
                                         {s.status === "pending" && (
                                           <RowAction
                                             label={
@@ -575,6 +597,14 @@ function AdminClientsPage() {
                                       </RowActions>
                                     </TableCell>
                                   </TableRow>
+                                  {dealStore === s.id && (
+                                    <TableRow>
+                                      <TableCell colSpan={8} className="bg-muted/30 p-4">
+                                        <LifecycleTimeline storeId={s.id} />
+                                      </TableCell>
+                                    </TableRow>
+                                  )}
+                                  </React.Fragment>
                                 );
                               })}
                             </TableBody>

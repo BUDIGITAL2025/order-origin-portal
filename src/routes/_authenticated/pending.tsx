@@ -32,7 +32,7 @@ function PendingPage() {
     );
   }
 
-  if (ctx?.isAdmin) return <Navigate to="/admin/quotes" />;
+  if (ctx?.isAdmin) return <Navigate to="/admin" />;
   if (ctx?.profile?.status === "active") return <Navigate to="/dashboard" />;
 
   const suspended = ctx?.profile?.status === "suspended";
