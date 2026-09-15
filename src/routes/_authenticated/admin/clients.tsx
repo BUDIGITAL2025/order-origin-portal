@@ -63,6 +63,7 @@ import {
   adminSetFeeWaived,
   adminSetIntegrationMode,
   adminSetPlan,
+  adminSetStoreName,
   adminSetTierOverride,
   provisionStore,
 } from "@/lib/profiles.functions";
