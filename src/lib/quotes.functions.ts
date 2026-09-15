@@ -11,7 +11,7 @@ import {
   signedUrlsSchema,
 } from "./schemas";
 import { flagBreachedQuotes, mapQuoteForAdmin } from "./quotes.server";
-import { closedPrice } from "./pricing";
+import { closedPrice, sourcingCostOf } from "./pricing";
 
 export class QuotaExceededError extends Error {
   constructor(message: string) {
@@ -251,7 +251,9 @@ export const adminListQuotes = createServerFn({ method: "GET" })
     const { data: pricingLines, error: pricingError } = ids.length
       ? await admin
           .from("quote_lines")
-          .select("quote_request_id, supplier_cogs, sourcing_cost, supplier_tax, margin_pct")
+          .select(
+            "quote_request_id, supplier_cogs, supplier_shipping, sourcing_fee_rate, fee_included, sourcing_cost, supplier_tax, margin_pct",
+          )
           .in("quote_request_id", ids)
       : { data: [], error: null };
     if (pricingError) throw new Error(pricingError.message);
@@ -272,8 +274,17 @@ export const adminListQuotes = createServerFn({ method: "GET" })
       if (cogs > 0) {
         aggregate.cogs.push(cogs);
         if (marginPct > 0) {
+          const sourcingCost =
+            line.sourcing_cost != null
+              ? Number(line.sourcing_cost)
+              : sourcingCostOf({
+                  cogs,
+                  shipping: Number(line.supplier_shipping ?? 0),
+                  feeRate: Number(line.sourcing_fee_rate ?? 0.08),
+                  feeIncluded: line.fee_included === true,
+                });
           aggregate.clientPrices.push(
-            closedPrice(Number(line.sourcing_cost ?? 0), marginPct, Number(line.supplier_tax ?? 0)),
+            closedPrice(sourcingCost, marginPct, Number(line.supplier_tax ?? 0)),
           );
         } else {
           aggregate.hasUnpricedMargin = true;
