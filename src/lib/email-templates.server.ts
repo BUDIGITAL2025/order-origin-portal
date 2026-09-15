@@ -591,7 +591,8 @@ export function sourcingInviteEmail(args: {
     preheader: "Set your password and open your sourcing desk.",
     paragraphs: [
       "You have been invited to join the FlySales sourcing team as a collaborator.",
-      "As a collaborator you get your own desk: the sourcing queue with the requests assigned to you, where you find suppliers and enter supplier prices, plus your own earnings page. Client identities and client prices are never shown to you — by design.",
+      "As a collaborator you get your own desk: the sourcing queue with the requests assigned to you, your clients page, purchase orders and your own earnings. You see the companies you source for by name, so you can manage the relationship — their contact details, final client prices and billing are never shown to you, by design.",
+      "Clients and their data belong to FlySales. Contacting a client outside this platform, or soliciting them, is not permitted.",
       "Your service fee is volume-based and counted per client: 8% on your first 500 units for a client, 5% up to 1000, 3% thereafter. Each new client starts back at 8%. The rate is locked onto each quote when you price it, so a quote you already sent never changes.",
       "Use the button below to set your password and open your desk.",
     ],

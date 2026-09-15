@@ -68,12 +68,24 @@ function EarningsPage() {
             The rate is locked onto every quote the moment you price it, so crossing a tier never
             changes a price you already gave.
           </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Clients and their data belong to FlySales. Contacting or soliciting a client outside
+            this platform is not permitted.
+          </p>
 
           {data.clients?.length ? (
             <ul className="mt-3 space-y-1 border-t border-border pt-3">
               {data.clients.map((c) => (
                 <li key={c.entity_id} className="flex items-baseline justify-between gap-2 text-xs">
-                  <span className="font-medium">{c.handle}</span>
+                  <span className="font-medium">
+                    {c.handle}
+                    {c.contact_first_name ? (
+                      <span className="font-normal text-muted-foreground">
+                        {" "}
+                        · {c.contact_first_name}
+                      </span>
+                    ) : null}
+                  </span>
                   <span className="tnum text-muted-foreground">
                     {pct(c.tier.rate)} ·{" "}
                     {c.tier.nextAt != null
