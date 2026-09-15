@@ -210,17 +210,20 @@ function AdminSourcingPage() {
                   }
                 >
                   <span className="text-sm font-medium">{pct(c.tier.rate)}</span>
-                  <span className="ml-1 text-xs text-muted-foreground">
-                    {c.tier.nextAt != null
-                      ? `· ${c.tier.count} / ${c.tier.nextAt}${
-                          c.tier.nextRate != null ? ` → ${pct(c.tier.nextRate)}` : ""
-                        }`
-                      : `· ${c.tier.count} transactions · final rate`}
-                  </span>
+                  <span className="ml-1 text-xs text-muted-foreground">opening rate</span>
                   <div className="text-xs text-muted-foreground underline-offset-2 hover:underline">
                     {tierTermsSentence(c.fee_tiers)}
                   </div>
                 </button>
+                {c.clients?.length ? (
+                  <ul className="mt-1 space-y-0.5">
+                    {c.clients.map((cl) => (
+                      <li key={cl.entity_id} className="text-xs text-muted-foreground tnum">
+                        {cl.handle} — {pct(cl.tier.rate)} · {cl.units} units
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
               </TableCell>
               <TableCell className="text-right tnum text-sm">{formatUSD(c.pending)}</TableCell>
               <TableCell className="text-right tnum text-sm text-muted-foreground">

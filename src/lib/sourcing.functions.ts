@@ -379,6 +379,7 @@ export const sourcingMyEarnings = createServerFn({ method: "GET" })
     const { getAdminClient } = await import("./admin.server");
     const { requireCollaborator, collaboratorTier } = await import("./sourcing.server");
     const { parseFeeTiers } = await import("./fee-tiers");
+    const { listAgentClientTiers } = await import("./client-tiers.server");
     const admin = await getAdminClient();
     const me = await requireCollaborator(admin, context.userId);
 
@@ -400,6 +401,8 @@ export const sourcingMyEarnings = createServerFn({ method: "GET" })
       settled: total(true),
       tier: collaboratorTier(me),
       tiers: parseFeeTiers(me.fee_tiers),
+      // The tier that actually matters is per client account.
+      clients: await listAgentClientTiers(admin, context.userId, me.fee_tiers),
     };
   });
 
@@ -482,6 +485,11 @@ export const adminListCollaborators = createServerFn({ method: "GET" })
     );
 
     const { parseFeeTiers, tierProgress } = await import("./fee-tiers");
+    const { listAgentClientTiers } = await import("./client-tiers.server");
+    const clientsByAgent = new Map<string, Awaited<ReturnType<typeof listAgentClientTiers>>>();
+    for (const c of data ?? []) {
+      clientsByAgent.set(c.user_id, await listAgentClientTiers(admin, c.user_id, c.fee_tiers));
+    }
 
     return {
       collaborators: (data ?? []).map((c) => ({
@@ -491,6 +499,8 @@ export const adminListCollaborators = createServerFn({ method: "GET" })
         pending: Math.round((totals.get(c.user_id)?.pending ?? 0) * 100) / 100,
         settled_total: Math.round((totals.get(c.user_id)?.settled ?? 0) * 100) / 100,
         invite_pending: !(signedIn.get(c.user_id) ?? false),
+        // Tiers run per agent AND per client account.
+        clients: clientsByAgent.get(c.user_id) ?? [],
       })),
     };
   });
