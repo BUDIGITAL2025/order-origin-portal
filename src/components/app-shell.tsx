@@ -505,12 +505,24 @@ export function AppShell({
   const router = useRouter();
   const queryClient = useQueryClient();
   const pathname = useRouterState({ select: (r) => r.location.pathname });
-  const baseNav = role === "admin" ? ADMIN_NAV : role === "sourcing" ? SOURCING_NAV : CLIENT_NAV;
   // Team management is an owner-only door; the server refuses everyone else.
-  const nav: NavItem[] =
-    role === "admin" && staffLevel === "owner"
-      ? [...baseNav, { to: "/admin/team", label: "Team", icon: ShieldCheck }]
-      : baseNav;
+  const groups: NavGroup[] = React.useMemo(() => {
+    if (role === "admin") {
+      return ADMIN_NAV_GROUPS.map((g) =>
+        g.label === "Administration" && staffLevel === "owner"
+          ? {
+              ...g,
+              items: [
+                ...g.items,
+                { to: "/admin/team", label: "Team", icon: ShieldCheck } as NavItem,
+              ],
+            }
+          : g,
+      );
+    }
+    return [{ label: null, items: role === "sourcing" ? SOURCING_NAV : CLIENT_NAV }];
+  }, [role, staffLevel]);
+  const nav: NavItem[] = React.useMemo(() => groups.flatMap((g) => g.items), [groups]);
 
   const { alerts, markRead } = useNavAlerts(role);
 
