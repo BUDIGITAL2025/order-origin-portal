@@ -168,15 +168,26 @@ export const sourcingListQueue = createServerFn({ method: "GET" })
       return "new";
     };
 
+    // The agent works for named companies: resolve the name, never the
+    // contact channels, and only for requests already assigned to them.
+    const { clientIdentityByStore, clientDisplay } = await import("./client-identity.server");
+    const identities = await clientIdentityByStore(
+      admin,
+      (quotes ?? []).filter((q) => q.assigned_sourcer === context.userId).map((q) => q.store_id),
+    );
+
     return {
       feeRate: collaboratorFeeRate(me),
       tier: collaboratorTier(me),
       quotes: (quotes ?? []).map((q) => {
         const mine = q.assigned_sourcer === context.userId;
         const priced = pricedByQuote.get(q.id) ?? 0;
+        const identity = mine ? (identities.get(q.store_id) ?? null) : null;
         return {
-          ...maskClientSiteUrl(q),
+          ...withoutStoreId(maskClientSiteUrl(q)),
           mine,
+          client: identity,
+          client_label: identity ? clientDisplay(identity) : null,
           priced_lines: priced,
           lifecycle: mine ? lifecycleOf(q.id, q.status, priced) : null,
         };
