@@ -80,19 +80,38 @@ export async function listAgentClientTiers(
   admin: Admin,
   agentUserId: string,
   agentTiers: unknown,
-): Promise<Array<{ entity_id: string; handle: string; units: number; tier: TierProgress }>> {
+): Promise<
+  Array<{
+    entity_id: string;
+    handle: string;
+    contact_first_name: string | null;
+    units: number;
+    tier: TierProgress;
+  }>
+> {
   const { data } = await admin
     .from("sourcing_client_tiers")
     .select("entity_id, paid_units, fee_tiers")
     .eq("collaborator_user_id", agentUserId)
     .order("paid_units", { ascending: false })
     .limit(200);
-  return ((data ?? []) as ClientTierRow[]).map((row) => ({
-    entity_id: row.entity_id,
-    handle: clientHandle(row.entity_id),
-    units: Number(row.paid_units ?? 0),
-    tier: tierProgress(tiersFor(row, agentTiers), Number(row.paid_units ?? 0)),
-  }));
+  const rows = (data ?? []) as ClientTierRow[];
+  // Named clients: company + contact first name only, never a contact channel.
+  const { clientIdentityByEntity } = await import("./client-identity.server");
+  const identities = await clientIdentityByEntity(
+    admin,
+    rows.map((r) => r.entity_id),
+  );
+  return rows.map((row) => {
+    const identity = identities.get(row.entity_id);
+    return {
+      entity_id: row.entity_id,
+      handle: identity?.company ?? clientHandle(row.entity_id),
+      contact_first_name: identity?.contact_first_name ?? null,
+      units: Number(row.paid_units ?? 0),
+      tier: tierProgress(tiersFor(row, agentTiers), Number(row.paid_units ?? 0)),
+    };
+  });
 }
 
 /**

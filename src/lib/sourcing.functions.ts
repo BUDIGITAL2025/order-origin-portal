@@ -21,9 +21,20 @@ import {
 
 const uuid = z.string().uuid();
 
-/** Columns of a quote request a collaborator may see — no store, no client. */
+/**
+ * Columns of a quote request a collaborator may see. `store_id` is read so we
+ * can resolve the client's NAME, and stripped from every payload: the agent
+ * gets a company and a first name, never an identifier they could use to
+ * query anything else.
+ */
 const DESK_QUOTE_COLUMNS =
-  "id, product_url, product_name, notes, target_monthly_volume, target_countries, image_urls, status, created_at, quote_due_at, sourcing_submitted_at, assigned_sourcer, client_site";
+  "id, store_id, product_url, product_name, notes, target_monthly_volume, target_countries, image_urls, status, created_at, quote_due_at, sourcing_submitted_at, assigned_sourcer, client_site";
+
+/** Drop the store id from anything that leaves a desk endpoint. */
+function withoutStoreId<T extends { store_id?: string | null }>(quote: T): Omit<T, "store_id"> {
+  const { store_id: _drop, ...rest } = quote;
+  return rest;
+}
 
 /**
  * A product URL that points at the client's own site identifies the client, so
@@ -157,15 +168,26 @@ export const sourcingListQueue = createServerFn({ method: "GET" })
       return "new";
     };
 
+    // The agent works for named companies: resolve the name, never the
+    // contact channels, and only for requests already assigned to them.
+    const { clientIdentityByStore, clientDisplay } = await import("./client-identity.server");
+    const identities = await clientIdentityByStore(
+      admin,
+      (quotes ?? []).filter((q) => q.assigned_sourcer === context.userId).map((q) => q.store_id),
+    );
+
     return {
       feeRate: collaboratorFeeRate(me),
       tier: collaboratorTier(me),
       quotes: (quotes ?? []).map((q) => {
         const mine = q.assigned_sourcer === context.userId;
         const priced = pricedByQuote.get(q.id) ?? 0;
+        const identity = mine ? (identities.get(q.store_id) ?? null) : null;
         return {
-          ...maskClientSiteUrl(q),
+          ...withoutStoreId(maskClientSiteUrl(q)),
           mine,
+          client: identity,
+          client_label: identity ? clientDisplay(identity) : null,
           priced_lines: priced,
           lifecycle: mine ? lifecycleOf(q.id, q.status, priced) : null,
         };
@@ -241,10 +263,15 @@ export const sourcingGetQuote = createServerFn({ method: "POST" })
       ? await tiers.clientTierProgress(admin, context.userId, entityId, me.fee_tiers)
       : null;
 
+    const { clientIdentityForStore, clientDisplay } = await import("./client-identity.server");
+    const identity = await clientIdentityForStore(admin, quote.store_id);
+
     return {
       feeRate: clientFeeRate,
-      client: entityId ? { handle: tiers.clientHandle(entityId), tier: clientTier } : null,
-      quote: maskClientSiteUrl(quote),
+      client: entityId
+        ? { handle: clientDisplay(identity), identity, tier: clientTier }
+        : { handle: clientDisplay(identity), identity, tier: null },
+      quote: withoutStoreId(maskClientSiteUrl(quote)),
       essentialsOnly: quote.client_site === true,
       preview,
       lines: (lines ?? []).map((l) => ({

@@ -51,6 +51,7 @@ import { Route as AuthenticatedAdminSuppliersRouteImport } from './routes/_authe
 import { Route as AuthenticatedAdminTeamRouteImport } from './routes/_authenticated/admin/team'
 import { Route as AuthenticatedAdminWalletRouteImport } from './routes/_authenticated/admin/wallet'
 import { Route as AuthenticatedDeskIndexRouteImport } from './routes/_authenticated/desk/index'
+import { Route as AuthenticatedDeskClientsRouteImport } from './routes/_authenticated/desk/clients'
 import { Route as AuthenticatedDeskEarningsRouteImport } from './routes/_authenticated/desk/earnings'
 import { Route as AuthenticatedDeskPurchasesRouteImport } from './routes/_authenticated/desk/purchases'
 import { Route as AuthenticatedDeskQueueRouteImport } from './routes/_authenticated/desk/queue'
@@ -330,6 +331,12 @@ const AuthenticatedDeskIndexRoute = AuthenticatedDeskIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthenticatedDeskRoute,
 } as any)
+const AuthenticatedDeskClientsRoute =
+  AuthenticatedDeskClientsRouteImport.update({
+    id: '/clients',
+    path: '/clients',
+    getParentRoute: () => AuthenticatedDeskRoute,
+  } as any)
 const AuthenticatedDeskEarningsRoute =
   AuthenticatedDeskEarningsRouteImport.update({
     id: '/earnings',
@@ -626,6 +633,7 @@ export interface FileRoutesByFullPath {
   '/admin/suppliers': typeof AuthenticatedAdminSuppliersRoute
   '/admin/team': typeof AuthenticatedAdminTeamRoute
   '/admin/wallet': typeof AuthenticatedAdminWalletRoute
+  '/desk/clients': typeof AuthenticatedDeskClientsRoute
   '/desk/earnings': typeof AuthenticatedDeskEarningsRoute
   '/desk/purchases': typeof AuthenticatedDeskPurchasesRoute
   '/desk/queue': typeof AuthenticatedDeskQueueRoute
@@ -709,6 +717,7 @@ export interface FileRoutesByTo {
   '/admin/suppliers': typeof AuthenticatedAdminSuppliersRoute
   '/admin/team': typeof AuthenticatedAdminTeamRoute
   '/admin/wallet': typeof AuthenticatedAdminWalletRoute
+  '/desk/clients': typeof AuthenticatedDeskClientsRoute
   '/desk/earnings': typeof AuthenticatedDeskEarningsRoute
   '/desk/purchases': typeof AuthenticatedDeskPurchasesRoute
   '/desk/queue': typeof AuthenticatedDeskQueueRoute
@@ -797,6 +806,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/suppliers': typeof AuthenticatedAdminSuppliersRoute
   '/_authenticated/admin/team': typeof AuthenticatedAdminTeamRoute
   '/_authenticated/admin/wallet': typeof AuthenticatedAdminWalletRoute
+  '/_authenticated/desk/clients': typeof AuthenticatedDeskClientsRoute
   '/_authenticated/desk/earnings': typeof AuthenticatedDeskEarningsRoute
   '/_authenticated/desk/purchases': typeof AuthenticatedDeskPurchasesRoute
   '/_authenticated/desk/queue': typeof AuthenticatedDeskQueueRoute
@@ -884,6 +894,7 @@ export interface FileRouteTypes {
     | '/admin/suppliers'
     | '/admin/team'
     | '/admin/wallet'
+    | '/desk/clients'
     | '/desk/earnings'
     | '/desk/purchases'
     | '/desk/queue'
@@ -967,6 +978,7 @@ export interface FileRouteTypes {
     | '/admin/suppliers'
     | '/admin/team'
     | '/admin/wallet'
+    | '/desk/clients'
     | '/desk/earnings'
     | '/desk/purchases'
     | '/desk/queue'
@@ -1054,6 +1066,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/suppliers'
     | '/_authenticated/admin/team'
     | '/_authenticated/admin/wallet'
+    | '/_authenticated/desk/clients'
     | '/_authenticated/desk/earnings'
     | '/_authenticated/desk/purchases'
     | '/_authenticated/desk/queue'
@@ -1415,6 +1428,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/desk/'
       preLoaderRoute: typeof AuthenticatedDeskIndexRouteImport
+      parentRoute: typeof AuthenticatedDeskRoute
+    }
+    '/_authenticated/desk/clients': {
+      id: '/_authenticated/desk/clients'
+      path: '/clients'
+      fullPath: '/desk/clients'
+      preLoaderRoute: typeof AuthenticatedDeskClientsRouteImport
       parentRoute: typeof AuthenticatedDeskRoute
     }
     '/_authenticated/desk/earnings': {
@@ -1907,6 +1927,7 @@ const AuthenticatedAdminRouteWithChildren =
   AuthenticatedAdminRoute._addFileChildren(AuthenticatedAdminRouteChildren)
 
 interface AuthenticatedDeskRouteChildren {
+  AuthenticatedDeskClientsRoute: typeof AuthenticatedDeskClientsRoute
   AuthenticatedDeskEarningsRoute: typeof AuthenticatedDeskEarningsRoute
   AuthenticatedDeskPurchasesRoute: typeof AuthenticatedDeskPurchasesRoute
   AuthenticatedDeskQueueRoute: typeof AuthenticatedDeskQueueRoute
@@ -1916,6 +1937,7 @@ interface AuthenticatedDeskRouteChildren {
 }
 
 const AuthenticatedDeskRouteChildren: AuthenticatedDeskRouteChildren = {
+  AuthenticatedDeskClientsRoute: AuthenticatedDeskClientsRoute,
   AuthenticatedDeskEarningsRoute: AuthenticatedDeskEarningsRoute,
   AuthenticatedDeskPurchasesRoute: AuthenticatedDeskPurchasesRoute,
   AuthenticatedDeskQueueRoute: AuthenticatedDeskQueueRoute,

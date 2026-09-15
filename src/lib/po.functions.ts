@@ -33,7 +33,7 @@ const WORKFLOW_STATUSES = [
   "delivered",
 ] as const satisfies readonly PurchaseStatus[];
 
-/** Neutral label so an agent can talk about a purchase without knowing who. */
+/** Fallback label when a workspace cannot be resolved to a company name. */
 function clientLabel(storeId: string): string {
   return `Client #${storeId.slice(0, 6).toUpperCase()}`;
 }
@@ -75,8 +75,11 @@ type PurchaseRow = {
   created_at: string;
 };
 
-/** Everything an agent may see about a purchase — supplier layer only. */
-function agentView(p: PurchaseRow) {
+/**
+ * Everything an agent may see about a purchase — supplier layer plus the
+ * client's NAME. No contact channel, no client price, no margin, no wallet.
+ */
+function agentView(p: PurchaseRow, clientName?: string | null) {
   const supplierUnit = p.supplier_unit_price != null ? Number(p.supplier_unit_price) : null;
   const expected = supplierUnit != null ? Math.round(supplierUnit * p.quantity * 100) / 100 : null;
   const invoiced = p.supplier_invoice_total != null ? Number(p.supplier_invoice_total) : null;
@@ -84,7 +87,7 @@ function agentView(p: PurchaseRow) {
     id: p.id,
     status: p.status,
     path: p.path,
-    client_label: clientLabel(p.store_id),
+    client_label: clientName || clientLabel(p.store_id),
     product_name: p.product_name,
     variant_label: p.variant_label,
     sku: p.sku,
@@ -155,8 +158,13 @@ export const deskListPurchases = createServerFn({ method: "POST" })
       .limit(200);
     if (error) throw new Error(error.message);
     const { purchaseRef } = await import("./purchases.server");
+    const { clientIdentityByStore, clientDisplay } = await import("./client-identity.server");
+    const identities = await clientIdentityByStore(
+      admin,
+      (data ?? []).map((p) => p.store_id),
+    );
     return (data ?? []).map((p) => ({
-      ...agentView(p as unknown as PurchaseRow),
+      ...agentView(p as unknown as PurchaseRow, clientDisplay(identities.get(p.store_id))),
       ref: purchaseRef(p.id),
     }));
   });
@@ -210,8 +218,14 @@ export const deskGetPurchase = createServerFn({ method: "POST" })
       .order("created_at", { ascending: false })
       .limit(50);
 
+    const { clientIdentityForStore, clientDisplay } = await import("./client-identity.server");
+    const identity = await clientIdentityForStore(admin, purchase.store_id);
+
     return {
-      purchase: { ...agentView(purchase), ref: purchaseRef(purchase.id) },
+      purchase: {
+        ...agentView(purchase, clientDisplay(identity)),
+        ref: purchaseRef(purchase.id),
+      },
       supplier: fallback,
       events: events ?? [],
       default_payment_terms: await getPaymentTermsDefault(admin),
