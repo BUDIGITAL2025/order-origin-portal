@@ -769,67 +769,64 @@ function AdminQuoteDetailPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-            <Button asChild variant="ghost" size="sm" className="gap-1">
-              <Link to="/admin/quotes">
-                <ArrowLeft className="h-3.5 w-3.5" /> Queue
-              </Link>
-            </Button>
-            {revisable && (
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="outline" size="sm" className="gap-1.5">
-                    <RefreshCw className="h-3.5 w-3.5" /> Create revision
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Create a revision of this quote?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Clones the current pricing into a new editable revision where quantity,
-                      delivery, shipping and supplier fields can change. The client keeps the terms
-                      they already agreed until they approve the revision.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                      disabled={revision.isPending}
-                      onClick={() => revision.mutate()}
-                    >
-                      Create revision
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            )}
-            {requotable && (
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="outline" size="sm" className="gap-1.5">
-                    <RefreshCw className="h-3.5 w-3.5" /> Requote
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Requote this request?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Creates a new quote request (status: sourcing) with the same product, URL and
-                      notes. The original is never edited and the client's monthly quota is not
-                      affected.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                      disabled={requote.isPending}
-                      onClick={() => requote.mutate()}
-                    >
-                      Create requote
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            )}
+          <Button asChild variant="ghost" size="sm" className="gap-1">
+            <Link to="/admin/quotes">
+              <ArrowLeft className="h-3.5 w-3.5" /> Queue
+            </Link>
+          </Button>
+          {revisable && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-1.5">
+                  <RefreshCw className="h-3.5 w-3.5" /> Create revision
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Create a revision of this quote?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Clones the current pricing into a new editable revision where quantity,
+                    delivery, shipping and supplier fields can change. The client keeps the terms
+                    they already agreed until they approve the revision.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    disabled={revision.isPending}
+                    onClick={() => revision.mutate()}
+                  >
+                    Create revision
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
+          {requotable && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-1.5">
+                  <RefreshCw className="h-3.5 w-3.5" /> Requote
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Requote this request?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Creates a new quote request (status: sourcing) with the same product, URL and
+                    notes. The original is never edited and the client's monthly quota is not
+                    affected.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction disabled={requote.isPending} onClick={() => requote.mutate()}>
+                    Create requote
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm" className="gap-1.5" aria-label="More actions">
@@ -863,132 +860,135 @@ function AdminQuoteDetailPage() {
                 </button>
               </CollapsibleTrigger>
               <CollapsibleContent>
-            <CardContent className="space-y-3 text-sm">
-              <div>
-                <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                  Product URL
-                </div>
-                <a
-                  href={quote.product_url ?? "#"}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="break-all underline-offset-2 hover:underline"
-                >
-                  {quote.product_url}
-                </a>
-              </div>
-              <div>
-                <div className="text-xs uppercase tracking-wide text-muted-foreground">Notes</div>
-                <p className="whitespace-pre-wrap">{quote.notes || "—"}</p>
-              </div>
-              <div>
-                <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                  Target countries
-                </div>
-                <p>{countries.map((c) => `${countryName(c)} (${c})`).join(", ") || "—"}</p>
-              </div>
-              {(data?.preview?.variants ?? []).length > 0 ? (
-                <div>
-                  <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                    Variants seen on page
-                  </div>
-                  <p>
-                    {(data?.preview?.variants ?? []).join(", ")}{" "}
-                    <span className="text-muted-foreground">— confirm which to quote</span>
-                  </p>
-                </div>
-              ) : (
-                <p className="text-xs text-muted-foreground">
-                  Client pasted a single-variant URL — confirm available variants before quoting.
-                </p>
-              )}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                    Volume / month
-                  </div>
-                  <div className="tnum">{quote.target_monthly_volume ?? "—"}</div>
-                </div>
-                <div>
-                  <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                    Client
+                <CardContent className="space-y-3 text-sm">
+                  <div>
+                    <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                      Product URL
+                    </div>
+                    <a
+                      href={quote.product_url ?? "#"}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="break-all underline-offset-2 hover:underline"
+                    >
+                      {quote.product_url}
+                    </a>
                   </div>
                   <div>
-                    {client?.company_name ?? "—"} <TierBadge tier={clientTier} />
+                    <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                      Notes
+                    </div>
+                    <p className="whitespace-pre-wrap">{quote.notes || "—"}</p>
                   </div>
-                  <div className="text-xs text-muted-foreground">
-                    {client?.store_url ?? ""}
-                    {client?.tier_override
-                      ? ` · override (auto: ${TIER_LABELS[client?.pricing_tier ?? "starter"] ?? client?.pricing_tier})`
-                      : ` · auto · ${Number(client?.avg_daily_units_30d ?? 0).toFixed(1)} units/day`}
+                  <div>
+                    <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                      Target countries
+                    </div>
+                    <p>{countries.map((c) => `${countryName(c)} (${c})`).join(", ") || "—"}</p>
                   </div>
-                </div>
-              </div>
-              {((images && images.urls.length > 0) || externalImages.length > 0) && (
-                <div>
-                  <div className="mb-1.5 text-xs uppercase tracking-wide text-muted-foreground">
-                    Images
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {(images?.urls ?? []).map((img) => (
-                      <a key={img.path} href={img.url} target="_blank" rel="noreferrer">
-                        <img
-                          src={img.url}
-                          alt="Quote attachment"
-                          className="h-16 w-16 rounded-md border border-border object-cover"
-                        />
-                      </a>
-                    ))}
-                    {externalImages.map((src) => (
-                      <a key={src} href={src} target="_blank" rel="noreferrer">
-                        <img
-                          src={src}
-                          alt="Scraped product image"
-                          className="h-16 w-16 rounded-md border border-border object-cover"
-                        />
-                      </a>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {(quote.status === "submitted" || quote.status === "sourcing") && (
-                <div className="flex gap-2 pt-1">
-                  {quote.status === "submitted" && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={setStatus.isPending}
-                      onClick={() => setStatus.mutate("sourcing")}
-                    >
-                      Mark as sourcing
-                    </Button>
+                  {(data?.preview?.variants ?? []).length > 0 ? (
+                    <div>
+                      <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                        Variants seen on page
+                      </div>
+                      <p>
+                        {(data?.preview?.variants ?? []).join(", ")}{" "}
+                        <span className="text-muted-foreground">— confirm which to quote</span>
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      Client pasted a single-variant URL — confirm available variants before
+                      quoting.
+                    </p>
                   )}
-                  {quote.status === "sourcing" && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={setStatus.isPending}
-                      onClick={() => setStatus.mutate("submitted")}
-                    >
-                      Back to submitted
-                    </Button>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                        Volume / month
+                      </div>
+                      <div className="tnum">{quote.target_monthly_volume ?? "—"}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                        Client
+                      </div>
+                      <div>
+                        {client?.company_name ?? "—"} <TierBadge tier={clientTier} />
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {client?.store_url ?? ""}
+                        {client?.tier_override
+                          ? ` · override (auto: ${TIER_LABELS[client?.pricing_tier ?? "starter"] ?? client?.pricing_tier})`
+                          : ` · auto · ${Number(client?.avg_daily_units_30d ?? 0).toFixed(1)} units/day`}
+                      </div>
+                    </div>
+                  </div>
+                  {((images && images.urls.length > 0) || externalImages.length > 0) && (
+                    <div>
+                      <div className="mb-1.5 text-xs uppercase tracking-wide text-muted-foreground">
+                        Images
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {(images?.urls ?? []).map((img) => (
+                          <a key={img.path} href={img.url} target="_blank" rel="noreferrer">
+                            <img
+                              src={img.url}
+                              alt="Quote attachment"
+                              className="h-16 w-16 rounded-md border border-border object-cover"
+                            />
+                          </a>
+                        ))}
+                        {externalImages.map((src) => (
+                          <a key={src} href={src} target="_blank" rel="noreferrer">
+                            <img
+                              src={src}
+                              alt="Scraped product image"
+                              className="h-16 w-16 rounded-md border border-border object-cover"
+                            />
+                          </a>
+                        ))}
+                      </div>
+                    </div>
                   )}
-                </div>
-              )}
-              {data?.preview && (
-                <UrlPreviewCard
-                  url={data.preview.url_normalized}
-                  preview={{
-                    status: "ok",
-                    title: data.preview.title,
-                    description: data.preview.description,
-                    imageUrls: data.preview.image_urls ?? [],
-                    priceHint: data.preview.price_hint,
-                  }}
-                />
-              )}
-              </CardContent>
-            </CollapsibleContent>
+                  {(quote.status === "submitted" || quote.status === "sourcing") && (
+                    <div className="flex gap-2 pt-1">
+                      {quote.status === "submitted" && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={setStatus.isPending}
+                          onClick={() => setStatus.mutate("sourcing")}
+                        >
+                          Mark as sourcing
+                        </Button>
+                      )}
+                      {quote.status === "sourcing" && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={setStatus.isPending}
+                          onClick={() => setStatus.mutate("submitted")}
+                        >
+                          Back to submitted
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                  {data?.preview && (
+                    <UrlPreviewCard
+                      url={data.preview.url_normalized}
+                      preview={{
+                        status: "ok",
+                        title: data.preview.title,
+                        description: data.preview.description,
+                        imageUrls: data.preview.image_urls ?? [],
+                        priceHint: data.preview.price_hint,
+                      }}
+                    />
+                  )}
+                </CardContent>
+              </CollapsibleContent>
             </Card>
           </Collapsible>
 
@@ -1051,8 +1051,6 @@ function AdminQuoteDetailPage() {
         </div>
 
         <div className="space-y-6 lg:order-1">
-
-
           <Card>
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
@@ -1346,23 +1344,21 @@ function AdminQuoteDetailPage() {
                                       {row.sku ?? "SKU on save"}
                                     </span>
                                   </span>
-                                   <span className="text-xs text-muted-foreground">{country}</span>
-                                   <span className="tnum text-right text-muted-foreground">
-                                     {row.moq === "" ? "—" : row.moq}
-                                   </span>
-                                   <span className="tnum text-right text-muted-foreground">
-                                     {row.lead_time_days === ""
-                                       ? "—"
-                                       : `${row.lead_time_days} d`}
-                                   </span>
-                                   <span className="tnum text-right">{formatUSD(cogsUsd)}</span>
-                                   <span className="tnum text-right">{formatUSD(shipUsd)}</span>
-                                   <span className="tnum text-right text-muted-foreground">
-                                     {feePctLabel}%
-                                   </span>
-                                   <span className="tnum text-right text-muted-foreground">
-                                     {marginPctLabel}%
-                                   </span>
+                                  <span className="text-xs text-muted-foreground">{country}</span>
+                                  <span className="tnum text-right text-muted-foreground">
+                                    {row.moq === "" ? "—" : row.moq}
+                                  </span>
+                                  <span className="tnum text-right text-muted-foreground">
+                                    {row.lead_time_days === "" ? "—" : `${row.lead_time_days} d`}
+                                  </span>
+                                  <span className="tnum text-right">{formatUSD(cogsUsd)}</span>
+                                  <span className="tnum text-right">{formatUSD(shipUsd)}</span>
+                                  <span className="tnum text-right text-muted-foreground">
+                                    {feePctLabel}%
+                                  </span>
+                                  <span className="tnum text-right text-muted-foreground">
+                                    {marginPctLabel}%
+                                  </span>
                                   <span className="tnum text-right font-semibold">
                                     {formatUSD(cellPrice(cell, rate))}
                                   </span>
@@ -1377,70 +1373,70 @@ function AdminQuoteDetailPage() {
                                 {expanded && (
                                   <div className="grid gap-4 border-t border-border bg-muted/15 p-3 lg:grid-cols-2">
                                     {/* Variant identity and terms. */}
-                                     <div className="space-y-2">
-                                       <div className="space-y-1">
-                                         <Label
-                                           htmlFor={`v-label-${row.key}`}
-                                           className="text-[11px] text-muted-foreground"
-                                         >
-                                           Variant name
-                                         </Label>
-                                         <Input
-                                           id={`v-label-${row.key}`}
-                                           value={row.label}
-                                           onChange={(e) =>
-                                             updateRow(row.key, { label: e.target.value })
-                                           }
-                                           placeholder='e.g. "20cm", "Red / L"'
-                                           disabled={!rowEditable}
-                                           className="h-8 text-[13px]"
-                                         />
-                                       </div>
-                                       <div className="grid grid-cols-2 gap-2">
-                                         <div className="space-y-1">
-                                           <Label
-                                             htmlFor={`v-moq-${row.key}`}
-                                             className="text-[11px] text-muted-foreground"
-                                           >
-                                             MOQ (units)
-                                           </Label>
-                                           <Input
-                                             id={`v-moq-${row.key}`}
-                                             type="number"
-                                             min={1}
-                                             value={row.moq}
-                                             onChange={(e) =>
-                                               updateRow(row.key, { moq: e.target.value })
-                                             }
-                                             disabled={!rowEditable}
-                                             placeholder="Not set"
-                                             className="h-8 tnum text-[13px] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                                           />
-                                         </div>
-                                         <div className="space-y-1">
-                                           <Label
-                                             htmlFor={`v-lead-${row.key}`}
-                                             className="text-[11px] text-muted-foreground"
-                                           >
-                                             Lead time (days)
-                                           </Label>
-                                           <Input
-                                             id={`v-lead-${row.key}`}
-                                             type="number"
-                                             min={0}
-                                             value={row.lead_time_days}
-                                             onChange={(e) =>
-                                               updateRow(row.key, { lead_time_days: e.target.value })
-                                             }
-                                             disabled={!rowEditable}
-                                             placeholder="Not set"
-                                             className="h-8 tnum text-[13px] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                                           />
-                                           <p className="text-[11px] leading-tight text-muted-foreground">
-                                             Empty means not filled in yet; 0 means same-day.
-                                           </p>
-                                         </div>
-                                       </div>
+                                    <div className="space-y-2">
+                                      <div className="space-y-1">
+                                        <Label
+                                          htmlFor={`v-label-${row.key}`}
+                                          className="text-[11px] text-muted-foreground"
+                                        >
+                                          Variant name
+                                        </Label>
+                                        <Input
+                                          id={`v-label-${row.key}`}
+                                          value={row.label}
+                                          onChange={(e) =>
+                                            updateRow(row.key, { label: e.target.value })
+                                          }
+                                          placeholder='e.g. "20cm", "Red / L"'
+                                          disabled={!rowEditable}
+                                          className="h-8 text-[13px]"
+                                        />
+                                      </div>
+                                      <div className="grid grid-cols-2 gap-2">
+                                        <div className="space-y-1">
+                                          <Label
+                                            htmlFor={`v-moq-${row.key}`}
+                                            className="text-[11px] text-muted-foreground"
+                                          >
+                                            MOQ (units)
+                                          </Label>
+                                          <Input
+                                            id={`v-moq-${row.key}`}
+                                            type="number"
+                                            min={1}
+                                            value={row.moq}
+                                            onChange={(e) =>
+                                              updateRow(row.key, { moq: e.target.value })
+                                            }
+                                            disabled={!rowEditable}
+                                            placeholder="Not set"
+                                            className="h-8 tnum text-[13px] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                                          />
+                                        </div>
+                                        <div className="space-y-1">
+                                          <Label
+                                            htmlFor={`v-lead-${row.key}`}
+                                            className="text-[11px] text-muted-foreground"
+                                          >
+                                            Lead time (days)
+                                          </Label>
+                                          <Input
+                                            id={`v-lead-${row.key}`}
+                                            type="number"
+                                            min={0}
+                                            value={row.lead_time_days}
+                                            onChange={(e) =>
+                                              updateRow(row.key, { lead_time_days: e.target.value })
+                                            }
+                                            disabled={!rowEditable}
+                                            placeholder="Not set"
+                                            className="h-8 tnum text-[13px] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                                          />
+                                          <p className="text-[11px] leading-tight text-muted-foreground">
+                                            Empty means not filled in yet; 0 means same-day.
+                                          </p>
+                                        </div>
+                                      </div>
                                       {rowEditable && countries.length > 1 && (
                                         <div className="space-y-1">
                                           <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
