@@ -252,7 +252,7 @@ function MyQuoteDetailPage() {
             </CardContent>
           </Card>
 
-          <QuoteThread quoteId={id} mode="client" className="min-h-0 flex-1" />
+          <QuoteThread quoteId={id} mode="client" quoteRef={quoteRef} className="min-h-0 flex-1" />
         </div>
       </div>
     </div>

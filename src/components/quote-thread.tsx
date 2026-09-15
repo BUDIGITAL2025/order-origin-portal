@@ -65,10 +65,13 @@ export function QuoteThread({
   quoteId,
   mode,
   className,
+  quoteRef,
 }: {
   quoteId: string;
   mode: ThreadMode;
   className?: string;
+  /** Item reference shown next to the title so both sides name the same item. */
+  quoteRef?: string | null;
 }) {
   const queryClient = useQueryClient();
   const isAdmin = mode === "admin";

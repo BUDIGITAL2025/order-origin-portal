@@ -908,7 +908,7 @@ function AdminQuoteDetailPage() {
               )}
             </CardContent>
           </Card>
-          <QuoteThread quoteId={id} mode="admin" />
+          <QuoteThread quoteId={id} mode="admin" quoteRef={quoteRef} />
           {data?.preview && (
             <UrlPreviewCard
               url={data.preview.url_normalized}
