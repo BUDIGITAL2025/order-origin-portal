@@ -54,7 +54,7 @@ export function useWorkspaceScope(): [string, (id: string) => void] {
 }
 
 /** The workspaces the caller may see, plus whether they are staff. */
-function useFulfilmentWorkspaces() {
+export function useFulfilmentWorkspaces() {
   const fetchWorkspaces = useServerFn(listFulfilmentWorkspaces);
   return useQuery({
     queryKey: ["fulfilment-workspaces"],
