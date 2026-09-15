@@ -557,7 +557,7 @@ export function purchaseExpiredEmail(args: {
         { label: "Total", value: usd(args.total), strong: true },
       ],
     },
-    button: { label: "Open your quotes", url: appUrl("/quotes") },
+    button: { label: "Open your quotes", url: portalUrl("/quotes") },
   });
 }
 
