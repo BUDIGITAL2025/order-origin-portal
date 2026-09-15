@@ -159,7 +159,14 @@ export function QuoteThread({
     <Card className={cn("flex flex-col", className)}>
       <CardHeader className="shrink-0 pb-3">
         <div className="flex items-center justify-between gap-2">
-          <CardTitle className="text-base">Conversation</CardTitle>
+          <CardTitle className="flex items-baseline gap-2 text-base">
+            Conversation
+            {quoteRef && (
+              <span className="font-mono text-xs font-normal text-muted-foreground">
+                Ref {quoteRef}
+              </span>
+            )}
+          </CardTitle>
           {isSourcing && (
             <Badge variant="secondary" className="font-mono text-[11px]">
               {clientLabel}
