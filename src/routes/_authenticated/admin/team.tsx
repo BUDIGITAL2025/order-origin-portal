@@ -148,7 +148,7 @@ function AdminTeamPage() {
       />
       <div className="flex flex-wrap items-end gap-3 rounded-lg border border-border bg-card p-4">
         <div className="space-y-1.5">
-          <Label htmlFor="default-margin">Default FlySales margin %</Label>
+          <Label htmlFor="default-margin">Default FlySales markup %</Label>
           <Input
             id="default-margin"
             type="number"
