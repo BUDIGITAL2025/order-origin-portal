@@ -444,6 +444,23 @@ function AdminQuoteDetailPage() {
     );
   };
 
+  /** Copies one cell's margin to every editable cell in the grid. */
+  const applyMarginToAll = (key: string, country: string) => {
+    const value = rows.find((r) => r.key === key)?.cells[country]?.margin_pct ?? "0";
+    setRows((prev) =>
+      prev.map((r) => ({
+        ...r,
+        cells: Object.fromEntries(
+          Object.entries(r.cells).map(([c, cell]) => [
+            c,
+            cellLocked(cell) ? cell : { ...cell, margin_pct: value },
+          ]),
+        ),
+      })),
+    );
+    toast.success(`Margin ${value}% applied to all variants`);
+  };
+
   /** Everything the draft save needs, validated the same way for both actions. */
   const buildLines = () => {
     if (rows.length === 0) throw new Error("Add at least one variant");
@@ -963,7 +980,11 @@ function AdminQuoteDetailPage() {
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                save.mutate();
+                if (dirty) {
+                  toast.error("Save your changes first");
+                  return;
+                }
+                publish.mutate();
               }}
               className="space-y-4"
             >
@@ -1380,9 +1401,36 @@ function AdminQuoteDetailPage() {
                 />
               </div>
               {requestEditable && (
-                <Button type="submit" disabled={save.isPending}>
-                  {save.isPending ? "Publishing…" : "Publish quote to client"}
-                </Button>
+                <div className="sticky bottom-0 -mx-6 flex flex-wrap items-center gap-3 border-t border-border bg-card/95 px-6 py-3 backdrop-blur">
+                  {dirty ? (
+                    <span className="text-sm font-medium text-amber-600 dark:text-amber-400">
+                      Unsaved changes
+                    </span>
+                  ) : (
+                    <span className="text-sm text-muted-foreground">All changes saved</span>
+                  )}
+                  <div className="ml-auto flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant={dirty ? "default" : "outline"}
+                      disabled={save.isPending || publish.isPending || !dirty}
+                      onClick={() => save.mutate()}
+                    >
+                      {save.isPending ? "Saving…" : "Save changes"}
+                    </Button>
+                    <Button
+                      type="submit"
+                      variant={dirty ? "outline" : "default"}
+                      disabled={dirty || save.isPending || publish.isPending}
+                      title={dirty ? "Save your changes first" : undefined}
+                    >
+                      {publish.isPending ? "Publishing…" : "Publish quote to client"}
+                    </Button>
+                  </div>
+                  {dirty && (
+                    <p className="w-full text-xs text-muted-foreground">Save your changes first</p>
+                  )}
+                </div>
               )}
             </form>
           </CardContent>
