@@ -4866,6 +4866,7 @@ export type Database = {
       staff_level: "owner" | "collaborator" | "reader"
       stock_purchase_path: "flysales" | "direct"
       stock_purchase_status:
+        | "awaiting_payment"
         | "requested"
         | "freight_quoted"
         | "paid"
@@ -5072,6 +5073,7 @@ export const Constants = {
       staff_level: ["owner", "collaborator", "reader"],
       stock_purchase_path: ["flysales", "direct"],
       stock_purchase_status: [
+        "awaiting_payment",
         "requested",
         "freight_quoted",
         "paid",

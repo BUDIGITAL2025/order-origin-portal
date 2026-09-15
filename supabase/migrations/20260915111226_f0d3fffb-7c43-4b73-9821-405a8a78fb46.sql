@@ -1,0 +1,1 @@
+ALTER TYPE public.stock_purchase_status ADD VALUE IF NOT EXISTS 'awaiting_payment' BEFORE 'requested';
