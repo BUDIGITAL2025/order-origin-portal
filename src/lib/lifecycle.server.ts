@@ -182,6 +182,13 @@ export async function buildLifecycle(
       entities?: { legal_name?: string | null } | null;
     } | null;
 
+    // A quote line is one variant × country, so counting rows double-counts a
+    // variant quoted to several destinations. Variants are counted by SKU.
+    const variantCount = new Set(myLines.map((l) => (l.sku as string | null) ?? (l.id as string)))
+      .size;
+    const acceptedVariants = new Set(
+      accepted.map((l) => (l.sku as string | null) ?? (l.id as string)),
+    ).size;
     const sourcedAt = latest(myLines.map((l) => l.sourced_at as string | null));
     const sourcerId = (myLines.find((l) => l.sourced_by)?.sourced_by ?? q.assigned_sourcer) as
       string | null;
