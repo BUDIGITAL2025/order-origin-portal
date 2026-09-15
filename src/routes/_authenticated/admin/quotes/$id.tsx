@@ -1739,14 +1739,20 @@ function AdminQuoteDetailPage() {
                         disabled={dirty || save.isPending || publish.isPending}
                         title={dirty ? "Save your changes first" : undefined}
                       >
-                        {publish.isPending ? "Publishing…" : "Publish quote to client"}
+                        {publish.isPending
+                          ? "Publishing…"
+                          : alreadyPublished
+                            ? "Send updated prices to client"
+                            : "Publish quote to client"}
                       </Button>
                     </div>
-                    {dirty && (
-                      <p className="w-full text-xs text-muted-foreground">
-                        Save your changes first
-                      </p>
-                    )}
+                    <p className="w-full text-xs text-muted-foreground">
+                      {dirty
+                        ? "Save your changes first"
+                        : alreadyPublished
+                          ? "Updates the prices on this same quote and notifies the client. Terms already agreed need a revision instead."
+                          : "Publishes the selected option and notifies the client."}
+                    </p>
                   </div>
                 )}
               </form>
