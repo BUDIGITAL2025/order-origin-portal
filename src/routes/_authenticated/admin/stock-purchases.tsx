@@ -125,7 +125,8 @@ function AdminStockPurchasesPage() {
           onChange={setFilter}
           tabs={[
             { id: "all", label: "All" },
-            { id: "requested", label: "Awaiting payment" },
+            { id: "awaiting_payment", label: "Awaiting payment" },
+            { id: "requested", label: "Awaiting freight" },
             { id: "paid", label: "Paid" },
             { id: "in_production", label: "In production" },
             { id: "shipped", label: "Shipped" },
