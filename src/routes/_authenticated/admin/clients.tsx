@@ -181,7 +181,6 @@ function AdminClientsPage() {
     0,
   );
 
-
   const term = search.trim().toLowerCase();
   const clients = allClients.filter((c) => {
     if (!showArchived && (c as { archived_at?: string | null }).archived_at) return false;
@@ -369,141 +368,174 @@ function AdminClientsPage() {
                                 const effTier = effectiveTier(s.pricing_tier, s.tier_override);
                                 return (
                                   <React.Fragment key={s.id}>
-                                  <TableRow className="hover:bg-accent/60">
-                                    <TableCell className="max-w-56 py-2.5">
-                                      <div className="truncate font-medium">
-                                        {s.store_name ?? s.store_url}
-                                      </div>
-                                      <div className="truncate text-xs text-muted-foreground">
-                                        {s.store_url}
-                                      </div>
-                                      <div className="mt-1 flex flex-wrap items-center gap-1">
-                                        <Chip>{s.platform}</Chip>
-                                        <Chip
-                                          tone={
-                                            s.integration_mode === "automatic"
-                                              ? "success"
-                                              : "neutral"
+                                    <TableRow className="hover:bg-accent/60">
+                                      <TableCell className="max-w-56 py-2.5">
+                                        <div className="truncate font-medium">
+                                          {s.store_name ?? s.store_url}
+                                        </div>
+                                        <div className="truncate text-xs text-muted-foreground">
+                                          {s.store_url}
+                                        </div>
+                                        <div className="mt-1 flex flex-wrap items-center gap-1">
+                                          <Chip>{s.platform}</Chip>
+                                          <Chip
+                                            tone={
+                                              s.integration_mode === "automatic"
+                                                ? "success"
+                                                : "neutral"
+                                            }
+                                          >
+                                            {s.integration_mode}
+                                          </Chip>
+                                          {s.fee_waived && <Chip tone="info">fee waived</Chip>}
+                                        </div>
+                                      </TableCell>
+                                      <TableCell className="py-2.5">
+                                        <Select
+                                          value={s.subscription_plan}
+                                          onValueChange={(v) =>
+                                            setPlan.mutate({
+                                              store_id: s.id,
+                                              subscription_plan: v as "basic" | "unlimited",
+                                            })
                                           }
                                         >
-                                          {s.integration_mode}
-                                        </Chip>
-                                        {s.fee_waived && <Chip tone="info">fee waived</Chip>}
-                                      </div>
-                                    </TableCell>
-                                    <TableCell className="py-2.5">
-                                      <Select
-                                        value={s.subscription_plan}
-                                        onValueChange={(v) =>
-                                          setPlan.mutate({
-                                            store_id: s.id,
-                                            subscription_plan: v as "basic" | "unlimited",
-                                          })
-                                        }
-                                      >
-                                        <SelectTrigger className="h-7 w-28 text-xs">
-                                          <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          <SelectItem value="basic">
-                                            {PLANS.basic.label} ${PLANS.basic.priceUsd}/mo
-                                          </SelectItem>
-                                          <SelectItem value="unlimited">
-                                            {PLANS.unlimited.label} ${PLANS.unlimited.priceUsd}/mo
-                                          </SelectItem>
-                                        </SelectContent>
-                                      </Select>
-                                    </TableCell>
-                                    {/* Read-only Stripe state — written by the payment webhook only. */}
-                                    <TableCell className="py-2.5">
-                                      <Badge
-                                        variant="outline"
-                                        className={
-                                          s.subscription_status === "active"
-                                            ? "border-success/40 bg-success/10 text-success"
-                                            : s.subscription_status === "past_due"
-                                              ? "border-destructive/40 bg-destructive/10 text-destructive"
-                                              : "text-muted-foreground"
-                                        }
-                                      >
-                                        {s.subscription_status}
-                                      </Badge>
-                                    </TableCell>
-                                    <TableCell className="py-2.5">
-                                      <div className="flex items-center gap-1.5">
-                                        <TierBadge tier={effTier} />
-                                        {s.tier_override && (
-                                          <span className="text-[11px] text-warning">override</span>
-                                        )}
-                                      </div>
-                                    </TableCell>
-                                    <TableCell className="tnum py-2.5 text-right">
-                                      {Number(s.avg_daily_units_30d ?? 0).toFixed(1)}
-                                    </TableCell>
-                                    <TableCell className="tnum py-2.5 text-right">
-                                      {s.quotes_used_this_month} /{" "}
-                                      {planQuota(s.subscription_plan) ?? "∞"}
-                                    </TableCell>
-                                    <TableCell className="py-2.5">
-                                      <ProfileStatusBadge status={s.status} />
-                                      <div className="mt-1">
-                                        <ProvisioningBadge status={s.provisioning_status} />
-                                      </div>
-                                    </TableCell>
-                                    <TableCell className="py-2.5">
-                                      <RowActions>
-                                        <RowAction
-                                          label={
-                                            dealStore === s.id ? "Hide deal view" : "Deal view"
+                                          <SelectTrigger className="h-7 w-28 text-xs">
+                                            <SelectValue />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="basic">
+                                              {PLANS.basic.label} ${PLANS.basic.priceUsd}/mo
+                                            </SelectItem>
+                                            <SelectItem value="unlimited">
+                                              {PLANS.unlimited.label} ${PLANS.unlimited.priceUsd}/mo
+                                            </SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                      </TableCell>
+                                      {/* Read-only Stripe state — written by the payment webhook only. */}
+                                      <TableCell className="py-2.5">
+                                        <Badge
+                                          variant="outline"
+                                          className={
+                                            s.subscription_status === "active"
+                                              ? "border-success/40 bg-success/10 text-success"
+                                              : s.subscription_status === "past_due"
+                                                ? "border-destructive/40 bg-destructive/10 text-destructive"
+                                                : "text-muted-foreground"
                                           }
-                                          icon={GitBranch}
-                                          onClick={() =>
-                                            setDealStore(dealStore === s.id ? null : s.id)
-                                          }
-                                        />
-                                        {s.status === "pending" && (
+                                        >
+                                          {s.subscription_status}
+                                        </Badge>
+                                      </TableCell>
+                                      <TableCell className="py-2.5">
+                                        <div className="flex items-center gap-1.5">
+                                          <TierBadge tier={effTier} />
+                                          {s.tier_override && (
+                                            <span className="text-[11px] text-warning">
+                                              override
+                                            </span>
+                                          )}
+                                        </div>
+                                      </TableCell>
+                                      <TableCell className="tnum py-2.5 text-right">
+                                        {Number(s.avg_daily_units_30d ?? 0).toFixed(1)}
+                                      </TableCell>
+                                      <TableCell className="tnum py-2.5 text-right">
+                                        {s.quotes_used_this_month} /{" "}
+                                        {planQuota(s.subscription_plan) ?? "∞"}
+                                      </TableCell>
+                                      <TableCell className="py-2.5">
+                                        <ProfileStatusBadge status={s.status} />
+                                        <div className="mt-1">
+                                          <ProvisioningBadge status={s.provisioning_status} />
+                                        </div>
+                                      </TableCell>
+                                      <TableCell className="py-2.5">
+                                        <RowActions>
                                           <RowAction
                                             label={
-                                              provision.isPending
-                                                ? "Approving…"
-                                                : "Approve workspace"
+                                              dealStore === s.id ? "Hide deal view" : "Deal view"
                                             }
-                                            icon={CheckCircle2}
-                                            tone="primary"
-                                            disabled={provision.isPending}
-                                            onClick={() => provision.mutate(s.id)}
+                                            icon={GitBranch}
+                                            onClick={() =>
+                                              setDealStore(dealStore === s.id ? null : s.id)
+                                            }
                                           />
-                                        )}
-                                        {s.provisioning_status === "failed" && (
-                                          <RowAction
-                                            label="Retry provisioning"
-                                            icon={RefreshCw}
-                                            disabled={provision.isPending}
-                                            onClick={() => provision.mutate(s.id)}
-                                          />
-                                        )}
-                                        <Popover>
-                                          <PopoverTrigger asChild>
-                                            <Button
-                                              variant="ghost"
-                                              size="icon"
-                                              className="h-7 w-7"
-                                              aria-label="Workspace details"
-                                              title="Details and overrides"
-                                            >
-                                              <Settings2 className="h-3.5 w-3.5" />
-                                            </Button>
-                                          </PopoverTrigger>
-                                          <PopoverContent align="end" className="w-72 space-y-3">
-                                            <div className="space-y-1.5">
-                                              <Label className="text-xs">Integration mode</Label>
-                                              {s.platform === "shopify" ? (
+                                          {s.status === "pending" && (
+                                            <RowAction
+                                              label={
+                                                provision.isPending
+                                                  ? "Approving…"
+                                                  : "Approve workspace"
+                                              }
+                                              icon={CheckCircle2}
+                                              tone="primary"
+                                              disabled={provision.isPending}
+                                              onClick={() => provision.mutate(s.id)}
+                                            />
+                                          )}
+                                          {s.provisioning_status === "failed" && (
+                                            <RowAction
+                                              label="Retry provisioning"
+                                              icon={RefreshCw}
+                                              disabled={provision.isPending}
+                                              onClick={() => provision.mutate(s.id)}
+                                            />
+                                          )}
+                                          <Popover>
+                                            <PopoverTrigger asChild>
+                                              <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-7 w-7"
+                                                aria-label="Workspace details"
+                                                title="Details and overrides"
+                                              >
+                                                <Settings2 className="h-3.5 w-3.5" />
+                                              </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent align="end" className="w-72 space-y-3">
+                                              <div className="space-y-1.5">
+                                                <Label className="text-xs">Integration mode</Label>
+                                                {s.platform === "shopify" ? (
+                                                  <Select
+                                                    value={s.integration_mode}
+                                                    onValueChange={(v) =>
+                                                      setIntegrationMode.mutate({
+                                                        store_id: s.id,
+                                                        integration_mode: v as
+                                                          "automatic" | "manual",
+                                                      })
+                                                    }
+                                                  >
+                                                    <SelectTrigger className="h-8 text-xs">
+                                                      <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                      <SelectItem value="manual">Manual</SelectItem>
+                                                      <SelectItem value="automatic">
+                                                        Automatic
+                                                      </SelectItem>
+                                                    </SelectContent>
+                                                  </Select>
+                                                ) : (
+                                                  <p className="text-xs text-muted-foreground">
+                                                    Manual only on this platform.
+                                                  </p>
+                                                )}
+                                              </div>
+                                              <div className="space-y-1.5">
+                                                <Label className="text-xs">Pricing tier</Label>
                                                 <Select
-                                                  value={s.integration_mode}
+                                                  value={s.tier_override ?? "auto"}
                                                   onValueChange={(v) =>
-                                                    setIntegrationMode.mutate({
+                                                    setOverride.mutate({
                                                       store_id: s.id,
-                                                      integration_mode: v as "automatic" | "manual",
+                                                      tier_override:
+                                                        v === "auto"
+                                                          ? null
+                                                          : (v as "starter" | "growth" | "scale"),
                                                     })
                                                   }
                                                 >
@@ -511,99 +543,75 @@ function AdminClientsPage() {
                                                     <SelectValue />
                                                   </SelectTrigger>
                                                   <SelectContent>
-                                                    <SelectItem value="manual">Manual</SelectItem>
-                                                    <SelectItem value="automatic">
-                                                      Automatic
+                                                    <SelectItem value="auto">
+                                                      Auto (
+                                                      {TIER_LABELS[s.pricing_tier] ??
+                                                        s.pricing_tier}
+                                                      )
+                                                    </SelectItem>
+                                                    <SelectItem value="starter">
+                                                      Override: Starter
+                                                    </SelectItem>
+                                                    <SelectItem value="growth">
+                                                      Override: Growth
+                                                    </SelectItem>
+                                                    <SelectItem value="scale">
+                                                      Override: Scale
                                                     </SelectItem>
                                                   </SelectContent>
                                                 </Select>
-                                              ) : (
-                                                <p className="text-xs text-muted-foreground">
-                                                  Manual only on this platform.
-                                                </p>
-                                              )}
-                                            </div>
-                                            <div className="space-y-1.5">
-                                              <Label className="text-xs">Pricing tier</Label>
-                                              <Select
-                                                value={s.tier_override ?? "auto"}
-                                                onValueChange={(v) =>
-                                                  setOverride.mutate({
-                                                    store_id: s.id,
-                                                    tier_override:
-                                                      v === "auto"
-                                                        ? null
-                                                        : (v as "starter" | "growth" | "scale"),
-                                                  })
-                                                }
-                                              >
-                                                <SelectTrigger className="h-8 text-xs">
-                                                  <SelectValue />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                  <SelectItem value="auto">
-                                                    Auto (
-                                                    {TIER_LABELS[s.pricing_tier] ?? s.pricing_tier})
-                                                  </SelectItem>
-                                                  <SelectItem value="starter">
-                                                    Override: Starter
-                                                  </SelectItem>
-                                                  <SelectItem value="growth">
-                                                    Override: Growth
-                                                  </SelectItem>
-                                                  <SelectItem value="scale">
-                                                    Override: Scale
-                                                  </SelectItem>
-                                                </SelectContent>
-                                              </Select>
-                                            </div>
-                                            <div className="flex items-center justify-between gap-3">
-                                              <Label className="text-xs">Monthly fee waived</Label>
-                                              <Switch
-                                                checked={s.fee_waived}
-                                                disabled={setFeeWaived.isPending}
-                                                onCheckedChange={(checked) =>
-                                                  setFeeWaived.mutate({
-                                                    store_id: s.id,
-                                                    fee_waived: checked,
-                                                  })
-                                                }
-                                                aria-label={`Toggle fee waiver for ${s.store_name ?? s.store_url}`}
-                                              />
-                                            </div>
-                                            <dl className="space-y-1 border-t border-border pt-2 text-xs">
-                                              <div className="flex justify-between gap-2">
-                                                <dt className="text-muted-foreground">
-                                                  Subscription id
-                                                </dt>
-                                                <dd className="max-w-36 truncate font-mono">
-                                                  <Value>{s.stripe_subscription_id}</Value>
-                                                </dd>
                                               </div>
-                                              <div className="flex justify-between gap-2">
-                                                <dt className="text-muted-foreground">Tenant id</dt>
-                                                <dd className="max-w-36 truncate font-mono">
-                                                  <Value>{s.middleware_tenant_id}</Value>
-                                                </dd>
+                                              <div className="flex items-center justify-between gap-3">
+                                                <Label className="text-xs">
+                                                  Monthly fee waived
+                                                </Label>
+                                                <Switch
+                                                  checked={s.fee_waived}
+                                                  disabled={setFeeWaived.isPending}
+                                                  onCheckedChange={(checked) =>
+                                                    setFeeWaived.mutate({
+                                                      store_id: s.id,
+                                                      fee_waived: checked,
+                                                    })
+                                                  }
+                                                  aria-label={`Toggle fee waiver for ${s.store_name ?? s.store_url}`}
+                                                />
                                               </div>
-                                              {s.provisioning_status === "failed" && (
-                                                <p className="text-destructive">
-                                                  {s.provisioning_step}: {s.provisioning_error}
-                                                </p>
-                                              )}
-                                            </dl>
-                                          </PopoverContent>
-                                        </Popover>
-                                      </RowActions>
-                                    </TableCell>
-                                  </TableRow>
-                                  {dealStore === s.id && (
-                                    <TableRow>
-                                      <TableCell colSpan={8} className="bg-muted/30 p-4">
-                                        <LifecycleTimeline storeId={s.id} />
+                                              <dl className="space-y-1 border-t border-border pt-2 text-xs">
+                                                <div className="flex justify-between gap-2">
+                                                  <dt className="text-muted-foreground">
+                                                    Subscription id
+                                                  </dt>
+                                                  <dd className="max-w-36 truncate font-mono">
+                                                    <Value>{s.stripe_subscription_id}</Value>
+                                                  </dd>
+                                                </div>
+                                                <div className="flex justify-between gap-2">
+                                                  <dt className="text-muted-foreground">
+                                                    Tenant id
+                                                  </dt>
+                                                  <dd className="max-w-36 truncate font-mono">
+                                                    <Value>{s.middleware_tenant_id}</Value>
+                                                  </dd>
+                                                </div>
+                                                {s.provisioning_status === "failed" && (
+                                                  <p className="text-destructive">
+                                                    {s.provisioning_step}: {s.provisioning_error}
+                                                  </p>
+                                                )}
+                                              </dl>
+                                            </PopoverContent>
+                                          </Popover>
+                                        </RowActions>
                                       </TableCell>
                                     </TableRow>
-                                  )}
+                                    {dealStore === s.id && (
+                                      <TableRow>
+                                        <TableCell colSpan={8} className="bg-muted/30 p-4">
+                                          <LifecycleTimeline storeId={s.id} />
+                                        </TableCell>
+                                      </TableRow>
+                                    )}
                                   </React.Fragment>
                                 );
                               })}

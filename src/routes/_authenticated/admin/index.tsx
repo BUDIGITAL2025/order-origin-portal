@@ -47,10 +47,9 @@ function AdminHome() {
       key: "messages",
       label: "Unread client messages",
       value: counters?.unread_messages ?? 0,
-      hint:
-        counters?.unread_message_quotes
-          ? `${counters.unread_message_quotes} conversation${counters.unread_message_quotes === 1 ? "" : "s"}`
-          : undefined,
+      hint: counters?.unread_message_quotes
+        ? `${counters.unread_message_quotes} conversation${counters.unread_message_quotes === 1 ? "" : "s"}`
+        : undefined,
       to: "/admin/quotes",
       search: { unread: true },
     },

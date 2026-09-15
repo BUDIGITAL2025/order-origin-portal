@@ -93,10 +93,7 @@ function stage(
 }
 
 /** Human names for the user ids that appear as actors on a timeline. */
-async function actorNames(
-  admin: SupabaseClient,
-  ids: string[],
-): Promise<Map<string, string>> {
+async function actorNames(admin: SupabaseClient, ids: string[]): Promise<Map<string, string>> {
   const unique = [...new Set(ids.filter(Boolean))];
   const names = new Map<string, string>();
   if (unique.length === 0) return names;
@@ -156,10 +153,7 @@ export async function buildLifecycle(
   const inboundIds = purchases.map((p) => p.inbound_shipment_id).filter(Boolean) as string[];
   const inbound = inboundIds.length
     ? ((
-        await admin
-          .from("inbound_shipments")
-          .select("id, status, received_at")
-          .in("id", inboundIds)
+        await admin.from("inbound_shipments").select("id, status, received_at").in("id", inboundIds)
       ).data ?? [])
     : [];
   const inboundById = new Map(inbound.map((i) => [i.id as string, i]));
@@ -173,7 +167,10 @@ export async function buildLifecycle(
   const earliest = (values: Array<string | null | undefined>) =>
     values.filter((v): v is string => !!v).sort()[0] ?? null;
   const latest = (values: Array<string | null | undefined>) =>
-    values.filter((v): v is string => !!v).sort().slice(-1)[0] ?? null;
+    values
+      .filter((v): v is string => !!v)
+      .sort()
+      .slice(-1)[0] ?? null;
 
   return quotes.map((q) => {
     const myLines = lines.filter((l) => l.quote_request_id === q.id);
@@ -186,8 +183,8 @@ export async function buildLifecycle(
     } | null;
 
     const sourcedAt = latest(myLines.map((l) => l.sourced_at as string | null));
-    const sourcerId = (myLines.find((l) => l.sourced_by)?.sourced_by ??
-      q.assigned_sourcer) as string | null;
+    const sourcerId = (myLines.find((l) => l.sourced_by)?.sourced_by ?? q.assigned_sourcer) as
+      string | null;
     const pricedDone = myLines.some((l) => l.unit_price != null);
     const paidAt = earliest(myPurchases.map((p) => p.paid_at as string | null));
     const invoiceVerified = myPurchases.find((p) => p.supplier_invoice_state === "verified");
