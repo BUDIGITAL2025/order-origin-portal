@@ -792,6 +792,7 @@ export const adminRecordSupplierPayment = createServerFn({ method: "POST" })
           supplierUnitPrice: Number(row.supplier_unit_price),
           quoteLineId: row.quote_line_id,
           stockPurchaseId: row.id,
+          entityId: row.entity_id,
         });
       } catch (e) {
         console.error("earnings accrual failed at supplier payment", row.id, e);
