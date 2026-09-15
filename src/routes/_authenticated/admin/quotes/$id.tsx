@@ -970,33 +970,83 @@ function AdminQuoteDetailPage() {
                   )}
                 </div>
               )}
+              {data?.preview && (
+                <UrlPreviewCard
+                  url={data.preview.url_normalized}
+                  preview={{
+                    status: "ok",
+                    title: data.preview.title,
+                    description: data.preview.description,
+                    imageUrls: data.preview.image_urls ?? [],
+                    priceHint: data.preview.price_hint,
+                  }}
+                />
+              )}
+              </CardContent>
+            </CollapsibleContent>
+            </Card>
+          </Collapsible>
+
+          {/* Support panel: talk, history, and the short summary. */}
+          <Card>
+            <CardContent className="pt-6">
+              <Tabs defaultValue="conversation">
+                <TabsList className="w-full">
+                  <TabsTrigger value="conversation" className="flex-1">
+                    Conversation
+                  </TabsTrigger>
+                  <TabsTrigger value="activity" className="flex-1">
+                    Activity
+                  </TabsTrigger>
+                  <TabsTrigger value="summary" className="flex-1">
+                    Summary
+                  </TabsTrigger>
+                </TabsList>
+                <TabsContent value="conversation" className="mt-4">
+                  <QuoteThread quoteId={id} mode="admin" quoteRef={quoteRef} />
+                </TabsContent>
+                <TabsContent value="activity" className="mt-4">
+                  <LifecycleTimeline quoteId={id} hideHeading collapsible />
+                </TabsContent>
+                <TabsContent value="summary" className="mt-4 space-y-2 text-sm">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-muted-foreground">Selected option</span>
+                    <span className="font-medium">
+                      {activeOption
+                        ? `Option ${activeOption.letter}${activeOption.recommended ? " ★" : ""}${activeOption.published ? "" : " · draft"}`
+                        : "—"}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-muted-foreground">Valid until</span>
+                    <span className="tnum font-medium">
+                      {quote.quote_valid_until ? formatDate(quote.quote_valid_until) : "On publish"}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-muted-foreground">Client price range</span>
+                    <span className="tnum font-medium">
+                      {rows.length === 0
+                        ? "—"
+                        : minPrice === maxPrice
+                          ? formatUSD(minPrice)
+                          : `${formatUSD(minPrice)} – ${formatUSD(maxPrice)}`}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-muted-foreground">Grid</span>
+                    <span className="tnum font-medium">
+                      {rows.length} × {countries.length}
+                    </span>
+                  </div>
+                </TabsContent>
+              </Tabs>
             </CardContent>
           </Card>
-          <QuoteThread quoteId={id} mode="admin" quoteRef={quoteRef} />
-          {data?.preview && (
-            <UrlPreviewCard
-              url={data.preview.url_normalized}
-              preview={{
-                status: "ok",
-                title: data.preview.title,
-                description: data.preview.description,
-                imageUrls: data.preview.image_urls ?? [],
-                priceHint: data.preview.price_hint,
-              }}
-            />
-          )}
         </div>
 
         <div className="space-y-6 lg:order-1">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">Deal view</CardTitle>
-              <CardDescription>Every stage of this product, and who acted.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <LifecycleTimeline quoteId={id} hideHeading />
-            </CardContent>
-          </Card>
+
 
           <Card>
             <CardHeader className="pb-3">
