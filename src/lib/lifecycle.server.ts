@@ -215,8 +215,8 @@ export async function buildLifecycle(
       stage("accepted", latest(accepted.map((l) => l.responded_at as string | null)), {
         done: accepted.length > 0,
         by: chain?.entities?.legal_name ?? null,
-        detail: accepted.length
-          ? `${accepted.length} variant${accepted.length === 1 ? "" : "s"}, ${units} units`
+        detail: acceptedVariants
+          ? `${acceptedVariants} variant${acceptedVariants === 1 ? "" : "s"}, ${units} units`
           : null,
       }),
       stage("paid", paidAt, {
