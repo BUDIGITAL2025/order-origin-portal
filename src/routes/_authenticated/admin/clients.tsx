@@ -30,6 +30,7 @@ import {
 import { CleanupRowActions, ShowArchivedToggle } from "@/components/cleanup-actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Switch } from "@/components/ui/switch";
@@ -63,6 +64,7 @@ import {
   adminSetFeeWaived,
   adminSetIntegrationMode,
   adminSetPlan,
+  adminSetStoreName,
   adminSetTierOverride,
   provisionStore,
 } from "@/lib/profiles.functions";
@@ -370,8 +372,15 @@ function AdminClientsPage() {
                                   <React.Fragment key={s.id}>
                                     <TableRow className="hover:bg-accent/60">
                                       <TableCell className="max-w-56 py-2.5">
-                                        <div className="truncate font-medium">
-                                          {s.store_name ?? s.store_url}
+                                        <div className="flex items-center gap-1">
+                                          <span className="truncate font-medium">
+                                            {s.store_name ?? s.store_url}
+                                          </span>
+                                          <RenameWorkspace
+                                            storeId={s.id}
+                                            currentName={s.store_name ?? ""}
+                                            onRenamed={invalidate}
+                                          />
                                         </div>
                                         <div className="truncate text-xs text-muted-foreground">
                                           {s.store_url}
@@ -634,5 +643,84 @@ function AdminClientsPage() {
         {allClients[0] ? formatDateTime(allClients[0].created_at) : "—"}.
       </p>
     </div>
+  );
+}
+
+/**
+ * Pencil next to a workspace name: renames `stores.store_name` only. The
+ * legal entity name (invoices, fiscal records) is a separate field and stays
+ * untouched. Every screen reading the workspace name — including the
+ * Fulfilment client dropdown — picks the new name up on the next fetch.
+ */
+function RenameWorkspace({
+  storeId,
+  currentName,
+  onRenamed,
+}: {
+  storeId: string;
+  currentName: string;
+  onRenamed: () => void;
+}) {
+  const callRename = useServerFn(adminSetStoreName);
+  const queryClient = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState(currentName);
+
+  const rename = useMutation({
+    mutationFn: () => callRename({ data: { store_id: storeId, store_name: name.trim() } }),
+    onSuccess: () => {
+      toast.success("Workspace renamed");
+      setOpen(false);
+      onRenamed();
+      void queryClient.invalidateQueries({ queryKey: ["fulfilment-workspaces"] });
+      void queryClient.invalidateQueries({ queryKey: ["my-context"] });
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  return (
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (next) setName(currentName);
+      }}
+    >
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          aria-label="Rename workspace"
+          className="shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+        >
+          <Pencil className="h-3.5 w-3.5" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-64 space-y-2">
+        <Label htmlFor={`ws-name-${storeId}`} className="text-xs">
+          Workspace name
+        </Label>
+        <Input
+          id={`ws-name-${storeId}`}
+          value={name}
+          autoFocus
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && name.trim()) rename.mutate();
+          }}
+        />
+        <div className="flex justify-end gap-2">
+          <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>
+            Cancel
+          </Button>
+          <Button
+            size="sm"
+            disabled={!name.trim() || name.trim() === currentName || rename.isPending}
+            onClick={() => rename.mutate()}
+          >
+            {rename.isPending ? "Saving…" : "Save"}
+          </Button>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
