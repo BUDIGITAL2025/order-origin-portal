@@ -33,7 +33,7 @@ const WORKFLOW_STATUSES = [
   "delivered",
 ] as const satisfies readonly PurchaseStatus[];
 
-/** Neutral label so an agent can talk about a purchase without knowing who. */
+/** Fallback label when a workspace cannot be resolved to a company name. */
 function clientLabel(storeId: string): string {
   return `Client #${storeId.slice(0, 6).toUpperCase()}`;
 }
