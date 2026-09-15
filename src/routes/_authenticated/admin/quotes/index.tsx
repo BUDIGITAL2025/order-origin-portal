@@ -318,9 +318,7 @@ function AdminQuotesPage() {
                     key={q.id}
                     role="link"
                     tabIndex={0}
-                    onClick={() =>
-                      void navigate({ to: "/admin/quotes/$id", params: { id: q.id } })
-                    }
+                    onClick={() => void navigate({ to: "/admin/quotes/$id", params: { id: q.id } })}
                     onKeyDown={(event) => {
                       if (event.key === "Enter" || event.key === " ") {
                         event.preventDefault();
