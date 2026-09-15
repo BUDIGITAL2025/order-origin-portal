@@ -19,8 +19,7 @@ export const getDefaultMarginPct = createServerFn({ method: "GET" })
       .maybeSingle();
     const parsed = Number(data?.value);
     return {
-      margin_pct:
-        Number.isFinite(parsed) && parsed >= 0 ? parsed : FALLBACK_DEFAULT_MARGIN_PCT,
+      margin_pct: Number.isFinite(parsed) && parsed >= 0 ? parsed : FALLBACK_DEFAULT_MARGIN_PCT,
     };
   });
 
