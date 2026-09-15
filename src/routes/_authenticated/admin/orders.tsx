@@ -186,7 +186,7 @@ function AdminOrdersPage() {
       <SectionTabs tabs={ADMIN_FULFILMENT_TABS} />
       {isAdmin ? <OperationsToday /> : null}
 
-      {analytics ? (
+      {isOwnStore && analytics ? (
         <>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Card>
