@@ -734,6 +734,8 @@ function AdminQuoteDetailPage() {
   const revisable = quote.status === "quoted" || quote.status === "closed";
   const quoteRef = quoteRefFromSkus(rows.map((r) => r.sku));
 
+  /** Already sent once: the primary action updates prices instead of first publish. */
+  const alreadyPublished = quote.status === "quoted" || !!quote.quoted_at;
   const summaryLine = [
     client?.company_name,
     countries.map((c) => countryName(c)).join(", ") || null,
