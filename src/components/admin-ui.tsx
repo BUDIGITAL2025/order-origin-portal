@@ -9,12 +9,7 @@ import * as React from "react";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 export type StatTone = "neutral" | "primary" | "success" | "warning" | "danger" | "info";
@@ -46,10 +41,22 @@ export function SummaryBar({
   items: StatItem[];
   className?: string | undefined;
 }) {
+  // The track follows the real number of metrics, so the strip never ends in
+  // an empty grey cell.
+  const wideCols =
+    [
+      "lg:grid-cols-1",
+      "lg:grid-cols-2",
+      "lg:grid-cols-3",
+      "lg:grid-cols-4",
+      "lg:grid-cols-5",
+      "lg:grid-cols-6",
+    ][Math.min(Math.max(items.length, 1), 6) - 1] ?? "lg:grid-cols-5";
   return (
     <div
       className={cn(
-        "mb-4 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-border bg-border sm:grid-cols-3 lg:grid-cols-5",
+        "mb-4 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-border bg-border sm:grid-cols-3",
+        wideCols,
         className,
       )}
     >
@@ -59,9 +66,7 @@ export function SummaryBar({
         return (
           <Tag
             key={item.key}
-            {...(interactive
-              ? { type: "button" as const, onClick: item.onClick }
-              : {})}
+            {...(interactive ? { type: "button" as const, onClick: item.onClick } : {})}
             className={cn(
               "bg-card px-3 py-2.5 text-left transition-colors",
               interactive && "hover:bg-accent",
@@ -158,12 +163,7 @@ export function TableShell({
   className?: string | undefined;
 }) {
   return (
-    <div
-      className={cn(
-        "overflow-x-auto rounded-xl border border-border bg-card",
-        className,
-      )}
-    >
+    <div className={cn("overflow-x-auto rounded-xl border border-border bg-card", className)}>
       {children}
     </div>
   );
@@ -278,9 +278,7 @@ export function PanelHeader({
     <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
       <div>
         <h2 className="text-base font-semibold tracking-tight">{title}</h2>
-        {description && (
-          <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
-        )}
+        {description && <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>}
       </div>
       {actions && <div className="flex items-center gap-2">{actions}</div>}
     </div>

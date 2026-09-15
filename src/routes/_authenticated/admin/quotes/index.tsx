@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { ArrowDown, ArrowUp, ArrowUpDown, ArrowUpRight } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { EmptyState, PageHeader } from "@/components/app-shell";
@@ -268,7 +268,7 @@ function AdminQuotesPage() {
       ) : (
         <TableShell>
           <Table className="text-[13px]">
-            <TableHeader>
+            <TableHeader className="sticky top-0 z-10 bg-card shadow-[inset_0_-1px_0_var(--border)]">
               <TableRow>
                 <TableHead className="h-9 w-9">
                   <Checkbox
@@ -310,7 +310,6 @@ function AdminQuotesPage() {
                 </TableHead>
                 <TableHead className="h-9">Status</TableHead>
                 <TableHead className="h-9">48h target</TableHead>
-                <TableHead className="h-9">Ref</TableHead>
                 <TableHead className="h-9 text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -371,6 +370,11 @@ function AdminQuotesPage() {
                             ? { secondary: `Ref ${q.quote_ref}` }
                             : {})}
                       />
+                      {q.internal_reference && (
+                        <div className="mt-0.5 max-w-56 truncate font-mono text-[11px] text-muted-foreground">
+                          {q.internal_reference}
+                        </div>
+                      )}
                       {((q as { unread_messages?: number }).unread_messages ?? 0) > 0 && (
                         <span className="mt-1 inline-flex items-center rounded-full bg-destructive px-1.5 py-0.5 text-[10px] font-medium text-destructive-foreground">
                           {(q as { unread_messages?: number }).unread_messages} new message
@@ -381,10 +385,10 @@ function AdminQuotesPage() {
                     <TableCell className="tnum py-2.5 text-right">
                       <Value>{q.target_monthly_volume}</Value>
                     </TableCell>
-                    <TableCell className="whitespace-nowrap py-2.5 text-right font-medium">
+                    <TableCell className="tnum whitespace-nowrap py-2.5 text-right font-medium">
                       {priceRange(q.cogs_min, q.cogs_max)}
                     </TableCell>
-                    <TableCell className="whitespace-nowrap py-2.5 text-right">
+                    <TableCell className="tnum whitespace-nowrap py-2.5 text-right">
                       {q.client_price_min == null ? (
                         <div>
                           <div>—</div>
@@ -402,44 +406,27 @@ function AdminQuotesPage() {
                       <QuoteStatusBadge status={q.status} validUntil={q.quote_valid_until} />
                     </TableCell>
                     <TableCell className="py-2.5">
-                      <div className="flex flex-col items-start gap-1">
+                      {/* One readable deadline: the countdown while the request
+                          is open, the SLA outcome once it is answered. */}
+                      {open ? (
+                        <span
+                          className={cn(
+                            "tnum font-mono text-[12px]",
+                            overdue
+                              ? "font-medium text-destructive"
+                              : dueSoon
+                                ? "font-medium text-warning"
+                                : "text-muted-foreground",
+                          )}
+                        >
+                          {countdown(q.quote_due_at)}
+                        </span>
+                      ) : (
                         <QuoteSlaBadge dueAt={q.quote_due_at} status={q.status} />
-                        {open && (
-                          <span
-                            className={cn(
-                              "font-mono text-[11px]",
-                              overdue
-                                ? "text-destructive"
-                                : dueSoon
-                                  ? "text-warning"
-                                  : "text-muted-foreground",
-                            )}
-                          >
-                            {countdown(q.quote_due_at)}
-                          </span>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="max-w-32 truncate py-2.5 font-mono text-xs text-muted-foreground">
-                      <Value>{q.internal_reference}</Value>
+                      )}
                     </TableCell>
                     <TableCell className="py-2.5">
                       <RowActions>
-                        <Button
-                          asChild
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 rounded-md bg-primary p-1 text-primary-foreground hover:bg-primary/90"
-                        >
-                          <Link
-                            to="/admin/quotes/$id"
-                            params={{ id: q.id }}
-                            aria-label="Open request"
-                            title="Open request"
-                          >
-                            <ArrowUpRight className="h-[1.15rem] w-[1.15rem]" />
-                          </Link>
-                        </Button>
                         <RowAction
                           label="Photos"
                           icon={ImagePlus}
