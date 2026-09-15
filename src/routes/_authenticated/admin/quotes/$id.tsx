@@ -715,13 +715,41 @@ function AdminQuoteDetailPage() {
   const revisable = quote.status === "quoted" || quote.status === "closed";
   const quoteRef = quoteRefFromSkus(rows.map((r) => r.sku));
 
+  const summaryLine = [
+    client?.company_name,
+    countries.map((c) => countryName(c)).join(", ") || null,
+    deliveryLabel(quote.delivery_mode),
+    `${rows.length} variant${rows.length === 1 ? "" : "s"}`,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
   return (
     <div>
-      <PageHeader
-        title={quote.product_name || "Quote request"}
-        description={`Submitted ${formatDate(quote.created_at)}${countries.length > 0 ? ` · Ships to: ${countries.map((c) => countryName(c)).join(", ")}` : ""}${quote.internal_reference ? ` · Ref: ${quote.internal_reference}` : ""}${quote.supersedes_quote_id ? " · requote of an earlier request" : ""} · Delivery: ${deliveryLabel(quote.delivery_mode)}${Number(quote.revision_number ?? 1) > 1 ? ` · revision ${quote.revision_number}` : ""}${quoteRef ? ` · Ref ${quoteRef}` : ""}`}
-        actions={
-          <>
+      {/* A short orientation line, then straight into pricing. */}
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="truncate text-2xl font-semibold tracking-tight">
+              {quote.product_name || "Quote request"}
+            </h1>
+            <QuoteStatusBadge status={quote.status} validUntil={quote.quote_valid_until} />
+          </div>
+          <p className="mt-1 text-sm text-muted-foreground">{summaryLine}</p>
+          <p className="text-[13px] text-muted-foreground">
+            {quote.quote_valid_until
+              ? `Valid until ${formatDate(quote.quote_valid_until)}`
+              : "Validity set on publish (7 days)"}
+            {Number(quote.revision_number ?? 1) > 1 ? ` · revision ${quote.revision_number}` : ""}
+            {quoteRef ? (
+              <>
+                {" · "}
+                <span className="font-mono">Ref {quoteRef}</span>
+              </>
+            ) : null}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
             <Button asChild variant="ghost" size="sm" className="gap-1">
               <Link to="/admin/quotes">
                 <ArrowLeft className="h-3.5 w-3.5" /> Queue
