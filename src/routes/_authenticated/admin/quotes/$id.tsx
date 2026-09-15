@@ -1125,11 +1125,14 @@ function AdminQuoteDetailPage() {
                         "grid items-center gap-x-2 border-b border-border bg-muted/40 px-3 py-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground",
                       )}
                     >
-                      <span>Variant</span>
+                      <span>Variant · SKU</span>
                       <span>Dest.</span>
-                      <span className="text-right">COGS</span>
-                      <span className="text-right">Fee</span>
-                      <span className="text-right">Margin</span>
+                      <span className="text-right">MOQ</span>
+                      <span className="text-right">Lead</span>
+                      <span className="text-right">Cost</span>
+                      <span className="text-right">Ship</span>
+                      <span className="text-right">Fee %</span>
+                      <span className="text-right">Margin %</span>
                       <span className="text-right">Client price</span>
                       <span />
                     </div>
