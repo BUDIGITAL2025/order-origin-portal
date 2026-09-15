@@ -4298,6 +4298,19 @@ export type Database = {
           variant_label: string
         }[]
       }
+      get_client_quote_options: {
+        Args: { p_quote_request_id: string }
+        Returns: {
+          accepted_at: string
+          id: string
+          letter: string
+          moq: number
+          production_lead_days: number
+          quality: number
+          recommended: boolean
+          shipping_lead_days: number
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
