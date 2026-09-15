@@ -116,21 +116,30 @@ export const importMyManualOrders = createServerFn({ method: "POST" })
     return { ok: true, orders: created ?? [] };
   });
 
-/** Admin: recent orders across all workspaces, for tracking entry. */
+/**
+ * Admin: recent orders across all workspaces, for tracking entry. A sourcing
+ * collaborator sees the same list scoped to their own clients.
+ */
 export const adminListOrders = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { requireStaffRead, getAdminClient } = await import("./admin.server");
-    await requireStaffRead(context.supabase, context.userId);
+    const { getAdminClient } = await import("./admin.server");
+    const { fulfilmentScope } = await import("./fulfilment-scope.server");
+    const scope = await fulfilmentScope(context.supabase, context.userId);
     const admin = await getAdminClient();
 
-    const { data, error } = await admin
+    let query = admin
       .from("orders")
       .select(
-        "id, external_order_number, status, archived_at, total_amount, destination_country, tracking_number, tracking_carrier, shipped_at, created_at, stores(store_name, entities(legal_name))",
+        "id, external_order_number, status, archived_at, total_amount, destination_country, tracking_number, tracking_carrier, shipped_at, created_at, store_id, stores(store_name, entities(legal_name))",
       )
       .order("created_at", { ascending: false })
       .limit(200);
+    if (scope.storeIds !== null) {
+      if (scope.storeIds.length === 0) return { orders: [] };
+      query = query.in("store_id", scope.storeIds);
+    }
+    const { data, error } = await query;
     if (error) throw new Error(error.message);
     return { orders: data ?? [] };
   });

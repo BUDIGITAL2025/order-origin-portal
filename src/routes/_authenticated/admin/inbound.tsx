@@ -27,6 +27,12 @@ import {
 } from "@/lib/inbound.functions";
 import { CleanupRowActions, ShowArchivedToggle } from "@/components/cleanup-actions";
 import {
+  ALL_WORKSPACES,
+  WorkspacePicker,
+  useFulfilmentIsAdmin,
+  useWorkspaceScope,
+} from "@/components/workspace-scope";
+import {
   FulfilmentModelDialog,
   type FulfilmentModelTarget,
 } from "@/components/fulfilment-model-dialog";
@@ -82,6 +88,8 @@ function AdminInboundPage() {
   const [counting, setCounting] = useState<Shipment | null>(null);
   const [refusing, setRefusing] = useState<Shipment | null>(null);
   const [showArchived, setShowArchived] = useState(false);
+  const [workspace] = useWorkspaceScope();
+  const isAdmin = useFulfilmentIsAdmin();
 
   const fetchAll = useServerFn(adminListInboundShipments);
   const { data, isLoading } = useQuery({
@@ -89,9 +97,9 @@ function AdminInboundPage() {
     queryFn: () => fetchAll({}),
   });
 
-  const rows = (data ?? []).filter(
-    (s) => showArchived || !(s as { archived_at?: string | null }).archived_at,
-  );
+  const rows = (data ?? [])
+    .filter((s) => showArchived || !(s as { archived_at?: string | null }).archived_at)
+    .filter((s) => workspace === ALL_WORKSPACES || s.store_id === workspace);
   const visible =
     tab === "all"
       ? rows
@@ -110,6 +118,7 @@ function AdminInboundPage() {
   return (
     <div>
       <PageHeader title="Inbound" description="Shipments arriving at the fulfilment centre." />
+      <WorkspacePicker />
       <SectionTabs tabs={ADMIN_FULFILMENT_TABS} />
       <OperationsToday />
 
@@ -232,16 +241,20 @@ function AdminInboundPage() {
                     {formatDateTime(s.created_at)}
                   </td>
                   <td className="px-3 py-2 text-right">
-                    <div className="mb-1 flex justify-end">
-                      <CleanupRowActions
-                        type="inbound"
-                        id={s.id}
-                        name={s.ref}
-                        archived={!!(s as { archived_at?: string | null }).archived_at}
-                        invalidateKeys={[["admin-inbound"]]}
-                      />
-                    </div>
-                    {s.status === "completed" || s.status === "refused" ? (
+                    {isAdmin ? (
+                      <div className="mb-1 flex justify-end">
+                        <CleanupRowActions
+                          type="inbound"
+                          id={s.id}
+                          name={s.ref}
+                          archived={!!(s as { archived_at?: string | null }).archived_at}
+                          invalidateKeys={[["admin-inbound"]]}
+                        />
+                      </div>
+                    ) : null}
+                    {!isAdmin ? (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    ) : s.status === "completed" || s.status === "refused" ? (
                       <span className="text-xs text-muted-foreground">Done</span>
                     ) : (
                       <div className="flex justify-end gap-2">

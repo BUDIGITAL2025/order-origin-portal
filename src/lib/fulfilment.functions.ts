@@ -292,12 +292,15 @@ export const getFulfilmentSku = createServerFn({ method: "POST" })
     return buildSkuDetail(supabaseAdmin, data.productId, false);
   });
 
-/** Admin: the fulfilment catalog across every workspace. */
+/**
+ * Admin: the fulfilment catalog across every workspace. A sourcing
+ * collaborator reaches the same page, scoped to their own clients only.
+ */
 export const adminListFulfilmentCatalog = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { requireStaffRead } = await import("./admin.server");
-    await requireStaffRead(context.supabase, context.userId);
+    const { fulfilmentScope, withinScope } = await import("./fulfilment-scope.server");
+    const scope = await fulfilmentScope(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: stores, error } = await supabaseAdmin
       .from("stores")
@@ -305,7 +308,7 @@ export const adminListFulfilmentCatalog = createServerFn({ method: "GET" })
       .order("store_name")
       .limit(200);
     if (error) throw new Error(error.message);
-    return { rows: await buildCatalog(supabaseAdmin, stores ?? []) };
+    return { rows: await buildCatalog(supabaseAdmin, withinScope(scope, stores ?? [])) };
   });
 
 /** Admin: SKU detail with the full pricing chain, supplier and lead-time origins. */

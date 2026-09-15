@@ -7,7 +7,13 @@ export const Route = createFileRoute("/_authenticated/admin")({
 });
 
 /** Pages under /admin that sourcing collaborators are also allowed to open. */
-const SOURCING_ALLOWED = ["/admin/catalog-import"];
+const SOURCING_ALLOWED = [
+  "/admin/catalog-import",
+  "/admin/fulfilment/products",
+  "/admin/orders",
+  "/admin/inventory",
+  "/admin/inbound",
+];
 
 function AdminLayout() {
   const { data: ctx, isPending } = useMyContext();

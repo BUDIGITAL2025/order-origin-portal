@@ -198,15 +198,21 @@ export const getInboundLabels = createServerFn({ method: "POST" })
 export const adminListInboundShipments = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { requireStaffRead, getAdminClient } = await import("./admin.server");
-    await requireStaffRead(context.supabase, context.userId);
+    const { getAdminClient } = await import("./admin.server");
+    const { fulfilmentScope } = await import("./fulfilment-scope.server");
+    const scope = await fulfilmentScope(context.supabase, context.userId);
     const admin = await getAdminClient();
 
-    const { data: shipments, error } = await admin
+    let shipmentQuery = admin
       .from("inbound_shipments")
       .select(SHIPMENT_COLUMNS)
       .order("created_at", { ascending: false })
       .limit(200);
+    if (scope.storeIds !== null) {
+      if (scope.storeIds.length === 0) return [];
+      shipmentQuery = shipmentQuery.in("store_id", scope.storeIds);
+    }
+    const { data: shipments, error } = await shipmentQuery;
     if (error) throw new Error(error.message);
     const ids = (shipments ?? []).map((s) => s.id);
     const [{ data: lines }, { data: stores }] = await Promise.all([

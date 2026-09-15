@@ -37,6 +37,12 @@ import {
 } from "@/lib/inventory.functions";
 import { getEcomflowStock } from "@/lib/ecomflow.functions";
 import { PlanningDialog } from "@/components/planning-dialog";
+import {
+  ALL_WORKSPACES,
+  WorkspacePicker,
+  useFulfilmentIsAdmin,
+  useWorkspaceScope,
+} from "@/components/workspace-scope";
 import { friendlyError } from "@/lib/errors";
 import { formatUSD } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -293,7 +299,7 @@ function AdminInventoryPage() {
   const queryClient = useQueryClient();
   const navigate = Route.useNavigate();
   const { state: stateParam, view: viewParam } = Route.useSearch();
-  const view = viewParam ?? "workspaces";
+  const requestedView = viewParam ?? "workspaces";
   const setView = (next: ViewId) => {
     void navigate({ search: (prev) => ({ ...prev, view: next }), replace: true });
   };
@@ -305,6 +311,10 @@ function AdminInventoryPage() {
     });
   };
   const [search, setSearch] = useState("");
+  const [workspace] = useWorkspaceScope();
+  const isAdmin = useFulfilmentIsAdmin();
+  // Live-stock view calls an admin-only integration; agents stay on workspaces.
+  const view: ViewId = isAdmin ? requestedView : "workspaces";
   const [growthPercent, setGrowthPercent] = useState(0);
   const [planningProductId, setPlanningProductId] = useState<string | null>(null);
   const [defaultsFor, setDefaultsFor] = useState<{
@@ -346,7 +356,7 @@ function AdminInventoryPage() {
     queryKey: ["ecomflow-stock"],
     staleTime: 60_000,
     queryFn: () => fetchEcomflow(),
-    enabled: view === "ecomflow",
+    enabled: view === "ecomflow" && isAdmin,
   });
 
   const callSync = useServerFn(syncInventoryNow);
@@ -361,7 +371,9 @@ function AdminInventoryPage() {
     onError: (e) => toast.error(friendlyError(e)),
   });
 
-  const workspaces = data?.workspaces ?? [];
+  const workspaces = (data?.workspaces ?? []).filter(
+    (w) => workspace === ALL_WORKSPACES || (w as { store_id?: string }).store_id === workspace,
+  );
   const allRows = workspaces.flatMap((w) => w.rows as InventoryRow[]);
   const counts = {
     red: allRows.filter((r) => r.state === "red").length,
@@ -391,25 +403,32 @@ function AdminInventoryPage() {
         title="Inventory"
         description="Every connected workspace, sorted by reorder urgency."
         actions={
-          <Button
-            size="sm"
-            variant="outline"
-            className="rounded-full"
-            disabled={sync.isPending}
-            onClick={() => sync.mutate()}
-          >
-            <RefreshCw
-              className={sync.isPending ? "mr-2 h-3.5 w-3.5 animate-spin" : "mr-2 h-3.5 w-3.5"}
-            />
-            Sync now
-          </Button>
+          isAdmin ? (
+            <Button
+              size="sm"
+              variant="outline"
+              className="rounded-full"
+              disabled={sync.isPending}
+              onClick={() => sync.mutate()}
+            >
+              <RefreshCw
+                className={sync.isPending ? "mr-2 h-3.5 w-3.5 animate-spin" : "mr-2 h-3.5 w-3.5"}
+              />
+              Sync now
+            </Button>
+          ) : null
         }
       />
+      <WorkspacePicker />
       <SectionTabs tabs={ADMIN_FULFILMENT_TABS} />
-      <OperationsToday />
+      {isAdmin ? <OperationsToday /> : null}
 
       <div className="mb-4">
-        <FilterTabs tabs={VIEWS} value={view} onChange={setView} />
+        <FilterTabs
+          tabs={isAdmin ? VIEWS : VIEWS.filter((v) => v.id === "workspaces")}
+          value={view}
+          onChange={setView}
+        />
       </div>
 
       {view === "workspaces" && (
@@ -491,21 +510,23 @@ function AdminInventoryPage() {
                       title={ws.store_name ?? "Unnamed workspace"}
                       description={`Tenant ${ws.tenant_id ?? "—"} · defaults ${ws.defaults.production}d production / ${ws.defaults.transit}d transit / ${ws.defaults.safety}d safety`}
                       actions={
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="rounded-full"
-                          onClick={() =>
-                            setDefaultsFor({
-                              storeId: ws.store_id,
-                              production: ws.defaults.production ?? 0,
-                              transit: ws.defaults.transit ?? 0,
-                              safety: ws.defaults.safety ?? 0,
-                            })
-                          }
-                        >
-                          Edit defaults
-                        </Button>
+                        isAdmin ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="rounded-full"
+                            onClick={() =>
+                              setDefaultsFor({
+                                storeId: ws.store_id,
+                                production: ws.defaults.production ?? 0,
+                                transit: ws.defaults.transit ?? 0,
+                                safety: ws.defaults.safety ?? 0,
+                              })
+                            }
+                          >
+                            Edit defaults
+                          </Button>
+                        ) : null
                       }
                     />
                     {ws.stale && (

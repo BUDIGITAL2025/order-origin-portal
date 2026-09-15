@@ -8,12 +8,11 @@ import { OperationsToday } from "@/components/operations-today";
 import { AdminSearch, ToolBar } from "@/components/admin-ui";
 import { FulfilmentCatalog, type CatalogRow } from "@/components/fulfilment-catalog";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  ALL_WORKSPACES,
+  WorkspacePicker,
+  useFulfilmentIsAdmin,
+  useWorkspaceScope,
+} from "@/components/workspace-scope";
 import { adminListFulfilmentCatalog } from "@/lib/fulfilment.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/fulfilment/products")({
@@ -29,7 +28,8 @@ export const Route = createFileRoute("/_authenticated/admin/fulfilment/products"
 function AdminFulfilmentProductsPage() {
   const fetchCatalog = useServerFn(adminListFulfilmentCatalog);
   const [search, setSearch] = useState("");
-  const [workspace, setWorkspace] = useState("all");
+  const [workspace] = useWorkspaceScope();
+  const isAdmin = useFulfilmentIsAdmin();
 
   const { data, isPending } = useQuery({
     queryKey: ["admin-fulfilment-catalog"],
@@ -38,12 +38,9 @@ function AdminFulfilmentProductsPage() {
   });
 
   const all = (data?.rows ?? []) as CatalogRow[];
-  const workspaces = Array.from(
-    new Map(all.map((r) => [r.store_id, r.store_name ?? r.store_id])).entries(),
-  );
   const term = search.trim().toLowerCase();
   const rows = all.filter((r) => {
-    if (workspace !== "all" && r.store_id !== workspace) return false;
+    if (workspace !== ALL_WORKSPACES && r.store_id !== workspace) return false;
     if (!term) return true;
     return [r.sku, r.product_name, r.variant_label ?? "", r.store_name ?? ""]
       .join(" ")
@@ -57,22 +54,10 @@ function AdminFulfilmentProductsPage() {
         title="Fulfilment products"
         description="Every fulfilment-managed SKU across all workspaces. Direct-to-client purchases never appear here."
       />
+      <WorkspacePicker />
       <SectionTabs tabs={ADMIN_FULFILMENT_TABS} />
-      <OperationsToday />
+      {isAdmin ? <OperationsToday /> : null}
       <ToolBar>
-        <Select value={workspace} onValueChange={setWorkspace}>
-          <SelectTrigger className="h-9 w-56">
-            <SelectValue placeholder="All workspaces" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All workspaces</SelectItem>
-            {workspaces.map(([id, name]) => (
-              <SelectItem key={id} value={id}>
-                {name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
         <AdminSearch
           value={search}
           onChange={setSearch}
@@ -82,7 +67,7 @@ function AdminFulfilmentProductsPage() {
       <FulfilmentCatalog
         rows={rows}
         isPending={isPending}
-        isAdmin
+        isAdmin={isAdmin}
         showWorkspace
         invalidateKeys={[["admin-fulfilment-catalog"]]}
       />

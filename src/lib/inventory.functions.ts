@@ -132,8 +132,8 @@ export const getAdminInventory = createServerFn({ method: "POST" })
       .parse(input ?? {}),
   )
   .handler(async ({ context, data }) => {
-    const { requireAdmin } = await import("./admin.server");
-    await requireAdmin(context.supabase, context.userId);
+    const { fulfilmentScope, withinScope } = await import("./fulfilment-scope.server");
+    const scope = await fulfilmentScope(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { computeWorkspaceInventory } = await import("./inventory.server");
 
@@ -147,7 +147,7 @@ export const getAdminInventory = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
 
     const workspaces = [];
-    for (const store of stores ?? []) {
+    for (const store of withinScope(scope, stores ?? [])) {
       const view = await computeWorkspaceInventory(supabaseAdmin, store, undefined, {
         growth_percent: data.growthPercent,
       });
