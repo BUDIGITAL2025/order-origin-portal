@@ -355,7 +355,7 @@ function AdminInventoryPage() {
     queryKey: ["ecomflow-stock"],
     staleTime: 60_000,
     queryFn: () => fetchEcomflow(),
-    enabled: view === "ecomflow",
+    enabled: view === "ecomflow" && isAdmin,
   });
 
   const callSync = useServerFn(syncInventoryNow);
@@ -423,7 +423,11 @@ function AdminInventoryPage() {
       {isAdmin ? <OperationsToday /> : null}
 
       <div className="mb-4">
-        <FilterTabs tabs={VIEWS} value={view} onChange={setView} />
+        <FilterTabs
+          tabs={isAdmin ? VIEWS : VIEWS.filter((v) => v.id === "workspaces")}
+          value={view}
+          onChange={setView}
+        />
       </div>
 
       {view === "workspaces" && (
