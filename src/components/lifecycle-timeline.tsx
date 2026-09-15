@@ -53,41 +53,85 @@ export function LifecycleTimeline({
 
   return (
     <div className="space-y-5">
-      {deals.map((deal) => (
-        <div key={deal.quote_id}>
-          {hideHeading ? null : (
-            <p className="mb-2 text-sm font-medium">
-              {deal.product_name}
-              {deal.quote_ref ? (
-                <span className="ml-2 font-mono text-xs text-muted-foreground">
-                  Ref {deal.quote_ref}
-                </span>
-              ) : null}
-            </p>
-          )}
-          <ol className="grid gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-2 lg:grid-cols-4">
-            {deal.stages.map((s) => (
-              <li
-                key={s.key}
-                className={cn("bg-card px-3 py-2", !s.done && "bg-muted/40 text-muted-foreground")}
-              >
-                <span className="flex items-center gap-1.5 text-[11px] uppercase tracking-wide">
-                  {s.done ? <Check className="h-3 w-3 text-success" aria-hidden /> : null}
-                  {s.label}
-                </span>
-                <span className="tnum mt-0.5 block text-sm">
-                  {s.at ? formatDate(s.at) : s.done ? "Done" : "—"}
-                </span>
-                {s.by || s.detail ? (
-                  <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">
-                    {[s.by, s.detail].filter(Boolean).join(" · ")}
+      {deals.map((deal) => {
+        const done = deal.stages.filter((s) => s.done);
+        const current = done[done.length - 1] ?? null;
+        const next = deal.stages.find((s) => !s.done) ?? null;
+        const expanded = !collapsible || openDeal === deal.quote_id;
+        return (
+          <div key={deal.quote_id}>
+            {hideHeading ? null : (
+              <p className="mb-2 text-sm font-medium">
+                {deal.product_name}
+                {deal.quote_ref ? (
+                  <span className="ml-2 font-mono text-xs text-muted-foreground">
+                    Ref {deal.quote_ref}
                   </span>
                 ) : null}
-              </li>
-            ))}
-          </ol>
-        </div>
-      ))}
+              </p>
+            )}
+            {collapsible && (
+              <button
+                type="button"
+                aria-expanded={expanded}
+                onClick={() => setOpenDeal(expanded ? null : deal.quote_id)}
+                className="flex w-full items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-left transition-colors hover:bg-muted/40"
+              >
+                <Check className="h-3.5 w-3.5 shrink-0 text-success" aria-hidden />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-medium">
+                    {current ? current.label : "Not started"}
+                    {next ? ` · Awaiting ${next.label.toLowerCase()}` : ""}
+                  </span>
+                  {current?.at ? (
+                    <span className="tnum block text-[12px] text-muted-foreground">
+                      {formatDate(current.at)}
+                      {current.by ? ` · ${current.by}` : ""}
+                    </span>
+                  ) : null}
+                </span>
+                <ChevronDown
+                  className={cn(
+                    "h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-150",
+                    expanded && "rotate-180",
+                  )}
+                />
+              </button>
+            )}
+            {expanded && (
+              <ol
+                className={cn(
+                  "grid gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-2 lg:grid-cols-4",
+                  collapsible && "mt-2 lg:grid-cols-2",
+                )}
+              >
+                {deal.stages.map((s) => (
+                  <li
+                    key={s.key}
+                    className={cn(
+                      "bg-card px-3 py-2",
+                      !s.done && "bg-muted/40 text-muted-foreground",
+                    )}
+                  >
+                    <span className="flex items-center gap-1.5 text-[11px] uppercase tracking-wide">
+                      {s.done ? <Check className="h-3 w-3 text-success" aria-hidden /> : null}
+                      {s.label}
+                    </span>
+                    <span className="tnum mt-0.5 block text-sm">
+                      {s.at ? formatDate(s.at) : s.done ? "Done" : "—"}
+                    </span>
+                    {s.by || s.detail ? (
+                      <span className="mt-0.5 block truncate text-[12px] text-muted-foreground">
+                        {[s.by, s.detail].filter(Boolean).join(" · ")}
+                      </span>
+                    ) : null}
+                  </li>
+                ))}
+              </ol>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
