@@ -218,8 +218,14 @@ export const deskGetPurchase = createServerFn({ method: "POST" })
       .order("created_at", { ascending: false })
       .limit(50);
 
+    const { clientIdentityForStore, clientDisplay } = await import("./client-identity.server");
+    const identity = await clientIdentityForStore(admin, purchase.store_id);
+
     return {
-      purchase: { ...agentView(purchase), ref: purchaseRef(purchase.id) },
+      purchase: {
+        ...agentView(purchase, clientDisplay(identity)),
+        ref: purchaseRef(purchase.id),
+      },
       supplier: fallback,
       events: events ?? [],
       default_payment_terms: await getPaymentTermsDefault(admin),
