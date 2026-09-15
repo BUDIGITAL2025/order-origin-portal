@@ -94,7 +94,7 @@ export const sourcingListQuoteMessages = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { getAdminClient } = await import("./admin.server");
     const { requireCollaborator } = await import("./sourcing.server");
-    const { clientShortLabel } = await import("./quote-thread.server");
+    const { clientIdentityForStore, clientDisplay } = await import("./client-identity.server");
     await requireCollaborator(await getAdminClient(), context.userId);
     const admin = await getAdminClient();
 
