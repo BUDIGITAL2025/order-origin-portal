@@ -100,6 +100,10 @@ function num(value: string): number {
   return value === "" ? 0 : Number(value);
 }
 
+/** Shared column track for the compact variant table and its rows. */
+const COMPACT_COLS =
+  "grid-cols-[minmax(140px,1.6fr)_48px_repeat(4,minmax(76px,1fr))_16px] sm:gap-x-3";
+
 type GridField = "supplier_cogs" | "supplier_shipping" | "supplier_tax" | "margin_pct";
 
 const GRID_FIELDS: { key: GridField; label: string; short?: string }[] = [
