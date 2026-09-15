@@ -88,6 +88,9 @@ type EcomflowAnalytics = {
   orderSeries: { period: string; activeOrders: number }[];
 };
 
+/** Our own store (entity "BUDIGITAL USA LLC") — the only workspace Ecomflow has data for. */
+const BUDIGITAL_USA_STORE_ID = "b7cdecab-074e-4071-9496-258b0718c994";
+
 function workspaceOf(order: AdminOrder) {
   return order.stores as {
     store_name?: string | null;
@@ -100,10 +103,13 @@ function AdminOrdersPage() {
   const fetchDisputes = useServerFn(adminListDisputes);
   const fetchAnalytics = useServerFn(getEcomflowAnalytics);
   const isAdmin = useFulfilmentIsAdmin();
+  const [workspace] = useWorkspaceScope();
+  const isOwnStore = workspace === BUDIGITAL_USA_STORE_ID;
+  // Ecomflow only has data for our own store — never fetch it for clients or "All".
   const { data: analytics } = useQuery<EcomflowAnalytics>({
     queryKey: ["ecomflow-analytics"],
     staleTime: 60_000,
-    enabled: isAdmin,
+    enabled: isAdmin && isOwnStore,
     queryFn: () => fetchAnalytics(),
   });
   const { data, isPending } = useQuery({
@@ -119,7 +125,6 @@ function AdminOrdersPage() {
   };
   const [search, setSearch] = useState("");
   const [showArchived, setShowArchived] = useState(false);
-  const [workspace] = useWorkspaceScope();
 
   const { data: disputes } = useQuery({
     queryKey: ["admin-disputes", "all"],
