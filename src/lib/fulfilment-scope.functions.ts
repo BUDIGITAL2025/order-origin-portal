@@ -34,9 +34,11 @@ export const listFulfilmentWorkspaces = createServerFn({ method: "GET" })
 
     return {
       isAdmin: scope.isAdmin,
+      // The visible label is the workspace (store) name; the legal entity name
+      // stays available for anything that actually needs it.
       workspaces: rows.map<FulfilmentWorkspace>((s) => ({
         id: s.id,
-        name: s.entities?.legal_name || s.store_name || "Workspace",
+        name: s.store_name || s.entities?.legal_name || "Workspace",
         company: s.entities?.legal_name ?? null,
       })),
     };
