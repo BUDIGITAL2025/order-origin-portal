@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Lock, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/app-shell";
@@ -28,6 +28,7 @@ import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/compon
 import { friendlyError } from "@/lib/errors";
 import { formatDate } from "@/lib/format";
 import { inviteStaff, listStaff, setStaffLevel, setStaffStatus } from "@/lib/staff.functions";
+import { getDefaultMarginPct, setDefaultMarginPct } from "@/lib/pricing-settings.functions";
 
 const LEVELS = [
   { value: "owner", label: "Owner", hint: "Everything, including the team and pricing config." },
@@ -81,6 +82,27 @@ function AdminTeamPage() {
     onError: (e) => toast.error(friendlyError(e, "The status was not changed.")),
   });
 
+  // Platform default margin — owners only, prefills every new quote variant.
+  const fetchMargin = useServerFn(getDefaultMarginPct);
+  const callSetMargin = useServerFn(setDefaultMarginPct);
+  const { data: marginData } = useQuery({
+    queryKey: ["default-margin-pct"],
+    queryFn: fetchMargin,
+  });
+  const [marginInput, setMarginInput] = useState<string>("");
+  useEffect(() => {
+    if (marginData && marginInput === "") setMarginInput(String(marginData.margin_pct));
+  }, [marginData, marginInput]);
+
+  const saveMargin = useMutation({
+    mutationFn: (margin_pct: number) => callSetMargin({ data: { margin_pct } }),
+    onSuccess: async (r) => {
+      toast.success(`Default margin set to ${r.margin_pct}%.`);
+      await queryClient.invalidateQueries({ queryKey: ["default-margin-pct"] });
+    },
+    onError: (e) => toast.error(friendlyError(e, "The default margin was not changed.")),
+  });
+
   const invite = useMutation({
     mutationFn: () =>
       callInvite({ data: { email: email.trim().toLowerCase(), level: inviteLevel } }),
@@ -119,6 +141,32 @@ function AdminTeamPage() {
           </Button>
         }
       />
+
+      <PanelHeader
+        title="Pricing defaults"
+        description="Applies to new quotes and variants. Existing published quotes are untouched."
+      />
+      <div className="flex flex-wrap items-end gap-3 rounded-lg border border-border bg-card p-4">
+        <div className="space-y-1.5">
+          <Label htmlFor="default-margin">Default FlySales margin %</Label>
+          <Input
+            id="default-margin"
+            type="number"
+            step="0.01"
+            min="0"
+            className="w-40 tnum"
+            value={marginInput}
+            onChange={(e) => setMarginInput(e.target.value)}
+          />
+        </div>
+        <Button
+          variant="outline"
+          disabled={saveMargin.isPending || marginInput === ""}
+          onClick={() => saveMargin.mutate(Number(marginInput))}
+        >
+          {saveMargin.isPending ? "Saving…" : "Save default"}
+        </Button>
+      </div>
 
       <PanelHeader title="Staff" description={`${rows.length} members`} />
       <TableShell>

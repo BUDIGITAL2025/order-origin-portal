@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useBlocker } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Copy, MessageCircle, Plus, RefreshCw, Trash2 } from "lucide-react";
@@ -55,6 +55,7 @@ import {
   type SupplierCurrency,
 } from "@/lib/fx";
 import { getTodayFxRates } from "@/lib/fx.functions";
+import { getDefaultMarginPct } from "@/lib/pricing-settings.functions";
 import { pct } from "@/lib/fee-tiers";
 import {
   Select,
@@ -126,7 +127,7 @@ interface VariantRow {
   cells: Record<string, CellForm>;
 }
 
-function emptyCell(country?: string): CellForm {
+function emptyCell(country?: string, defaultMargin = 0): CellForm {
   return {
     lineId: null,
     status: "pending",
@@ -134,7 +135,7 @@ function emptyCell(country?: string): CellForm {
     supplier_shipping: "0",
     supplier_tax: money2(country ? defaultImportTax(country) : 0),
     currency: "USD",
-    margin_pct: "0",
+    margin_pct: money2(defaultMargin),
     fee_rate: DEFAULT_FEE_RATE,
     fee_included: false,
     supplier_name: "",
@@ -142,9 +143,9 @@ function emptyCell(country?: string): CellForm {
 }
 
 let rowCounter = 0;
-function emptyVariant(countries: string[]): VariantRow {
+function emptyVariant(countries: string[], defaultMargin = 0): VariantRow {
   const cells: Record<string, CellForm> = {};
-  for (const c of countries) cells[c] = emptyCell(c);
+  for (const c of countries) cells[c] = emptyCell(c, defaultMargin);
   return {
     key: `new-${++rowCounter}`,
     label: "",
@@ -237,6 +238,14 @@ function AdminQuoteDetailPage() {
     staleTime: 60 * 60 * 1000,
   });
   const todayFx = (fxToday ?? null) as FxRates | null;
+  // Platform default margin — prefills every new variant cell.
+  const fetchDefaultMargin = useServerFn(getDefaultMarginPct);
+  const { data: marginSetting, isSuccess: marginReady } = useQuery({
+    queryKey: ["default-margin-pct"],
+    queryFn: fetchDefaultMargin,
+    staleTime: 10 * 60 * 1000,
+  });
+  const defaultMargin = marginSetting?.margin_pct ?? 10;
   /** Tier context for the fee field: the agent this request belongs to. */
   const agentTier = data?.agent ?? null;
   const client = (quote?.profiles ?? null) as {
@@ -270,6 +279,9 @@ function AdminQuoteDetailPage() {
   const [adminNotes, setAdminNotes] = useState("");
   const [rows, setRows] = useState<VariantRow[]>([]);
   const [hydrated, setHydrated] = useState(false);
+  /** Explicit-save bookkeeping: the serialized form as last persisted. */
+  const [savedSnapshot, setSavedSnapshot] = useState<string | null>(null);
+  const [needsSnapshot, setNeedsSnapshot] = useState(false);
 
   // ===== Offers: a quote holds up to three publishable options =====
   const fetchOptions = useServerFn(adminListQuoteOptions);
@@ -319,7 +331,7 @@ function AdminQuoteDetailPage() {
   );
 
   useEffect(() => {
-    if (!data || hydrated) return;
+    if (!data || hydrated || !marginReady) return;
     setInternalReference(data.quote.internal_reference ?? "");
     setValidUntil(data.quote.quote_valid_until ?? "");
     setAdminNotes(data.quote.admin_notes ?? "");
@@ -373,15 +385,16 @@ function AdminQuoteDetailPage() {
       }
       for (const row of byVariant.values()) {
         for (const c of targetCountries) {
-          if (!row.cells[c]) row.cells[c] = emptyCell(c);
+          if (!row.cells[c]) row.cells[c] = emptyCell(c, defaultMargin);
         }
       }
       setRows([...byVariant.values()]);
     } else {
-      setRows([emptyVariant(targetCountries)]);
+      setRows([emptyVariant(targetCountries, defaultMargin)]);
     }
     setHydrated(true);
-  }, [data, hydrated, optionId]);
+    setNeedsSnapshot(true);
+  }, [data, hydrated, optionId, marginReady, defaultMargin]);
 
   const requestEditable =
     quote != null && ["submitted", "sourcing", "quoted"].includes(quote.status);
@@ -431,38 +444,130 @@ function AdminQuoteDetailPage() {
     );
   };
 
+  // Unsaved-changes tracking: the form serialized now vs. as last persisted.
+  const formSnapshot = useMemo(
+    () => JSON.stringify({ rows, internalReference, validUntil, adminNotes }),
+    [rows, internalReference, validUntil, adminNotes],
+  );
+  useEffect(() => {
+    if (needsSnapshot) {
+      setSavedSnapshot(formSnapshot);
+      setNeedsSnapshot(false);
+    }
+  }, [needsSnapshot, formSnapshot]);
+  const dirty = savedSnapshot !== null && formSnapshot !== savedSnapshot;
+
+  useBlocker({
+    shouldBlockFn: () =>
+      dirty && !window.confirm("You have unsaved changes. Leave this quote anyway?"),
+    enableBeforeUnload: () => dirty,
+  });
+
+  /** Copies one cell's margin to every editable cell in the grid. */
+  const applyMarginToAll = (key: string, country: string) => {
+    const value = rows.find((r) => r.key === key)?.cells[country]?.margin_pct ?? "0";
+    setRows((prev) =>
+      prev.map((r) => ({
+        ...r,
+        cells: Object.fromEntries(
+          Object.entries(r.cells).map(([c, cell]) => [
+            c,
+            cellLocked(cell) ? cell : { ...cell, margin_pct: value },
+          ]),
+        ),
+      })),
+    );
+    toast.success(`Margin ${value}% applied to all variants`);
+  };
+
+  /** Everything the draft save needs, validated the same way for both actions. */
+  const buildLines = () => {
+    if (rows.length === 0) throw new Error("Add at least one variant");
+    const labels = rows.map((r) => r.label.trim());
+    if (labels.some((l) => !l)) throw new Error("Every variant needs a label");
+    if (new Set(labels).size !== labels.length) {
+      throw new Error("Variant labels must be unique");
+    }
+    const lines = rows.flatMap((row) =>
+      countries.flatMap((country) => {
+        const cell = row.cells[country] ?? emptyCell(country, defaultMargin);
+        if (cellLocked(cell)) return [];
+        return [
+          {
+            ...(cell.lineId ? { id: cell.lineId } : {}),
+            variant_label: row.label.trim(),
+            country_code: country,
+            // Sent in the supplier's own currency — the server converts and
+            // freezes the rate, so the original amount stays the truth.
+            supplier_cogs: num(cell.supplier_cogs),
+            supplier_shipping: num(cell.supplier_shipping),
+            supplier_tax: num(cell.supplier_tax),
+            supplier_currency: cell.currency,
+            supplier_name: cell.supplier_name,
+            moq: row.moq ? Number(row.moq) : null,
+            lead_time_days: row.lead_time_days ? Number(row.lead_time_days) : null,
+            margin_pct: num(cell.margin_pct),
+            fee_rate_pct: cell.fee_rate * 100,
+          },
+        ];
+      }),
+    );
+    if (lines.length === 0) throw new Error("No editable lines to save");
+    return lines;
+  };
+
+  type RekeyLine = {
+    id: string;
+    variant_label: string;
+    country_code: string;
+    sku: string | null;
+    status: string;
+  };
+  const rekeyRows = (saved: { lines: RekeyLine[] }) => {
+    const byKey = new Map(saved.lines.map((l) => [`${l.variant_label}::${l.country_code}`, l]));
+    setRows((prev) =>
+      prev.map((row) => ({
+        ...row,
+        sku: byKey.get(`${row.label.trim()}::${countries[0]}`)?.sku ?? row.sku,
+        cells: Object.fromEntries(
+          Object.entries(row.cells).map(([country, cell]) => {
+            const saved2 = byKey.get(`${row.label.trim()}::${country}`);
+            return [country, saved2 ? { ...cell, lineId: saved2.id, status: saved2.status } : cell];
+          }),
+        ),
+      })),
+    );
+  };
+
+  /** Saves the draft only — costs, fees, margins, MOQ, leads, valid-until. No email. */
   const save = useMutation({
     mutationFn: async () => {
-      if (rows.length === 0) throw new Error("Add at least one variant");
-      const labels = rows.map((r) => r.label.trim());
-      if (labels.some((l) => !l)) throw new Error("Every variant needs a label");
-      if (new Set(labels).size !== labels.length) {
-        throw new Error("Variant labels must be unique");
-      }
-      const lines = rows.flatMap((row) =>
-        countries.flatMap((country) => {
-          const cell = row.cells[country] ?? emptyCell(country);
-          if (cellLocked(cell)) return [];
-          return [
-            {
-              ...(cell.lineId ? { id: cell.lineId } : {}),
-              variant_label: row.label.trim(),
-              country_code: country,
-              // Sent in the supplier's own currency — the server converts and
-              // freezes the rate, so the original amount stays the truth.
-              supplier_cogs: num(cell.supplier_cogs),
-              supplier_shipping: num(cell.supplier_shipping),
-              supplier_tax: num(cell.supplier_tax),
-              supplier_currency: cell.currency,
-              supplier_name: cell.supplier_name,
-              moq: row.moq ? Number(row.moq) : null,
-              lead_time_days: row.lead_time_days ? Number(row.lead_time_days) : null,
-            },
-          ];
-        }),
-      );
+      const lines = buildLines();
+      return callSave({
+        data: {
+          quote_id: id,
+          ...(optionId ? { option_id: optionId } : {}),
+          lines,
+          internal_reference: internalReference,
+          quote_valid_until: validUntil || null,
+          admin_notes: adminNotes,
+        },
+      });
+    },
+    onSuccess: (r) => {
+      rekeyRows(r);
+      setNeedsSnapshot(true);
+      toast.success("Changes saved — the client was not notified");
+      void queryClient.invalidateQueries({ queryKey: ["admin-quote", id] });
+      void queryClient.invalidateQueries({ queryKey: ["admin-quotes"] });
+    },
+    onError: (err) => toast.error(err.message),
+  });
 
-      if (lines.length === 0) throw new Error("No editable lines to save");
+  /** Publishes the saved draft to the client — this is the action that emails them. */
+  const publish = useMutation({
+    mutationFn: async () => {
+      const lines = buildLines();
       const saved = await callSave({
         data: {
           quote_id: id,
@@ -474,8 +579,6 @@ function AdminQuoteDetailPage() {
         },
       });
 
-      // Second step: the margin. Publishing writes the client price from the
-      // saved sourcing cost, so it always uses the numbers the server stored.
       const marginByKey = new Map<string, number>();
       const feeByKey = new Map<string, number>();
       for (const row of rows) {
@@ -504,21 +607,8 @@ function AdminQuoteDetailPage() {
       return saved;
     },
     onSuccess: (r) => {
-      // Re-key local cells with the persisted line ids / SKUs so a second save
-      // updates the same rows instead of inserting duplicates.
-      const byKey = new Map(r.lines.map((l) => [`${l.variant_label}::${l.country_code}`, l]));
-      setRows((prev) =>
-        prev.map((row) => ({
-          ...row,
-          sku: byKey.get(`${row.label.trim()}::${countries[0]}`)?.sku ?? row.sku,
-          cells: Object.fromEntries(
-            Object.entries(row.cells).map(([country, cell]) => {
-              const saved = byKey.get(`${row.label.trim()}::${country}`);
-              return [country, saved ? { ...cell, lineId: saved.id, status: saved.status } : cell];
-            }),
-          ),
-        })),
-      );
+      rekeyRows(r);
+      setNeedsSnapshot(true);
       toast.success(`Quote published — ${r.lines.length} line(s), request is now "quoted"`);
       void queryClient.invalidateQueries({ queryKey: ["admin-quote", id] });
       void queryClient.invalidateQueries({ queryKey: ["admin-quote-options", id] });
@@ -915,7 +1005,11 @@ function AdminQuoteDetailPage() {
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                save.mutate();
+                if (dirty) {
+                  toast.error("Save your changes first");
+                  return;
+                }
+                publish.mutate();
               }}
               className="space-y-4"
             >
@@ -1287,7 +1381,9 @@ function AdminQuoteDetailPage() {
                   variant="outline"
                   size="sm"
                   className="gap-1.5"
-                  onClick={() => setRows((prev) => [...prev, emptyVariant(countries)])}
+                  onClick={() =>
+                    setRows((prev) => [...prev, emptyVariant(countries, defaultMargin)])
+                  }
                 >
                   <Plus className="h-3.5 w-3.5" /> Add variant (all {countries.length}{" "}
                   {countries.length === 1 ? "country" : "countries"})
@@ -1330,9 +1426,36 @@ function AdminQuoteDetailPage() {
                 />
               </div>
               {requestEditable && (
-                <Button type="submit" disabled={save.isPending}>
-                  {save.isPending ? "Publishing…" : "Publish quote to client"}
-                </Button>
+                <div className="sticky bottom-0 -mx-6 flex flex-wrap items-center gap-3 border-t border-border bg-card/95 px-6 py-3 backdrop-blur">
+                  {dirty ? (
+                    <span className="text-sm font-medium text-amber-600 dark:text-amber-400">
+                      Unsaved changes
+                    </span>
+                  ) : (
+                    <span className="text-sm text-muted-foreground">All changes saved</span>
+                  )}
+                  <div className="ml-auto flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant={dirty ? "default" : "outline"}
+                      disabled={save.isPending || publish.isPending || !dirty}
+                      onClick={() => save.mutate()}
+                    >
+                      {save.isPending ? "Saving…" : "Save changes"}
+                    </Button>
+                    <Button
+                      type="submit"
+                      variant={dirty ? "outline" : "default"}
+                      disabled={dirty || save.isPending || publish.isPending}
+                      title={dirty ? "Save your changes first" : undefined}
+                    >
+                      {publish.isPending ? "Publishing…" : "Publish quote to client"}
+                    </Button>
+                  </div>
+                  {dirty && (
+                    <p className="w-full text-xs text-muted-foreground">Save your changes first</p>
+                  )}
+                </div>
               )}
             </form>
           </CardContent>
