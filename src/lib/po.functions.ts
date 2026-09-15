@@ -306,12 +306,17 @@ export const deskGeneratePo = createServerFn({ method: "POST" })
     const leadDays = data.lead_days ?? purchase.po_lead_days ?? null;
 
     const deliveryOnWarehouse = purchase.path === "flysales";
+    const addressLines = (purchase.delivery_address ?? "")
+      .split(/\r?\n|,\s*/)
+      .map((l) => l.trim())
+      .filter(Boolean);
+    // EXW: no address at all, because the buyer's own forwarder collects at
+    // the supplier. The PO must say so instead of showing a blank destination.
     const deliveryLines = deliveryOnWarehouse
       ? po.warehouseAddressLines()
-      : (purchase.delivery_address ?? "")
-          .split(/\r?\n|,\s*/)
-          .map((l) => l.trim())
-          .filter(Boolean);
+      : addressLines.length
+        ? addressLines
+        : ["Ex Works — collection at the supplier by the buyer's forwarder"];
 
     const bytes = await po.renderPurchaseOrderPdf({
       poNumber,
