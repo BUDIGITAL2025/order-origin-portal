@@ -103,10 +103,13 @@ function AdminOrdersPage() {
   const fetchDisputes = useServerFn(adminListDisputes);
   const fetchAnalytics = useServerFn(getEcomflowAnalytics);
   const isAdmin = useFulfilmentIsAdmin();
+  const [workspace] = useWorkspaceScope();
+  const isOwnStore = workspace === BUDIGITAL_USA_STORE_ID;
+  // Ecomflow only has data for our own store — never fetch it for clients or "All".
   const { data: analytics } = useQuery<EcomflowAnalytics>({
     queryKey: ["ecomflow-analytics"],
     staleTime: 60_000,
-    enabled: isAdmin,
+    enabled: isAdmin && isOwnStore,
     queryFn: () => fetchAnalytics(),
   });
   const { data, isPending } = useQuery({
