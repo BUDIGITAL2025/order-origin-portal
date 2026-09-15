@@ -81,6 +81,7 @@ function QueuePage() {
             <TableRow>
               <TableHead>Received</TableHead>
               <TableHead>Product</TableHead>
+              <TableHead>Client</TableHead>
               <TableHead>Countries</TableHead>
               <TableHead className="text-right">Vol./mo</TableHead>
               <TableHead>Priced</TableHead>
@@ -102,6 +103,9 @@ function QueuePage() {
                     size={32}
                   />
                   {q.mine ? <Chip tone="primary">Mine</Chip> : null}
+                </TableCell>
+                <TableCell className="max-w-48 text-sm">
+                  {q.client_label ?? <span className="text-xs text-muted-foreground">—</span>}
                 </TableCell>
                 <TableCell className="text-xs uppercase text-muted-foreground">
                   {(q.target_countries ?? []).join(", ") || "—"}
