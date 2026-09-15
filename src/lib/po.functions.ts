@@ -241,8 +241,7 @@ export const deskSaveSupplier = createServerFn({ method: "POST" })
     const { upsertSupplierByName } = await import("./sourcing.server");
     const { logPurchaseEvent } = await import("./po.server");
 
-    const supplierId =
-      purchase.supplier_id ?? (await upsertSupplierByName(admin, data.name)).id;
+    const supplierId = purchase.supplier_id ?? (await upsertSupplierByName(admin, data.name)).id;
 
     const { error } = await admin
       .from("suppliers")
@@ -429,9 +428,7 @@ export const deskSendPo = createServerFn({ method: "POST" })
         .from(po.PURCHASE_DOCS_BUCKET)
         .download(purchase.po_document_path);
       if (dlError || !file) throw new Error(dlError?.message ?? "Could not read the PO document");
-      const base64 = btoa(
-        String.fromCharCode(...new Uint8Array(await file.arrayBuffer())),
-      );
+      const base64 = btoa(String.fromCharCode(...new Uint8Array(await file.arrayBuffer())));
 
       const { renderEmail } = await import("./email-layout.server");
       const { sendLoggedEmail } = await import("./email.server");
@@ -501,7 +498,8 @@ export const deskSendPo = createServerFn({ method: "POST" })
     await po.logPurchaseEvent(admin, {
       purchaseId: purchase.id,
       event: "po_sent",
-      detail: data.channel === "email" ? "Emailed to the supplier" : "Downloaded for manual sending",
+      detail:
+        data.channel === "email" ? "Emailed to the supplier" : "Downloaded for manual sending",
       actorId: context.userId,
       actorRole: "agent",
     });
@@ -526,12 +524,12 @@ export const deskUploadInvoice = createServerFn({ method: "POST" })
     await assertCollaborator(context);
     const { admin, purchase } = await loadForAgent(context.userId, data.purchase_id);
     const po = await import("./po.server");
-    const { extractSupplierInvoice, logInvoiceAiCall, MAX_INVOICE_BYTES } = await import(
-      "./invoice-ai.server"
-    );
+    const { extractSupplierInvoice, logInvoiceAiCall, MAX_INVOICE_BYTES } =
+      await import("./invoice-ai.server");
 
     const bytes = Uint8Array.from(atob(data.base64), (c) => c.charCodeAt(0));
-    if (bytes.byteLength > MAX_INVOICE_BYTES) throw new Error("That file is too large (max 15 MB).");
+    if (bytes.byteLength > MAX_INVOICE_BYTES)
+      throw new Error("That file is too large (max 15 MB).");
 
     const ext = data.mime_type === "application/pdf" ? "pdf" : data.mime_type.split("/")[1];
     const path = `${purchase.id}/invoice-${Date.now()}.${ext}`;

@@ -243,9 +243,7 @@ export const sourcingGetQuote = createServerFn({ method: "POST" })
 
     return {
       feeRate: clientFeeRate,
-      client: entityId
-        ? { handle: tiers.clientHandle(entityId), tier: clientTier }
-        : null,
+      client: entityId ? { handle: tiers.clientHandle(entityId), tier: clientTier } : null,
       quote: maskClientSiteUrl(quote),
       essentialsOnly: quote.client_site === true,
       preview,

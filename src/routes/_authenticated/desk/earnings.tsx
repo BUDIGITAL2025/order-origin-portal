@@ -61,8 +61,8 @@ function EarningsPage() {
             />
           </div>
           <p className="mt-2 text-xs text-muted-foreground">
-            Your fee is counted per client: each client has its own units counter, and a new
-            client starts you back at the opening rate.
+            Your fee is counted per client: each client has its own units counter, and a new client
+            starts you back at the opening rate.
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
             The rate is locked onto every quote the moment you price it, so crossing a tier never

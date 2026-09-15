@@ -499,6 +499,18 @@ function DeskQuotePage() {
                 {frozen != null ? " (locked on this quote)" : " (your current rate)"}. It is paid
                 out on units the client actually buys.
               </p>
+              {data?.client ? (
+                <p className="text-xs text-muted-foreground">
+                  {data.client.handle} —{" "}
+                  {data.client.tier && data.client.tier.nextAt != null
+                    ? `${(data.client.tier.rate * 100).toFixed(1)}% · ${data.client.tier.count}/${data.client.tier.nextAt} units to ${
+                        data.client.tier.nextRate != null
+                          ? `${(data.client.tier.nextRate * 100).toFixed(1)}%`
+                          : "the next rate"
+                      }`
+                    : `${((data.client.tier?.rate ?? 0) * 100).toFixed(1)}% · final rate`}
+                </p>
+              ) : null}
               <Button className="w-full" disabled={save.isPending} onClick={() => save.mutate()}>
                 {save.isPending ? "Saving…" : "Submit sourcing"}
               </Button>

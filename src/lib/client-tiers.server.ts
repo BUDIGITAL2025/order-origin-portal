@@ -13,7 +13,13 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
-import { parseFeeTiers, rateForCount, tierProgress, type FeeTier, type TierProgress } from "./fee-tiers";
+import {
+  parseFeeTiers,
+  rateForCount,
+  tierProgress,
+  type FeeTier,
+  type TierProgress,
+} from "./fee-tiers";
 
 type Admin = SupabaseClient<Database>;
 

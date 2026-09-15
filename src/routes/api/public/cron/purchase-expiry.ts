@@ -71,9 +71,7 @@ export const Route = createFileRoute("/api/public/cron/purchase-expiry")({
           }
 
           // --- Day 7: release it. Nothing was ever charged.
-          const expireCutoff = new Date(
-            now - PURCHASE_PAYMENT_DAYS * 86_400_000,
-          ).toISOString();
+          const expireCutoff = new Date(now - PURCHASE_PAYMENT_DAYS * 86_400_000).toISOString();
           const { data: stale, error: staleError } = await supabaseAdmin
             .from("stock_purchases")
             .select(SELECT)

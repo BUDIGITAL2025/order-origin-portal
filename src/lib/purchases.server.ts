@@ -43,7 +43,11 @@ export function purchaseTotal(p: {
 }
 
 export function isPayable(p: StockPurchase): boolean {
-  if (p.status !== "awaiting_payment" && p.status !== "requested" && p.status !== "freight_quoted") {
+  if (
+    p.status !== "awaiting_payment" &&
+    p.status !== "requested" &&
+    p.status !== "freight_quoted"
+  ) {
     return false;
   }
   return purchaseTotal(p) != null;
@@ -88,7 +92,6 @@ export const PURCHASE_STATUS_LABELS: Record<string, string> = {
   cancelled: "Cancelled",
 };
 
-
 /** Unpaid purchases die after this many days; the quote itself stays valid. */
 export const PURCHASE_PAYMENT_DAYS = 7;
 
@@ -113,16 +116,14 @@ export async function createPurchasesForAcceptance(
     .select("id, store_id, product_name, delivery_mode, delivery_address, stores(entity_id)")
     .eq("id", quoteRequestId)
     .maybeSingle();
-  const chain = quote as unknown as
-    | {
-        id: string;
-        store_id: string;
-        product_name: string | null;
-        delivery_mode: string | null;
-        delivery_address: string | null;
-        stores: { entity_id: string } | null;
-      }
-    | null;
+  const chain = quote as unknown as {
+    id: string;
+    store_id: string;
+    product_name: string | null;
+    delivery_mode: string | null;
+    delivery_address: string | null;
+    stores: { entity_id: string } | null;
+  } | null;
   if (!chain?.stores?.entity_id) return [];
 
   const mode = chain.delivery_mode ?? "warehouse";
@@ -320,8 +321,6 @@ export async function settlePaidPurchase(
 
   // The collaborator's commission is NOT accrued here: it is confirmed when
   // we actually pay the supplier (see adminRecordSupplierPayment).
-
-
 
   return purchase;
 }
