@@ -299,8 +299,7 @@ function AdminInventoryPage() {
   const queryClient = useQueryClient();
   const navigate = Route.useNavigate();
   const { state: stateParam, view: viewParam } = Route.useSearch();
-  const view = viewParam ?? "workspaces";
-  // Live-stock view calls an admin-only integration; agents stay on workspaces.
+  const requestedView = viewParam ?? "workspaces";
   const setView = (next: ViewId) => {
     void navigate({ search: (prev) => ({ ...prev, view: next }), replace: true });
   };
