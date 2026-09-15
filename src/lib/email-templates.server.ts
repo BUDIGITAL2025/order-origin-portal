@@ -453,7 +453,7 @@ export function adsActivationRequestedEmail(args: {
 export function quotePublishedEmail(args: {
   quoteId: string;
   productName: string;
-  quoteRef: string;
+  quoteRef: string | null;
   revisionNumber: number;
 }): BuiltEmail {
   const ref = args.quoteRef ? ` (Ref ${args.quoteRef})` : "";
