@@ -32,8 +32,7 @@ import { CleanupRowActions, ShowArchivedToggle } from "@/components/cleanup-acti
 import { ProductCell } from "@/components/product-thumb";
 import { PhotoManagerDialog } from "@/components/photo-manager";
 import { ImagePlus } from "lucide-react";
-import { formatDate } from "@/lib/format";
-import { formatUSD } from "@/lib/format";
+import { formatDate, formatUSD } from "@/lib/format";
 import { effectiveTier } from "@/lib/plans";
 import { adminCleanupDelete } from "@/lib/cleanup.functions";
 import { adminListQuotes } from "@/lib/quotes.functions";
@@ -317,8 +316,19 @@ function AdminQuotesPage() {
                 return (
                   <TableRow
                     key={q.id}
+                    role="link"
+                    tabIndex={0}
+                    onClick={() =>
+                      void navigate({ to: "/admin/quotes/$id", params: { id: q.id } })
+                    }
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        void navigate({ to: "/admin/quotes/$id", params: { id: q.id } });
+                      }
+                    }}
                     className={cn(
-                      "hover:bg-accent/60",
+                      "cursor-pointer hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
                       overdue && "border-l-2 border-l-destructive bg-destructive/5",
                       dueSoon && "border-l-2 border-l-warning bg-warning/5",
                     )}
@@ -333,7 +343,7 @@ function AdminQuotesPage() {
                     <TableCell className="whitespace-nowrap py-2.5 text-xs text-muted-foreground">
                       {formatDate(q.created_at)}
                     </TableCell>
-                    <TableCell className="py-2.5">
+                    <TableCell className="py-2.5" onClick={(e) => e.stopPropagation()}>
                       <div className="max-w-[180px] truncate font-medium">
                         <Value>{client?.company_name}</Value>
                       </div>

@@ -1238,9 +1238,7 @@ function AdminQuoteDetailPage() {
                                     </span>
                                   </div>
                                   <div className="grid min-h-6 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3">
-                                    <span>
-                                      Agent fee ({feePctLabel}% · {formatUSD(feeUsd)})
-                                    </span>
+                                    <span>Agent fee ({feePctLabel}%)</span>
                                     <span className="tnum text-right">{formatUSD(feeUsd)}</span>
                                   </div>
                                   <div className="grid min-h-6 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 font-medium text-foreground">
@@ -1250,10 +1248,7 @@ function AdminQuoteDetailPage() {
                                     </span>
                                   </div>
                                   <div className="grid min-h-6 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3">
-                                    <span>
-                                      FlySales margin ({marginPctLabel}% ·{" "}
-                                      {formatUSD(cellMargin(cell, rate))})
-                                    </span>
+                                    <span>FlySales margin ({marginPctLabel}%)</span>
                                     <span className="tnum text-right">
                                       {formatUSD(cellMargin(cell, rate))}
                                     </span>
