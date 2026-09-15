@@ -444,6 +444,25 @@ function AdminQuoteDetailPage() {
     );
   };
 
+  // Unsaved-changes tracking: the form serialized now vs. as last persisted.
+  const formSnapshot = useMemo(
+    () => JSON.stringify({ rows, internalReference, validUntil, adminNotes }),
+    [rows, internalReference, validUntil, adminNotes],
+  );
+  useEffect(() => {
+    if (needsSnapshot) {
+      setSavedSnapshot(formSnapshot);
+      setNeedsSnapshot(false);
+    }
+  }, [needsSnapshot, formSnapshot]);
+  const dirty = savedSnapshot !== null && formSnapshot !== savedSnapshot;
+
+  useBlocker({
+    shouldBlockFn: () =>
+      dirty && !window.confirm("You have unsaved changes. Leave this quote anyway?"),
+    enableBeforeUnload: () => dirty,
+  });
+
   /** Copies one cell's margin to every editable cell in the grid. */
   const applyMarginToAll = (key: string, country: string) => {
     const value = rows.find((r) => r.key === key)?.cells[country]?.margin_pct ?? "0";
