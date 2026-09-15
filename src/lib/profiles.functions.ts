@@ -515,6 +515,24 @@ export const adminSetPlan = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+/**
+ * Admin: rename a workspace. Only `stores.store_name` changes — the legal
+ * entity name used on invoices and fiscal records is untouched.
+ */
+export const adminSetStoreName = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => storeNameSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const { requireAdmin } = await import("./admin.server");
+    await requireAdmin(context.supabase, context.userId);
+    const { error } = await context.supabase
+      .from("stores")
+      .update({ store_name: data.store_name })
+      .eq("id", data.store_id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
 /** Admin: toggle the monthly-fee waiver on a store (manual commercial gesture). */
 export const adminSetFeeWaived = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
