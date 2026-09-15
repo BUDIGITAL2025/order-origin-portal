@@ -37,7 +37,12 @@ import {
 } from "@/lib/inventory.functions";
 import { getEcomflowStock } from "@/lib/ecomflow.functions";
 import { PlanningDialog } from "@/components/planning-dialog";
-import { ALL_WORKSPACES, WorkspacePicker, useWorkspaceScope } from "@/components/workspace-scope";
+import {
+  ALL_WORKSPACES,
+  WorkspacePicker,
+  useFulfilmentIsAdmin,
+  useWorkspaceScope,
+} from "@/components/workspace-scope";
 import { friendlyError } from "@/lib/errors";
 import { formatUSD } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -307,6 +312,7 @@ function AdminInventoryPage() {
   };
   const [search, setSearch] = useState("");
   const [workspace] = useWorkspaceScope();
+  const isAdmin = useFulfilmentIsAdmin();
   const [growthPercent, setGrowthPercent] = useState(0);
   const [planningProductId, setPlanningProductId] = useState<string | null>(null);
   const [defaultsFor, setDefaultsFor] = useState<{
