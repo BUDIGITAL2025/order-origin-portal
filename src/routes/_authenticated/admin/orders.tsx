@@ -117,7 +117,7 @@ function AdminOrdersPage() {
     );
   // Ecomflow only has data for our own store — never fetch it for clients or "All".
   const { data: analytics } = useQuery<EcomflowAnalytics>({
-    queryKey: ["ecomflow-analytics"],
+    queryKey: ["ecomflow-analytics", workspace],
     staleTime: 60_000,
     enabled: isAdmin && isOwnStore,
     queryFn: () => fetchAnalytics(),
