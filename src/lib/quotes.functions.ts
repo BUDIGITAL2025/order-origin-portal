@@ -273,11 +273,7 @@ export const adminListQuotes = createServerFn({ method: "GET" })
         aggregate.cogs.push(cogs);
         if (marginPct > 0) {
           aggregate.clientPrices.push(
-            closedPrice(
-              Number(line.sourcing_cost ?? 0),
-              marginPct,
-              Number(line.supplier_tax ?? 0),
-            ),
+            closedPrice(Number(line.sourcing_cost ?? 0), marginPct, Number(line.supplier_tax ?? 0)),
           );
         } else {
           aggregate.hasUnpricedMargin = true;
@@ -294,12 +290,8 @@ export const adminListQuotes = createServerFn({ method: "GET" })
           ...mapped,
           cogs_min: pricing?.cogs.length ? Math.min(...pricing.cogs) : null,
           cogs_max: pricing?.cogs.length ? Math.max(...pricing.cogs) : null,
-          client_price_min: pricing?.clientPrices.length
-            ? Math.min(...pricing.clientPrices)
-            : null,
-          client_price_max: pricing?.clientPrices.length
-            ? Math.max(...pricing.clientPrices)
-            : null,
+          client_price_min: pricing?.clientPrices.length ? Math.min(...pricing.clientPrices) : null,
+          client_price_max: pricing?.clientPrices.length ? Math.max(...pricing.clientPrices) : null,
           awaiting_pricing: pricing?.hasUnpricedMargin ?? false,
         };
       }),

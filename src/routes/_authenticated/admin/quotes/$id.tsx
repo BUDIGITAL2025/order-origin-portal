@@ -351,9 +351,7 @@ function AdminQuoteDetailPage() {
           lineId: l.id,
           status: l.status,
           currency,
-          supplier_cogs: money2(
-            foreign ? (l.supplier_cogs_original ?? 0) : (l.supplier_cogs ?? 0),
-          ),
+          supplier_cogs: money2(foreign ? (l.supplier_cogs_original ?? 0) : (l.supplier_cogs ?? 0)),
           supplier_shipping: money2(
             foreign ? (l.supplier_shipping_original ?? 0) : (l.supplier_shipping ?? 0),
           ),
@@ -1240,7 +1238,9 @@ function AdminQuoteDetailPage() {
                                     </span>
                                   </div>
                                   <div className="grid min-h-6 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3">
-                                    <span>Agent fee ({feePctLabel}% · {formatUSD(feeUsd)})</span>
+                                    <span>
+                                      Agent fee ({feePctLabel}% · {formatUSD(feeUsd)})
+                                    </span>
                                     <span className="tnum text-right">{formatUSD(feeUsd)}</span>
                                   </div>
                                   <div className="grid min-h-6 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 font-medium text-foreground">
@@ -1251,7 +1251,8 @@ function AdminQuoteDetailPage() {
                                   </div>
                                   <div className="grid min-h-6 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3">
                                     <span>
-                                      FlySales margin ({marginPctLabel}% · {formatUSD(cellMargin(cell, rate))})
+                                      FlySales margin ({marginPctLabel}% ·{" "}
+                                      {formatUSD(cellMargin(cell, rate))})
                                     </span>
                                     <span className="tnum text-right">
                                       {formatUSD(cellMargin(cell, rate))}
