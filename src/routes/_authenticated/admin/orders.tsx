@@ -125,7 +125,6 @@ function AdminOrdersPage() {
   };
   const [search, setSearch] = useState("");
   const [showArchived, setShowArchived] = useState(false);
-  const [workspace] = useWorkspaceScope();
 
   const { data: disputes } = useQuery({
     queryKey: ["admin-disputes", "all"],
