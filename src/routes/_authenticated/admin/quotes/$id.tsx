@@ -702,6 +702,8 @@ function AdminQuoteDetailPage() {
   };
 
   if (isPending) return <p className="text-sm text-muted-foreground">Loading…</p>;
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+
   if (!quote) return <p className="text-sm text-muted-foreground">Quote request not found.</p>;
 
   const requotable = quote.status === "closed" || quote.status === "expired";
