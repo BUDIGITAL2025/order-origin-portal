@@ -600,6 +600,7 @@ export function sourcingInviteEmail(args: {
       title: "Your terms",
       rows: [
         ...tierRows(args.feeTiers),
+        { label: "Client relationships", value: "Owned by FlySales — no outside contact" },
         { label: "Invitation valid until", value: args.expiresLabel },
       ],
     },
