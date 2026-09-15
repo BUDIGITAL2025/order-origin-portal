@@ -337,12 +337,27 @@ export const adminListQuotes = createServerFn({ method: "GET" })
       pricingByQuote.set(quoteId, aggregate);
     }
 
+    // Unread client messages per conversation, cleared when the thread opens.
+    const { data: unreadRows } = ids.length
+      ? await admin
+          .from("quote_messages")
+          .select("quote_request_id")
+          .in("quote_request_id", ids)
+          .eq("author_role", "client")
+          .is("read_by_admin_at", null)
+      : { data: [] as Array<{ quote_request_id: string }> };
+    const unreadByQuote = new Map<string, number>();
+    for (const r of unreadRows ?? []) {
+      unreadByQuote.set(r.quote_request_id, (unreadByQuote.get(r.quote_request_id) ?? 0) + 1);
+    }
+
     return {
       quotes: (quotes ?? []).map((q) => {
         const mapped = mapQuoteForAdmin(q, internalByQuote.get(q.id as string));
         const pricing = pricingByQuote.get(q.id as string);
         return {
           ...mapped,
+          unread_messages: unreadByQuote.get(q.id as string) ?? 0,
           cogs_min: pricing?.cogs.length ? Math.min(...pricing.cogs) : null,
           cogs_max: pricing?.cogs.length ? Math.max(...pricing.cogs) : null,
           client_price_min: pricing?.clientPrices.length ? Math.min(...pricing.clientPrices) : null,

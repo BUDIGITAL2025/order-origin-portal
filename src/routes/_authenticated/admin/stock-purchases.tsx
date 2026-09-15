@@ -1,11 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/app-shell";
 import { SectionTabs, ADMIN_SOURCING_TABS } from "@/components/section-tabs";
 import { Chip, FilterTabs, RowActions, SummaryBar, TableShell } from "@/components/admin-ui";
+import { LifecycleTimeline } from "@/components/lifecycle-timeline";
 import { CleanupRowActions, ShowArchivedToggle } from "@/components/cleanup-actions";
 import { ProductCell } from "@/components/product-thumb";
 import { Button } from "@/components/ui/button";
@@ -70,6 +71,8 @@ function AdminStockPurchasesPage() {
   });
 
   const [showArchived, setShowArchived] = useState(false);
+  // Same deal view as the quote page, from the purchase end of the chain.
+  const [dealFor, setDealFor] = useState<string | null>(null);
   const purchases = (rows ?? []).filter(
     (p) => showArchived || !(p as { archived_at?: string | null }).archived_at,
   );
@@ -161,96 +164,116 @@ function AdminStockPurchasesPage() {
         </TableHeader>
         <TableBody>
           {purchases.map((p) => (
-            <TableRow key={p.id}>
-              <TableCell className="whitespace-nowrap font-mono text-xs">{p.ref}</TableCell>
-              <TableCell className="max-w-40">
-                <div className="truncate text-sm">{p.client_name ?? "—"}</div>
-                <div className="truncate text-xs text-muted-foreground">
-                  {p.workspace_name ?? ""}
-                </div>
-              </TableCell>
-              <TableCell className="max-w-56">
-                <ProductCell
-                  imageUrls={
-                    (p as { products?: { image_urls?: string[] } | null }).products?.image_urls ??
-                    []
-                  }
-                  name={p.product_name}
-                  secondary={`${p.variant_label ?? ""} · ${formatDate(p.created_at)}`}
-                />
-              </TableCell>
-              <TableCell className="text-right tnum text-sm">{p.quantity}</TableCell>
-              <TableCell className="text-right tnum text-sm">
-                {formatUSD(Number(p.goods_total))}
-              </TableCell>
-              <TableCell className="text-right tnum text-sm font-medium">
-                {p.payable_total != null ? formatUSD(p.payable_total) : "—"}
-              </TableCell>
-              <TableCell className="text-xs text-muted-foreground">
-                {p.path === "flysales" ? "Warehouse" : "Direct"}
-              </TableCell>
-              <TableCell>
-                <Chip tone={STATUS_TONE[p.status] ?? "neutral"}>{p.status.replace("_", " ")}</Chip>
-              </TableCell>
-              <TableCell className="text-right">
-                <RowActions>
-                  <CleanupRowActions
-                    type="stock_purchase"
-                    id={p.id}
-                    name={p.ref}
-                    archived={!!(p as { archived_at?: string | null }).archived_at}
-                    invalidateKeys={[["admin-stock-purchases"]]}
+            <React.Fragment key={p.id}>
+              <TableRow>
+                <TableCell className="whitespace-nowrap font-mono text-xs">{p.ref}</TableCell>
+                <TableCell className="max-w-40">
+                  <div className="truncate text-sm">{p.client_name ?? "—"}</div>
+                  <div className="truncate text-xs text-muted-foreground">
+                    {p.workspace_name ?? ""}
+                  </div>
+                </TableCell>
+                <TableCell className="max-w-56">
+                  <ProductCell
+                    imageUrls={
+                      (p as { products?: { image_urls?: string[] } | null }).products?.image_urls ??
+                      []
+                    }
+                    name={p.product_name}
+                    secondary={`${p.variant_label ?? ""} · ${formatDate(p.created_at)}`}
                   />
-                  {!p.paid_at ? (
+                </TableCell>
+                <TableCell className="text-right tnum text-sm">{p.quantity}</TableCell>
+                <TableCell className="text-right tnum text-sm">
+                  {formatUSD(Number(p.goods_total))}
+                </TableCell>
+                <TableCell className="text-right tnum text-sm font-medium">
+                  {p.payable_total != null ? formatUSD(p.payable_total) : "—"}
+                </TableCell>
+                <TableCell className="text-xs text-muted-foreground">
+                  {p.path === "flysales" ? "Warehouse" : "Direct"}
+                </TableCell>
+                <TableCell>
+                  <Chip tone={STATUS_TONE[p.status] ?? "neutral"}>
+                    {p.status.replace("_", " ")}
+                  </Chip>
+                </TableCell>
+                <TableCell className="text-right">
+                  <RowActions>
+                    <CleanupRowActions
+                      type="stock_purchase"
+                      id={p.id}
+                      name={p.ref}
+                      archived={!!(p as { archived_at?: string | null }).archived_at}
+                      invalidateKeys={[["admin-stock-purchases"]]}
+                    />
+                    {!p.paid_at ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                          setFreightFor({
+                            id: p.id,
+                            ref: p.ref,
+                            goods: Number(p.goods_total),
+                            freight: p.freight_cost != null ? String(p.freight_cost) : "",
+                            importCost:
+                              (p as { import_cost?: number | null }).import_cost != null
+                                ? String((p as { import_cost?: number | null }).import_cost)
+                                : "",
+                          })
+                        }
+                      >
+                        {p.freight_cost != null ? "Edit freight" : "Quote freight"}
+                      </Button>
+                    ) : null}
+                    {p.status === "paid" ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                          advance.mutate({ purchase_id: p.id, status: "in_production" })
+                        }
+                      >
+                        In production
+                      </Button>
+                    ) : null}
+                    {p.status === "in_production" ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setTrackingFor({ id: p.id, ref: p.ref })}
+                      >
+                        Mark shipped
+                      </Button>
+                    ) : null}
+                    {p.status === "shipped" ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => advance.mutate({ purchase_id: p.id, status: "delivered" })}
+                      >
+                        Delivered
+                      </Button>
+                    ) : null}
                     <Button
                       size="sm"
-                      variant="outline"
-                      onClick={() =>
-                        setFreightFor({
-                          id: p.id,
-                          ref: p.ref,
-                          goods: Number(p.goods_total),
-                          freight: p.freight_cost != null ? String(p.freight_cost) : "",
-                          importCost:
-                            (p as { import_cost?: number | null }).import_cost != null
-                              ? String((p as { import_cost?: number | null }).import_cost)
-                              : "",
-                        })
-                      }
+                      variant="ghost"
+                      onClick={() => setDealFor(dealFor === p.id ? null : p.id)}
                     >
-                      {p.freight_cost != null ? "Edit freight" : "Quote freight"}
+                      {dealFor === p.id ? "Hide deal view" : "Deal view"}
                     </Button>
-                  ) : null}
-                  {p.status === "paid" ? (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => advance.mutate({ purchase_id: p.id, status: "in_production" })}
-                    >
-                      In production
-                    </Button>
-                  ) : null}
-                  {p.status === "in_production" ? (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setTrackingFor({ id: p.id, ref: p.ref })}
-                    >
-                      Mark shipped
-                    </Button>
-                  ) : null}
-                  {p.status === "shipped" ? (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => advance.mutate({ purchase_id: p.id, status: "delivered" })}
-                    >
-                      Delivered
-                    </Button>
-                  ) : null}
-                </RowActions>
-              </TableCell>
-            </TableRow>
+                  </RowActions>
+                </TableCell>
+              </TableRow>
+              {dealFor === p.id && (
+                <TableRow>
+                  <TableCell colSpan={9} className="bg-muted/30 p-4">
+                    <LifecycleTimeline purchaseId={p.id} />
+                  </TableCell>
+                </TableRow>
+              )}
+            </React.Fragment>
           ))}
           {purchases.length === 0 && (
             <TableRow>

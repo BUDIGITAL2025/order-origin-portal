@@ -14,9 +14,7 @@ export const Route = createFileRoute("/api/public/cron/daily-digest")({
         const authError = await authenticateCronRequest(request);
         if (authError) return authError;
 
-        const { supabaseAdmin } = await import(
-          "@/integrations/supabase/client.server"
-        );
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const { runCronJob } = await import("@/lib/ops.server");
 
         const outcome = await runCronJob(supabaseAdmin, "daily-digest", async () => {
@@ -24,60 +22,61 @@ export const Route = createFileRoute("/api/public/cron/daily-digest")({
           const nowIso = new Date().toISOString();
 
           const staleReleaseCutoff = new Date(Date.now() - 6 * 3_600_000).toISOString();
-          const [webhooks, crons, quotes, errors, integration, releases, pollCaught, syncDown] = await Promise.all([
-            supabaseAdmin
-              .from("stripe_events")
-              .select("stripe_event_id, event_type, error", { count: "exact" })
-              .not("error", "is", null)
-              .gte("created_at", since)
-              .limit(10),
-            supabaseAdmin
-              .from("cron_runs")
-              .select("job, started_at, error", { count: "exact" })
-              .eq("ok", false)
-              .gte("started_at", since)
-              .limit(10),
-            supabaseAdmin
-              .from("quote_requests")
-              .select("id, created_at, quote_due_at", { count: "exact" })
-              .in("status", ["submitted", "sourcing"])
-              .lt("quote_due_at", nowIso)
-              .limit(10),
-            supabaseAdmin
-              .from("error_logs")
-              .select("job, error", { count: "exact" })
-              .gte("created_at", since)
-              .limit(10),
-            supabaseAdmin
-              .from("integration_events")
-              .select("event_id, event_type, tenant_id, error", { count: "exact" })
-              .eq("simulator", false)
-              .not("error", "is", null)
-              .gte("created_at", since)
-              .limit(10),
-            supabaseAdmin
-              .from("orders")
-              .select("middleware_order_id, release_status, release_error", { count: "exact" })
-              .eq("source", "middleware")
-              .in("release_status", ["pending", "failed", "pending_reject"])
-              .lt("created_at", staleReleaseCutoff)
-              .limit(10),
-            supabaseAdmin
-              .from("integration_events")
-              .select("id", { count: "exact", head: true })
-              .eq("entry_path", "poll")
-              .eq("event_type", "order.created")
-              .eq("simulator", false)
-              .gte("created_at", since),
-            supabaseAdmin
-              .from("middleware_sync_state")
-              .select("tenant_id, last_error, consecutive_failures, first_failure_at", {
-                count: "exact",
-              })
-              .gt("consecutive_failures", 0)
-              .lt("first_failure_at", new Date(Date.now() - 3_600_000).toISOString())
-              .limit(10),
-          ]);
+          const [webhooks, crons, quotes, errors, integration, releases, pollCaught, syncDown] =
+            await Promise.all([
+              supabaseAdmin
+                .from("stripe_events")
+                .select("stripe_event_id, event_type, error", { count: "exact" })
+                .not("error", "is", null)
+                .gte("created_at", since)
+                .limit(10),
+              supabaseAdmin
+                .from("cron_runs")
+                .select("job, started_at, error", { count: "exact" })
+                .eq("ok", false)
+                .gte("started_at", since)
+                .limit(10),
+              supabaseAdmin
+                .from("quote_requests")
+                .select("id, created_at, quote_due_at", { count: "exact" })
+                .in("status", ["submitted", "sourcing"])
+                .lt("quote_due_at", nowIso)
+                .limit(10),
+              supabaseAdmin
+                .from("error_logs")
+                .select("job, error", { count: "exact" })
+                .gte("created_at", since)
+                .limit(10),
+              supabaseAdmin
+                .from("integration_events")
+                .select("event_id, event_type, tenant_id, error", { count: "exact" })
+                .eq("simulator", false)
+                .not("error", "is", null)
+                .gte("created_at", since)
+                .limit(10),
+              supabaseAdmin
+                .from("orders")
+                .select("middleware_order_id, release_status, release_error", { count: "exact" })
+                .eq("source", "middleware")
+                .in("release_status", ["pending", "failed", "pending_reject"])
+                .lt("created_at", staleReleaseCutoff)
+                .limit(10),
+              supabaseAdmin
+                .from("integration_events")
+                .select("id", { count: "exact", head: true })
+                .eq("entry_path", "poll")
+                .eq("event_type", "order.created")
+                .eq("simulator", false)
+                .gte("created_at", since),
+              supabaseAdmin
+                .from("middleware_sync_state")
+                .select("tenant_id, last_error, consecutive_failures, first_failure_at", {
+                  count: "exact",
+                })
+                .gt("consecutive_failures", 0)
+                .lt("first_failure_at", new Date(Date.now() - 3_600_000).toISOString())
+                .limit(10),
+            ]);
 
           // Phase 5 — inventory states currently sitting in amber/red.
           const inventoryAlerts = await supabaseAdmin
@@ -104,7 +103,9 @@ export const Route = createFileRoute("/api/public/cron/daily-digest")({
           // provider token needs attention.
           const adsFailures = await supabaseAdmin
             .from("ads_api_calls")
-            .select("tool, ad_account_id, error, created_at, stores(store_name)", { count: "exact" })
+            .select("tool, ad_account_id, error, created_at, stores(store_name)", {
+              count: "exact",
+            })
             .eq("ok", false)
             .gte("created_at", since)
             .order("created_at", { ascending: false })
@@ -125,10 +126,42 @@ export const Route = createFileRoute("/api/public/cron/daily-digest")({
             ads_call_failures: adsFailures.count ?? 0,
           };
 
+          // One digest line per conversation with unread client messages —
+          // never one email per message.
+          const { data: unreadMsgs } = await supabaseAdmin
+            .from("quote_messages")
+            .select("quote_request_id, created_at")
+            .eq("author_role", "client")
+            .is("read_by_admin_at", null)
+            .order("created_at", { ascending: false })
+            .limit(500);
+          const unreadByQuote = new Map<string, { count: number; last: string }>();
+          for (const m of unreadMsgs ?? []) {
+            const prev = unreadByQuote.get(m.quote_request_id);
+            unreadByQuote.set(m.quote_request_id, {
+              count: (prev?.count ?? 0) + 1,
+              last: prev?.last ?? (m.created_at as string),
+            });
+          }
+          const unreadQuoteIds = [...unreadByQuote.keys()];
+          const { data: unreadQuotes } = unreadQuoteIds.length
+            ? await supabaseAdmin
+                .from("quote_requests")
+                .select("id, product_name")
+                .in("id", unreadQuoteIds)
+            : { data: [] as Array<{ id: string; product_name: string | null }> };
+          const unreadLines = (unreadQuotes ?? []).map((q) => {
+            const info = unreadByQuote.get(q.id as string)!;
+            return `  • ${q.product_name ?? q.id}: ${info.count} unread (last ${info.last}) — https://app.flysales.app/admin/quotes/${q.id}`;
+          });
+
           const { STRIPE_FORCE_TEST_MODE } = await import("@/lib/stripe-mode");
           const lines: string[] = [
             `FlySales daily ops digest — ${new Date().toISOString().slice(0, 10)}`,
             `Payments mode: ${STRIPE_FORCE_TEST_MODE ? "TEST (forced) — no real money moves" : "LIVE — real cards are charged"}`,
+            "",
+            `Unread client messages: ${unreadMsgs?.length ?? 0} in ${unreadQuoteIds.length} conversation(s)`,
+            ...unreadLines,
             "",
             `Failed Stripe webhooks (24h): ${summary.failed_webhooks}`,
             ...(webhooks.data ?? []).map(
@@ -136,26 +169,24 @@ export const Route = createFileRoute("/api/public/cron/daily-digest")({
             ),
             "",
             `Failed cron runs (24h): ${summary.failed_crons}`,
-            ...(crons.data ?? []).map(
-              (c) => `  • ${c.job} @ ${c.started_at}: ${c.error}`,
-            ),
+            ...(crons.data ?? []).map((c) => `  • ${c.job} @ ${c.started_at}: ${c.error}`),
             "",
             `Quotes past SLA (open): ${summary.quotes_past_sla}`,
-            ...(quotes.data ?? []).map(
-              (q) => `  • ${q.id} due ${q.quote_due_at}`,
-            ),
+            ...(quotes.data ?? []).map((q) => `  • ${q.id} due ${q.quote_due_at}`),
             "",
             `Logged errors (24h): ${summary.errors}`,
             ...(errors.data ?? []).map((e) => `  • ${e.job}: ${e.error}`),
             "",
             `Failed middleware events (24h): ${summary.failed_integration_events}`,
             ...(integration.data ?? []).map(
-              (e) => `  • ${e.event_type} (${e.event_id}, tenant ${e.tenant_id ?? "unknown"}): ${e.error}`,
+              (e) =>
+                `  • ${e.event_type} (${e.event_id}, tenant ${e.tenant_id ?? "unknown"}): ${e.error}`,
             ),
             "",
             `Middleware releases stuck >6h: ${summary.stuck_releases}`,
             ...(releases.data ?? []).map(
-              (r) => `  • ${r.middleware_order_id} (${r.release_status}): ${r.release_error ?? "no error recorded"}`,
+              (r) =>
+                `  • ${r.middleware_order_id} (${r.release_status}): ${r.release_error ?? "no error recorded"}`,
             ),
             "",
             ...(summary.orders_caught_by_polling > 0
@@ -165,7 +196,8 @@ export const Route = createFileRoute("/api/public/cron/daily-digest")({
               : []),
             `Tenants with order sync failing >1h: ${summary.tenants_sync_down}`,
             ...(syncDown.data ?? []).map(
-              (t) => `  • tenant ${t.tenant_id} (${t.consecutive_failures} failures since ${t.first_failure_at}): ${t.last_error ?? "no error recorded"}`,
+              (t) =>
+                `  • tenant ${t.tenant_id} (${t.consecutive_failures} failures since ${t.first_failure_at}): ${t.last_error ?? "no error recorded"}`,
             ),
             "",
             `SKUs needing a reorder now: ${summary.skus_red} · reorder soon: ${summary.skus_amber}`,
@@ -175,15 +207,15 @@ export const Route = createFileRoute("/api/public/cron/daily-digest")({
             "",
             `SEO studies running or incomplete (24h): ${summary.seo_studies_needing_attention}`,
             ...(seoStudies.data ?? []).map((s) => {
-              const target =
-                (s.params as { target?: string } | null)?.target ?? "unknown domain";
+              const target = (s.params as { target?: string } | null)?.target ?? "unknown domain";
               const detail = s.error ? ` — ${s.error}` : "";
               return `  • ${target}: ${s.status} at ${s.phase ?? "queued"} (${s.progress_pct}%, $${Number(s.total_cost).toFixed(4)})${detail}`;
             }),
             "",
             `Ads data pulls that failed (24h): ${summary.ads_call_failures}`,
             ...(adsFailures.data ?? []).map((a) => {
-              const workspace = (a.stores as { store_name: string | null } | null)?.store_name ?? "unmapped";
+              const workspace =
+                (a.stores as { store_name: string | null } | null)?.store_name ?? "unmapped";
               return `  • ${workspace} — ${a.tool} on ${a.ad_account_id ?? "no account"}: ${a.error ?? "unknown error"}`;
             }),
             "",
