@@ -45,6 +45,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { CleanupRowActions, ShowArchivedToggle } from "@/components/cleanup-actions";
+import {
+  ALL_WORKSPACES,
+  WorkspacePicker,
+  useFulfilmentIsAdmin,
+  useWorkspaceScope,
+} from "@/components/workspace-scope";
 import { formatDateTime, formatUSD } from "@/lib/format";
 import { adminListOrders, adminSetOrderTracking } from "@/lib/orders.functions";
 import { adminListDisputes } from "@/lib/disputes.functions";
@@ -93,9 +99,11 @@ function AdminOrdersPage() {
   const fetchOrders = useServerFn(adminListOrders);
   const fetchDisputes = useServerFn(adminListDisputes);
   const fetchAnalytics = useServerFn(getEcomflowAnalytics);
+  const isAdmin = useFulfilmentIsAdmin();
   const { data: analytics } = useQuery<EcomflowAnalytics>({
     queryKey: ["ecomflow-analytics"],
     staleTime: 60_000,
+    enabled: isAdmin,
     queryFn: () => fetchAnalytics(),
   });
   const { data, isPending } = useQuery({
@@ -111,13 +119,18 @@ function AdminOrdersPage() {
   };
   const [search, setSearch] = useState("");
   const [showArchived, setShowArchived] = useState(false);
+  const [workspace] = useWorkspaceScope();
 
   const { data: disputes } = useQuery({
     queryKey: ["admin-disputes", "all"],
+    enabled: isAdmin,
     queryFn: () => fetchDisputes({ data: {} }),
   });
 
-  const rows = useMemo(() => data?.orders ?? [], [data]);
+  const rows = useMemo(() => {
+    const all = data?.orders ?? [];
+    return workspace === ALL_WORKSPACES ? all : all.filter((o) => o.store_id === workspace);
+  }, [data, workspace]);
   const disputedOrderIds = useMemo(
     () => new Set((disputes ?? []).map((d) => d.order_id)),
     [disputes],
@@ -154,8 +167,9 @@ function AdminOrdersPage() {
         title="Orders"
         description="Every workspace order. Add tracking here — the client is emailed the first time tracking appears."
       />
+      <WorkspacePicker />
       <SectionTabs tabs={ADMIN_FULFILMENT_TABS} />
-      <OperationsToday />
+      {isAdmin ? <OperationsToday /> : null}
 
       {analytics ? (
         <>
@@ -315,7 +329,9 @@ function AdminOrdersPage() {
               onChange={setSearch}
               placeholder="Search by order reference, workspace or tracking"
             />
-            <ShowArchivedToggle value={showArchived} onChange={setShowArchived} />
+            {isAdmin ? (
+              <ShowArchivedToggle value={showArchived} onChange={setShowArchived} />
+            ) : null}
           </ToolBar>
 
           <TableShell>
@@ -386,6 +402,7 @@ function AdminOrdersPage() {
                           {formatDateTime(order.created_at)}
                         </TableCell>
                         <TableCell className="py-2.5">
+                          {!isAdmin ? null : (
                           <RowActions>
                             <CleanupRowActions
                               type="order"
@@ -402,6 +419,7 @@ function AdminOrdersPage() {
                               onClick={() => setTrackingOrder(order)}
                             />
                           </RowActions>
+                          )}
                         </TableCell>
                       </TableRow>
                     );

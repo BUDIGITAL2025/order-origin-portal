@@ -135,6 +135,7 @@ const SOURCING_NAV: NavItem[] = [
   { to: "/desk/queue", label: "Quote queue", icon: ClipboardList },
   { to: "/desk/purchases", label: "Purchases", icon: PackageCheck },
   { to: "/admin/catalog-import", label: "Catalog import", icon: FileUp },
+  { to: "/admin/fulfilment/products", label: "Fulfilment", icon: PackageCheck },
   { to: "/desk/earnings", label: "My earnings", icon: Wallet },
 ];
 

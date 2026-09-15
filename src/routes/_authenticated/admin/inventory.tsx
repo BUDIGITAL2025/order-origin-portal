@@ -37,6 +37,7 @@ import {
 } from "@/lib/inventory.functions";
 import { getEcomflowStock } from "@/lib/ecomflow.functions";
 import { PlanningDialog } from "@/components/planning-dialog";
+import { ALL_WORKSPACES, WorkspacePicker, useWorkspaceScope } from "@/components/workspace-scope";
 import { friendlyError } from "@/lib/errors";
 import { formatUSD } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -305,6 +306,7 @@ function AdminInventoryPage() {
     });
   };
   const [search, setSearch] = useState("");
+  const [workspace] = useWorkspaceScope();
   const [growthPercent, setGrowthPercent] = useState(0);
   const [planningProductId, setPlanningProductId] = useState<string | null>(null);
   const [defaultsFor, setDefaultsFor] = useState<{
@@ -361,7 +363,9 @@ function AdminInventoryPage() {
     onError: (e) => toast.error(friendlyError(e)),
   });
 
-  const workspaces = data?.workspaces ?? [];
+  const workspaces = (data?.workspaces ?? []).filter(
+    (w) => workspace === ALL_WORKSPACES || (w as { store_id?: string }).store_id === workspace,
+  );
   const allRows = workspaces.flatMap((w) => w.rows as InventoryRow[]);
   const counts = {
     red: allRows.filter((r) => r.state === "red").length,
@@ -405,6 +409,7 @@ function AdminInventoryPage() {
           </Button>
         }
       />
+      <WorkspacePicker />
       <SectionTabs tabs={ADMIN_FULFILMENT_TABS} />
       <OperationsToday />
 
