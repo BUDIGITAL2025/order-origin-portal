@@ -34,6 +34,7 @@ import {
   sourcingFee,
 } from "@/lib/pricing";
 import { adminPublishQuote } from "@/lib/sourcing.functions";
+import { deliveryLabel, quoteRefFromSkus } from "@/lib/quote-ref";
 import { QuoteThread } from "@/components/quote-thread";
 import {
   adminDeleteQuoteOption,
@@ -224,6 +225,7 @@ function AdminQuoteDetailPage() {
   const callPublish = useServerFn(adminPublishQuote);
   const callSetStatus = useServerFn(adminSetQuoteStatus);
   const callRequote = useServerFn(adminRequote);
+  const callRevision = useServerFn(adminCreateQuoteRevision);
 
   const { data, isPending } = useQuery({
     queryKey: ["admin-quote", id],
@@ -628,6 +630,20 @@ function AdminQuoteDetailPage() {
     onError: (err) => toast.error(err.message),
   });
 
+  const revision = useMutation({
+    mutationFn: () => callRevision({ data: { quote_id: id } }),
+    onSuccess: (r) => {
+      toast.success(
+        r.existing
+          ? "A revision is already open for this quote — opening it."
+          : "Revision created — edit and publish it to the client.",
+      );
+      void queryClient.invalidateQueries({ queryKey: ["admin-quotes"] });
+      void navigate({ to: "/admin/quotes/$id", params: { id: r.quote_id } });
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
   const requote = useMutation({
     mutationFn: () => callRequote({ data: { quote_id: id } }),
     onSuccess: (r) => {
@@ -681,12 +697,14 @@ function AdminQuoteDetailPage() {
   if (!quote) return <p className="text-sm text-muted-foreground">Quote request not found.</p>;
 
   const requotable = quote.status === "closed" || quote.status === "expired";
+  const revisable = quote.status === "quoted" || quote.status === "closed";
+  const quoteRef = quoteRefFromSkus(rows.map((r) => r.sku));
 
   return (
     <div>
       <PageHeader
         title={quote.product_name || "Quote request"}
-        description={`Submitted ${formatDate(quote.created_at)}${countries.length > 0 ? ` · Ships to: ${countries.map((c) => countryName(c)).join(", ")}` : ""}${quote.internal_reference ? ` · Ref: ${quote.internal_reference}` : ""}${quote.supersedes_quote_id ? " · requote of an earlier request" : ""}`}
+        description={`Submitted ${formatDate(quote.created_at)}${countries.length > 0 ? ` · Ships to: ${countries.map((c) => countryName(c)).join(", ")}` : ""}${quote.internal_reference ? ` · Ref: ${quote.internal_reference}` : ""}${quote.supersedes_quote_id ? " · requote of an earlier request" : ""} · Delivery: ${deliveryLabel(quote.delivery_mode)}${Number(quote.revision_number ?? 1) > 1 ? ` · revision ${quote.revision_number}` : ""}${quoteRef ? ` · Ref ${quoteRef}` : ""}`}
         actions={
           <>
             <Button asChild variant="ghost" size="sm" className="gap-1">
@@ -694,6 +712,34 @@ function AdminQuoteDetailPage() {
                 <ArrowLeft className="h-3.5 w-3.5" /> Queue
               </Link>
             </Button>
+            {revisable && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-1.5">
+                    <RefreshCw className="h-3.5 w-3.5" /> Create revision
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Create a revision of this quote?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Clones the current pricing into a new editable revision where quantity,
+                      delivery, shipping and supplier fields can change. The client keeps the terms
+                      they already agreed until they approve the revision.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      disabled={revision.isPending}
+                      onClick={() => revision.mutate()}
+                    >
+                      Create revision
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
             {requotable && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
