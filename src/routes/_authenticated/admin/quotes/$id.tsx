@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useBlocker } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Copy, MessageCircle, Plus, RefreshCw, Trash2 } from "lucide-react";
@@ -55,6 +55,7 @@ import {
   type SupplierCurrency,
 } from "@/lib/fx";
 import { getTodayFxRates } from "@/lib/fx.functions";
+import { getDefaultMarginPct } from "@/lib/pricing-settings.functions";
 import { pct } from "@/lib/fee-tiers";
 import {
   Select,
@@ -126,7 +127,7 @@ interface VariantRow {
   cells: Record<string, CellForm>;
 }
 
-function emptyCell(country?: string): CellForm {
+function emptyCell(country?: string, defaultMargin = 0): CellForm {
   return {
     lineId: null,
     status: "pending",
@@ -134,7 +135,7 @@ function emptyCell(country?: string): CellForm {
     supplier_shipping: "0",
     supplier_tax: money2(country ? defaultImportTax(country) : 0),
     currency: "USD",
-    margin_pct: "0",
+    margin_pct: money2(defaultMargin),
     fee_rate: DEFAULT_FEE_RATE,
     fee_included: false,
     supplier_name: "",
@@ -142,9 +143,9 @@ function emptyCell(country?: string): CellForm {
 }
 
 let rowCounter = 0;
-function emptyVariant(countries: string[]): VariantRow {
+function emptyVariant(countries: string[], defaultMargin = 0): VariantRow {
   const cells: Record<string, CellForm> = {};
-  for (const c of countries) cells[c] = emptyCell(c);
+  for (const c of countries) cells[c] = emptyCell(c, defaultMargin);
   return {
     key: `new-${++rowCounter}`,
     label: "",
