@@ -75,8 +75,11 @@ type PurchaseRow = {
   created_at: string;
 };
 
-/** Everything an agent may see about a purchase — supplier layer only. */
-function agentView(p: PurchaseRow) {
+/**
+ * Everything an agent may see about a purchase — supplier layer plus the
+ * client's NAME. No contact channel, no client price, no margin, no wallet.
+ */
+function agentView(p: PurchaseRow, clientName?: string | null) {
   const supplierUnit = p.supplier_unit_price != null ? Number(p.supplier_unit_price) : null;
   const expected = supplierUnit != null ? Math.round(supplierUnit * p.quantity * 100) / 100 : null;
   const invoiced = p.supplier_invoice_total != null ? Number(p.supplier_invoice_total) : null;
@@ -84,7 +87,7 @@ function agentView(p: PurchaseRow) {
     id: p.id,
     status: p.status,
     path: p.path,
-    client_label: clientLabel(p.store_id),
+    client_label: clientName || clientLabel(p.store_id),
     product_name: p.product_name,
     variant_label: p.variant_label,
     sku: p.sku,
