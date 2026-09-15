@@ -1,7 +1,17 @@
 import { createFileRoute, Link, useBlocker, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ChevronDown, Copy, MessageCircle, Plus, RefreshCw, Trash2 } from "lucide-react";
+import {
+  ArrowLeft,
+  ChevronDown,
+  Copy,
+  Info,
+  MessageCircle,
+  MoreHorizontal,
+  Plus,
+  RefreshCw,
+  Trash2,
+} from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/app-shell";
