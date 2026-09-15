@@ -1053,20 +1053,31 @@ function AdminQuoteDetailPage() {
         <div className="space-y-6 lg:order-1">
           <Card>
             <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base">Variants & pricing</CardTitle>
-                <span className="text-xs text-muted-foreground">
-                  Client tier: <TierBadge tier={clientTier} />
-                </span>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <CardTitle className="text-base">Variants &amp; pricing</CardTitle>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">
+                    Client tier: <TierBadge tier={clientTier} />
+                  </span>
+                  {/* The long explanation lives one click away, next to the table. */}
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button type="button" variant="ghost" size="sm" className="gap-1.5">
+                        <Info className="h-3.5 w-3.5" /> Pricing rules
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent align="end" className="w-80 text-xs leading-relaxed">
+                      Rows are variants, columns are the requested countries — each cell is a priced
+                      variant × country line. All amounts in USD. The chain is COGS → + ship → +
+                      sourcing fee → sourcing cost, then one FlySales margin % applied to the COGS.
+                      Supplier tax (IOSS / duties) passes through at exact cost — it is never marked
+                      up. {PASSTHROUGH_NOTE} Cost and margin are never visible to the client.
+                      Publishing moves the request to &quot;quoted&quot; and generates one SKU per
+                      variant, shared across its country rows.
+                    </PopoverContent>
+                  </Popover>
+                </div>
               </div>
-              <CardDescription>
-                Rows are variants, columns are the requested countries — each cell is a priced
-                variant × country line. All amounts in USD. The chain is COGS → + ship → + sourcing
-                fee → sourcing cost, then one FlySales margin %. Supplier tax (IOSS / duties) passes
-                through at exact cost — it is never marked up. {PASSTHROUGH_NOTE} Cost and margin
-                are never visible to the client. Publishing moves the request to "quoted" and
-                generates one SKU per variant, shared across its country rows.
-              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="mb-4 space-y-3 rounded-lg border border-border p-3">
