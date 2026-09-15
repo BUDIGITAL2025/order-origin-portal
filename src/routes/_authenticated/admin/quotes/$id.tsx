@@ -1272,43 +1272,70 @@ function AdminQuoteDetailPage() {
                                 {expanded && (
                                   <div className="grid gap-4 border-t border-border bg-muted/15 p-3 lg:grid-cols-2">
                                     {/* Variant identity and terms. */}
-                                    <div className="space-y-2">
-                                      <Input
-                                        value={row.label}
-                                        onChange={(e) =>
-                                          updateRow(row.key, { label: e.target.value })
-                                        }
-                                        placeholder='e.g. "20cm", "Red / L"'
-                                        disabled={!rowEditable}
-                                        aria-label="Variant label"
-                                        className="h-8 text-[13px]"
-                                      />
-                                      <div className="grid grid-cols-2 gap-2">
-                                        <Input
-                                          type="number"
-                                          min={1}
-                                          value={row.moq}
-                                          onChange={(e) =>
-                                            updateRow(row.key, { moq: e.target.value })
-                                          }
-                                          disabled={!rowEditable}
-                                          placeholder="MOQ"
-                                          aria-label="MOQ"
-                                          className="h-8 tnum text-[13px] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                                        />
-                                        <Input
-                                          type="number"
-                                          min={0}
-                                          value={row.lead_time_days}
-                                          onChange={(e) =>
-                                            updateRow(row.key, { lead_time_days: e.target.value })
-                                          }
-                                          disabled={!rowEditable}
-                                          placeholder="Lead days"
-                                          aria-label="Lead time (days)"
-                                          className="h-8 tnum text-[13px] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                                        />
-                                      </div>
+                                     <div className="space-y-2">
+                                       <div className="space-y-1">
+                                         <Label
+                                           htmlFor={`v-label-${row.key}`}
+                                           className="text-[11px] text-muted-foreground"
+                                         >
+                                           Variant name
+                                         </Label>
+                                         <Input
+                                           id={`v-label-${row.key}`}
+                                           value={row.label}
+                                           onChange={(e) =>
+                                             updateRow(row.key, { label: e.target.value })
+                                           }
+                                           placeholder='e.g. "20cm", "Red / L"'
+                                           disabled={!rowEditable}
+                                           className="h-8 text-[13px]"
+                                         />
+                                       </div>
+                                       <div className="grid grid-cols-2 gap-2">
+                                         <div className="space-y-1">
+                                           <Label
+                                             htmlFor={`v-moq-${row.key}`}
+                                             className="text-[11px] text-muted-foreground"
+                                           >
+                                             MOQ (units)
+                                           </Label>
+                                           <Input
+                                             id={`v-moq-${row.key}`}
+                                             type="number"
+                                             min={1}
+                                             value={row.moq}
+                                             onChange={(e) =>
+                                               updateRow(row.key, { moq: e.target.value })
+                                             }
+                                             disabled={!rowEditable}
+                                             placeholder="Not set"
+                                             className="h-8 tnum text-[13px] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                                           />
+                                         </div>
+                                         <div className="space-y-1">
+                                           <Label
+                                             htmlFor={`v-lead-${row.key}`}
+                                             className="text-[11px] text-muted-foreground"
+                                           >
+                                             Lead time (days)
+                                           </Label>
+                                           <Input
+                                             id={`v-lead-${row.key}`}
+                                             type="number"
+                                             min={0}
+                                             value={row.lead_time_days}
+                                             onChange={(e) =>
+                                               updateRow(row.key, { lead_time_days: e.target.value })
+                                             }
+                                             disabled={!rowEditable}
+                                             placeholder="Not set"
+                                             className="h-8 tnum text-[13px] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                                           />
+                                           <p className="text-[11px] leading-tight text-muted-foreground">
+                                             Empty means not filled in yet; 0 means same-day.
+                                           </p>
+                                         </div>
+                                       </div>
                                       {rowEditable && countries.length > 1 && (
                                         <div className="space-y-1">
                                           <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
