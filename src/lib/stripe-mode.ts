@@ -18,7 +18,7 @@
  * Nothing else changes with the flag: idempotency (stripe_events), receipts
  * and wallet paths are mode-agnostic and keyed on Stripe object ids.
  */
-export const STRIPE_FORCE_TEST_MODE = true;
+export const STRIPE_FORCE_TEST_MODE = false;
 
 /**
  * True only for the production build (the published app). Vite sets PROD on
