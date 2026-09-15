@@ -155,7 +155,12 @@ function AdminClientsPage() {
     onError: (err) => toast.error(err.message),
   });
 
-  const allClients = data?.clients ?? [];
+  const rawClients = data?.clients ?? [];
+  // Archived accounts (test residue kept only because ledger rows point at
+  // them) never feed the headline counters unless they are being shown.
+  const allClients = showArchived
+    ? rawClients
+    : rawClients.filter((c) => !(c as { archived_at?: string | null }).archived_at);
   const countStatus = (status: string) => allClients.filter((c) => c.status === status).length;
   const pendingWorkspaces = allClients.reduce(
     (acc, c) =>
@@ -163,6 +168,7 @@ function AdminClientsPage() {
       c.entities.reduce((n, e) => n + e.stores.filter((s) => s.status === "pending").length, 0),
     0,
   );
+
 
   const term = search.trim().toLowerCase();
   const clients = allClients.filter((c) => {
