@@ -104,6 +104,12 @@ function AdminStockPurchasesPage() {
         items={[
           { key: "total", label: "Purchases", value: String(purchases.length) },
           {
+            key: "unpaid",
+            label: "Awaiting payment",
+            value: String(purchases.filter((p) => p.status === "awaiting_payment").length),
+            tone: "warning",
+          },
+          {
             key: "freight",
             label: "Need a freight quote",
             value: String(awaitingFreight.length),

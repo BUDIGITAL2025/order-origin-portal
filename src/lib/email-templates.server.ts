@@ -534,6 +534,33 @@ export function sourcingThreadEmail(args: {
   });
 }
 
+/** An accepted purchase went unpaid for too long and was released. */
+export function purchaseExpiredEmail(args: {
+  purchaseRef: string;
+  productName: string;
+  quantity: number;
+  total: number;
+  days: number;
+}): BuiltEmail {
+  return build(`Purchase ${args.purchaseRef} expired`, {
+    heading: "Your purchase expired",
+    preheader: `${args.purchaseRef} was not paid within ${args.days} days.`,
+    paragraphs: [
+      `Purchase ${args.purchaseRef} (${args.productName}) was not paid within ${args.days} days, so we released it.`,
+      "Nothing was charged. While your quote is still valid you can accept it again and pay from your wallet — the price and terms are unchanged.",
+    ],
+    panel: {
+      title: "What expired",
+      rows: [
+        { label: "Product", value: args.productName },
+        { label: "Quantity", value: `${args.quantity} units` },
+        { label: "Total", value: usd(args.total), strong: true },
+      ],
+    },
+    button: { label: "Open your quotes", url: appUrl("/quotes") },
+  });
+}
+
 /** Invitation to join the FlySales sourcing team (collaborator onboarding). */
 /** One panel row per tier, so the terms read as terms and not as a number. */
 function tierRows(tiers: import("./fee-tiers").FeeTier[]) {
