@@ -12,6 +12,7 @@ export const INTENT_LABELS: Record<string, string> = {
   materials_list: "Send the materials list",
   new_variant: "Quote a new variant",
   stop_quoting: "Stop quoting this product",
+  change_quantity_or_delivery: "Change quantity or delivery",
   // Raised by a sourcing collaborator, never by the client.
   need_product_details: "Sourcing needs more product details",
 };

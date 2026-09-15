@@ -6,7 +6,7 @@
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, ChevronDown, Star } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -25,7 +25,8 @@ import { countryName } from "@/lib/countries";
 import { formatUSD } from "@/lib/format";
 import { friendlyError } from "@/lib/errors";
 import { createQuoteIntent } from "@/lib/quote-intents.functions";
-import { acceptQuoteOption, listQuoteOffers } from "@/lib/quote-offers.functions";
+import { acceptQuoteSelection, listQuoteOffers } from "@/lib/quote-offers.functions";
+import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 
 function leadLabel(days: number | null): string {
@@ -66,7 +67,7 @@ export function QuoteOfferCards({
 }) {
   const queryClient = useQueryClient();
   const fetchOffers = useServerFn(listQuoteOffers);
-  const callAccept = useServerFn(acceptQuoteOption);
+  const callAccept = useServerFn(acceptQuoteSelection);
 
   const { data, isPending } = useQuery({
     queryKey: ["quote-offers", quoteId],
@@ -78,6 +79,52 @@ export function QuoteOfferCards({
   const [confirming, setConfirming] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [name, setName] = useState(productName);
+  /** Per-variant pick on the selected offer: chosen + quantity (starts at MOQ). */
+  const [picks, setPicks] = useState<Record<string, { checked: boolean; qty: string }>>({});
+
+  const selectedOffer = (data?.offers ?? []).find((o) => o.id === selected) ?? null;
+
+  /** Variant rows of the selected offer, with their binding MOQ and price. */
+  const variantRows = useMemo(() => {
+    if (!selectedOffer) return [];
+    const byVariant = new Map<
+      string,
+      { label: string; ref: string | null; moq: number; price: number | null; lineIds: string[] }
+    >();
+    for (const l of selectedOffer.lines) {
+      if (l.status !== "pending") continue;
+      const row = byVariant.get(l.variant_label) ?? {
+        label: l.variant_label,
+        ref: l.sku ?? null,
+        moq: 1,
+        price: null,
+        lineIds: [],
+      };
+      row.ref = row.ref ?? l.sku ?? null;
+      row.moq = Math.max(row.moq, l.moq ?? 1);
+      if (l.unit_price != null && (row.price == null || l.unit_price < row.price)) {
+        row.price = l.unit_price;
+      }
+      row.lineIds.push(l.id);
+      byVariant.set(l.variant_label, row);
+    }
+    return [...byVariant.values()];
+  }, [selectedOffer]);
+
+  // Every variant starts selected at its MOQ; the client edits upward.
+  useEffect(() => {
+    setPicks(
+      Object.fromEntries(variantRows.map((r) => [r.label, { checked: true, qty: String(r.moq) }])),
+    );
+  }, [selected, variantRows.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const chosen = variantRows.filter((r) => picks[r.label]?.checked);
+  const totalUnits = chosen.reduce((sum, r) => sum + (Number(picks[r.label]?.qty) || 0), 0);
+  const totalValue = chosen.reduce(
+    (sum, r) => sum + (r.price ?? 0) * (Number(picks[r.label]?.qty) || 0),
+    0,
+  );
+  const belowMoq = chosen.find((r) => (Number(picks[r.label]?.qty) || 0) < r.moq);
 
   // "Cancel request" is the client asking us to stop quoting — it goes through
   // the same typed-request queue as every other structured ask.
@@ -93,10 +140,22 @@ export function QuoteOfferCards({
   });
 
   const accept = useMutation({
-    mutationFn: () => callAccept({ data: { option_id: selected!, product_name: name.trim() } }),
+    mutationFn: () =>
+      callAccept({
+        data: {
+          option_id: selected!,
+          product_name: name.trim(),
+          selections: chosen.flatMap((r) =>
+            r.lineIds.map((line_id) => ({
+              line_id,
+              quantity: Number(picks[r.label]?.qty) || r.moq,
+            })),
+          ),
+        },
+      }),
     onSuccess: () => {
       setConfirming(false);
-      toast.success("Offer accepted — the product and its SKUs are in your catalogue.");
+      toast.success("Variants accepted — the product and its SKUs are in your catalogue.");
       void queryClient.invalidateQueries({ queryKey: ["quote-offers", quoteId] });
       void queryClient.invalidateQueries({ queryKey: ["my-quote", quoteId] });
       void queryClient.invalidateQueries({ queryKey: ["my-products"] });
@@ -216,6 +275,81 @@ export function QuoteOfferCards({
                 </div>
               </div>
 
+              {isSelected && canRespond && !acceptedOption && variantRows.length > 0 && (
+                <div className="space-y-2 rounded-lg border border-primary/40 bg-background p-3">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Choose the variants you want
+                  </div>
+                  {variantRows.map((row) => {
+                    const pick = picks[row.label] ?? { checked: true, qty: String(row.moq) };
+                    const qty = Number(pick.qty) || 0;
+                    const tooLow = pick.checked && qty < row.moq;
+                    return (
+                      <div
+                        key={row.label}
+                        className="flex flex-wrap items-center gap-3 border-b border-border/60 py-2 last:border-0"
+                      >
+                        <Checkbox
+                          checked={pick.checked}
+                          onCheckedChange={(v) =>
+                            setPicks((prev) => ({
+                              ...prev,
+                              [row.label]: { ...pick, checked: v === true },
+                            }))
+                          }
+                          aria-label={`Accept ${row.label}`}
+                        />
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-sm font-medium">{row.label}</div>
+                          {row.ref && (
+                            <div className="font-mono text-xs text-muted-foreground">
+                              Ref {row.ref}
+                            </div>
+                          )}
+                        </div>
+                        <div className="tnum text-sm">
+                          {row.price != null ? formatUSD(row.price) : "—"}
+                        </div>
+                        <div className="w-28">
+                          <Input
+                            type="number"
+                            min={row.moq}
+                            value={pick.qty}
+                            disabled={!pick.checked}
+                            onChange={(e) =>
+                              setPicks((prev) => ({
+                                ...prev,
+                                [row.label]: { ...pick, qty: e.target.value },
+                              }))
+                            }
+                            className={cn("tnum h-8", tooLow && "border-destructive")}
+                            aria-label={`Quantity for ${row.label}`}
+                          />
+                          <div
+                            className={cn(
+                              "mt-0.5 text-[11px]",
+                              tooLow ? "text-destructive" : "text-muted-foreground",
+                            )}
+                          >
+                            {tooLow ? `Minimum ${row.moq} units` : `MOQ ${row.moq}`}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-sm">
+                    <span className="text-muted-foreground">
+                      {chosen.length} variant{chosen.length === 1 ? "" : "s"} ·{" "}
+                      <span className="tnum">{totalUnits}</span> units
+                    </span>
+                    <span className="tnum font-semibold">{formatUSD(totalValue)}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Variants you leave unselected stay available on this quote until it expires.
+                  </p>
+                </div>
+              )}
+
               <button
                 type="button"
                 className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
@@ -245,6 +379,11 @@ export function QuoteOfferCards({
                         >
                           {variant}
                         </div>
+                        {data?.variant_refs?.[variant] && (
+                          <div className="font-mono text-xs text-muted-foreground">
+                            Ref {data.variant_refs[variant]}
+                          </div>
+                        )}
                         {covered ? (
                           <div className="mt-1.5 grid gap-1 sm:grid-cols-2">
                             {rows.map((l) => (
@@ -288,13 +427,19 @@ export function QuoteOfferCards({
           </Button>
           <Button
             className="flex-1"
-            disabled={!selected}
+            disabled={!selected || chosen.length === 0 || belowMoq != null}
             onClick={() => {
               setName(productName);
               setConfirming(true);
             }}
           >
-            {selected ? "Accept selected offer" : "Select an offer"}
+            {!selected
+              ? "Select an offer"
+              : belowMoq
+                ? `Minimum ${belowMoq.moq} units for ${belowMoq.label}`
+                : chosen.length === 0
+                  ? "Pick at least one variant"
+                  : `Accept selected variants (${chosen.length})`}
           </Button>
         </div>
       )}
@@ -326,10 +471,12 @@ export function QuoteOfferCards({
       <Dialog open={confirming} onOpenChange={setConfirming}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Accept this offer?</DialogTitle>
+            <DialogTitle>Accept the selected variants?</DialogTitle>
             <DialogDescription>
-              This becomes your closed price. The product and its SKUs are created in your catalog,
-              and the other options on this quote are archived.
+              {chosen.length} variant{chosen.length === 1 ? "" : "s"} · {totalUnits} units ·{" "}
+              {formatUSD(totalValue)}. This becomes your closed price for those variants, and they
+              are created in your catalog. Variants you left out stay available on this quote until
+              it expires.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-1.5">
@@ -350,7 +497,7 @@ export function QuoteOfferCards({
               disabled={accept.isPending || name.trim().length < 2}
               onClick={() => accept.mutate()}
             >
-              {accept.isPending ? "Accepting…" : "Accept offer"}
+              {accept.isPending ? "Accepting…" : "Accept variants"}
             </Button>
           </DialogFooter>
         </DialogContent>

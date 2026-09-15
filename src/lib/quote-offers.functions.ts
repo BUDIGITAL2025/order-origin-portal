@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { acceptOptionSchema, quoteOptionSchema } from "./schemas";
+import { acceptOptionSchema, acceptSelectionSchema, quoteOptionSchema } from "./schemas";
 import type { ClientOffer, ClientOfferLine } from "./quote-offers.server";
 
 const quoteIdSchema = z.object({ quote_id: z.string().uuid() });
@@ -35,7 +35,9 @@ export const listQuoteOffers = createServerFn({ method: "POST" })
 
     const { data: lines } = await admin
       .from("quote_lines")
-      .select("option_id, variant_label, country_code, unit_price, moq, lead_time_days, status")
+      .select(
+        "id, sku, accepted_quantity, option_id, variant_label, country_code, unit_price, moq, lead_time_days, status",
+      )
       .eq("quote_request_id", data.quote_id);
 
     const offers: ClientOffer[] = [];
@@ -61,6 +63,9 @@ export const listQuoteOffers = createServerFn({ method: "POST" })
         accepted_at: o.accepted_at,
         dispute_rate: await supplierDisputeRate(admin, o.supplier_id),
         lines: own.map((l): ClientOfferLine => ({
+          id: l.id,
+          sku: l.sku,
+          accepted_quantity: l.accepted_quantity,
           variant_label: l.variant_label,
           country_code: l.country_code,
           unit_price: l.unit_price == null ? null : Number(l.unit_price),
@@ -74,7 +79,57 @@ export const listQuoteOffers = createServerFn({ method: "POST" })
     // Every variant quoted anywhere on this request — an option that does not
     // cover one must show that absence, never hide it.
     const allVariants = [...new Set((lines ?? []).map((l) => l.variant_label))];
-    return { offers, all_variants: allVariants };
+
+    // Item references, so the client can name exactly what we are discussing.
+    const { quoteRefFromSkus } = await import("./quote-ref");
+    const variantRefs: Record<string, string> = {};
+    for (const l of lines ?? []) {
+      const sku = (l.sku ?? "").trim();
+      if (sku && !variantRefs[l.variant_label]) variantRefs[l.variant_label] = sku;
+    }
+    return {
+      offers,
+      all_variants: allVariants,
+      variant_refs: variantRefs,
+      quote_ref: quoteRefFromSkus((lines ?? []).map((l) => l.sku)),
+    };
+  });
+
+/**
+ * Client: accept only the variants they picked, each with its own quantity.
+ *
+ * Unselected variants stay available on this quote until it expires and can be
+ * accepted later. Quantities are validated against the MOQ in Postgres.
+ */
+export const acceptQuoteSelection = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => acceptSelectionSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const { data: accepted, error } = await context.supabase.rpc("accept_quote_selection", {
+      p_option_id: data.option_id,
+      p_product_name: data.product_name,
+      p_selections: data.selections,
+    });
+    if (error) {
+      const message = error.message;
+      if (message.includes("QUOTE_EXPIRED")) {
+        throw new Error("This quote has expired. Ask for a requote.");
+      }
+      if (message.includes("OPTION_NOT_AVAILABLE")) {
+        throw new Error("That offer is no longer available.");
+      }
+      if (message.includes("QTY_BELOW_MOQ")) {
+        const parts = message.split("QTY_BELOW_MOQ:")[1]?.split(":") ?? [];
+        const label = parts[0]?.trim() || "This variant";
+        const minimum = parts[1]?.trim() || "the minimum";
+        throw new Error(`${label}: the minimum order quantity is ${minimum} units.`);
+      }
+      if (message.includes("NO_DECISIONS")) {
+        throw new Error("Select at least one variant to accept.");
+      }
+      throw new Error(message);
+    }
+    return { ok: true, accepted: accepted ?? 0 };
   });
 
 /** Client: accept one option. Its lines become catalogue products; the rest archive. */

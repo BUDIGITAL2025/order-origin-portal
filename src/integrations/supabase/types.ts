@@ -2111,6 +2111,7 @@ export type Database = {
       }
       quote_lines: {
         Row: {
+          accepted_quantity: number | null
           country_code: string
           created_at: string
           fee_included: boolean
@@ -2144,6 +2145,7 @@ export type Database = {
           variant_label: string
         }
         Insert: {
+          accepted_quantity?: number | null
           country_code: string
           created_at?: string
           fee_included?: boolean
@@ -2177,6 +2179,7 @@ export type Database = {
           variant_label: string
         }
         Update: {
+          accepted_quantity?: number | null
           country_code?: string
           created_at?: string
           fee_included?: boolean
@@ -2396,6 +2399,8 @@ export type Database = {
           assigned_sourcer: string | null
           client_site: boolean
           created_at: string
+          delivery_address: string | null
+          delivery_mode: Database["public"]["Enums"]["delivery_mode"]
           id: string
           image_urls: string[] | null
           notes: string | null
@@ -2408,6 +2413,7 @@ export type Database = {
           quoted_at: string | null
           quoted_by: string | null
           responded_at: string | null
+          revision_number: number
           sourcing_submitted_at: string | null
           status: Database["public"]["Enums"]["quote_status"]
           store_id: string
@@ -2420,6 +2426,8 @@ export type Database = {
           assigned_sourcer?: string | null
           client_site?: boolean
           created_at?: string
+          delivery_address?: string | null
+          delivery_mode?: Database["public"]["Enums"]["delivery_mode"]
           id?: string
           image_urls?: string[] | null
           notes?: string | null
@@ -2432,6 +2440,7 @@ export type Database = {
           quoted_at?: string | null
           quoted_by?: string | null
           responded_at?: string | null
+          revision_number?: number
           sourcing_submitted_at?: string | null
           status?: Database["public"]["Enums"]["quote_status"]
           store_id: string
@@ -2444,6 +2453,8 @@ export type Database = {
           assigned_sourcer?: string | null
           client_site?: boolean
           created_at?: string
+          delivery_address?: string | null
+          delivery_mode?: Database["public"]["Enums"]["delivery_mode"]
           id?: string
           image_urls?: string[] | null
           notes?: string | null
@@ -2456,6 +2467,7 @@ export type Database = {
           quoted_at?: string | null
           quoted_by?: string | null
           responded_at?: string | null
+          revision_number?: number
           sourcing_submitted_at?: string | null
           status?: Database["public"]["Enums"]["quote_status"]
           store_id?: string
@@ -3770,6 +3782,14 @@ export type Database = {
         Args: { p_option_id: string; p_product_name: string }
         Returns: number
       }
+      accept_quote_selection: {
+        Args: {
+          p_option_id: string
+          p_product_name: string
+          p_selections: Json
+        }
+        Returns: number
+      }
       admin_confirm_inbound_receipt: {
         Args: {
           p_counted_cartons?: number
@@ -4285,6 +4305,7 @@ export type Database = {
       get_client_quote_lines: {
         Args: { p_quote_request_id: string }
         Returns: {
+          accepted_quantity: number
           country_code: string
           created_at: string
           id: string
@@ -4649,6 +4670,8 @@ export type Database = {
       }
       submit_quote_request: {
         Args: {
+          p_delivery_address?: string
+          p_delivery_mode?: Database["public"]["Enums"]["delivery_mode"]
           p_image_urls?: string[]
           p_notes?: string
           p_on_behalf_of?: string
@@ -4665,6 +4688,8 @@ export type Database = {
           assigned_sourcer: string | null
           client_site: boolean
           created_at: string
+          delivery_address: string | null
+          delivery_mode: Database["public"]["Enums"]["delivery_mode"]
           id: string
           image_urls: string[] | null
           notes: string | null
@@ -4677,6 +4702,7 @@ export type Database = {
           quoted_at: string | null
           quoted_by: string | null
           responded_at: string | null
+          revision_number: number
           sourcing_submitted_at: string | null
           status: Database["public"]["Enums"]["quote_status"]
           store_id: string
@@ -4784,6 +4810,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "client" | "sourcing"
+      delivery_mode: "exw" | "warehouse" | "fulfilment"
       dispute_author_role: "client" | "admin"
       dispute_reason: "not_delivered" | "damaged" | "wrong_product"
       dispute_resolution: "wallet_credit" | "reshipped" | "rejected"
@@ -4832,6 +4859,7 @@ export type Database = {
         | "new_variant"
         | "stop_quoting"
         | "need_product_details"
+        | "change_quantity_or_delivery"
       quote_line_status: "pending" | "accepted" | "rejected"
       quote_status: "submitted" | "sourcing" | "quoted" | "closed" | "expired"
       spymarket_plan: "starter" | "plus" | "max" | "module"
@@ -4983,6 +5011,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "client", "sourcing"],
+      delivery_mode: ["exw", "warehouse", "fulfilment"],
       dispute_author_role: ["client", "admin"],
       dispute_reason: ["not_delivered", "damaged", "wrong_product"],
       dispute_resolution: ["wallet_credit", "reshipped", "rejected"],
@@ -5035,6 +5064,7 @@ export const Constants = {
         "new_variant",
         "stop_quoting",
         "need_product_details",
+        "change_quantity_or_delivery",
       ],
       quote_line_status: ["pending", "accepted", "rejected"],
       quote_status: ["submitted", "sourcing", "quoted", "closed", "expired"],

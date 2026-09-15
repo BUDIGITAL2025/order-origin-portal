@@ -14,6 +14,10 @@ type Admin = SupabaseClient<Database>;
 const DISPUTE_RATE_MIN_ORDERS = 5;
 
 export type ClientOfferLine = {
+  id: string;
+  /** Item reference the client quotes back to us on a call. */
+  sku: string | null;
+  accepted_quantity: number | null;
   variant_label: string;
   country_code: string;
   unit_price: number | null;

@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { countryName } from "@/lib/countries";
 import { formatDate } from "@/lib/format";
 import { getMyQuote } from "@/lib/quotes.functions";
+import { deliveryLabel, quoteRefFromSkus } from "@/lib/quote-ref";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated/_client/quotes/$id")({
@@ -64,6 +65,8 @@ function MyQuoteDetailPage() {
   if (!data) return <p className="text-sm text-muted-foreground">Quote request not found.</p>;
 
   const { quote, lines } = data;
+  const previous = data.previous;
+  const quoteRef = quoteRefFromSkus(lines.map((l) => l.sku));
   const expired =
     quote.quote_valid_until != null &&
     new Date(quote.quote_valid_until) < new Date(new Date().setHours(0, 0, 0, 0));
@@ -73,7 +76,16 @@ function MyQuoteDetailPage() {
   return (
     <div>
       <PageHeader
-        title={quote.product_name || "Quote request"}
+        title={
+          <span className="flex flex-wrap items-baseline gap-2">
+            {quote.product_name || "Quote request"}
+            {quoteRef && (
+              <span className="font-mono text-sm font-normal text-muted-foreground">
+                Ref {quoteRef}
+              </span>
+            )}
+          </span>
+        }
         description={`Submitted ${formatDate(quote.created_at)}${quote.quote_valid_until ? ` · valid until ${formatDate(quote.quote_valid_until)}` : ""}`}
         actions={
           <>
@@ -86,6 +98,31 @@ function MyQuoteDetailPage() {
           </>
         }
       />
+
+      {previous && (
+        <Card className="mb-4 border-primary/50 bg-primary/5">
+          <CardContent className="p-4 text-sm">
+            <p className="font-medium">Quote updated: revision {quote.revision_number}</p>
+            <p className="text-muted-foreground">
+              This replaces revision {previous.revision_number} and needs your approval again. Your
+              previous terms stay in force until you accept this one — you can still open{" "}
+              <Link
+                to="/quotes/$id"
+                params={{ id: previous.id }}
+                className="underline underline-offset-2"
+              >
+                the earlier version
+              </Link>
+              .
+            </p>
+            <p className="mt-1 text-muted-foreground">
+              What can change in a revision: quantity, delivery (
+              {deliveryLabel(previous.delivery_mode)} → {deliveryLabel(quote.delivery_mode)}),
+              shipping and price.
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       <Card className="mb-4">
         <CardContent className="p-4">
@@ -182,6 +219,17 @@ function MyQuoteDetailPage() {
                   Target countries
                 </div>
                 <p>{quote.target_countries.map((c) => countryName(c)).join(", ") || "—"}</p>
+              </div>
+              <div>
+                <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Delivery
+                </div>
+                <p>{deliveryLabel(quote.delivery_mode)}</p>
+                {quote.delivery_address && (
+                  <p className="whitespace-pre-wrap text-xs text-muted-foreground">
+                    {quote.delivery_address}
+                  </p>
+                )}
               </div>
               {imageUrls.length > 0 && (
                 <div>

@@ -37,6 +37,7 @@ const ORDER: IntentType[] = [
   "factory_photos",
   "materials_list",
   "new_variant",
+  "change_quantity_or_delivery",
   "stop_quoting",
 ];
 
@@ -75,7 +76,11 @@ export function SpecialRequestMenu({
 
   const toggleCountry = (code: string) => {
     setCountries((prev) =>
-      prev.includes(code) ? prev.filter((c) => c !== code) : prev.length >= 3 ? prev : [...prev, code],
+      prev.includes(code)
+        ? prev.filter((c) => c !== code)
+        : prev.length >= 3
+          ? prev
+          : [...prev, code],
     );
   };
 
@@ -114,7 +119,9 @@ export function SpecialRequestMenu({
                   : "We'll stop sourcing this product. Nothing has been published yet, so this request closes it."
                 : open === "add_country"
                   ? "Pick up to three extra destinations. We price each one separately."
-                  : "Tell us anything that helps — we answer in the quote conversation."}
+                  : open === "change_quantity_or_delivery"
+                    ? "Tell us the new quantity and/or how you want it delivered (collect at the supplier, ship to your address, or store with FlySales). We open a revised quote for you to approve — your current terms stay in force until you accept it."
+                    : "Tell us anything that helps — we answer in the quote conversation."}
             </DialogDescription>
           </DialogHeader>
 
@@ -141,7 +148,11 @@ export function SpecialRequestMenu({
           <Textarea
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder="Add a note (optional)"
+            placeholder={
+              open === "change_quantity_or_delivery"
+                ? "e.g. 300 units of the 210 cm, ship to FlySales fulfilment"
+                : "Add a note (optional)"
+            }
             rows={3}
             maxLength={1000}
           />
@@ -152,7 +163,9 @@ export function SpecialRequestMenu({
             </Button>
             <Button
               disabled={
-                submit.isPending || (open === "add_country" && countries.length === 0)
+                submit.isPending ||
+                (open === "add_country" && countries.length === 0) ||
+                (open === "change_quantity_or_delivery" && note.trim().length < 3)
               }
               onClick={() => submit.mutate()}
             >
